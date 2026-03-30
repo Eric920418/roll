@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ROLL ON. 企業官網
 
-## Getting Started
+協助外商進入台灣與亞洲市場的顧問公司官網。
 
-First, run the development server:
+## 技術棧
+
+- **Next.js 16** (App Router)
+- **Tailwind CSS v4**
+- **Motion** (framer-motion) - 頁面動畫
+- **GSAP + ScrollTrigger** - 滾動驅動動畫
+- **next-intl** - 中英雙語 i18n
+- **pnpm** - 套件管理
+
+## 開發
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+開啟 [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 專案結構
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/[locale]/        # i18n 路由 (zh-tw / en)
+├── components/
+│   ├── layout/          # Navbar, Footer
+│   ├── sections/        # Hero, RollMap, TaiwanMap, AboutUs, Services, Work, Clients, GoldenTicket
+│   └── ui/              # ScrollReveal, CounterAnimation, LanguageSwitch
+├── i18n/                # next-intl 設定
+├── lib/                 # GSAP 註冊
+└── messages/            # 翻譯檔 (zh-tw.json, en.json)
+```
 
-## Learn More
+## 首頁 Sections
 
-To learn more about Next.js, take a look at the following resources:
+1. **Hero** - 深酒紅背景 + ROLL ON. 大標題
+2. **ROLL MAP** - 全球數據展示 + 計數動畫 + 排名列表
+3. **Taiwan Map** - GSAP ScrollTrigger 地圖縮放 + 橋樑動畫
+4. **About Us** - 核心價值文字逐段出現
+5. **Services** - 6 項服務 + Investor Access
+6. **R work** - 作品案例卡片
+7. **R Clients** - 客戶 logo
+8. **Golden Ticket** - 影片 + 簽名
+9. **Footer** - 聯絡表單
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 部署
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+部署至 Vercel，Region: `hkg1`（香港，最近台灣的節點）。
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm build
+```
