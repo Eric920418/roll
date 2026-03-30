@@ -11,14 +11,14 @@ export default function Hero() {
       id="hero"
       className="relative min-h-screen flex items-center bg-primary overflow-hidden"
     >
-      <div className="container mx-auto px-8 md:px-16 lg:px-24">
+      <div className="container mx-auto px-5 md:px-16 lg:px-24">
         <div className="max-w-4xl">
           {/* ROLL ON. Title */}
           <motion.h1
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="text-white text-7xl md:text-8xl lg:text-9xl font-bold leading-[0.9] tracking-tight font-[family-name:var(--font-heading)]"
+            className="text-white text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-bold leading-[0.9] tracking-tight font-[family-name:var(--font-heading)]"
           >
             ROLL
             <br />

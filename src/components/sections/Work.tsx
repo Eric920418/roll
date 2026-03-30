@@ -28,7 +28,7 @@ export default function Work() {
 
   return (
     <section id="work" className="bg-primary min-h-[70vh] flex items-center justify-center py-24 md:py-32">
-      <div className="w-full max-w-5xl mx-auto px-8 flex flex-col" style={{ gap: '4rem' }}>
+      <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-8 md:gap-16">
         <ScrollReveal>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white font-[family-name:var(--font-heading)]">
             {t("title")}
@@ -48,7 +48,7 @@ export default function Work() {
                 className="group cursor-pointer overflow-hidden rounded-sm flex flex-col h-full"
                 style={{ backgroundColor: project.bgColor }}
               >
-                <div className="px-8 pt-8">
+                <div className="px-5 pt-5 md:px-8 md:pt-8">
                   <h3
                     className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-heading)]"
                     style={{ color: project.textColor }}
@@ -68,7 +68,7 @@ export default function Work() {
                   />
                 </div>
 
-                <div className="px-8 pb-8">
+                <div className="px-5 pb-5 md:px-8 md:pb-8">
                   <p
                     className="text-sm font-[family-name:var(--font-heading)] uppercase tracking-wider"
                     style={{ color: project.descColor }}

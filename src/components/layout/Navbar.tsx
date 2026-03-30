@@ -396,7 +396,7 @@ export default function Navbar() {
 
         {/* Header with logo + toggle */}
         <header
-          className="absolute top-0 left-0 w-full flex items-center justify-between p-8 bg-transparent pointer-events-none z-20"
+          className="absolute top-0 left-0 w-full flex items-center justify-between p-4 md:p-8 bg-transparent pointer-events-none z-20"
           aria-label="Main navigation header"
         >
           <div
@@ -440,7 +440,7 @@ export default function Navbar() {
         <aside
           id="staggered-menu-panel"
           ref={panelRef}
-          className="absolute top-0 right-0 h-full flex flex-col p-[6em_2em_2em_2em] overflow-y-auto z-10 pointer-events-auto"
+          className="absolute top-0 right-0 h-full flex flex-col p-[3.5em_1.5em_1.5em_1.5em] md:p-[6em_2em_2em_2em] overflow-y-auto z-10 pointer-events-auto"
           style={{
             background: COLORS.light,
           }}

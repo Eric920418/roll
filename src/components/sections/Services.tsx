@@ -17,7 +17,7 @@ export default function Services() {
 
   return (
     <section id="services" className="bg-primary min-h-screen flex items-center justify-center">
-      <div className="w-full max-w-5xl mx-auto px-8 flex flex-col" style={{ gap: '4rem' }}>
+      <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-8 md:gap-16">
         {/* Title */}
         <ScrollReveal>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white font-[family-name:var(--font-heading)]">
@@ -26,14 +26,14 @@ export default function Services() {
         </ScrollReveal>
 
         {/* Content: Services Grid + Investor Access */}
-        <div className="flex flex-col md:flex-row" style={{ gap: '3rem' }}>
+        <div className="flex flex-col md:flex-row gap-6 md:gap-12">
           {/* Services Grid - Left */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-10 flex-1">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6 sm:gap-x-6 sm:gap-y-8 md:gap-x-10 md:gap-y-10 flex-1">
             {services.map((service, i) => (
               <ScrollReveal key={service.key} delay={i * 0.1}>
                 <div className="cursor-pointer">
                   {/* White circle */}
-                  <div className="w-12 h-12 rounded-full bg-white mb-4" />
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white mb-4" />
                   <h3 className="font-bold text-sm md:text-base text-white mb-1 font-[family-name:var(--font-heading)]">
                     {t(service.key)}
                   </h3>

@@ -49,6 +49,8 @@ export default function RollMap() {
   useEffect(() => {
     if (!sectionRef.current) return;
 
+    const isMobile = window.innerWidth < 768;
+
     const ctx = gsap.context(() => {
       // Title reveal
       if (titleRef.current) {
@@ -87,7 +89,7 @@ export default function RollMap() {
           scrollTrigger: {
             trigger: sectionRef.current,
             start: "top top",
-            end: "+=400%",
+            end: isMobile ? "+=250%" : "+=400%",
             pin: true,
             scrub: 0.8,
           },
@@ -180,7 +182,7 @@ export default function RollMap() {
       >
         <h2
           ref={titleRef}
-          className="text-center text-5xl md:text-6xl lg:text-7xl font-bold text-dark tracking-tight mb-20 font-[family-name:var(--font-heading)]"
+          className="text-center text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-dark tracking-tight mb-10 md:mb-20 font-[family-name:var(--font-heading)]"
         >
           {t("title")}
         </h2>
@@ -225,7 +227,7 @@ export default function RollMap() {
         </div>
 
         <div className="w-full max-w-4xl mx-auto relative z-10">
-          <h3 className="text-lg md:text-xl font-medium text-dark/70 mb-16 font-[family-name:var(--font-heading)]">
+          <h3 className="text-lg md:text-xl font-medium text-dark/70 mb-8 md:mb-16 font-[family-name:var(--font-heading)]">
             {t("comparisonTitle")}
           </h3>
 
@@ -235,7 +237,7 @@ export default function RollMap() {
                 end={comparisonData.global.value}
                 suffix={comparisonData.global.suffix}
                 start={page2Active}
-                className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
+                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
               />
               <p className="mt-6 text-sm md:text-base text-dark/60 font-[family-name:var(--font-body)]">
                 {t("globalLabel")}
@@ -250,7 +252,7 @@ export default function RollMap() {
                 end={comparisonData.taiwan.value}
                 suffix={comparisonData.taiwan.suffix}
                 start={page2Active}
-                className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#2D3A8C] font-[family-name:var(--font-heading)]"
+                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-[#2D3A8C] font-[family-name:var(--font-heading)]"
               />
               <p className="mt-6 text-sm md:text-base text-dark/60 font-[family-name:var(--font-body)]">
                 {t("taiwanLabel")}
@@ -258,7 +260,7 @@ export default function RollMap() {
             </div>
           </div>
 
-          <p className="mt-24 text-xs text-dark/40 text-center font-[family-name:var(--font-chinese)]">
+          <p className="mt-12 md:mt-24 text-xs text-dark/40 text-center font-[family-name:var(--font-chinese)]">
             {t("updateFrequency")}
           </p>
         </div>

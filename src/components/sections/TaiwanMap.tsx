@@ -109,6 +109,8 @@ export default function TaiwanMap() {
   useEffect(() => {
     if (!sectionRef.current || !mapContainerRef.current) return;
 
+    const isMobile = window.innerWidth < 768;
+
     const ctx = gsap.context(() => {
       const bridgeLines =
         sectionRef.current!.querySelectorAll(".bridge-line");
@@ -121,7 +123,7 @@ export default function TaiwanMap() {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: "+=7000",
+          end: isMobile ? "+=4000" : "+=7000",
           pin: true,
           scrub: 1,
         },
