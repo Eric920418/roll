@@ -259,10 +259,6 @@ export default function RollMap() {
               </p>
             </div>
           </div>
-
-          <p className="mt-12 md:mt-24 text-xs text-dark/40 text-center font-[family-name:var(--font-chinese)]">
-            {t("updateFrequency")}
-          </p>
         </div>
       </div>
 
