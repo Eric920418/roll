@@ -8,7 +8,7 @@ export default function Footer() {
 
   return (
     <footer id="contact" className="bg-[#2b1326] text-white min-h-[50vh] flex items-end justify-center ">
-      <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-8 md:gap-16">
+      <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col pt-12 ">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 md:gap-24">
           {/* Left: Brand Info */}
           <ScrollReveal direction="left">

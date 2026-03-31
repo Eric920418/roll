@@ -18,7 +18,7 @@ export default async function HomePage({ params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <main>
+    <main >
       <Navbar />
       <Hero />
       <RollMap />

@@ -227,11 +227,11 @@ export default function RollMap() {
         </div>
 
         <div className="w-full max-w-4xl mx-auto relative z-10">
-          <h3 className="text-lg md:text-xl font-medium text-dark/70 mb-8 md:mb-16 font-[family-name:var(--font-heading)]">
+          <h3 className="text-center text-lg md:text-xl font-medium text-dark/70 mb-8 md:mb-16 font-[family-name:var(--font-heading)]">
             {t("comparisonTitle")}
           </h3>
 
-          <div className="h-32 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-4">
+          <div className="h-32 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
             <div className="comparison-item flex-1 text-center md:text-right md:pr-20">
               <CounterAnimation
                 end={comparisonData.global.value}
@@ -252,7 +252,7 @@ export default function RollMap() {
                 end={comparisonData.taiwan.value}
                 suffix={comparisonData.taiwan.suffix}
                 start={page2Active}
-                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-[#2D3A8C] font-[family-name:var(--font-heading)]"
+                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
               />
               <p className="mt-6 text-sm md:text-base text-dark/60 font-[family-name:var(--font-body)]">
                 {t("taiwanLabel")}
@@ -268,14 +268,14 @@ export default function RollMap() {
         className="absolute inset-0 flex flex-col items-center justify-center px-8 md:px-16 lg:px-24 z-10 opacity-0"
       >
         <div className="w-full max-w-2xl mx-auto">
-
           {/* Header bar */}
           <div
             className="flex items-center justify-between mb-12"
             style={{
               opacity: page3Active ? 1 : 0,
               transform: page3Active ? "none" : "translateY(10px)",
-              transition: "opacity 0.6s cubic-bezier(0.33,1,0.68,1), transform 0.6s cubic-bezier(0.33,1,0.68,1)",
+              transition:
+                "opacity 0.6s cubic-bezier(0.33,1,0.68,1), transform 0.6s cubic-bezier(0.33,1,0.68,1)",
             }}
           >
             <div className="flex items-center gap-3">
@@ -299,7 +299,8 @@ export default function RollMap() {
             style={{
               height: "1px",
               opacity: page3Active ? 1 : 0,
-              background: "linear-gradient(90deg, var(--color-primary) 0%, rgba(26,26,26,0.12) 100%)",
+              background:
+                "linear-gradient(90deg, var(--color-primary) 0%, rgba(26,26,26,0.12) 100%)",
               transition: "opacity 0.5s ease 0.05s",
             }}
           />
@@ -327,7 +328,8 @@ export default function RollMap() {
                     fontSize: "clamp(0.65rem, 1.1vw, 0.72rem)",
                     fontWeight: 700,
                     letterSpacing: "0.04em",
-                    color: i === 0 ? "rgba(212,165,116,0.85)" : "rgba(26,26,26,0.2)",
+                    color:
+                      i === 0 ? "rgba(212,165,116,0.85)" : "rgba(26,26,26,0.2)",
                     lineHeight: 1,
                   }}
                 >
@@ -339,7 +341,8 @@ export default function RollMap() {
                     fontSize: "clamp(0.82rem, 1.4vw, 0.96rem)",
                     fontWeight: i === 0 ? 600 : 500,
                     letterSpacing: "-0.01em",
-                    color: i === 0 ? "rgba(26,26,26,0.88)" : "rgba(26,26,26,0.52)",
+                    color:
+                      i === 0 ? "rgba(26,26,26,0.88)" : "rgba(26,26,26,0.52)",
                   }}
                 >
                   {company.name}
@@ -350,7 +353,8 @@ export default function RollMap() {
                     fontSize: "clamp(0.75rem, 1.15vw, 0.84rem)",
                     fontWeight: 500,
                     letterSpacing: "0.02em",
-                    color: i === 0 ? "rgba(26,26,26,0.55)" : "rgba(26,26,26,0.25)",
+                    color:
+                      i === 0 ? "rgba(26,26,26,0.55)" : "rgba(26,26,26,0.25)",
                   }}
                 >
                   {company.valuation}
@@ -370,7 +374,8 @@ export default function RollMap() {
             <div
               style={{
                 height: "1px",
-                background: "linear-gradient(90deg, transparent 0%, rgba(123,26,44,0.35) 40%, rgba(123,26,44,0.35) 60%, transparent 100%)",
+                background:
+                  "linear-gradient(90deg, transparent 0%, rgba(123,26,44,0.35) 40%, rgba(123,26,44,0.35) 60%, transparent 100%)",
               }}
             />
             <div
@@ -389,7 +394,9 @@ export default function RollMap() {
           </div>
 
           {/* Ranks 6–7: OUR CLIENT */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}
+          >
             {topCompanies
               .filter((c) => c.isClient)
               .map((company, i) => (
@@ -404,7 +411,9 @@ export default function RollMap() {
                     borderRadius: "6px",
                     overflow: "hidden",
                     opacity: page3ClientsActive ? 1 : 0,
-                    transform: page3ClientsActive ? "none" : "translateY(18px) scale(0.985)",
+                    transform: page3ClientsActive
+                      ? "none"
+                      : "translateY(18px) scale(0.985)",
                     transition: `opacity 0.75s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.18}s, transform 0.75s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.18}s`,
                   }}
                 >
@@ -412,7 +421,8 @@ export default function RollMap() {
                   <div
                     className="absolute inset-0"
                     style={{
-                      background: "linear-gradient(118deg, #6B1626 0%, #4E0F1B 55%, #3D0C15 100%)",
+                      background:
+                        "linear-gradient(118deg, #6B1626 0%, #4E0F1B 55%, #3D0C15 100%)",
                       borderRadius: "6px",
                     }}
                   />
@@ -420,7 +430,8 @@ export default function RollMap() {
                   <div
                     className="absolute left-0 top-0 bottom-0 w-[3px]"
                     style={{
-                      background: "linear-gradient(180deg, var(--color-accent) 0%, rgba(212,165,116,0.4) 100%)",
+                      background:
+                        "linear-gradient(180deg, var(--color-accent) 0%, rgba(212,165,116,0.4) 100%)",
                       borderRadius: "6px 0 0 6px",
                     }}
                   />
@@ -429,7 +440,8 @@ export default function RollMap() {
                     className="absolute top-0 right-0 h-px"
                     style={{
                       left: "3px",
-                      background: "linear-gradient(90deg, rgba(212,165,116,0.5) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)",
+                      background:
+                        "linear-gradient(90deg, rgba(212,165,116,0.5) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)",
                     }}
                   />
 
