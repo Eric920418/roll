@@ -18,6 +18,17 @@ const mapData = [
   { key: "cambodia", value: 3 },
 ] as const;
 
+const roadMapData = [
+  { key: "america", value: 45 },
+  { key: "canada", value: 38 },
+  { key: "africa", value: 30 },
+  { key: "vietnam", value: 35 },
+  { key: "turkey", value: 40 },
+  { key: "taiwan", value: 100 },
+  { key: "japan", value: 65 },
+  { key: "cambodia", value: 15 },
+] as const;
+
 const comparisonData = {
   global: { value: 1200, suffix: "+" },
   taiwan: { value: 380, suffix: "+" },
@@ -42,9 +53,11 @@ export default function RollMap() {
   const page1Ref = useRef<HTMLDivElement>(null);
   const page2Ref = useRef<HTMLDivElement>(null);
   const page3Ref = useRef<HTMLDivElement>(null);
+  const [roadMapActive, setRoadMapActive] = useState(false);
   const [page2Active, setPage2Active] = useState(false);
   const [page3Active, setPage3Active] = useState(false);
   const [page3ClientsActive, setPage3ClientsActive] = useState(false);
+  const roadMapTriggered = useRef(false);
   const page2Triggered = useRef(false);
   const page3Triggered = useRef(false);
 
@@ -91,11 +104,52 @@ export default function RollMap() {
           scrollTrigger: {
             trigger: sectionRef.current,
             start: "top top",
-            end: isMobile ? "+=250%" : "+=400%",
+            end: isMobile ? "+=350%" : "+=500%",
             pin: true,
             scrub: 0.8,
           },
         });
+
+        // === Hold ROLL MAP ===
+        tl.to({}, { duration: 0.15 });
+
+        // === Flip ROLL MAP → ROAD MAP ===
+        const flipFronts =
+          page1Ref.current.querySelectorAll(".flip-front");
+        const flipBacks =
+          page1Ref.current.querySelectorAll(".flip-back");
+
+        // Flip out fronts (staggered, bottom-to-top)
+        tl.to(flipFronts, {
+          rotateX: 90,
+          opacity: 0,
+          duration: 0.2,
+          stagger: 0.02,
+          ease: "none",
+        });
+
+        // Flip in backs (staggered, from below)
+        tl.fromTo(
+          flipBacks,
+          { rotateX: -90, opacity: 0 },
+          {
+            rotateX: 0,
+            opacity: 1,
+            duration: 0.2,
+            stagger: 0.02,
+            ease: "none",
+            onUpdate: function () {
+              if (this.progress() >= 0.3 && !roadMapTriggered.current) {
+                roadMapTriggered.current = true;
+                setRoadMapActive(true);
+              }
+            },
+          },
+          "-=0.1",
+        );
+
+        // === Hold ROAD MAP ===
+        tl.to({}, { duration: 0.25 });
 
         // === Page 1 → Page 2 ===
         tl.to(page1Ref.current, {
@@ -208,28 +262,74 @@ export default function RollMap() {
           <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary-dark/50 to-transparent" />
         </div>
 
-        {/* Right: Map Data */}
+        {/* Right: Map Data with flip */}
         <div className="flex-1 flex flex-col items-center justify-center bg-white px-8 md:px-12 lg:px-16">
-          <h2
-            ref={titleRef}
-            className="text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-dark tracking-tight mb-8 md:mb-14 font-[family-name:var(--font-heading)]"
+          {/* Title flip container */}
+          <div
+            className="relative mb-8 md:mb-14 w-full"
+            style={{ perspective: "800px" }}
           >
-            {t("title")}
-          </h2>
+            <h2
+              ref={titleRef}
+              className="flip-front text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-dark tracking-tight font-[family-name:var(--font-heading)]"
+              style={{ transformOrigin: "center bottom" }}
+            >
+              {t("title")}
+            </h2>
+            <h2
+              className="flip-back absolute top-0 left-0 w-full text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-dark tracking-tight font-[family-name:var(--font-heading)]"
+              style={{
+                transformOrigin: "center bottom",
+                transform: "rotateX(-90deg)",
+                opacity: 0,
+              }}
+            >
+              {t("roadMapTitle")}
+            </h2>
+          </div>
 
+          {/* Grid with flip cells */}
           <div
             ref={gridRef}
             className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 w-full max-w-xl"
           >
-            {mapData.map((item) => (
-              <div key={item.key} className="map-item text-center">
-                <p className="text-sm md:text-base font-medium text-dark/60 mb-2 font-[family-name:var(--font-heading)]">
-                  {t(item.key)}
-                </p>
-                <CounterAnimation
-                  end={item.value}
-                  className="text-2xl md:text-3xl lg:text-4xl font-bold text-dark font-[family-name:var(--font-heading)]"
-                />
+            {mapData.map((item, index) => (
+              <div
+                key={item.key}
+                className="relative"
+                style={{ perspective: "800px" }}
+              >
+                {/* Front: ROLL MAP data */}
+                <div
+                  className="flip-front map-item text-center"
+                  style={{ transformOrigin: "center bottom" }}
+                >
+                  <p className="text-sm md:text-base font-medium text-dark/60 mb-2 font-[family-name:var(--font-heading)]">
+                    {t(item.key)}
+                  </p>
+                  <CounterAnimation
+                    end={item.value}
+                    className="text-2xl md:text-3xl lg:text-4xl font-bold text-dark font-[family-name:var(--font-heading)]"
+                  />
+                </div>
+                {/* Back: ROAD MAP data */}
+                <div
+                  className="flip-back map-item text-center absolute inset-0"
+                  style={{
+                    transformOrigin: "center bottom",
+                    transform: "rotateX(-90deg)",
+                    opacity: 0,
+                  }}
+                >
+                  <p className="text-sm md:text-base font-medium text-dark/60 mb-2 font-[family-name:var(--font-heading)]">
+                    {t(roadMapData[index].key)}
+                  </p>
+                  <CounterAnimation
+                    end={roadMapData[index].value}
+                    start={roadMapActive}
+                    className="text-2xl md:text-3xl lg:text-4xl font-bold text-dark font-[family-name:var(--font-heading)]"
+                  />
+                </div>
               </div>
             ))}
           </div>
