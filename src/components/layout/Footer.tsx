@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 
@@ -13,9 +14,15 @@ export default function Footer() {
           {/* Left: Brand Info */}
           <ScrollReveal direction="left">
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 font-[family-name:var(--font-heading)]">
-                ROLL ON.
-              </h2>
+              <div className="mb-6">
+                <Image
+                  src="/horizontal.png"
+                  alt="ROLL ON."
+                  width={240}
+                  height={60}
+                  className="h-10 md:h-14 w-auto"
+                />
+              </div>
               <div className="space-y-2 text-white/60 text-sm">
                 <p>info@roll-on.com</p>
                 <p>+886 2-XXXX-XXXX</p>

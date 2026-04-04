@@ -397,7 +397,7 @@ export default function Navbar() {
 
         {/* Header with logo + toggle */}
         <header
-          className="absolute top-0 left-0 w-full flex items-center justify-between p-4 md:p-8 pointer-events-none z-20"
+          className="absolute top-0 left-0 w-full flex items-center justify-between p-4 pointer-events-none z-20"
           style={{ backgroundColor: COLORS.primary }}
           aria-label="Main navigation header"
         >
