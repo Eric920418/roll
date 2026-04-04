@@ -415,7 +415,7 @@ export default function Navbar() {
                 alt="ROLL ON."
                 width={160}
                 height={40}
-                className="h-8 md:h-10 w-auto"
+                className=" h-6 lg:h-8  w-auto"
                 priority
               />
             </a>
