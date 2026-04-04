@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { gsap } from "gsap";
 import LanguageSwitch from "@/components/ui/LanguageSwitch";
@@ -396,7 +397,8 @@ export default function Navbar() {
 
         {/* Header with logo + toggle */}
         <header
-          className="absolute top-0 left-0 w-full flex items-center justify-between p-4 md:p-8 bg-transparent pointer-events-none z-20"
+          className="absolute top-0 left-0 w-full flex items-center justify-between p-4 md:p-8 pointer-events-none z-20"
+          style={{ backgroundColor: COLORS.primary }}
           aria-label="Main navigation header"
         >
           <div
@@ -405,10 +407,17 @@ export default function Navbar() {
           >
             <a
               href="#hero"
-              className="text-white font-bold text-xl tracking-tight font-[family-name:var(--font-heading)] no-underline"
+              className="no-underline flex items-center"
               onClick={closeMenu}
             >
-              ROLL ON.
+              <Image
+                src="/horizontal.png"
+                alt="ROLL ON."
+                width={160}
+                height={40}
+                className="h-8 md:h-10 w-auto"
+                priority
+              />
             </a>
           </div>
 
