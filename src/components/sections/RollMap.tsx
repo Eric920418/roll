@@ -67,51 +67,17 @@ export default function RollMap() {
     const isMobile = window.innerWidth < 768;
 
     const ctx = gsap.context(() => {
-      // Title reveal
-      if (titleRef.current) {
-        gsap.from(titleRef.current, {
-          y: 80,
-          opacity: 0,
-          duration: 1,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: titleRef.current,
-            start: "top 85%",
-            toggleActions: "play none none none",
-          },
-        });
-      }
-
-      // Grid items staggered reveal
-      if (gridRef.current) {
-        const items = gridRef.current.querySelectorAll(".map-item");
-        gsap.from(items, {
-          opacity: 0,
-          duration: 0.8,
-          stagger: 0.1,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: gridRef.current,
-            start: "top 80%",
-            toggleActions: "play none none none",
-          },
-        });
-      }
-
-      // Pin + 3-page crossfade
+      // Pin + multi-page crossfade
       if (page1Ref.current && page2Ref.current && page3Ref.current) {
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: sectionRef.current,
             start: "top top",
-            end: isMobile ? "+=350%" : "+=500%",
+            end: isMobile ? "+=300%" : "+=450%",
             pin: true,
             scrub: 0.8,
           },
         });
-
-        // === Hold ROLL MAP ===
-        tl.to({}, { duration: 0.15 });
 
         // === Flip ROLL MAP → ROAD MAP ===
         const flipFronts =
