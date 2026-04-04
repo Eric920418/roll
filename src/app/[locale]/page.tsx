@@ -1,5 +1,4 @@
 import { setRequestLocale } from "next-intl/server";
-import Hero from "@/components/sections/Hero";
 import RollMap from "@/components/sections/RollMap";
 import TaiwanMap from "@/components/sections/TaiwanMap";
 import Services from "@/components/sections/Services";
@@ -20,7 +19,6 @@ export default async function HomePage({ params }: Props) {
   return (
     <main >
       <Navbar />
-      <Hero />
       <RollMap />
       <TaiwanMap />
       <Services />

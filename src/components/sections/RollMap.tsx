@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { motion } from "motion/react";
 import { gsap } from "@/lib/gsap-register";
 import CounterAnimation from "@/components/ui/CounterAnimation";
 import World from "@svg-maps/world";
@@ -34,6 +35,7 @@ const topCompanies = [
 
 export default function RollMap() {
   const t = useTranslations("RollMap");
+  const tHero = useTranslations("Hero");
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -175,33 +177,62 @@ export default function RollMap() {
         />
       </div>
 
-      {/* Page 1: Title + Map Data Grid */}
+      {/* Page 1: Hero + Map Data Grid (split layout) */}
       <div
         ref={page1Ref}
-        className="absolute inset-0 flex flex-col items-center justify-center px-8 md:px-16 lg:px-24 z-10"
+        className="absolute inset-0 flex flex-col md:flex-row z-10"
       >
-        <h2
-          ref={titleRef}
-          className="text-center text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-dark tracking-tight mb-10 md:mb-20 font-[family-name:var(--font-heading)]"
-        >
-          {t("title")}
-        </h2>
+        {/* Left: Hero content */}
+        <div className="flex-1 flex items-center bg-primary relative overflow-hidden">
+          <div className="px-8 md:px-12 lg:px-16 xl:px-24 w-full">
+            <motion.h1
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="text-white text-5xl sm:text-7xl md:text-7xl lg:text-8xl xl:text-9xl font-bold leading-[0.9] tracking-tight font-[family-name:var(--font-heading)]"
+            >
+              ROLL
+              <br />
+              ON.
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+              className="text-white/80 text-base md:text-lg lg:text-xl mt-6 md:mt-8 font-light tracking-wide font-[family-name:var(--font-heading)]"
+            >
+              {tHero("tagline")}
+            </motion.p>
+          </div>
+          {/* Subtle gradient overlay at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary-dark/50 to-transparent" />
+        </div>
 
-        <div
-          ref={gridRef}
-          className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 max-w-4xl mx-auto"
-        >
-          {mapData.map((item) => (
-            <div key={item.key} className="map-item text-center">
-              <p className="text-sm md:text-base font-medium text-dark/60 mb-2 font-[family-name:var(--font-heading)]">
-                {t(item.key)}
-              </p>
-              <CounterAnimation
-                end={item.value}
-                className="text-3xl md:text-4xl font-bold text-dark font-[family-name:var(--font-heading)]"
-              />
-            </div>
-          ))}
+        {/* Right: Map Data */}
+        <div className="flex-1 flex flex-col items-center justify-center bg-white px-8 md:px-12 lg:px-16">
+          <h2
+            ref={titleRef}
+            className="text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-dark tracking-tight mb-8 md:mb-14 font-[family-name:var(--font-heading)]"
+          >
+            {t("title")}
+          </h2>
+
+          <div
+            ref={gridRef}
+            className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 w-full max-w-xl"
+          >
+            {mapData.map((item) => (
+              <div key={item.key} className="map-item text-center">
+                <p className="text-sm md:text-base font-medium text-dark/60 mb-2 font-[family-name:var(--font-heading)]">
+                  {t(item.key)}
+                </p>
+                <CounterAnimation
+                  end={item.value}
+                  className="text-2xl md:text-3xl lg:text-4xl font-bold text-dark font-[family-name:var(--font-heading)]"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
