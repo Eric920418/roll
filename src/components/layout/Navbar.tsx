@@ -40,6 +40,11 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const openRef = useRef(false);
 
+  const headerRef = useRef<HTMLElement | null>(null);
+  const lastScrollY = useRef(0);
+  const headerHidden = useRef(false);
+  const headerTween = useRef<gsap.core.Tween | null>(null);
+
   const panelRef = useRef<HTMLDivElement | null>(null);
   const preLayersRef = useRef<HTMLDivElement | null>(null);
   const preLayerElsRef = useRef<HTMLElement[]>([]);
@@ -323,11 +328,24 @@ export default function Navbar() {
     []
   );
 
+  const showHeader = useCallback(() => {
+    if (headerHidden.current) {
+      headerHidden.current = false;
+      headerTween.current?.kill();
+      headerTween.current = gsap.to(headerRef.current, {
+        yPercent: 0,
+        duration: 0.3,
+        ease: "power3.out",
+      });
+    }
+  }, []);
+
   const toggleMenu = useCallback(() => {
     const target = !openRef.current;
     openRef.current = target;
 
     if (target) {
+      showHeader();
       setOpen(true);
       playOpen();
     } else {
@@ -336,7 +354,7 @@ export default function Navbar() {
 
     animateIcon(target);
     animateColor(target);
-  }, [playOpen, playClose, animateIcon, animateColor]);
+  }, [playOpen, playClose, animateIcon, animateColor, showHeader]);
 
   const closeMenu = useCallback(() => {
     if (openRef.current) {
@@ -346,6 +364,57 @@ export default function Navbar() {
       animateColor(false);
     }
   }, [playClose, animateIcon, animateColor]);
+
+  // Hide header on scroll down, show on scroll up
+  React.useEffect(() => {
+    const threshold = 10;
+
+    const handleScroll = () => {
+      // Don't hide when menu is open
+      if (openRef.current) return;
+
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY.current;
+      lastScrollY.current = currentY;
+
+      // At the very top, always show
+      if (currentY <= 0) {
+        if (headerHidden.current) {
+          headerHidden.current = false;
+          headerTween.current?.kill();
+          headerTween.current = gsap.to(headerRef.current, {
+            yPercent: 0,
+            duration: 0.3,
+            ease: "power3.out",
+          });
+        }
+        return;
+      }
+
+      if (delta > threshold && !headerHidden.current) {
+        // Scrolling down — hide
+        headerHidden.current = true;
+        headerTween.current?.kill();
+        headerTween.current = gsap.to(headerRef.current, {
+          yPercent: -100,
+          duration: 0.3,
+          ease: "power3.in",
+        });
+      } else if (delta < -threshold && headerHidden.current) {
+        // Scrolling up — show
+        headerHidden.current = false;
+        headerTween.current?.kill();
+        headerTween.current = gsap.to(headerRef.current, {
+          yPercent: 0,
+          duration: 0.3,
+          ease: "power3.out",
+        });
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -397,7 +466,8 @@ export default function Navbar() {
 
         {/* Header with logo + toggle */}
         <header
-          className="absolute top-0 left-0 w-full flex items-center justify-between p-4 pointer-events-none z-20"
+          ref={headerRef}
+          className="fixed top-0 left-0 w-full flex items-center justify-between p-4 pointer-events-none z-20 will-change-transform"
           style={{ backgroundColor: COLORS.primary }}
           aria-label="Main navigation header"
         >
