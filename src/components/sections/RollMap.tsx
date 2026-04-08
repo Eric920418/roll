@@ -36,13 +36,12 @@ const comparisonData = {
 };
 
 const topCompanies = [
-  { rank: 1, name: "TechVenture Inc.", valuation: "$4.2B" },
-  { rank: 2, name: "NovaPharma", valuation: "$3.8B" },
-  { rank: 3, name: "AeroLogix", valuation: "$2.9B" },
-  { rank: 4, name: "FinBridge Capital", valuation: "$2.1B" },
-  { rank: 5, name: "DataStream AI", valuation: "$1.7B" },
-  { rank: 6, name: "Medix LLC", valuation: "$1.2B", isClient: true },
-  { rank: 7, name: "Solo Automatic", valuation: "$980M", isClient: true },
+  { rank: 1, name: "JPMorgan Chase", valuation: "$677.8B" },
+  { rank: 2, name: "Berkshire Hathaway", valuation: "$1,145.5B" },
+  { rank: 3, name: "Industrial and Commercial Bank of China", valuation: "$251.3B" },
+  { rank: 4, name: "Saudi Arabian Oil Company", valuation: "$1,663.4B" },
+  { rank: 5, name: "Amazon", valuation: "$2,005.6B" },
+  { rank: 6, name: "Medix LLC", valuation: "$4.1M", isClient: true },
 ];
 
 export default function RollMap() {

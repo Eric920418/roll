@@ -7,7 +7,6 @@ import ScrollReveal from "@/components/ui/ScrollReveal";
 const projects = [
   {
     name: "Medix LLC",
-    description: "The safety goods company",
     image: "/Medix-1.png",
     bgColor: "#FFFFFF",
     textColor: "#7B1A2C",
@@ -60,14 +59,7 @@ export default function Work() {
                   />
                 </div>
 
-                <div className="px-5 pb-5 md:px-8 md:pb-8">
-                  <p
-                    className="text-sm font-[family-name:var(--font-heading)] uppercase tracking-wider"
-                    style={{ color: project.descColor }}
-                  >
-                    {project.description}
-                  </p>
-                </div>
+           
               </motion.div>
             </ScrollReveal>
           ))}
