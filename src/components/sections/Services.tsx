@@ -47,7 +47,10 @@ export default function Services() {
 
           {/* Investor Access Card - Right */}
           <ScrollReveal delay={0.6}>
-            <div className="border border-white rounded-lg p-8 md:p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-500 group md:w-56 md:self-stretch h-full">
+            <a
+              href="mailto:Vivian.lee@roll-grp.com"
+              className="border border-white rounded-lg p-8 md:p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-500 group md:w-56 md:self-stretch h-full hover:bg-white/5"
+            >
               <h3 className="text-lg md:text-xl font-bold text-white mb-6 font-[family-name:var(--font-heading)] tracking-wide">
                 {t("investorAccess")}
               </h3>
@@ -64,7 +67,7 @@ export default function Services() {
                   d="M7 7l10 10M17 17H9m8 0V9"
                 />
               </svg>
-            </div>
+            </a>
           </ScrollReveal>
         </div>
       </div>
