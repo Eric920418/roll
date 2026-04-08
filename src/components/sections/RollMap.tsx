@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import { gsap } from "@/lib/gsap-register";
@@ -205,16 +206,21 @@ export default function RollMap() {
         {/* Left: Hero content */}
         <div className="flex-1 flex items-center bg-primary relative overflow-hidden">
           <div className="px-8 md:px-12 lg:px-16 xl:px-24 w-full">
-            <motion.h1
+            <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="text-white text-5xl sm:text-7xl md:text-7xl lg:text-8xl xl:text-9xl font-bold leading-[0.9] tracking-tight font-[family-name:var(--font-heading)]"
+              className="relative w-full max-w-[560px]"
             >
-              ROLL
-              <br />
-              ON.
-            </motion.h1>
+              <Image
+                src="/vertical.png"
+                alt="ROLL ON."
+                width={700}
+                height={547}
+                priority
+                className="w-full h-auto object-contain"
+              />
+            </motion.div>
             <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -229,9 +235,17 @@ export default function RollMap() {
         </div>
 
         {/* Right: Map Data with flip */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-white px-8 md:px-12 lg:px-16">
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+          className="flex-1 flex flex-col items-center justify-center bg-white px-8 md:px-12 lg:px-16"
+        >
           {/* Title flip container */}
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.45 }}
             className="relative mb-8 md:mb-14 w-full"
             style={{ perspective: "800px" }}
           >
@@ -252,7 +266,7 @@ export default function RollMap() {
             >
               {t("roadMapTitle")}
             </h2>
-          </div>
+          </motion.div>
 
           {/* Grid with flip cells */}
           <div
@@ -260,8 +274,15 @@ export default function RollMap() {
             className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 w-full max-w-xl"
           >
             {mapData.map((item, index) => (
-              <div
+              <motion.div
                 key={item.key}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.7,
+                  ease: [0.22, 1, 0.36, 1],
+                  delay: 0.6 + index * 0.08,
+                }}
                 className="relative"
                 style={{ perspective: "800px" }}
               >
@@ -296,10 +317,10 @@ export default function RollMap() {
                     className="text-2xl md:text-3xl lg:text-4xl font-bold text-dark font-[family-name:var(--font-heading)]"
                   />
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Page 2: Comparison */}
