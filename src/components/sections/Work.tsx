@@ -8,18 +8,10 @@ const projects = [
   {
     name: "Medix LLC",
     description: "The safety goods company",
-    image: "/images/medix.jpg",
+    image: "/Medix-1.png",
     bgColor: "#FFFFFF",
     textColor: "#7B1A2C",
     descColor: "#4A4A4A",
-  },
-  {
-    name: "Solo automatic",
-    description: "COLLECTION OF LUXURY CARS",
-    image: "/images/solo.jpg",
-    bgColor: "#3A3A3A",
-    textColor: "#FFFFFF",
-    descColor: "rgba(255,255,255,0.6)",
   },
 ];
 
