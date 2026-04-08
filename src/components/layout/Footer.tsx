@@ -8,7 +8,10 @@ export default function Footer() {
   const t = useTranslations("Footer");
 
   return (
-    <footer id="contact" className="bg-[#2b1326] text-white min-h-[50vh] flex items-end justify-center ">
+    <footer
+      id="contact"
+      className="bg-[#2b1326] text-white min-h-[50vh] flex items-end justify-center "
+    >
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col pt-12 ">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 md:gap-24">
           {/* Left: Brand Info */}
@@ -24,8 +27,8 @@ export default function Footer() {
                 />
               </div>
               <div className="space-y-2 text-white/60 text-sm">
-                <p>info@roll-on.com</p>
-                <p>+886 2-XXXX-XXXX</p>
+                <p>(+886) 980-371-946</p>
+                <p>Vivian.lee@roll-grp.com</p>
               </div>
             </div>
           </ScrollReveal>

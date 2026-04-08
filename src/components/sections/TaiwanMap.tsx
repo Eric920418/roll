@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { gsap, ScrollTrigger } from "@/lib/gsap-register";
 import World from "@svg-maps/world";
@@ -346,8 +347,7 @@ export default function TaiwanMap() {
                 strokeLinejoin="round"
               />
             ))}
-            {/* Taipei dot */}
-            <circle cx={TAIPEI.cx} cy={TAIPEI.cy} r="12" fill="#C8364B" />
+            {/* Taipei ground pulse halo */}
             <circle
               cx={TAIPEI.cx}
               cy={TAIPEI.cy}
@@ -368,6 +368,18 @@ export default function TaiwanMap() {
                 repeatCount="indefinite"
               />
             </circle>
+            {/* Taipei location pin — Material "place" icon, tip anchored at TAIPEI */}
+            <g
+              transform={`translate(${TAIPEI.cx - 24} ${TAIPEI.cy - 44}) scale(2)`}
+              style={{ filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.3))" }}
+            >
+              <path
+                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+                fill="#C8364B"
+                stroke="white"
+                strokeWidth="0.8"
+              />
+            </g>
           </svg>
 
           {/* Roll on label — positioned relative to SVG coordinate system */}
@@ -375,16 +387,21 @@ export default function TaiwanMap() {
           {/* left: (882-270)/732 ≈ 83.6%, top: (381-310)/980 ≈ 7.2% */}
           <div
             ref={labelRef}
-            className="absolute text-white font-bold text-xl md:text-2xl font-[family-name:var(--font-heading)] opacity-0"
+            className="absolute opacity-0 w-36 md:w-48 lg:w-56"
             style={{
               top: "7.2%",
               left: "83.6%",
-              transform: "translate(-110%, -30%)",
+              transform: "translate(-100%, -50%)",
             }}
           >
-            <span className="bg-primary-light/80 backdrop-blur-sm px-3 py-1.5 md:px-4 md:py-2 rounded-lg whitespace-nowrap">
-              Roll on
-            </span>
+            <Image
+              src="/horizontal.png"
+              alt="ROLL ON."
+              width={1341}
+              height={245}
+              priority
+              className="w-full h-auto object-contain"
+            />
           </div>
         </div>
 
