@@ -7,7 +7,7 @@ const clients = [
   { name: "INSPO", logo: "/inspo.png" },
   { name: "Medix", logo: "/Medix.png" },
   { name: "R.co", logo: "/R.co.png" },
-  { name: "Solo Automotive", logo: "/solo.png" },
+  // { name: "Solo Automotive", logo: "/solo.png" },
   { name: "Teotihuacan", logo: "/Teotihuacan.png" },
 ];
 

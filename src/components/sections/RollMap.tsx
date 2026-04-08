@@ -31,8 +31,8 @@ const roadMapData = [
 ] as const;
 
 const comparisonData = {
-  global: { value: 1200, suffix: "+" },
-  taiwan: { value: 380, suffix: "+" },
+  global: { value: 1000000, suffix: "+" },
+  taiwan: { value: 20000, suffix: "+" },
 };
 
 const topCompanies = [
