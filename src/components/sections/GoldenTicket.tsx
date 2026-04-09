@@ -3,6 +3,27 @@
 import { useTranslations } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 
+const videos = [
+  {
+    subtitleZh: "商機出來",
+    subtitleEn: "opportunities",
+    title: "不能忽視創新紮根？把模式帶進傳統市場才是…",
+    views: "312 次",
+  },
+  {
+    subtitleZh: "沒有很好的",
+    subtitleEn: "they are not very good at",
+    title: "要賣出去會更重要？創成式比地的關鍵就是…",
+    views: "5 次",
+  },
+  {
+    subtitleZh: "在裡面其實",
+    subtitleEn: "within it",
+    title: "冷門市場才是機會？為什麼越小眾越容易成功",
+    views: "5 次",
+  },
+];
+
 export default function GoldenTicket() {
   const t = useTranslations("GoldenTicket");
 
@@ -16,19 +37,65 @@ export default function GoldenTicket() {
         </ScrollReveal>
 
         <div className="flex flex-col md:flex-row items-center gap-8 sm:gap-12 md:gap-16">
-          {/* Video Player */}
+          {/* YouTube channel preview */}
           <ScrollReveal direction="left" className="flex-1 w-full">
-            <div className="relative aspect-video bg-dark rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer group max-w-md">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent" />
-              {/* Play button */}
-              <div className="relative w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
-                <svg
-                  className="w-6 h-6 text-white ml-1"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M8 5v14l11-7z" />
-                </svg>
+            <div className="w-full max-w-md flex flex-col gap-4">
+              {/* Channel header */}
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center shrink-0">
+                  <span className="text-white font-bold text-2xl leading-none font-[family-name:var(--font-heading)]">
+                    R.
+                  </span>
+                </div>
+                <h3 className="text-white text-2xl md:text-3xl font-black tracking-tight font-[family-name:var(--font-heading)]">
+                  GOLDEN TICKET
+                </h3>
+              </div>
+
+              {/* Subscribe button */}
+              <button
+                type="button"
+                className="self-start bg-black text-white text-sm font-medium px-4 py-1.5 rounded-full hover:bg-neutral-800 transition-colors"
+              >
+                訂閱
+              </button>
+
+              {/* Video thumbnails row */}
+              <div className="grid grid-cols-3 gap-2 mt-1">
+                {videos.map((video, i) => (
+                  <div key={i} className="flex flex-col gap-2">
+                    {/* Thumbnail */}
+                    <div className="relative aspect-[9/13] rounded-xl overflow-hidden bg-gradient-to-b from-neutral-600 via-neutral-800 to-black">
+                      {/* Subtitle overlay */}
+                      <div className="absolute left-1/2 -translate-x-1/2 bottom-4 bg-black/85 px-2 py-1 rounded text-center whitespace-nowrap">
+                        <div className="text-white text-[10px] font-semibold leading-tight">
+                          {video.subtitleZh}
+                        </div>
+                        <div className="text-yellow-300 text-[9px] leading-tight mt-0.5">
+                          {video.subtitleEn}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Title + meta */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-start gap-1">
+                        <p className="text-white text-[11px] leading-snug line-clamp-2 flex-1">
+                          {video.title}
+                        </p>
+                        <button
+                          type="button"
+                          aria-label="更多選項"
+                          className="text-white/60 text-base leading-none shrink-0 -mt-0.5"
+                        >
+                          ⋮
+                        </button>
+                      </div>
+                      <p className="text-white/60 text-[10px]">
+                        觀看次數：{video.views}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </ScrollReveal>
