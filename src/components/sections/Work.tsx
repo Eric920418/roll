@@ -6,11 +6,11 @@ import ScrollReveal from "@/components/ui/ScrollReveal";
 
 const projects = [
   {
-    name: "Medix LLC",
+    name: "Medix LLC (stay tuned for our article!)",
     image: "/Medix-1.png",
-    bgColor: "#FFFFFF",
-    textColor: "#7B1A2C",
-    descColor: "#4A4A4A",
+    bgColor: "transparent",
+    textColor: "#FFFFFF",
+    descColor: "#E5E5E5",
   },
 ];
 
@@ -59,7 +59,7 @@ export default function Work() {
                   />
                 </div>
 
-           
+            
               </motion.div>
             </ScrollReveal>
           ))}
