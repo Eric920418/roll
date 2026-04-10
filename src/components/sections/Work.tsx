@@ -18,7 +18,7 @@ export default function Work() {
   const t = useTranslations("Work");
 
   return (
-    <section id="work" className="bg-primary min-h-[70vh] flex items-center justify-center py-24 md:py-32">
+    <section id="work" className="bg-primary min-h-[70vh] flex items-center justify-center py-12 md:py-16">
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-8 md:gap-16">
         <ScrollReveal>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white font-[family-name:var(--font-heading)]">
