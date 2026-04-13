@@ -102,6 +102,7 @@ export default function TaiwanMap() {
   const tMap = useTranslations("TaiwanMap");
   const sectionRef = useRef<HTMLElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
   const taiwanRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const worldMapRef = useRef<HTMLDivElement>(null);
@@ -130,8 +131,32 @@ export default function TaiwanMap() {
         },
       });
 
-      // Phase 1: Taiwan zoom in
+      const introLine1 = sectionRef.current!.querySelector(".intro-line-1");
+      const introLine2 = sectionRef.current!.querySelector(".intro-line-2");
+
+      // Phase 0: Intro text — "Ideas are everywhere..."
       tl.fromTo(
+        introLine1,
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }
+      )
+        .fromTo(
+          introLine2,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" },
+          "-=0.2"
+        )
+        // Hold intro text
+        .to({}, { duration: 0.8 })
+        // Fade out intro
+        .to(introRef.current, {
+          opacity: 0,
+          duration: 0.5,
+          ease: "power2.in",
+        })
+
+      // Phase 1: Taiwan zoom in
+      .fromTo(
         taiwanRef.current,
         { scale: 0.3, opacity: 0 },
         { scale: 1, opacity: 1, duration: 1, ease: "power2.inOut" }
@@ -220,6 +245,27 @@ export default function TaiwanMap() {
         ref={mapContainerRef}
         className="absolute inset-0 flex items-center justify-center"
       >
+        {/* Intro text — appears before Taiwan map */}
+        <div
+          ref={introRef}
+          className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+        >
+          <div className="text-center px-6">
+            <p
+              className="intro-line-1 opacity-0 text-white/90 text-2xl md:text-4xl lg:text-5xl font-bold tracking-wide leading-tight"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              {tMap("introLine1")}
+            </p>
+            <p
+              className="intro-line-2 opacity-0 text-white/70 text-lg md:text-2xl lg:text-3xl mt-4 md:mt-6 tracking-wide"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              {tMap("introLine2")}
+            </p>
+          </div>
+        </div>
+
         {/* World map + bridges + cities — single SVG for coordinate alignment */}
         <div
           ref={worldMapRef}

@@ -7,7 +7,7 @@ import ScrollReveal from "@/components/ui/ScrollReveal";
 const projects = [
   {
     name: "Medix LLC (stay tuned for our article!)",
-    image: "/Medix-去背.png",
+    image: "/IMG_0418.JPG",
     bgColor: "transparent",
     textColor: "#FFFFFF",
     descColor: "#E5E5E5",
