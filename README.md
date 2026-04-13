@@ -46,13 +46,13 @@ src/
 8. **Golden Ticket** - YouTube 頻道預覽卡（頭像 / 訂閱鈕 / 3 個 Shorts 縮圖 + 雙語字幕）+ 簽名
 9. **Footer** - 聯絡表單
 
-## SEO
+## SEO / GEO
 
-- `src/app/robots.ts` — 動態生成 `/robots.txt`，允許所有爬蟲，指向 sitemap
-- `src/app/sitemap.ts` — 動態生成 `/sitemap.xml`，包含雙語頁面及 `hreflang` alternates
-- `src/app/layout.tsx` — 全站 metadata（OG / Twitter Card / canonical / keywords / robots 指令）
-- `src/app/[locale]/layout.tsx` — `generateMetadata()` 根據語系產出對應 title / description / canonical
-- JSON-LD 結構化資料（Organization schema）嵌入 `<body>`
+- `src/app/robots.ts` — 動態生成 `/robots.txt`，允許所有爬蟲 + AI 爬蟲（GPTBot / PerplexityBot / Google-Extended 等），指向 sitemap
+- `src/app/sitemap.ts` — 動態生成 `/sitemap.xml`，包含雙語 `hreflang` alternates
+- `src/app/layout.tsx` — 全站 metadata（OG / Twitter Card / canonical / keywords / robots 指令 / publisher / category）
+- `src/app/[locale]/layout.tsx` — `generateMetadata()` 根據語系產出對應 SEO metadata
+- JSON-LD 結構化資料（`@graph`）：Organization、ProfessionalService、WebSite、FAQPage schema
 
 ## 部署
 
