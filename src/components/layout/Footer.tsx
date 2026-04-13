@@ -26,9 +26,13 @@ export default function Footer() {
                   className="h-10 md:h-14 w-auto"
                 />
               </div>
-              <div className="space-y-2 text-white/60 text-sm">
+              <div className="space-y-2 text-white/40 text-sm">
                 <p>(+886) 980-371-946</p>
                 <p>Vivian.lee@roll-grp.com</p>
+                <p>
+                  Level 34, Taipei Nanshan Plaza, No. 100 Songren Road, Xinyi
+                  District, Taipei 110
+                </p>
               </div>
             </div>
           </ScrollReveal>

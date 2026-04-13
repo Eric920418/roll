@@ -5,6 +5,7 @@ import ScrollReveal from "@/components/ui/ScrollReveal";
 
 const clients = [
   { name: "Max", logo: "/Max.png" },
+  { name: "Solo automatic", logo: "/solo.png" },
   { name: "INSPO", logo: "/inspo.png" },
   { name: "Medix", logo: "/Medix.png" },
   { name: "R.co", logo: "/R.co.png" },
