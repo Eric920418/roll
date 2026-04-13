@@ -27,11 +27,15 @@ const comparisonData = {
 const topCompanies = [
   { rank: 1, name: "JPMorgan Chase", valuation: "$677.8B" },
   { rank: 2, name: "Berkshire Hathaway", valuation: "$1,145.5B" },
-  { rank: 3, name: "Industrial and Commercial Bank of China", valuation: "$251.3B" },
+  {
+    rank: 3,
+    name: "Industrial and Commercial Bank of China",
+    valuation: "$251.3B",
+  },
   { rank: 4, name: "Saudi Arabian Oil Company", valuation: "$1,663.4B" },
   { rank: 5, name: "Amazon", valuation: "$2,005.6B" },
-  { rank: 6, name: "Medix LLC", valuation: "$4.1M", isClient: true },
-  { rank: 7, name: "Max", valuation: "$25M" , isClient: true},
+  { rank: 6, name: "SOLO automatic", valuation: "$25M", isClient: true },
+  { rank: 7, name: "Medix LLC", valuation: "$4.1M", isClient: true },
 ];
 
 export default function RollMap() {
