@@ -537,7 +537,7 @@ export default function Navbar() {
                   key={it.label + idx}
                 >
                   <a
-                    className="sm-panel-item relative font-semibold text-[3rem] md:text-[4rem] cursor-pointer leading-none tracking-[-2px] uppercase inline-block no-underline transition-colors duration-150"
+                    className="sm-panel-item relative font-semibold text-[2.2rem] md:text-[2.8rem] lg:text-[3.2rem] cursor-pointer leading-none tracking-[-1.5px] uppercase inline-block no-underline transition-colors duration-150"
                     href={it.link}
                     aria-label={it.ariaLabel}
                     data-index={idx + 1}
