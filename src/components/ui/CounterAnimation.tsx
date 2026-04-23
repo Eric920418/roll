@@ -9,6 +9,7 @@ type Props = {
   duration?: number;
   className?: string;
   start?: boolean;
+  value?: number;
 };
 
 export default function CounterAnimation({
@@ -17,15 +18,19 @@ export default function CounterAnimation({
   duration = 2,
   className = "",
   start,
+  value,
 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [value, setValue] = useState(0);
+  const [internalValue, setInternalValue] = useState(0);
   const hasAnimated = useRef(false);
+
+  const isExternal = value !== undefined;
+  const displayValue = isExternal ? value! : internalValue;
 
   useEffect(() => {
     if (!ref.current || hasAnimated.current) return;
+    if (isExternal) return;
 
-    // Manual trigger mode: wait for start prop
     if (start !== undefined) {
       if (!start) return;
       hasAnimated.current = true;
@@ -34,12 +39,11 @@ export default function CounterAnimation({
         val: end,
         duration,
         ease: "power2.out",
-        onUpdate: () => setValue(Math.round(obj.val)),
+        onUpdate: () => setInternalValue(Math.round(obj.val)),
       });
       return;
     }
 
-    // Auto mode: use ScrollTrigger
     const obj = { val: 0 };
 
     const trigger = ScrollTrigger.create({
@@ -52,7 +56,7 @@ export default function CounterAnimation({
           val: end,
           duration,
           ease: "power2.out",
-          onUpdate: () => setValue(Math.round(obj.val)),
+          onUpdate: () => setInternalValue(Math.round(obj.val)),
         });
       },
     });
@@ -60,12 +64,12 @@ export default function CounterAnimation({
     return () => {
       trigger.kill();
     };
-  }, [end, duration, start]);
+  }, [end, duration, start, isExternal]);
 
   return (
     <span ref={ref} className={`${className} relative inline-block`}>
       <span className="invisible" aria-hidden="true">{end.toLocaleString()}{suffix}</span>
-      <span className="absolute inset-0 text-center">{value.toLocaleString()}{suffix}</span>
+      <span className="absolute inset-0 text-center">{displayValue.toLocaleString()}{suffix}</span>
     </span>
   );
 }

@@ -49,10 +49,10 @@ export default function RollMap() {
   const page3Ref = useRef<HTMLDivElement>(null);
   const whyTaiwanRef = useRef<HTMLDivElement>(null);
   const numbersBlockRef = useRef<HTMLDivElement>(null);
-  const [page2NumbersActive, setPage2NumbersActive] = useState(false);
+  const [globalCounterValue, setGlobalCounterValue] = useState(0);
+  const [taiwanCounterValue, setTaiwanCounterValue] = useState(0);
   const [page3Active, setPage3Active] = useState(false);
   const [page3ClientsActive, setPage3ClientsActive] = useState(false);
-  const page2NumbersTriggered = useRef(false);
   const page3Triggered = useRef(false);
 
   useEffect(() => {
@@ -136,23 +136,40 @@ export default function RollMap() {
         // Hold the text so user has time to read
         tl.to({}, { duration: 0.25 });
 
-        // Numbers block enters — scrub-driven + counter trigger
+        // Numbers block enters — scrub-driven
         if (numbersBlockRef.current) {
           tl.fromTo(
             numbersBlockRef.current,
             { opacity: 0, y: 30 },
+            { opacity: 1, y: 0, duration: 0.35, ease: "none" },
+          );
+
+          // Counter values tick up in parallel with opacity fade
+          const globalObj = { val: 0 };
+          const taiwanObj = { val: 0 };
+
+          tl.to(
+            globalObj,
             {
-              opacity: 1,
-              y: 0,
+              val: comparisonData.global.value,
               duration: 0.35,
               ease: "none",
-              onUpdate: function () {
-                if (this.progress() >= 0.4 && !page2NumbersTriggered.current) {
-                  page2NumbersTriggered.current = true;
-                  setPage2NumbersActive(true);
-                }
-              },
+              onUpdate: () =>
+                setGlobalCounterValue(Math.round(globalObj.val)),
             },
+            "<",
+          );
+
+          tl.to(
+            taiwanObj,
+            {
+              val: comparisonData.taiwan.value,
+              duration: 0.35,
+              ease: "none",
+              onUpdate: () =>
+                setTaiwanCounterValue(Math.round(taiwanObj.val)),
+            },
+            "<",
           );
         }
 
@@ -362,7 +379,7 @@ export default function RollMap() {
                 <CounterAnimation
                   end={comparisonData.global.value}
                   suffix={comparisonData.global.suffix}
-                  start={page2NumbersActive}
+                  value={globalCounterValue}
                   className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
                 />
                 <p className="mt-6 text-sm md:text-base text-dark/60 font-[family-name:var(--font-body)]">
@@ -377,7 +394,7 @@ export default function RollMap() {
                 <CounterAnimation
                   end={comparisonData.taiwan.value}
                   suffix={comparisonData.taiwan.suffix}
-                  start={page2NumbersActive}
+                  value={taiwanCounterValue}
                   className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
                 />
                 <p className="mt-6 text-sm md:text-base text-dark/60 font-[family-name:var(--font-body)]">
