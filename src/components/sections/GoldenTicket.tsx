@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 
@@ -30,12 +31,6 @@ export default function GoldenTicket() {
   return (
     <section className="bg-primary min-h-[70vh] flex items-center justify-center py-12 md:py-16">
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-4 md:gap-8">
-        <ScrollReveal>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white font-[family-name:var(--font-heading)]">
-            {t("title")}
-          </h2>
-        </ScrollReveal>
-
         <div className="flex flex-col md:flex-row items-center gap-8 sm:gap-12 md:gap-16">
           {/* YouTube channel preview */}
           <ScrollReveal direction="left" className="flex-1 w-full">
