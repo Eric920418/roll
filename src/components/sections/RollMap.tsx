@@ -48,9 +48,11 @@ export default function RollMap() {
   const page2Ref = useRef<HTMLDivElement>(null);
   const page3Ref = useRef<HTMLDivElement>(null);
   const [page2Active, setPage2Active] = useState(false);
+  const [page2NumbersActive, setPage2NumbersActive] = useState(false);
   const [page3Active, setPage3Active] = useState(false);
   const [page3ClientsActive, setPage3ClientsActive] = useState(false);
   const page2Triggered = useRef(false);
+  const page2NumbersTriggered = useRef(false);
   const page3Triggered = useRef(false);
 
   useEffect(() => {
@@ -120,9 +122,14 @@ export default function RollMap() {
             duration: 0.5,
             ease: "none",
             onUpdate: function () {
-              if (this.progress() >= 0.15 && !page2Triggered.current) {
+              const p = this.progress();
+              if (p >= 0.15 && !page2Triggered.current) {
                 page2Triggered.current = true;
                 setPage2Active(true);
+              }
+              if (p >= 0.6 && !page2NumbersTriggered.current) {
+                page2NumbersTriggered.current = true;
+                setPage2NumbersActive(true);
               }
             },
           },
@@ -309,16 +316,50 @@ export default function RollMap() {
         </div>
 
         <div className="w-full max-w-4xl mx-auto relative z-10">
-          <h3 className="text-center text-lg md:text-xl font-medium text-dark/70 mb-8 md:mb-16 font-[family-name:var(--font-heading)]">
+          <div
+            className="mb-10 md:mb-14 text-center max-w-3xl mx-auto px-2"
+            style={{
+              opacity: page2Active ? 1 : 0,
+              transform: page2Active ? "none" : "translateY(18px)",
+              transition:
+                "opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1)",
+            }}
+          >
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-dark tracking-tight mb-4 md:mb-6 font-[family-name:var(--font-heading)]">
+              Why Taiwan, and Why Now?
+            </h2>
+            <p className="text-sm md:text-base lg:text-lg text-dark/70 leading-relaxed font-[family-name:var(--font-body)]">
+              Taiwan has reached a pivotal economic moment. Our retail stock
+              market investment has officially surpassed that of the UK, and we
+              remain the global epicenter for Semiconductor and Medical CDMO.
+            </p>
+          </div>
+
+          <h3
+            className="text-center text-lg md:text-xl font-medium text-dark/70 mb-8 md:mb-12 font-[family-name:var(--font-heading)]"
+            style={{
+              opacity: page2NumbersActive ? 1 : 0,
+              transition:
+                "opacity 0.6s cubic-bezier(0.33,1,0.68,1)",
+            }}
+          >
             {t("comparisonTitle")}
           </h3>
 
-          <div className="h-32 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
+          <div
+            className="h-32 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8"
+            style={{
+              opacity: page2NumbersActive ? 1 : 0,
+              transform: page2NumbersActive ? "none" : "translateY(20px)",
+              transition:
+                "opacity 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s, transform 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s",
+            }}
+          >
             <div className="comparison-item flex-1 text-center md:text-right md:pr-20">
               <CounterAnimation
                 end={comparisonData.global.value}
                 suffix={comparisonData.global.suffix}
-                start={page2Active}
+                start={page2NumbersActive}
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
               />
               <p className="mt-6 text-sm md:text-base text-dark/60 font-[family-name:var(--font-body)]">
@@ -333,7 +374,7 @@ export default function RollMap() {
               <CounterAnimation
                 end={comparisonData.taiwan.value}
                 suffix={comparisonData.taiwan.suffix}
-                start={page2Active}
+                start={page2NumbersActive}
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
               />
               <p className="mt-6 text-sm md:text-base text-dark/60 font-[family-name:var(--font-body)]">
