@@ -95,22 +95,14 @@ export default function GoldenTicket() {
             </div>
           </ScrollReveal>
 
-          {/* Signature */}
           <ScrollReveal direction="right" className="flex-1 flex justify-center">
-            <svg
-              viewBox="0 0 200 150"
-              className="w-48 md:w-64 h-auto text-white/80"
-            >
-              {/* Stylized signature path */}
-              <path
-                d="M30,120 C40,80 60,40 80,50 C100,60 70,100 90,90 C110,80 100,40 120,50 C140,60 130,100 150,80 C160,70 170,60 180,70"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Image
+              src="/Asia Founders Club.png"
+              alt="Asia Founders Club"
+              width={800}
+              height={800}
+              className="w-64 md:w-80 h-auto object-contain"
+            />
           </ScrollReveal>
         </div>
       </div>
