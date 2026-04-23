@@ -15,26 +15,28 @@ export default function Footer() {
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col pt-12 ">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 md:gap-24">
           {/* Left: Brand Info */}
-          <ScrollReveal direction="left">
-            <div>
-              <div className="mb-6">
-                <Image
-                  src="/horizontal.png"
-                  alt="ROLL ON."
-                  width={240}
-                  height={60}
-                  className="h-10 md:h-14 w-auto"
-                />
+          <ScrollReveal direction="left" className="h-full">
+            <div className="h-full flex flex-col justify-between gap-8">
+              <div>
+                <div className="mb-6">
+                  <Image
+                    src="/horizontal.png"
+                    alt="ROLL ON."
+                    width={240}
+                    height={60}
+                    className="h-10 md:h-14 w-auto"
+                  />
+                </div>
+                <div className="space-y-2 text-white/40 text-sm">
+                  <p>(+886) 980-371-946</p>
+                  <p>Vivian.lee@roll-grp.com</p>
+                  <p>
+                    Level 34, Taipei Nanshan Plaza, No. 100 Songren Road, Xinyi
+                    District, Taipei 110
+                  </p>
+                </div>
               </div>
-              <div className="space-y-2 text-white/40 text-sm">
-                <p>(+886) 980-371-946</p>
-                <p>Vivian.lee@roll-grp.com</p>
-                <p>
-                  Level 34, Taipei Nanshan Plaza, No. 100 Songren Road, Xinyi
-                  District, Taipei 110
-                </p>
-              </div>
-              <div className="flex items-center gap-4 mt-6">
+              <div className="flex items-center gap-4">
                 <a
                   href="https://www.instagram.com/rollon.tw/"
                   target="_blank"
