@@ -124,13 +124,35 @@ export default function RollMap() {
           },
         );
 
-        // Why Taiwan text enters — scrub-driven
+        // Why Taiwan: title first, then each line reveals one-by-one (scrub)
         if (whyTaiwanRef.current) {
-          tl.fromTo(
-            whyTaiwanRef.current,
-            { opacity: 0, y: 30 },
-            { opacity: 1, y: 0, duration: 0.35, ease: "none" },
+          const title = whyTaiwanRef.current.querySelector(
+            ".why-taiwan-title",
           );
+          const lines =
+            whyTaiwanRef.current.querySelectorAll(".why-taiwan-line");
+
+          if (title) {
+            tl.fromTo(
+              title,
+              { opacity: 0, y: 24 },
+              { opacity: 1, y: 0, duration: 0.25, ease: "none" },
+            );
+          }
+
+          if (lines.length) {
+            tl.fromTo(
+              lines,
+              { opacity: 0, y: 18 },
+              {
+                opacity: 1,
+                y: 0,
+                duration: 0.3,
+                ease: "none",
+                stagger: 0.25,
+              },
+            );
+          }
         }
 
         // Hold the text so user has time to read
@@ -245,7 +267,7 @@ export default function RollMap() {
           </div>
         </dl>
         <p>
-          Why Taiwan, and Why Now? Taiwan has reached a pivotal economic moment.
+          Why Taiwan, Why Now? Taiwan has reached a pivotal economic moment.
           Retail stock market investment has officially surpassed that of the
           United Kingdom, and Taiwan remains the global epicenter for
           Semiconductor and Medical CDMO manufacturing.
@@ -405,16 +427,26 @@ export default function RollMap() {
           <div
             ref={whyTaiwanRef}
             className="mb-10 md:mb-14 text-center max-w-3xl mx-auto px-2"
-            style={{ opacity: 0 }}
           >
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-dark tracking-tight mb-4 md:mb-6 font-[family-name:var(--font-heading)]">
-              Why Taiwan, and Why Now?
+            <h2
+              className="why-taiwan-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-dark tracking-tight mb-6 md:mb-8 font-[family-name:var(--font-heading)]"
+              style={{ opacity: 0 }}
+            >
+              Why Taiwan, Why Now?
             </h2>
-            <p className="text-sm md:text-base lg:text-lg text-dark/70 leading-relaxed font-[family-name:var(--font-body)]">
-              Taiwan has reached a pivotal economic moment. Our retail stock
-              market investment has officially surpassed that of the UK, and we
-              remain the global epicenter for Semiconductor and Medical CDMO.
-            </p>
+            <div className="space-y-3 md:space-y-4 text-sm md:text-base lg:text-lg text-dark/70 leading-relaxed font-[family-name:var(--font-body)]">
+              <p className="why-taiwan-line" style={{ opacity: 0 }}>
+                Taiwan has reached a pivotal economic moment.
+              </p>
+              <p className="why-taiwan-line" style={{ opacity: 0 }}>
+                Our retail stock market investment has officially surpassed that
+                of the UK.
+              </p>
+              <p className="why-taiwan-line" style={{ opacity: 0 }}>
+                We remain the global epicenter for Semiconductor and Medical
+                CDMO.
+              </p>
+            </div>
           </div>
 
           <div ref={numbersBlockRef} style={{ opacity: 0 }}>
