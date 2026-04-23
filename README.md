@@ -37,7 +37,7 @@ src/
 ## 首頁 Sections
 
 1. **Hero** - 深酒紅背景 + ROLL ON. 大標題
-2. **ROLL MAP** - 全球數據展示 + 計數動畫 + 排名列表
+2. **ROLL MAP** - 全球數據展示 + 計數動畫 + 排名列表（`topCompanies` 依估值降冪排序，`isClient` 標示本公司客戶）
 3. **Taiwan Map** - GSAP ScrollTrigger 地圖縮放 + 橋樑動畫
 4. **About Us** - 核心價值文字逐段出現
 5. **Services** - 6 項服務 + Investor Access
