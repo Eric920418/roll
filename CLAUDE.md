@@ -21,9 +21,11 @@ ROLL ON. 企業官網 — 協助外商進入台灣與亞洲市場的顧問公司
 
 ### i18n 路由
 
-- 雙語：`zh-tw`（預設）、`en`，配置在 `src/i18n/routing.ts`，使用 `localePrefix: "as-needed"`（預設語系不帶前綴）
-- Middleware (`src/middleware.ts`) 處理 locale 偵測與重導
-- 翻譯檔在 `messages/zh-tw.json` 和 `messages/en.json`
+- 雙語：`en`（預設）、`zh-tw`，配置在 `src/i18n/routing.ts`，使用 `localePrefix: "as-needed"`（預設語系不帶前綴）
+- 預設語系為 `en` 是刻意選擇 — 核心客群為境外外商決策者（日、韓、美、歐），英文才是主要搜尋意圖入口
+- Middleware (`src/middleware.ts`) 處理 locale 偵測與重導（`localeDetection: false`，由 URL 決定）
+- 翻譯檔在 `messages/en.json` 和 `messages/zh-tw.json`
+- Locale 類型由 `src/i18n/routing.ts` 導出為 `Locale`，所有其他檔案從這裡引入
 - next-intl 插件在 `next.config.ts` 載入，指向 `src/i18n/request.ts`
 
 ### 頁面結構

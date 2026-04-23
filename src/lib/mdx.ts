@@ -12,7 +12,7 @@ const FaqSchema = z.object({
 
 const FrontmatterSchema = z.object({
   title: z.string().min(1),
-  description: z.string().min(50).max(200),
+  description: z.string().min(30).max(220),
   slug: z.string().min(1),
   targetQuery: z.string().min(1),
   publishedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

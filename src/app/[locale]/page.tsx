@@ -9,6 +9,9 @@ import GoldenTicket from "@/components/sections/GoldenTicket";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import InsightsTeaser from "@/components/sections/InsightsTeaser";
+import FaqList from "@/components/content/FaqList";
+import JsonLd from "@/components/content/JsonLd";
+import { faqSchema, SITE_FAQS } from "@/lib/schema";
 import { SITE_URL, absoluteUrl } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
@@ -63,10 +66,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function HomePage({ params }: Props) {
   const { locale } = await params;
+  const l = locale as Locale;
   setRequestLocale(locale);
+
+  const faqs = SITE_FAQS[l] ?? SITE_FAQS.en;
 
   return (
     <main>
+      <JsonLd data={faqSchema(faqs)} />
       <Navbar />
       <RollMap />
       <TaiwanMap />
@@ -74,7 +81,15 @@ export default async function HomePage({ params }: Props) {
       <Work />
       <Clients />
       <GoldenTicket />
-      <InsightsTeaser locale={locale as Locale} />
+      <InsightsTeaser locale={l} />
+      <section
+        aria-labelledby="home-faq-heading"
+        className="bg-white py-20 px-5 md:px-8"
+      >
+        <div className="max-w-3xl mx-auto">
+          <FaqList faqs={faqs} locale={l} />
+        </div>
+      </section>
       <Footer />
     </main>
   );

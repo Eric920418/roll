@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { routing, type Locale } from "@/i18n/routing";
 import { Space_Grotesk, Inter, Noto_Sans_TC } from "next/font/google";
 import { SITE_URL } from "@/lib/routes";
-import { localBusinessSchema, SITE_FAQS } from "@/lib/schema";
+import { localBusinessSchema } from "@/lib/schema";
 import "../globals.css";
 
 export async function generateMetadata({
@@ -151,15 +151,6 @@ export default async function LocaleLayout({ children, params }: Props) {
                   name: "ROLL ON.",
                   publisher: { "@id": "https://rollgrp.com/#organization" },
                   inLanguage: ["en", "zh-TW"],
-                },
-                {
-                  "@type": "FAQPage",
-                  "@id": "https://rollgrp.com/#faq",
-                  mainEntity: SITE_FAQS[locale as Locale].map((f) => ({
-                    "@type": "Question",
-                    name: f.q,
-                    acceptedAnswer: { "@type": "Answer", text: f.a },
-                  })),
                 },
                 localBusinessSchema(locale as Locale),
               ],
