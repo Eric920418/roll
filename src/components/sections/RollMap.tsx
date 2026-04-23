@@ -376,16 +376,6 @@ export default function RollMap() {
             </div>
           </div>
 
-          {/* Ruled header line */}
-          <div
-            style={{
-              height: "1px",
-              opacity: page3Active ? 1 : 0,
-              background:
-                "linear-gradient(90deg, var(--color-primary) 0%, rgba(26,26,26,0.12) 100%)",
-              transition: "opacity 0.5s ease 0.05s",
-            }}
-          />
 
           {/* Ranks 1–5 */}
           {topCompanies

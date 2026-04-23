@@ -6,18 +6,21 @@ import ScrollReveal from "@/components/ui/ScrollReveal";
 
 const videos = [
   {
+    thumb: "/1.png",
     subtitleZh: "商機出來",
     subtitleEn: "opportunities",
     title: "不能忽視創新紮根？把模式帶進傳統市場才是…",
     views: "312 次",
   },
   {
+    thumb: "/2.png",
     subtitleZh: "沒有很好的",
     subtitleEn: "they are not very good at",
     title: "要賣出去會更重要？創成式比地的關鍵就是…",
     views: "5 次",
   },
   {
+    thumb: "/3.png",
     subtitleZh: "在裡面其實",
     subtitleEn: "within it",
     title: "冷門市場才是機會？為什麼越小眾越容易成功",
@@ -37,31 +40,41 @@ export default function GoldenTicket() {
             <div className="w-full max-w-md flex flex-col gap-4">
               {/* Channel header */}
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center shrink-0">
-                  <span className="text-white font-bold text-2xl leading-none font-[family-name:var(--font-heading)]">
-                    R.
-                  </span>
+                <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 bg-white">
+                  <Image
+                    src="/Asia Founders Club.png"
+                    alt="Golden Ticket"
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                  />
                 </div>
                 <h3 className="text-white text-2xl md:text-3xl font-black tracking-tight font-[family-name:var(--font-heading)]">
                   GOLDEN TICKET
                 </h3>
               </div>
 
-              {/* Subscribe button */}
-              <button
-                type="button"
+              <a
+                href="https://www.youtube.com/@GOLDENTICKET-rollon"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="self-start bg-black text-white text-sm font-medium px-4 py-1.5 rounded-full hover:bg-neutral-800 transition-colors"
               >
                 訂閱
-              </button>
+              </a>
 
               {/* Video thumbnails row */}
               <div className="grid grid-cols-3 gap-2 mt-1">
                 {videos.map((video, i) => (
                   <div key={i} className="flex flex-col gap-2">
-                    {/* Thumbnail */}
                     <div className="relative aspect-[9/13] rounded-xl overflow-hidden bg-gradient-to-b from-neutral-600 via-neutral-800 to-black">
-                      {/* Subtitle overlay */}
+                      <Image
+                        src={video.thumb}
+                        alt={video.title}
+                        fill
+                        sizes="(max-width: 768px) 33vw, 150px"
+                        className="object-cover"
+                      />
                       <div className="absolute left-1/2 -translate-x-1/2 bottom-4 bg-black/85 px-2 py-1 rounded text-center whitespace-nowrap">
                         <div className="text-white text-[10px] font-semibold leading-tight">
                           {video.subtitleZh}
