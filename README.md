@@ -52,6 +52,7 @@ src/
 - `src/app/sitemap.ts` — 動態生成 `/sitemap.xml`，包含雙語 `hreflang` alternates
 - `src/app/layout.tsx` — 全站 metadata（OG / Twitter Card / canonical / keywords / robots 指令 / publisher / category）
 - `src/app/[locale]/layout.tsx` — `generateMetadata()` 根據語系產出對應 SEO metadata
+- `src/app/icon.png` / `src/app/apple-icon.png` — favicon（Next.js file-system convention，來源 `public/R.png`）
 - JSON-LD 結構化資料（`@graph`）：Organization、ProfessionalService、WebSite、FAQPage schema
 
 ## 部署
