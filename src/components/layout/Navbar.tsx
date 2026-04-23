@@ -2,9 +2,11 @@
 
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { gsap } from "gsap";
 import LanguageSwitch from "@/components/ui/LanguageSwitch";
+import { pathForLocale } from "@/lib/routes";
+import type { Locale } from "@/i18n/routing";
 
 interface StaggeredMenuItem {
   label: string;
@@ -23,12 +25,14 @@ const COLORS = {
 
 export default function Navbar() {
   const t = useTranslations("Nav");
+  const locale = useLocale() as Locale;
+  const homePath = pathForLocale("/", locale);
 
   const items: StaggeredMenuItem[] = [
-    { label: t("home"), ariaLabel: t("home"), link: "#hero" },
-    { label: t("service"), ariaLabel: t("service"), link: "#services" },
-    { label: t("cases"), ariaLabel: t("cases"), link: "#work" },
-    { label: t("contact"), ariaLabel: t("contact"), link: "#contact" },
+    { label: t("home"), ariaLabel: t("home"), link: homePath },
+    { label: t("service"), ariaLabel: t("service"), link: `${homePath}#services` },
+    { label: t("cases"), ariaLabel: t("cases"), link: `${homePath}#work` },
+    { label: t("contact"), ariaLabel: t("contact"), link: `${homePath}#contact` },
   ];
 
   const position: "left" | "right" = "right";
@@ -476,7 +480,7 @@ export default function Navbar() {
             aria-label="Logo"
           >
             <a
-              href="#hero"
+              href={homePath}
               className="no-underline flex items-center"
               onClick={closeMenu}
             >
