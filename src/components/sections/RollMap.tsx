@@ -21,7 +21,7 @@ const mapData = [
 
 const comparisonData = {
   global: { value: 1000000, suffix: "+" },
-  taiwan: { value: 20000, suffix: "+" },
+  taiwan: { value: 20000, suffix: "⬆" },
 };
 
 const topCompanies = [
