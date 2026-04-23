@@ -8,24 +8,18 @@ const videos = [
   {
     thumb: "/1.png",
     href: "https://www.youtube.com/shorts/bPcfxUZQb68",
-    subtitleZh: "商機出來",
-    subtitleEn: "opportunities",
     title: "不能忽視創新紮根？把模式帶進傳統市場才是…",
     views: "312 次",
   },
   {
     thumb: "/2.png",
     href: "https://www.youtube.com/shorts/6XoZxYTC_cw",
-    subtitleZh: "沒有很好的",
-    subtitleEn: "they are not very good at",
     title: "要賣出去會更重要？創成式比地的關鍵就是…",
     views: "5 次",
   },
   {
     thumb: "/3.png",
     href: "https://www.youtube.com/shorts/bPcfxUZQb68",
-    subtitleZh: "在裡面其實",
-    subtitleEn: "within it",
     title: "冷門市場才是機會？為什麼越小眾越容易成功",
     views: "5 次",
   },
@@ -84,14 +78,6 @@ export default function GoldenTicket() {
                         sizes="(max-width: 768px) 33vw, 150px"
                         className="object-cover"
                       />
-                      <div className="absolute left-1/2 -translate-x-1/2 bottom-4 bg-black/85 px-2 py-1 rounded text-center whitespace-nowrap">
-                        <div className="text-white text-[10px] font-semibold leading-tight">
-                          {video.subtitleZh}
-                        </div>
-                        <div className="text-yellow-300 text-[9px] leading-tight mt-0.5">
-                          {video.subtitleEn}
-                        </div>
-                      </div>
                     </div>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-start gap-1">

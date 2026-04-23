@@ -212,8 +212,56 @@ export default function RollMap() {
   return (
     <section
       ref={sectionRef}
+      aria-labelledby="rollmap-sr-heading"
       className="relative min-h-screen bg-white flex items-center justify-center overflow-hidden"
     >
+      {/* SSR text version — visually hidden but present in DOM for LLMs & screen readers */}
+      <div className="sr-only">
+        <h2 id="rollmap-sr-heading">
+          ROLL MAP — Foreign companies served by ROLL ON. across regions
+        </h2>
+        <p>
+          ROLL ON. is a Taipei-based consulting firm. Below is the distribution
+          of foreign companies we have supported, by region.
+        </p>
+        <dl>
+          {mapData.map((item) => (
+            <div key={item.key}>
+              <dt>{t(item.key)}</dt>
+              <dd>{item.value} companies</dd>
+            </div>
+          ))}
+        </dl>
+
+        <h3>{t("comparisonTitle")}</h3>
+        <dl>
+          <div>
+            <dt>{t("globalLabel")}</dt>
+            <dd>{comparisonData.global.value.toLocaleString()}+</dd>
+          </div>
+          <div>
+            <dt>{t("taiwanLabel")}</dt>
+            <dd>{comparisonData.taiwan.value.toLocaleString()}</dd>
+          </div>
+        </dl>
+        <p>
+          Why Taiwan, and Why Now? Taiwan has reached a pivotal economic moment.
+          Retail stock market investment has officially surpassed that of the
+          United Kingdom, and Taiwan remains the global epicenter for
+          Semiconductor and Medical CDMO manufacturing.
+        </p>
+
+        <h3>{t("rankingTitle")}</h3>
+        <ol>
+          {topCompanies.map((c) => (
+            <li key={c.rank}>
+              #{c.rank} {c.name} — {c.valuation}
+              {c.isClient ? " (ROLL ON. client)" : ""}
+            </li>
+          ))}
+        </ol>
+      </div>
+
       {/* Background: stays fixed */}
       <div className="absolute inset-0 opacity-[0.03]">
         <div

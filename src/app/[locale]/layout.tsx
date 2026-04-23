@@ -3,11 +3,11 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
-import { routing } from "@/i18n/routing";
+import { routing, type Locale } from "@/i18n/routing";
 import { Space_Grotesk, Inter, Noto_Sans_TC } from "next/font/google";
+import { SITE_URL } from "@/lib/routes";
+import { localBusinessSchema, SITE_FAQS } from "@/lib/schema";
 import "../globals.css";
-
-const SITE_URL = "https://rollgrp.com";
 
 export async function generateMetadata({
   params,
@@ -155,33 +155,13 @@ export default async function LocaleLayout({ children, params }: Props) {
                 {
                   "@type": "FAQPage",
                   "@id": "https://rollgrp.com/#faq",
-                  mainEntity: [
-                    {
-                      "@type": "Question",
-                      name: "What does ROLL ON. do?",
-                      acceptedAnswer: {
-                        "@type": "Answer",
-                        text: "ROLL ON. is a consulting firm that helps foreign companies enter Taiwan and Asian markets. Services include fundraising (angel round to IPO), global expansion strategy, marketing, legal compliance, and sales channel development.",
-                      },
-                    },
-                    {
-                      "@type": "Question",
-                      name: "ROLL ON. 提供哪些服務？",
-                      acceptedAnswer: {
-                        "@type": "Answer",
-                        text: "ROLL ON. 協助外商進入台灣與亞洲市場，服務包含：募資（天使輪到IPO）、海外拓展落地策略、精準行銷與品牌定位、公司設立與法規合規諮詢、銷售通路開發，以及 All Nighter Community 外商人脈圈。",
-                      },
-                    },
-                    {
-                      "@type": "Question",
-                      name: "Which markets does ROLL ON. cover?",
-                      acceptedAnswer: {
-                        "@type": "Answer",
-                        text: "ROLL ON. primarily helps companies enter Taiwan, with expansion capabilities across Asia including Japan, Vietnam, Cambodia, and broader Southeast Asian markets.",
-                      },
-                    },
-                  ],
+                  mainEntity: SITE_FAQS[locale as Locale].map((f) => ({
+                    "@type": "Question",
+                    name: f.q,
+                    acceptedAnswer: { "@type": "Answer", text: f.a },
+                  })),
                 },
+                localBusinessSchema(locale as Locale),
               ],
             }),
           }}
