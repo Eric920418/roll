@@ -34,6 +34,38 @@ export default function Footer() {
                   District, Taipei 110
                 </p>
               </div>
+              <div className="flex items-center gap-4 mt-6">
+                <a
+                  href="https://www.instagram.com/rollon.tw/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <Image
+                    src="/IG.png"
+                    alt="Instagram"
+                    width={28}
+                    height={28}
+                    className="w-7 h-7 object-contain"
+                  />
+                </a>
+                <a
+                  href="https://www.linkedin.com/company/rollon/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                  className="opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <Image
+                    src="/Linkedin.png"
+                    alt="LinkedIn"
+                    width={28}
+                    height={28}
+                    className="w-7 h-7 object-contain"
+                  />
+                </a>
+              </div>
             </div>
           </ScrollReveal>
 

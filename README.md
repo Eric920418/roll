@@ -44,7 +44,7 @@ src/
 6. **R work** - 作品案例卡片
 7. **R Clients** - 客戶 logo
 8. **Golden Ticket** - YouTube 頻道預覽卡（頭像 / 訂閱鈕 / 3 個 Shorts 縮圖 + 雙語字幕）+ Asia Founders Club 圖
-9. **Footer** - 聯絡表單
+9. **Footer** - 品牌資訊 + IG / LinkedIn 社群連結 + 聯絡表單
 
 ## SEO / GEO
 
