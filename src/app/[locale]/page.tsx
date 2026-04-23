@@ -81,7 +81,7 @@ export default async function HomePage({ params }: Props) {
       <Work />
       <Clients />
       <GoldenTicket />
-      <InsightsTeaser locale={l} />
+      {/* <InsightsTeaser locale={l} />
       <section
         aria-labelledby="home-faq-heading"
         className="bg-white py-20 px-5 md:px-8"
@@ -89,7 +89,7 @@ export default async function HomePage({ params }: Props) {
         <div className="max-w-3xl mx-auto">
           <FaqList faqs={faqs} locale={l} />
         </div>
-      </section>
+      </section> */}
       <Footer />
     </main>
   );
