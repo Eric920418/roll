@@ -34,6 +34,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     alternates: { languages: languageAlternates("/") },
   });
 
+  // ESG (static brand narrative page)
+  entries.push({
+    url: urlFor("/esg", "en"),
+    lastModified: now,
+    changeFrequency: "monthly" as Freq,
+    priority: 0.8,
+    alternates: { languages: languageAlternates("/esg") },
+  });
+
   // Content pages
   const typeMeta: Record<
     "insight" | "case" | "service" | "country",

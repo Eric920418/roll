@@ -36,14 +36,16 @@ src/
 │   │   ├── insights/[slug]/   # Pillar guides（搜尋意圖對齊）
 │   │   ├── cases/[slug]/      # 案例研究
 │   │   ├── services/[slug]/   # 服務子頁（6 項）
-│   │   └── from/[country]/    # 國別指南（6 國）Programmatic SEO
+│   │   ├── from/[country]/    # 國別指南（6 國）Programmatic SEO
+│   │   └── esg/               # ESG 品牌敘事頁（靜態）
 │   ├── sitemap.ts             # 動態 sitemap（含 hreflang）
 │   ├── robots.ts              # 含 AI bot 白名單
 │   └── layout.tsx             # Root metadata
 │
 ├── components/
 │   ├── layout/                # Navbar, Footer
-│   ├── sections/              # Hero, RollMap, TaiwanMap, Services, Work, Clients, GoldenTicket, InsightsTeaser
+│   ├── sections/              # Hero, RollMap, TaiwanMap, Services, Work, Events, Clients, GoldenTicket, InsightsTeaser
+│   │   └── esg/               # ESG 頁專屬 sections（Hero / RollingForward / Sustainability / StrategicImpact / CoreBelief / JoinCTA）
 │   ├── content/               # ContentPage, FaqList, JsonLd（內容頁共用）
 │   └── ui/                    # ScrollReveal, CounterAnimation, LanguageSwitch
 │

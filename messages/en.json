@@ -7,6 +7,7 @@
     "home": "Home",
     "service": "Our Service",
     "cases": "Success Cases",
+    "esg": "ESG",
     "contact": "Contact"
   },
   "Hero": {
@@ -84,5 +85,63 @@
     "message": "Message",
     "send": "SEND",
     "copyright": "Copyright 2026 Roll on."
+  },
+  "ESG": {
+    "hero": {
+      "titleLine1": "Taiwan.",
+      "titleLine2": "Asia's Entry Point.",
+      "lead": "At the strategic intersection of Northeast Asia, Southeast Asia, and global supply chains. We view ESG as a vehicle for economic empowerment, talent elevation, and global connectivity.",
+      "stat1Label": "Regional Intersections",
+      "stat2Label": "Foreign cos. in Taiwan",
+      "stat3Label": "Recognized for Innovation"
+    },
+    "rollingForward": {
+      "title": "Rolling forward.",
+      "year1Label": "Year 1",
+      "year1Title": "Launch Asia Founders Club",
+      "year1Desc": "An exclusive ecosystem connecting founders, CEOs, and industry leaders across manufacturing and tech sectors.",
+      "year3Label": "Year 3",
+      "year3Title": "Systemize & Scale",
+      "year3Desc": "Transforming our maker-style model into a repeatable, high-efficiency operational framework ready to export.",
+      "year5Label": "Year 5",
+      "year5Title": "Regional Expansion",
+      "year5Desc": "Exporting the ROLL ON model to multiple countries — building a connected Asian ecosystem powered by Taiwan."
+    },
+    "sustainability": {
+      "title": "Sustainability.",
+      "environmentDesc": "Encouraging manufacturing in Taiwan, shortening global supply chains, and reducing carbon footprints.",
+      "socialDesc": "Create local employment, cultivate talent, and foster cross-border exchange and cultural integration through Asia Founders Club.",
+      "governanceDesc": "Transparent equity structure and compliant processes, with governance ensured through partners like Deloitte and KIRI LAW."
+    },
+    "strategicImpact": {
+      "title": "Our Strategic Impact.",
+      "forIntBadge": "For International Companies",
+      "forIntHeading": "Landing in Taiwan, Scaling into Asia.",
+      "intItem1Title": "Rapid Market Entry",
+      "intItem1Desc": "Simplifying legal setup and accelerating time-to-market for foreign brands.",
+      "intItem2Title": "Capital & Partnership",
+      "intItem2Desc": "Connecting incoming companies with capital and strategic partners across Asia.",
+      "intItem3Title": "Supply Chain Integration",
+      "intItem3Desc": "Bridging international operations into Taiwan's precision supply base.",
+      "intItem4Title": "Cultural Alignment",
+      "intItem4Desc": "Closing communication gaps with on-the-ground local expertise.",
+      "forTwBadge": "For Taiwan",
+      "forTwHeading": "Build value, not just volume.",
+      "twItem1Title": "Inward Investment",
+      "twItem1Desc": "Attracting high-caliber international investment into Taiwan.",
+      "twItem2Title": "Talent Transformation",
+      "twItem2Desc": "Supporting the transition of Taiwan's talent pool into global-ready roles.",
+      "twItem3Title": "Innovation Hub",
+      "twItem3Desc": "Fostering Taiwan's rise as Asia's regional innovation partner."
+    },
+    "coreBelief": {
+      "title": "The Roll On Core Belief.",
+      "body": "By establishing Taiwan as the definitive starting point, we enable companies to scale across Asia through structured partnerships and robust MOU networks. We are creating a cross-border ecosystem designed for scalability and long-term impact."
+    },
+    "cta": {
+      "line1": "Ideas are everywhere.",
+      "line2": "Execution is rare.",
+      "button": "Join Us"
+    }
   }
 }

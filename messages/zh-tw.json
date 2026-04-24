@@ -7,6 +7,7 @@
     "home": "首頁",
     "service": "服務項目",
     "cases": "成功案例",
+    "esg": "ESG",
     "contact": "聯絡我們"
   },
   "Hero": {
@@ -84,5 +85,63 @@
     "message": "訊息",
     "send": "送出",
     "copyright": "© 2025 Roll on. 版權所有"
+  },
+  "ESG": {
+    "hero": {
+      "titleLine1": "台灣。",
+      "titleLine2": "亞洲的門戶。",
+      "lead": "位於東北亞、東南亞與全球供應鏈的戰略交會點。我們視 ESG 為推動經濟賦權、人才提升與全球連結的載體。",
+      "stat1Label": "區域交會點",
+      "stat2Label": "在台外商數量",
+      "stat3Label": "創新肯定"
+    },
+    "rollingForward": {
+      "title": "Rolling forward.",
+      "year1Label": "第 1 年",
+      "year1Title": "啟動 Asia Founders Club",
+      "year1Desc": "連結製造與科技產業的創辦人、CEO 與產業領袖的專屬生態圈。",
+      "year3Label": "第 3 年",
+      "year3Title": "系統化與規模化",
+      "year3Desc": "把 Maker 風格的合作模式，轉化為可複製、高效率、可輸出的營運框架。",
+      "year5Label": "第 5 年",
+      "year5Title": "區域擴張",
+      "year5Desc": "把 ROLL ON 的模式輸出到多個國家——以台灣為核心，打造互聯的亞洲生態系。"
+    },
+    "sustainability": {
+      "title": "Sustainability.",
+      "environmentDesc": "鼓勵在台製造、縮短全球供應鏈、降低碳足跡。",
+      "socialDesc": "透過 Asia Founders Club 創造在地就業、培育人才，並促進跨境交流與文化整合。",
+      "governanceDesc": "透明的股權結構與合規流程，並透過 Deloitte、KIRI LAW 等夥伴把關治理。"
+    },
+    "strategicImpact": {
+      "title": "Our Strategic Impact.",
+      "forIntBadge": "For International Companies",
+      "forIntHeading": "落地台灣，前進亞洲。",
+      "intItem1Title": "快速市場進入",
+      "intItem1Desc": "簡化法律設立流程、加速外商品牌進入市場的時間。",
+      "intItem2Title": "資本與夥伴關係",
+      "intItem2Desc": "為進入者對接亞洲資本與策略夥伴。",
+      "intItem3Title": "供應鏈整合",
+      "intItem3Desc": "把國際營運能量接入台灣的精密供應鏈。",
+      "intItem4Title": "文化對齊",
+      "intItem4Desc": "透過在地專業協助弭平溝通與文化落差。",
+      "forTwBadge": "For Taiwan",
+      "forTwHeading": "創造價值，不只追求量。",
+      "twItem1Title": "引進投資",
+      "twItem1Desc": "吸引高品質的國際資本進入台灣。",
+      "twItem2Title": "人才轉型",
+      "twItem2Desc": "支持台灣人才轉型為具備國際視野的角色。",
+      "twItem3Title": "創新樞紐",
+      "twItem3Desc": "推動台灣成為亞洲區域性的創新合作夥伴。"
+    },
+    "coreBelief": {
+      "title": "The Roll On Core Belief.",
+      "body": "以台灣為明確起點，我們透過結構化的合作關係與穩固的 MOU 網絡，協助企業規模化進入亞洲。我們正在打造一個為可擴展性與長期影響力而設計的跨境生態系。"
+    },
+    "cta": {
+      "line1": "Ideas are everywhere.",
+      "line2": "Execution is rare.",
+      "button": "Join Us"
+    }
   }
 }

@@ -32,6 +32,7 @@ export default function Navbar() {
     { label: t("home"), ariaLabel: t("home"), link: homePath },
     { label: t("service"), ariaLabel: t("service"), link: `${homePath}#services` },
     { label: t("cases"), ariaLabel: t("cases"), link: `${homePath}#work` },
+    { label: t("esg"), ariaLabel: t("esg"), link: pathForLocale("/esg", locale) },
     { label: t("contact"), ariaLabel: t("contact"), link: `${homePath}#contact` },
   ];
 
@@ -541,7 +542,7 @@ export default function Navbar() {
                   key={it.label + idx}
                 >
                   <a
-                    className="sm-panel-item relative font-semibold text-[2.2rem] md:text-[2.8rem] lg:text-[3.2rem] cursor-pointer leading-none tracking-[-1.5px] uppercase inline-block no-underline transition-colors duration-150"
+                    className="sm-panel-item relative font-semibold text-[1.8rem] md:text-[2.2rem] lg:text-[2.6rem] cursor-pointer leading-none tracking-[-1.5px] uppercase inline-block no-underline transition-colors duration-150"
                     href={it.link}
                     aria-label={it.ariaLabel}
                     data-index={idx + 1}
