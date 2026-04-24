@@ -4,6 +4,7 @@ import RollMap from "@/components/sections/RollMap";
 import TaiwanMap from "@/components/sections/TaiwanMap";
 import Services from "@/components/sections/Services";
 import Work from "@/components/sections/Work";
+import Events from "@/components/sections/Events";
 import Clients from "@/components/sections/Clients";
 import GoldenTicket from "@/components/sections/GoldenTicket";
 import Navbar from "@/components/layout/Navbar";
@@ -79,6 +80,7 @@ export default async function HomePage({ params }: Props) {
       <TaiwanMap />
       <Services />
       <Work />
+      <Events />
       <Clients />
       <GoldenTicket />
       {/* <InsightsTeaser locale={l} />

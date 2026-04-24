@@ -80,10 +80,11 @@ public/
 3. **TaiwanMap** — 台灣地圖縮放 → 全球 + 6 座橋樑城市；5 行品牌宣言
 4. **Services** — 6 項服務卡片，每張連到 `/services/[slug]` + Investor Access CTA
 5. **Work** — 案例章節：`Medix LLC` 可展開/收合（`+` toggle），展開顯示 3 張圖 + 短描述 + `learn more` → `/cases/medix`
-6. **Clients** — 6 家客戶 logo 牆
-7. **GoldenTicket** — YouTube 頻道預覽
-8. **InsightsTeaser** — 3 篇 pillar guides 入口（爬蟲發現的 anchor）
-9. **Footer** — 聯絡表單 + 社群
+6. **Events** — R Event. 3 張活動卡（日期 pill + 圖片區 + 標題 + 地址）
+7. **Clients** — 6 家客戶 logo 牆
+8. **GoldenTicket** — YouTube 頻道預覽
+9. **InsightsTeaser** — 3 篇 pillar guides 入口（爬蟲發現的 anchor）
+10. **Footer** — 聯絡表單 + 社群
 
 ## 內容頁（SEO / GEO 主引擎）
 
