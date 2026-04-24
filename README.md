@@ -79,7 +79,7 @@ public/
    - 包含 `sr-only` SSR 純文字版本供 LLM / 螢幕閱讀器讀取（視覺化數據雙軌化）
 3. **TaiwanMap** — 台灣地圖縮放 → 全球 + 6 座橋樑城市；5 行品牌宣言
 4. **Services** — 6 項服務卡片，每張連到 `/services/[slug]` + Investor Access CTA
-5. **Work** — 成功案例卡（Medix LLC）
+5. **Work** — 案例章節：`Medix LLC` 可展開/收合（`+` toggle），展開顯示 3 張圖 + 短描述 + `learn more` → `/cases/medix`
 6. **Clients** — 6 家客戶 logo 牆
 7. **GoldenTicket** — YouTube 頻道預覽
 8. **InsightsTeaser** — 3 篇 pillar guides 入口（爬蟲發現的 anchor）
