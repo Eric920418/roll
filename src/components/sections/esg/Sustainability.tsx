@@ -34,7 +34,7 @@ export default function Sustainability() {
         whileInView="visible"
         viewport={{ once: true, margin: "-12%" }}
         variants={container}
-        className="w-full max-w-6xl mx-auto px-5 md:px-8 flex flex-col gap-12 md:gap-16"
+        className="w-full max-w-6xl mx-auto px-5 md:px-8 flex flex-col gap-10 md:gap-14"
       >
         <motion.h2
           variants={item}
@@ -43,27 +43,25 @@ export default function Sustainability() {
           {t("title")}
         </motion.h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {pillars.map((p, i) => (
             <motion.div
               key={i}
               variants={item}
               whileHover={{ y: -6 }}
               transition={{ type: "spring", stiffness: 260, damping: 22 }}
-              className="flex flex-col gap-5"
+              className="bg-white rounded-xl p-6 md:p-8 flex flex-col gap-5"
             >
-              <h3 className="font-[family-name:var(--font-heading)] text-white leading-none flex items-baseline">
-                <span
-                  className="text-6xl md:text-7xl font-bold"
-                  style={{ color: "var(--color-accent, #D4A574)" }}
-                >
+              <h3 className="flex items-baseline font-[family-name:var(--font-heading)] leading-none">
+                <span className="text-5xl md:text-6xl font-bold text-primary">
                   {p.letter}
                 </span>
-                <span className="text-2xl md:text-3xl font-medium">
+                <span className="text-xl md:text-2xl font-semibold text-dark">
                   {p.rest}
                 </span>
               </h3>
-              <p className="text-sm md:text-base text-white/75 leading-relaxed font-[family-name:var(--font-body)]">
+              <div className="h-px bg-dark/10" />
+              <p className="text-sm md:text-[15px] text-dark/70 leading-relaxed font-[family-name:var(--font-body)]">
                 {p.desc}
               </p>
             </motion.div>
