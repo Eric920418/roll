@@ -3,21 +3,23 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion, type Variants } from "motion/react";
-import { Link } from "@/i18n/navigation";
 
 const caseItems = [
   {
     image: "/IMG_0518.JPG",
+    href: "https://www.linkedin.com/posts/vivianlee-rollgrp_medixproclot-medtech-marketentry-activity-7445308208061108224-Dd9P",
     description:
       "Since our trip in January, things have been moving fast. We're seeing great traction in both the MIS (Minimally Invasive Surgery) and pet markets. Our local partners' incredible hustle.",
   },
   {
     image: "/IMG_0518.JPG",
+    href: "https://www.linkedin.com/posts/vivianlee-rollgrp_medixproclot-hemostasis-biotech-activity-7403122522767974400-WP6I",
     description:
       "Today marks a truly exciting milestone! We have officially entered the Vietnam market! This step not only solidifies our presence in another key region but also offers a valuable opportunity to connect with other leading hemostatic brands and wound care gel suppliers locally.",
   },
   {
     image: "/IMG_0517.JPG",
+    href: "https://www.linkedin.com/posts/vivianlee-rollgrp_i-have-met-with-more-than-10-investors-and-activity-7444006287463571456-3fk0",
     description:
       "I have met with more than 10 investors and expanded our reach into 3 different countries. One question I am constantly asked is: “How well do you know Steve Lazar?”",
   },
@@ -160,12 +162,14 @@ export default function Work() {
                   className="text-xs md:text-sm text-white/70 leading-relaxed"
                 >
                   {item.description}{" "}
-                  <Link
-                    href="/cases/medix"
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-white underline underline-offset-2 hover:text-white/90"
                   >
                     learn more
-                  </Link>
+                  </a>
                 </motion.p>
               </motion.div>
             ))}
