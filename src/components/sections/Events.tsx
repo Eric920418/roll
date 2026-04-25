@@ -117,7 +117,7 @@ export default function Events() {
               variants={letter}
               className="inline-block"
             >
-              {ch === " " ? " " : ch}
+              {ch === " " ? " " : ch}
             </motion.span>
           ))}
         </motion.h2>
