@@ -12,7 +12,7 @@ const caseItems = [
       "Since our trip in January, things have been moving fast. We're seeing great traction in both the MIS (Minimally Invasive Surgery) and pet markets. Our local partners' incredible hustle.",
   },
   {
-    image: "/IMG_0420.JPG",
+    image: "/IMG_0518.JPG",
     description:
       "Today marks a truly exciting milestone! We have officially entered the Vietnam market! This step not only solidifies our presence in another key region but also offers a valuable opportunity to connect with other leading hemostatic brands and wound care gel suppliers locally.",
   },
