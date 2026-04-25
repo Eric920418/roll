@@ -7,19 +7,19 @@ import { Link } from "@/i18n/navigation";
 
 const caseItems = [
   {
-    image: "/IMG_0418.JPG",
+    image: "/IMG_0518.JPG",
     description:
-      "Since our trip in January, things have been moving fast. We've been seeing strong traction across the APJ region in our minimally invasive surgery segment.",
-  },
-  {
-    image: "/IMG_0419.JPG",
-    description:
-      "Chase met with more than 10 investors and expanded our reach into 3 different countries. One question we constantly asked: how well do we map to local demand?",
+      "Since our trip in January, things have been moving fast. We're seeing great traction in both the MIS (Minimally Invasive Surgery) and pet markets. Our local partners' incredible hustle.",
   },
   {
     image: "/IMG_0420.JPG",
     description:
-      "Today Medix is truly pushing milestones. We have officially entered the Vietnam market — this step not only solidifies our presence in another key region but also opens more paths forward.",
+      "Today marks a truly exciting milestone! We have officially entered the Vietnam market! This step not only solidifies our presence in another key region but also offers a valuable opportunity to connect with other leading hemostatic brands and wound care gel suppliers locally.",
+  },
+  {
+    image: "/IMG_0517.JPG",
+    description:
+      "I have met with more than 10 investors and expanded our reach into 3 different countries. One question I am constantly asked is: “How well do you know Steve Lazar?”",
   },
 ];
 
