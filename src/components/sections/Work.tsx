@@ -13,15 +13,15 @@ const caseItems = [
   },
   {
     image: "/IMG_0418.JPG",
-    href: "https://www.linkedin.com/posts/vivianlee-rollgrp_medixproclot-hemostasis-biotech-activity-7403122522767974400-WP6I",
-    description:
-      "Today marks a truly exciting milestone! We have officially entered the Vietnam market! This step not only solidifies our presence in another key region but also offers a valuable opportunity to connect with other leading hemostatic brands and wound care gel suppliers locally.",
-  },
-  {
-    image: "/IMG_0517.JPG",
     href: "https://www.linkedin.com/posts/vivianlee-rollgrp_i-have-met-with-more-than-10-investors-and-activity-7444006287463571456-3fk0",
     description:
       "I have met with more than 10 investors and expanded our reach into 3 different countries. One question I am constantly asked is: “How well do you know Steve Lazar?”",
+  },
+  {
+    image: "/IMG_0517.JPG",
+    href: "https://www.linkedin.com/posts/vivianlee-rollgrp_medixproclot-hemostasis-biotech-activity-7403122522767974400-WP6I",
+    description:
+      "Today marks a truly exciting milestone! We have officially entered the Vietnam market! This step not only solidifies our presence in another key region but also offers a valuable opportunity to connect with other leading hemostatic brands and wound care gel suppliers locally.",
   },
 ];
 

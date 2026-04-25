@@ -12,14 +12,14 @@ const events = [
     description: "亞洲醫療健康高峰論壇",
   },
   {
-    date: "Wed. 27 MAY",
+    date: "MAY",
     image: null,
     title: "2026 Taiwan Digital Festival",
     location: "Taitung City",
     description: "演講主題：解決落地的最後一哩路",
   },
   {
-    date: "Wed. 27 MAY",
+    date: "MAY",
     image: null,
     title: "2026 Dragon's Chamber",
     location: "Taipei City",
