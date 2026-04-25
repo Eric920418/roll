@@ -5,22 +5,25 @@ import { motion, type Variants } from "motion/react";
 
 const events = [
   {
-    date: "Fri. 24 APR",
+    date: "11–12 MAY",
     image: null,
-    title: "Title1",
-    address: "Address/Address/Address/Address/Address/Address/Address",
+    title: "2026 Asia Summit on Global Health",
+    location: "Hong Kong",
+    description: "亞洲醫療健康高峰論壇",
   },
   {
-    date: "Fri. 24 APR",
+    date: "Wed. 27 MAY",
     image: null,
-    title: "Title1",
-    address: "Address/Address/Address/Address/Address/Address/Address",
+    title: "2026 Taiwan Digital Festival",
+    location: "Taitung City",
+    description: "演講主題：解決落地的最後一哩路",
   },
   {
-    date: "Fri. 24 APR",
+    date: "Wed. 27 MAY",
     image: null,
-    title: "Title1",
-    address: "Address/Address/Address/Address/Address/Address/Address",
+    title: "2026 Dragon's Chamber",
+    location: "Taipei City",
+    description: "科技新創與投資人聚會 — Ensypre × ROLL ON",
   },
 ];
 
@@ -132,10 +135,10 @@ export default function Events() {
               transition={{ type: "spring", stiffness: 240, damping: 22 }}
               className="flex flex-col gap-3"
             >
-              <div className="relative aspect-square rounded-2xl overflow-hidden bg-white/20">
+              <div className="relative aspect-square rounded-2xl overflow-hidden bg-neutral-400">
                 <motion.span
                   variants={pill}
-                  className="absolute top-4 left-4 bg-black text-white text-[11px] font-medium px-3 py-1.5 rounded-full z-10"
+                  className="absolute top-4 left-4 bg-[#5A1220] text-white text-[11px] font-medium px-3 py-1.5 rounded-full z-10"
                 >
                   {event.date}
                 </motion.span>
@@ -152,15 +155,21 @@ export default function Events() {
               </div>
               <motion.h3
                 variants={textRow}
-                className="text-white text-lg md:text-xl font-semibold font-[family-name:var(--font-heading)]"
+                className="text-white text-base md:text-lg font-semibold leading-snug font-[family-name:var(--font-heading)]"
               >
                 {event.title}
               </motion.h3>
               <motion.p
                 variants={textRow}
-                className="text-white/55 text-[11px] leading-relaxed break-all"
+                className="text-white/80 text-xs md:text-sm font-medium leading-snug"
               >
-                {event.address}
+                {event.location}
+              </motion.p>
+              <motion.p
+                variants={textRow}
+                className="text-white/55 text-[11px] leading-relaxed"
+              >
+                {event.description}
               </motion.p>
             </motion.div>
           ))}

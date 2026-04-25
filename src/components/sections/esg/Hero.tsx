@@ -34,7 +34,7 @@ export default function EsgHero() {
     <section className="relative bg-primary min-h-[85vh] flex items-center py-28 md:py-36 overflow-hidden">
       <div
         aria-hidden="true"
-        className="absolute right-[-8%] top-[5%] text-[26rem] md:text-[40rem] lg:text-[48rem] font-black text-white/[0.035] leading-none font-[family-name:var(--font-heading)] pointer-events-none select-none"
+        className="absolute -right-[8%] md:-right-[4%] -top-[8%] md:-top-[12%] text-[28rem] md:text-[48rem] lg:text-[56rem] font-black text-white/[0.07] leading-none font-[family-name:var(--font-heading)] pointer-events-none select-none"
       >
         R
       </div>
