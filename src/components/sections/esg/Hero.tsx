@@ -72,7 +72,7 @@ export default function EsgHero() {
           variants={titleContainer}
           className="grid grid-cols-3 gap-4 md:gap-10 pt-8 md:pt-10 border-t border-white/20 max-w-4xl"
         >
-          <motion.div variants={statItem} className="flex flex-col gap-2">
+          <motion.div variants={statItem} className="flex flex-col items-center gap-2 text-center">
             <CounterAnimation
               end={3}
               suffix="x"
@@ -82,7 +82,7 @@ export default function EsgHero() {
               {t("stat1Label")}
             </p>
           </motion.div>
-          <motion.div variants={statItem} className="flex flex-col gap-2">
+          <motion.div variants={statItem} className="flex flex-col items-center gap-2 text-center">
             <CounterAnimation
               end={20000}
               suffix="+"
@@ -92,7 +92,7 @@ export default function EsgHero() {
               {t("stat2Label")}
             </p>
           </motion.div>
-          <motion.div variants={statItem} className="flex flex-col gap-2">
+          <motion.div variants={statItem} className="flex flex-col items-center gap-2 text-center">
             <span className="text-4xl md:text-6xl font-bold text-white font-[family-name:var(--font-heading)]">
               MIT
             </span>

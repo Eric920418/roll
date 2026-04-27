@@ -20,6 +20,10 @@ const item: Variants = {
 export default function RollingForward() {
   const t = useTranslations("ESG.rollingForward");
 
+  const titleText = t("title");
+  const titleBase = titleText.replace(/\.$/, "");
+  const hasDot = titleText.endsWith(".");
+
   const years = [
     { label: t("year1Label"), title: t("year1Title"), desc: t("year1Desc") },
     { label: t("year3Label"), title: t("year3Title"), desc: t("year3Desc") },
@@ -37,9 +41,10 @@ export default function RollingForward() {
       >
         <motion.h2
           variants={item}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold text-dark tracking-tight font-[family-name:var(--font-heading)]"
+          className="text-4xl md:text-5xl lg:text-6xl font-black text-dark tracking-tight leading-none font-[family-name:var(--font-heading)]"
         >
-          {t("title")}
+          {titleBase}
+          {hasDot && <span className="text-primary">.</span>}
         </motion.h2>
 
         <div className="flex flex-col">
@@ -47,16 +52,16 @@ export default function RollingForward() {
             <motion.div
               key={i}
               variants={item}
-              className="grid grid-cols-[4rem_1fr] md:grid-cols-[7rem_1fr] gap-5 md:gap-10 items-start py-6 md:py-8 border-b border-dark/10 last:border-b-0"
+              className="grid grid-cols-[4rem_1fr] md:grid-cols-[7rem_1fr] gap-5 md:gap-10 items-start py-8 md:py-10 border-b-2 border-dark/15 last:border-b-0"
             >
-              <span className="text-xs md:text-sm uppercase tracking-widest text-primary font-semibold pt-1 font-[family-name:var(--font-heading)]">
+              <span className="text-xs md:text-sm uppercase tracking-widest text-primary font-bold pt-1 font-[family-name:var(--font-heading)]">
                 {y.label}
               </span>
               <div className="flex flex-col gap-3">
-                <h3 className="text-xl md:text-2xl lg:text-3xl font-semibold text-dark leading-snug font-[family-name:var(--font-heading)]">
+                <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-dark leading-snug font-[family-name:var(--font-heading)]">
                   {y.title}
                 </h3>
-                <p className="text-sm md:text-base text-dark/65 leading-relaxed max-w-3xl font-[family-name:var(--font-body)]">
+                <p className="text-sm md:text-base text-dark/70 leading-relaxed max-w-3xl font-[family-name:var(--font-body)]">
                   {y.desc}
                 </p>
               </div>
