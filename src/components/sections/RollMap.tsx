@@ -26,18 +26,21 @@ const comparisonData = {
   taiwan: { value: 20000, suffix: "⬆" },
 };
 
-const topCompanies = [
-  { rank: 1, name: "Amazon", valuation: "$2,005.6B" },
-  { rank: 2, name: "Saudi Arabian Oil Company", valuation: "$1,663.4B" },
-  { rank: 3, name: "Berkshire Hathaway", valuation: "$1,145.5B" },
-  { rank: 4, name: "JPMorgan Chase", valuation: "$677.8B" },
+const epicenterPillars = [
   {
-    rank: 5,
-    name: "Industrial and Commercial Bank of China",
-    valuation: "$251.3B",
+    label: "CAPITAL",
+    description:
+      "Retail stock market investment volume has officially surpassed the UK.",
   },
-  { rank: 6, name: "SOLO automatic", valuation: "$25M", isClient: true },
-  { rank: 7, name: "Medix LLC", valuation: "$4.1M", isClient: true },
+  {
+    label: "TECHNOLOGY",
+    description:
+      "Global epicenter for Semiconductor and Medical CDMO excellence.",
+  },
+  {
+    label: "STRATEGY",
+    description: "",
+  },
 ];
 
 export default function RollMap() {
@@ -277,15 +280,16 @@ export default function RollMap() {
           Semiconductor and Medical CDMO manufacturing.
         </p>
 
-        <h3>{t("rankingTitle")}</h3>
-        <ol>
-          {topCompanies.map((c) => (
-            <li key={c.rank}>
-              #{c.rank} {c.name} — {c.valuation}
-              {c.isClient ? " (ROLL ON. client)" : ""}
-            </li>
+        <h3>The New Epicenter of Global Growth</h3>
+        <p>Beyond Manufacturing — A Hub of Capital and Innovation.</p>
+        <dl>
+          {epicenterPillars.map((p) => (
+            <div key={p.label}>
+              <dt>{p.label}</dt>
+              <dd>{p.description || "Description coming soon."}</dd>
+            </div>
           ))}
-        </ol>
+        </dl>
       </div>
 
       {/* Background: stays fixed */}
