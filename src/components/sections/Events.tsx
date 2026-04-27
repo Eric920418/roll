@@ -135,7 +135,7 @@ export default function Events() {
               transition={{ type: "spring", stiffness: 240, damping: 22 }}
               className="flex flex-col gap-3"
             >
-              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-neutral-400">
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-neutral-400">
                 <motion.span
                   variants={pill}
                   className="absolute top-4 left-4 bg-[#5A1220] text-white text-[11px] font-medium px-3 py-1.5 rounded-full z-10"
