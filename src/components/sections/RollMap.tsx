@@ -2,11 +2,13 @@
 
 import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import { gsap } from "@/lib/gsap-register";
 import CounterAnimation from "@/components/ui/CounterAnimation";
 import World from "@svg-maps/world";
+import { pathForLocale } from "@/lib/routes";
+import type { Locale } from "@/i18n/routing";
 
 const mapData = [
   { key: "america", value: 26 },
@@ -41,6 +43,8 @@ const topCompanies = [
 export default function RollMap() {
   const t = useTranslations("RollMap");
   const tHero = useTranslations("Hero");
+  const locale = useLocale() as Locale;
+  const esgHref = pathForLocale("/esg", locale);
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -301,6 +305,15 @@ export default function RollMap() {
         ref={page1Ref}
         className="absolute inset-0 flex flex-col md:flex-row z-10"
       >
+        <a
+          href={esgHref}
+          aria-label="Go to ESG page"
+          className="group absolute bottom-6 right-6 md:bottom-10 md:right-10 z-30 inline-flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white shadow-xl transition-all duration-300 hover:scale-105"
+        >
+          <span className="font-bold text-lg md:text-xl tracking-[0.18em] font-[family-name:var(--font-heading)]">
+            ESG
+          </span>
+        </a>
         {/* Left: Hero content */}
         <div className="flex-1 flex items-center bg-primary relative overflow-hidden">
           <div className="px-8 md:px-12 lg:px-16 xl:px-24 w-full">
