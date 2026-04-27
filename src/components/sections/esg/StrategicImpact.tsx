@@ -47,11 +47,11 @@ export default function StrategicImpact() {
         whileInView="visible"
         viewport={{ once: true, margin: "-12%" }}
         variants={container}
-        className="w-full max-w-6xl mx-auto px-5 md:px-8 flex flex-col gap-12 md:gap-16"
+        className="w-full max-w-6xl mx-auto px-5 md:px-8 flex flex-col gap-6 md:gap-10"
       >
         <motion.h2
           variants={item}
-          className="text-5xl md:text-6xl lg:text-7xl font-black text-dark tracking-tight leading-[0.95] font-[family-name:var(--font-heading)]"
+          className="text-4xl md:text-5xl lg:text-6xl font-black text-dark tracking-tight leading-[0.95] font-[family-name:var(--font-heading)]"
         >
           <span className="block">{titleLeadingWords}</span>
           <span className="block">

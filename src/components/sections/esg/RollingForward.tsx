@@ -40,7 +40,7 @@ export default function RollingForward() {
         whileInView="visible"
         viewport={{ once: true, margin: "-12%" }}
         variants={container}
-        className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-10 md:gap-14"
+        className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-6 md:gap-10"
       >
         <motion.h2
           variants={item}
