@@ -53,7 +53,8 @@ const epicenterPillars = [
   },
   {
     label: "STRATEGY",
-    description: "",
+    description:
+      "A pivotal economic moment offering unprecedented market entry incentives.",
   },
 ];
 
@@ -287,13 +288,14 @@ export default function RollMap() {
             <dd>{comparisonData.taiwan.value.toLocaleString()}</dd>
           </div>
         </dl>
-        <h3>The New Epicenter of Global Growth</h3>
-        <p>Beyond Manufacturing — A Hub of Capital and Innovation.</p>
+        <h3>Why Taiwan, Why Now?</h3>
+        <p>The New Epicenter of Global Growth</p>
+        <p>Beyond Manufacturing A Hub of Capital and Innovation</p>
         <dl>
           {epicenterPillars.map((p) => (
             <div key={p.label}>
               <dt>{p.label}</dt>
-              <dd>{p.description || "Description coming soon."}</dd>
+              <dd>{p.description}</dd>
             </div>
           ))}
         </dl>
@@ -460,42 +462,41 @@ export default function RollMap() {
         <div className="w-full max-w-4xl mx-auto relative z-10">
           <div
             ref={whyTaiwanRef}
-            className="mb-10 md:mb-14 text-center max-w-5xl mx-auto px-2"
+            className="mb-10 md:mb-14 text-center max-w-3xl mx-auto px-2"
           >
             <h2
-              className="why-taiwan-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-dark tracking-tight mb-3 md:mb-4 font-[family-name:var(--font-heading)]"
+              className="why-taiwan-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-dark tracking-tight mb-6 md:mb-8 font-[family-name:var(--font-heading)]"
+              style={{ opacity: 0 }}
+            >
+              Why Taiwan, Why Now?
+            </h2>
+
+            <p
+              className="why-taiwan-line text-base md:text-lg lg:text-xl font-semibold text-dark mb-2 font-[family-name:var(--font-heading)]"
               style={{ opacity: 0 }}
             >
               The New Epicenter of Global Growth
-            </h2>
+            </p>
             <p
-              className="why-taiwan-line text-sm md:text-base lg:text-lg text-dark/65 leading-relaxed mb-8 md:mb-12 max-w-2xl mx-auto font-[family-name:var(--font-body)]"
+              className="why-taiwan-line text-sm md:text-base text-dark/60 mb-8 md:mb-10 font-[family-name:var(--font-body)]"
               style={{ opacity: 0 }}
             >
-              Beyond Manufacturing — A Hub of Capital and Innovation.
+              Beyond Manufacturing A Hub of Capital and Innovation
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 text-left">
+
+            <div className="flex flex-col gap-5 md:gap-6 text-left max-w-2xl mx-auto">
               {epicenterPillars.map((pillar) => (
                 <div
                   key={pillar.label}
-                  className="why-taiwan-line flex flex-col gap-3 p-5 md:p-6 rounded-xl border border-dark/10 bg-white/40"
+                  className="why-taiwan-line"
                   style={{ opacity: 0 }}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-[3px] h-4 bg-primary" />
-                    <span className="text-[10px] md:text-[11px] font-bold tracking-[0.22em] uppercase text-primary font-[family-name:var(--font-heading)]">
-                      {pillar.label}
-                    </span>
-                  </div>
-                  {pillar.description ? (
-                    <p className="text-xs md:text-sm text-dark/75 leading-relaxed font-[family-name:var(--font-body)]">
-                      {pillar.description}
-                    </p>
-                  ) : (
-                    <p className="text-xs md:text-sm text-dark/35 italic leading-relaxed font-[family-name:var(--font-body)]">
-                      — description coming soon.
-                    </p>
-                  )}
+                  <p className="text-[11px] md:text-xs font-bold tracking-[0.22em] uppercase text-primary mb-1 font-[family-name:var(--font-heading)]">
+                    {pillar.label}
+                  </p>
+                  <p className="text-sm md:text-base text-dark/75 leading-relaxed font-[family-name:var(--font-body)]">
+                    {pillar.description}
+                  </p>
                 </div>
               ))}
             </div>
