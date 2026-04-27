@@ -11,6 +11,7 @@
 - **GSAP + ScrollTrigger** — 滾動驅動動畫
 - **next-intl** — 雙語 i18n（`en` 預設、`zh-tw`）
 - **next-mdx-remote** — 內容頁 MDX 渲染
+- **字型**：**Hero New** (Adobe Fonts / Typekit) + Noto Sans TC（中文 fallback）
 - **zod** — MDX frontmatter 驗證（錯誤完整顯示）
 - **pnpm** — 套件管理（禁止 npm / yarn）
 

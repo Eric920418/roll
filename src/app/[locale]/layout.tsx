@@ -4,7 +4,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing, type Locale } from "@/i18n/routing";
-import { Space_Grotesk, Inter, Noto_Sans_TC } from "next/font/google";
+import { Noto_Sans_TC } from "next/font/google";
 import { SITE_URL } from "@/lib/routes";
 import { localBusinessSchema } from "@/lib/schema";
 import "../globals.css";
@@ -42,25 +42,15 @@ export async function generateMetadata({
   };
 }
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
 const notoSansTC = Noto_Sans_TC({
   subsets: ["latin"],
   variable: "--font-chinese",
   weight: ["400", "500", "700"],
   display: "swap",
 });
+
+// Adobe Fonts (Typekit) — Hero New
+const TYPEKIT_CSS_URL = "https://use.typekit.net/vvw0spn.css";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -85,10 +75,13 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html
       lang={locale}
-      className={`${spaceGrotesk.variable} ${inter.variable} ${notoSansTC.variable}`}
+      className={notoSansTC.variable}
       suppressHydrationWarning
     >
       <body className="min-h-screen antialiased">
+        {/* Adobe Fonts (Typekit) — Hero New. React 19 hoists these to <head>. */}
+        <link rel="preconnect" href="https://use.typekit.net" crossOrigin="" />
+        <link rel="stylesheet" href={TYPEKIT_CSS_URL} />
         {/* Organization + ProfessionalService 結構化資料 */}
         <script
           type="application/ld+json"
