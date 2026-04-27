@@ -23,6 +23,9 @@ export default function StrategicImpact() {
   const titleText = t("title");
   const titleBase = titleText.replace(/\.$/, "");
   const hasDot = titleText.endsWith(".");
+  const titleWords = titleBase.split(" ");
+  const titleLeadingWords = titleWords.slice(0, -1).join(" ");
+  const titleLastWord = titleWords.slice(-1)[0];
 
   const internationalItems = [
     { title: t("intItem1Title"), desc: t("intItem1Desc") },
@@ -48,10 +51,13 @@ export default function StrategicImpact() {
       >
         <motion.h2
           variants={item}
-          className="text-4xl md:text-5xl lg:text-6xl font-black text-dark tracking-tight leading-none font-[family-name:var(--font-heading)]"
+          className="text-5xl md:text-6xl lg:text-7xl font-black text-dark tracking-tight leading-[0.95] font-[family-name:var(--font-heading)]"
         >
-          {titleBase}
-          {hasDot && <span className="text-primary">.</span>}
+          <span className="block">{titleLeadingWords}</span>
+          <span className="block">
+            {titleLastWord}
+            {hasDot && <span className="text-primary">.</span>}
+          </span>
         </motion.h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14">
