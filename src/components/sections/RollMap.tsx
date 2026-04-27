@@ -503,262 +503,76 @@ export default function RollMap() {
         </div>
       </div>
 
-      {/* Page 3: Company Ranking */}
+      {/* Page 3: The New Epicenter of Global Growth */}
       <div
         ref={page3Ref}
         className="absolute inset-0 flex flex-col items-center justify-center px-8 md:px-16 lg:px-24 z-10 opacity-0"
       >
-        <div className="w-full max-w-2xl mx-auto">
-          {/* Header bar */}
+        <div className="w-full max-w-5xl mx-auto flex flex-col items-center text-center">
+          {/* Heading */}
           <div
-            className="flex items-center justify-between mb-12"
             style={{
               opacity: page3Active ? 1 : 0,
-              transform: page3Active ? "none" : "translateY(10px)",
+              transform: page3Active ? "none" : "translateY(20px)",
               transition:
-                "opacity 0.6s cubic-bezier(0.33,1,0.68,1), transform 0.6s cubic-bezier(0.33,1,0.68,1)",
+                "opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1)",
             }}
+            className="mb-4 md:mb-6"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-[3px] h-5 bg-primary" />
-              <span className="text-[10px] font-semibold tracking-[0.22em] uppercase text-primary font-[family-name:var(--font-heading)]">
-                {t("rankingTitle")}
-              </span>
-            </div>
-            <div className="flex items-center gap-8">
-              <span className="text-[9px] font-medium tracking-[0.18em] uppercase text-dark/[0.28] font-[family-name:var(--font-heading)]">
-                {t("company")}
-              </span>
-              <span className="text-[9px] font-medium tracking-[0.18em] uppercase text-dark/[0.28] font-[family-name:var(--font-heading)]">
-                {t("valuation")}
-              </span>
-            </div>
+            <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-dark tracking-tight font-[family-name:var(--font-heading)]">
+              The New Epicenter of Global Growth
+            </h2>
           </div>
 
-
-          {/* Ranks 1–5 */}
-          {topCompanies
-            .filter((c) => !c.isClient)
-            .map((company, i) => (
-              <div
-                key={company.rank}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "2.8rem 1fr auto",
-                  alignItems: "center",
-                  borderBottom: "1px solid rgba(26,26,26,0.055)",
-                  padding: "0.85rem 0",
-                  opacity: page3Active ? 1 : 0,
-                  transform: page3Active ? "none" : "translateY(14px)",
-                  transition: `opacity 0.5s cubic-bezier(0.33,1,0.68,1) ${0.1 + i * 0.085}s, transform 0.5s cubic-bezier(0.33,1,0.68,1) ${0.1 + i * 0.085}s`,
-                }}
-              >
-                <span
-                  className="font-[family-name:var(--font-heading)] select-none tabular-nums"
-                  style={{
-                    fontSize: "clamp(0.65rem, 1.1vw, 0.72rem)",
-                    fontWeight: 700,
-                    letterSpacing: "0.04em",
-                    color:
-                      i === 0 ? "rgba(212,165,116,0.85)" : "rgba(26,26,26,0.2)",
-                    lineHeight: 1,
-                  }}
-                >
-                  {String(company.rank).padStart(2, "0")}
-                </span>
-                <span
-                  className="font-[family-name:var(--font-heading)] pl-2"
-                  style={{
-                    fontSize: "clamp(0.82rem, 1.4vw, 0.96rem)",
-                    fontWeight: i === 0 ? 600 : 500,
-                    letterSpacing: "-0.01em",
-                    color:
-                      i === 0 ? "rgba(26,26,26,0.88)" : "rgba(26,26,26,0.52)",
-                  }}
-                >
-                  {company.name}
-                </span>
-                <span
-                  className="font-[family-name:var(--font-heading)] tabular-nums"
-                  style={{
-                    fontSize: "clamp(0.75rem, 1.15vw, 0.84rem)",
-                    fontWeight: 500,
-                    letterSpacing: "0.02em",
-                    color:
-                      i === 0 ? "rgba(26,26,26,0.55)" : "rgba(26,26,26,0.25)",
-                  }}
-                >
-                  {company.valuation}
-                </span>
-              </div>
-            ))}
-
-          {/* Reveal separator with diamond */}
-          <div
+          {/* Sub-heading */}
+          <p
             style={{
-              position: "relative",
-              margin: "1.6rem 0 1.4rem",
-              opacity: page3ClientsActive ? 1 : 0,
-              transition: "opacity 0.7s ease 0s",
+              opacity: page3Active ? 1 : 0,
+              transform: page3Active ? "none" : "translateY(14px)",
+              transition:
+                "opacity 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s, transform 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s",
             }}
+            className="text-base md:text-lg lg:text-xl text-dark/65 mb-12 md:mb-16 max-w-2xl font-[family-name:var(--font-body)]"
           >
-            <div
-              style={{
-                height: "1px",
-                background:
-                  "linear-gradient(90deg, transparent 0%, rgba(123,26,44,0.35) 40%, rgba(123,26,44,0.35) 60%, transparent 100%)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%) rotate(45deg)",
-                width: "5px",
-                height: "5px",
-                background: "var(--color-primary)",
-                opacity: page3ClientsActive ? 1 : 0,
-                transition: "opacity 0.4s ease 0.3s",
-              }}
-            />
-          </div>
+            Beyond Manufacturing — A Hub of Capital and Innovation.
+          </p>
 
-          {/* Ranks 6–7: OUR CLIENT */}
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}
-          >
-            {topCompanies
-              .filter((c) => c.isClient)
-              .map((company, i) => (
+          {/* Three pillars */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            {epicenterPillars.map((pillar, i) => {
+              const isStrategy = pillar.label === "STRATEGY";
+              const reveal = isStrategy ? page3ClientsActive : page3Active;
+              const delay = isStrategy ? 0 : 0.3 + i * 0.15;
+              return (
                 <div
-                  key={company.rank}
+                  key={pillar.label}
                   style={{
-                    position: "relative",
-                    display: "grid",
-                    gridTemplateColumns: "2.8rem 1fr auto",
-                    alignItems: "center",
-                    padding: "1rem 1.1rem 1rem 1rem",
-                    borderRadius: "6px",
-                    overflow: "hidden",
-                    opacity: page3ClientsActive ? 1 : 0,
-                    transform: page3ClientsActive
-                      ? "none"
-                      : "translateY(18px) scale(0.985)",
-                    transition: `opacity 0.75s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.18}s, transform 0.75s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.18}s`,
+                    opacity: reveal ? 1 : 0,
+                    transform: reveal ? "none" : "translateY(24px)",
+                    transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${delay}s, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${delay}s`,
                   }}
+                  className="flex flex-col gap-4 text-left p-6 md:p-7 rounded-xl border border-dark/10 hover:border-primary/30 transition-colors"
                 >
-                  {/* Deep background */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        "linear-gradient(118deg, #6B1626 0%, #4E0F1B 55%, #3D0C15 100%)",
-                      borderRadius: "6px",
-                    }}
-                  />
-                  {/* Left accent stripe */}
-                  <div
-                    className="absolute left-0 top-0 bottom-0 w-[3px]"
-                    style={{
-                      background:
-                        "linear-gradient(180deg, var(--color-accent) 0%, rgba(212,165,116,0.4) 100%)",
-                      borderRadius: "6px 0 0 6px",
-                    }}
-                  />
-                  {/* Top shimmer edge */}
-                  <div
-                    className="absolute top-0 right-0 h-px"
-                    style={{
-                      left: "3px",
-                      background:
-                        "linear-gradient(90deg, rgba(212,165,116,0.5) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)",
-                    }}
-                  />
-
-                  <span
-                    className="relative z-10 font-[family-name:var(--font-heading)] select-none tabular-nums"
-                    style={{
-                      fontSize: "clamp(0.65rem, 1.1vw, 0.72rem)",
-                      fontWeight: 700,
-                      letterSpacing: "0.04em",
-                      color: "rgba(212,165,116,0.55)",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {String(company.rank).padStart(2, "0")}
-                  </span>
-
-                  <div className="relative z-10 flex items-center gap-2.5 pl-2">
-                    <span
-                      className="font-[family-name:var(--font-heading)]"
-                      style={{
-                        fontSize: "clamp(0.85rem, 1.45vw, 1rem)",
-                        fontWeight: 600,
-                        letterSpacing: "-0.015em",
-                        color: "rgba(255,255,255,0.93)",
-                      }}
-                    >
-                      {company.name}
-                    </span>
-                    <span
-                      className="font-[family-name:var(--font-heading)]"
-                      style={{
-                        fontSize: "8px",
-                        fontWeight: 700,
-                        letterSpacing: "0.16em",
-                        textTransform: "uppercase",
-                        color: "var(--color-accent)",
-                        border: "1px solid rgba(212,165,116,0.38)",
-                        background: "rgba(212,165,116,0.08)",
-                        padding: "3px 7px",
-                        borderRadius: "3px",
-                        whiteSpace: "nowrap",
-                        lineHeight: "1.4",
-                      }}
-                    >
-                      {t("ourClient")}
+                  <div className="flex items-center gap-3">
+                    <div className="w-[3px] h-5 bg-primary" />
+                    <span className="text-[11px] md:text-xs font-bold tracking-[0.22em] uppercase text-primary font-[family-name:var(--font-heading)]">
+                      {pillar.label}
                     </span>
                   </div>
-
-                  <span
-                    className="relative z-10 font-[family-name:var(--font-heading)] tabular-nums"
-                    style={{
-                      fontSize: "clamp(0.78rem, 1.2vw, 0.88rem)",
-                      fontWeight: 600,
-                      letterSpacing: "0.02em",
-                      color: "rgba(255,255,255,0.72)",
-                    }}
-                  >
-                    {company.valuation}
-                  </span>
+                  {pillar.description ? (
+                    <p className="text-sm md:text-base text-dark/75 leading-relaxed font-[family-name:var(--font-body)]">
+                      {pillar.description}
+                    </p>
+                  ) : (
+                    <p className="text-sm md:text-base text-dark/35 italic leading-relaxed font-[family-name:var(--font-body)]">
+                      — description coming soon.
+                    </p>
+                  )}
                 </div>
-              ))}
+              );
+            })}
           </div>
 
-          {/* Footer note */}
-          <div
-            className="flex items-center justify-end gap-2"
-            style={{
-              marginTop: "1.4rem",
-              opacity: page3ClientsActive ? 1 : 0,
-              transition: "opacity 0.5s ease 0.8s",
-            }}
-          >
-            <div className="w-4 h-px bg-dark/[0.18]" />
-            <span
-              className="font-[family-name:var(--font-heading)]"
-              style={{
-                fontSize: "9px",
-                fontWeight: 500,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: "rgba(26,26,26,0.25)",
-              }}
-            >
-              {t("byValuation")} · {new Date().getFullYear()}
-            </span>
-          </div>
         </div>
       </div>
     </section>
