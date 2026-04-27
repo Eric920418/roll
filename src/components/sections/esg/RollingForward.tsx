@@ -23,6 +23,9 @@ export default function RollingForward() {
   const titleText = t("title");
   const titleBase = titleText.replace(/\.$/, "");
   const hasDot = titleText.endsWith(".");
+  const titleWords = titleBase.split(" ");
+  const titleFirstLine = titleWords[0];
+  const titleSecondLine = titleWords.slice(1).join(" ");
 
   const years = [
     { label: t("year1Label"), title: t("year1Title"), desc: t("year1Desc") },
@@ -41,10 +44,13 @@ export default function RollingForward() {
       >
         <motion.h2
           variants={item}
-          className="text-4xl md:text-5xl lg:text-6xl font-black text-dark tracking-tight leading-none font-[family-name:var(--font-heading)]"
+          className="text-5xl md:text-7xl lg:text-8xl font-black text-dark tracking-tight leading-[0.95] font-[family-name:var(--font-heading)]"
         >
-          {titleBase}
-          {hasDot && <span className="text-primary">.</span>}
+          <span className="block">{titleFirstLine}</span>
+          <span className="block">
+            {titleSecondLine}
+            {hasDot && <span className="text-primary">.</span>}
+          </span>
         </motion.h2>
 
         <div className="flex flex-col">

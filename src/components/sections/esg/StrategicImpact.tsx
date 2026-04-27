@@ -20,6 +20,10 @@ const item: Variants = {
 export default function StrategicImpact() {
   const t = useTranslations("ESG.strategicImpact");
 
+  const titleText = t("title");
+  const titleBase = titleText.replace(/\.$/, "");
+  const hasDot = titleText.endsWith(".");
+
   const internationalItems = [
     { title: t("intItem1Title"), desc: t("intItem1Desc") },
     { title: t("intItem2Title"), desc: t("intItem2Desc") },
@@ -44,9 +48,10 @@ export default function StrategicImpact() {
       >
         <motion.h2
           variants={item}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold text-dark tracking-tight font-[family-name:var(--font-heading)]"
+          className="text-4xl md:text-5xl lg:text-6xl font-black text-dark tracking-tight leading-none font-[family-name:var(--font-heading)]"
         >
-          {t("title")}
+          {titleBase}
+          {hasDot && <span className="text-primary">.</span>}
         </motion.h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14">
