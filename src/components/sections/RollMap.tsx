@@ -469,18 +469,6 @@ export default function RollMap() {
               Why Taiwan, Why Now?
             </h2>
 
-            <p
-              className="why-taiwan-line text-base md:text-lg lg:text-xl font-semibold text-dark mb-2 font-[family-name:var(--font-heading)]"
-              style={{ opacity: 0 }}
-            >
-              The New Epicenter of Global Growth
-            </p>
-            <p
-              className="why-taiwan-line text-sm md:text-base text-dark/60 mb-8 md:mb-10 font-[family-name:var(--font-body)]"
-              style={{ opacity: 0 }}
-            >
-              Beyond Manufacturing A Hub of Capital and Innovation
-            </p>
 
             <div className="flex flex-col gap-5 md:gap-6 text-left max-w-2xl mx-auto">
               {epicenterPillars.map((pillar) => (
