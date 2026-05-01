@@ -1,6 +1,5 @@
-"use client";
-
-import { useTranslations } from "next-intl";
+import Image from "next/image";
+import { getTranslations } from "next-intl/server";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 
 const clients = [
@@ -13,8 +12,8 @@ const clients = [
   { name: "Teotihuacan", logo: "/Teotihuacan.png" },
 ];
 
-export default function Clients() {
-  const t = useTranslations("Clients");
+export default async function Clients() {
+  const t = await getTranslations("Clients");
 
   return (
     <section className="bg-primary min-h-[70vh] flex items-center justify-center py-12 md:py-16">
@@ -28,11 +27,13 @@ export default function Clients() {
         <div className="flex flex-wrap items-center gap-6 sm:gap-10 md:gap-14">
           {clients.map((client, i) => (
             <ScrollReveal key={client.name} delay={i * 0.1}>
-              <div className="w-28 h-20 md:w-36 md:h-24 flex items-center justify-center">
-                <img
+              <div className="relative w-28 h-20 md:w-36 md:h-24 flex items-center justify-center">
+                <Image
                   src={client.logo}
                   alt={client.name}
-                  className="max-w-full max-h-full object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-opacity duration-300"
+                  fill
+                  sizes="(max-width: 768px) 112px, 144px"
+                  className="object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-opacity duration-300"
                 />
               </div>
             </ScrollReveal>

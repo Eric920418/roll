@@ -79,8 +79,11 @@ export default async function LocaleLayout({ children, params }: Props) {
       suppressHydrationWarning
     >
       <body className="min-h-screen antialiased">
-        {/* Adobe Fonts (Typekit) — Hero New. React 19 hoists these to <head>. */}
+        {/* Adobe Fonts (Typekit) — Hero New. React 19 hoists these to <head>.
+            preload 必須在 stylesheet 之前才有意義（瀏覽器才會優先下載字型 CSS）。 */}
         <link rel="preconnect" href="https://use.typekit.net" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://p.typekit.net" />
+        <link rel="preload" href={TYPEKIT_CSS_URL} as="style" crossOrigin="" />
         <link rel="stylesheet" href={TYPEKIT_CSS_URL} />
         {/* Organization + ProfessionalService 結構化資料 */}
         <script

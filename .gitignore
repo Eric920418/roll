@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# 圖片優化備份（一次性腳本產出，不入版控）
+/public/_originals/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

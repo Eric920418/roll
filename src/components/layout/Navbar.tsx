@@ -3,7 +3,7 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
-import { gsap } from "gsap";
+import { gsap } from "@/lib/gsap-register";
 import LanguageSwitch from "@/components/ui/LanguageSwitch";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";

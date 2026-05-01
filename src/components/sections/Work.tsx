@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion, type Variants } from "motion/react";
@@ -148,13 +149,12 @@ export default function Work() {
                 className="flex flex-col gap-3"
               >
                 <div className="aspect-[3/4] relative overflow-hidden rounded-sm bg-white/10">
-                  <img
+                  <Image
                     src={item.image}
                     alt={`Medix LLC ${i + 1}`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 320px"
+                    className="object-cover"
                   />
                 </div>
                 <motion.p

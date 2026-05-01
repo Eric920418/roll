@@ -1,7 +1,4 @@
-"use client";
-
 import Image from "next/image";
-import { useTranslations } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 
 const videos = [
@@ -26,8 +23,6 @@ const videos = [
 ];
 
 export default function GoldenTicket() {
-  const t = useTranslations("GoldenTicket");
-
   return (
     <section className="bg-primary min-h-[70vh] flex items-center justify-center py-12 md:py-16">
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-4 md:gap-8">
@@ -39,7 +34,7 @@ export default function GoldenTicket() {
               <div className="flex items-center gap-3">
                 <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 bg-white">
                   <Image
-                    src="/rollon 頭貼.png"
+                    src="/rollon-avatar.png"
                     alt="ROLL ON"
                     fill
                     sizes="56px"
@@ -103,10 +98,11 @@ export default function GoldenTicket() {
 
           <ScrollReveal direction="right" className="flex-1 flex justify-center">
             <Image
-              src="/Asia Founders Club.png"
+              src="/asia-founders-club.png"
               alt="Asia Founders Club"
               width={800}
               height={800}
+              sizes="(max-width: 768px) 256px, 320px"
               className="w-64 md:w-80 h-auto object-contain"
             />
           </ScrollReveal>

@@ -24,6 +24,16 @@ pnpm build      # 生產建置
 pnpm lint       # ESLint
 ```
 
+### 效能 / 圖片工具
+
+```bash
+# 圖片優化（一次性、原檔自動備份到 public/_originals/，已 git ignored）
+node scripts/optimize-images.mjs
+
+# Bundle 分析（開啟 .next/diagnostics/analyze/index.html 查看 treemap）
+ANALYZE=true pnpm build
+```
+
 ## 專案結構
 
 ```
@@ -44,11 +54,11 @@ src/
 │   └── layout.tsx             # Root metadata
 │
 ├── components/
-│   ├── layout/                # Navbar, Footer
-│   ├── sections/              # Hero, RollMap, TaiwanMap, Services, Work, Events, Clients, GoldenTicket, InsightsTeaser
-│   │   └── esg/               # ESG 頁專屬 sections（Hero / RollingForward / Sustainability / StrategicImpact / CoreBelief / JoinCTA）
+│   ├── layout/                # Navbar (client), Footer (client)
+│   ├── sections/              # RollMap, TaiwanMap, Work, Events 為 client；Services, Clients, GoldenTicket 為 server (RSC) + ScrollReveal client child；InsightsTeaser 目前未掛在首頁
+│   │   └── esg/               # ESG 頁 sections — 全為 client（直接用 motion variants）
 │   ├── content/               # ContentPage, FaqList, JsonLd（內容頁共用）
-│   └── ui/                    # ScrollReveal, CounterAnimation, LanguageSwitch
+│   └── ui/                    # ScrollReveal, CounterAnimation, LanguageSwitch（皆為 client）
 │
 ├── lib/
 │   ├── routes.ts              # 所有 slug 集中管理（sitemap / 內部連結共用 source of truth）
@@ -84,9 +94,9 @@ public/
 4. **Services** — 6 項服務卡片，每張連到 `/services/[slug]` + Investor Access CTA
 5. **Work** — 案例章節：`Medix LLC` 可展開/收合（`+` toggle + spring rotate），展開顯示 3 張圖 + 短描述 + `learn more` → `/cases/medix`；標題字元 stagger / 卡片 blur-to-focus + scale 進場
 6. **Events** — R Event. 3 張活動卡（日期 pill + 圖片區 + 標題 + 地址）；標題字元 stagger / 卡片 3D `rotateY` + blur + stagger，pill 獨立 spring pop
-7. **Clients** — 6 家客戶 logo 牆
-8. **GoldenTicket** — YouTube 頻道預覽
-9. **InsightsTeaser** — 3 篇 pillar guides 入口（爬蟲發現的 anchor）
+7. **Clients** — 6 家客戶 logo 牆（server component）
+8. **GoldenTicket** — YouTube 頻道預覽（server component）
+9. ~~**InsightsTeaser**~~ — 3 篇 pillar guides 入口（**目前未掛在 page.tsx**，預留下一波啟用）
 10. **Footer** — 聯絡表單 + 社群
 
 ## 內容頁（SEO / GEO 主引擎）
@@ -131,8 +141,21 @@ public/
 
 ## 動畫
 
-- **GSAP + ScrollTrigger**：從 `src/lib/gsap-register.ts`（`"use client"`）統一註冊；所有使用 GSAP 的元件從此檔 import
-- **Motion (framer-motion)**：非滾動驅動的進場動畫
+- **GSAP + ScrollTrigger**：從 `src/lib/gsap-register.ts`（`"use client"`）統一註冊；所有使用 GSAP 的元件**從此檔 import**（避免重複註冊與 plugin 漏載）
+- **Motion (framer-motion)**：非滾動驅動的進場動畫；統一使用 `motion/react` import（已 tree-shake 友善）
+- **ScrollReveal pattern**：`src/components/ui/ScrollReveal.tsx` 是無狀態 client wrapper，作為「server parent → client child」的 RSC 模式入口；只用它做 fade/slide 進場的 section 都是 server component（Services / Clients / GoldenTicket）
+
+## 圖片資產與效能
+
+- 所有 `public/` 圖片必須是 **被引用的、合理尺寸（< 2000px 寬）、壓縮過**。任何透過 `<Image>` 載入的圖在 Next.js 自動再轉 AVIF/WebP（次世代格式由 `next.config.ts` 開啟）
+- 新增大圖（特別是攝影 / 設計稿）後，跑 `node scripts/optimize-images.mjs`：
+  - 原檔自動備份到 `public/_originals/`（已 git-ignore）
+  - 大於 2000px 的圖會被縮到 2000px
+  - PNG 用 sharp + palette 壓縮、JPG 用 mozjpeg quality 82
+  - 已優化的圖再跑一次 idempotent（buf 比原檔小才覆蓋）
+- 已知不該載入的「未引用素材」會被腳本印 warning，請手動移到 `public/_originals/unused/`
+- 圖片元件統一用 `next/image`，禁止再用原生 `<img>`（除非有特殊 reason，例如非常小的 SVG inline）
+- 字型：Typekit 在 `<body>` 用 `<link rel="preload" as="style">` 加速首屏字型解析（React 19 hoist 到 head）；Noto Sans TC 用 `next/font/google` 自動子集化
 
 ## 部署
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { motion, type Variants } from "motion/react";
 
@@ -143,13 +144,12 @@ export default function Events() {
                   {event.date}
                 </motion.span>
                 {event.image && (
-                  <img
+                  <Image
                     src={event.image}
                     alt={event.title}
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 320px"
+                    className="object-contain"
                   />
                 )}
               </div>

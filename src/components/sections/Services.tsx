@@ -1,7 +1,5 @@
-"use client";
-
 import Link from "next/link";
-import { useTranslations, useLocale } from "next-intl";
+import { getTranslations, getLocale } from "next-intl/server";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
@@ -15,9 +13,9 @@ const services = [
   { key: "community", descKey: "communityDesc", slug: "investor-access" },
 ] as const;
 
-export default function Services() {
-  const t = useTranslations("Services");
-  const locale = useLocale() as Locale;
+export default async function Services() {
+  const t = await getTranslations("Services");
+  const locale = (await getLocale()) as Locale;
 
   return (
     <section id="services" className="bg-primary min-h-screen flex items-center justify-center">

@@ -289,8 +289,6 @@ export default function RollMap() {
           </div>
         </dl>
         <h3>Why Taiwan, Why Now?</h3>
-        <p>The New Epicenter of Global Growth</p>
-        <p>Beyond Manufacturing A Hub of Capital and Innovation</p>
         <dl>
           {epicenterPillars.map((p) => (
             <div key={p.label}>

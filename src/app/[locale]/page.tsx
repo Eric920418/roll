@@ -9,8 +9,6 @@ import Clients from "@/components/sections/Clients";
 import GoldenTicket from "@/components/sections/GoldenTicket";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import InsightsTeaser from "@/components/sections/InsightsTeaser";
-import FaqList from "@/components/content/FaqList";
 import JsonLd from "@/components/content/JsonLd";
 import { faqSchema, SITE_FAQS } from "@/lib/schema";
 import { SITE_URL, absoluteUrl } from "@/lib/routes";
