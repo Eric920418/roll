@@ -10,37 +10,37 @@ const services = [
     key: "fundraising",
     descKey: "fundraisingDesc",
     slug: "fundraising",
-    icon: "/1-fundraising.png",
+    icon: "/10.png",
   },
   {
     key: "globalExpansion",
     descKey: "globalExpansionDesc",
     slug: "market-entry",
-    icon: "/2-global expansion.png",
+    icon: "/20.png",
   },
   {
     key: "marketing",
     descKey: "marketingDesc",
     slug: "marketing",
-    icon: "/3-Marketing.png",
+    icon: "/30.png",
   },
   {
     key: "legalSupport",
     descKey: "legalSupportDesc",
     slug: "legal",
-    icon: "/4-legal support.png",
+    icon: "/40.png",
   },
   {
     key: "salesChannel",
     descKey: "salesChannelDesc",
     slug: "sales-channel",
-    icon: "/5-sales channel development.png",
+    icon: "/50.png",
   },
   {
     key: "community",
     descKey: "communityDesc",
     slug: "investor-access",
-    icon: "/6-all nighter community.png",
+    icon: "/60.png",
   },
 ] as const;
 
