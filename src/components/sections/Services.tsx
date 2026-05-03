@@ -76,7 +76,7 @@ export default async function Services() {
                       width={48}
                       height={48}
                       aria-hidden="true"
-                      className="w-3/4 h-3/4 object-contain select-none"
+                      className="w-full h-full object-cover select-none"
                     />
                   </div>
                   <h3 className="font-bold text-sm md:text-base text-white mb-1 font-[family-name:var(--font-heading)] group-hover:text-accent transition-colors">
