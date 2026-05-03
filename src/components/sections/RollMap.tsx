@@ -23,7 +23,7 @@ const mapData = [
 
 const comparisonData = {
   global: { value: 1000000, suffix: "+" },
-  taiwan: { value: 20000, suffix: "⬆" },
+  taiwan: { value: 20000 },
 };
 
 const topCompanies = [
@@ -421,15 +421,15 @@ export default function RollMap() {
                   ease: [0.22, 1, 0.36, 1],
                   delay: 0.6 + index * 0.08,
                 }}
-                className="map-item text-center"
+                className="map-item flex flex-col items-center text-center"
               >
-                <p className="text-sm md:text-base font-medium text-dark/60 mb-2 font-[family-name:var(--font-heading)]">
-                  {t(item.key)}
-                </p>
                 <CounterAnimation
                   end={item.value}
                   className="text-2xl md:text-3xl lg:text-4xl font-bold text-dark font-[family-name:var(--font-heading)]"
                 />
+                <p className="mt-2 text-sm md:text-base font-medium text-dark/60 font-[family-name:var(--font-heading)]">
+                  {t(item.key)}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -493,8 +493,8 @@ export default function RollMap() {
               {t("comparisonTitle")}
             </h3>
 
-            <div className="h-32 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
-              <div className="comparison-item flex-1 text-center md:text-right md:pr-20">
+            <div className="h-auto flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12">
+              <div className="comparison-item flex-1 flex flex-col items-center text-center">
                 <CounterAnimation
                   end={comparisonData.global.value}
                   suffix={comparisonData.global.suffix}
@@ -509,13 +509,23 @@ export default function RollMap() {
               <div className="hidden md:block w-[1px] h-16 bg-dark/30" />
               <div className="block md:hidden h-px w-24 bg-dark/20" />
 
-              <div className="comparison-item flex-1 text-center md:text-left md:pl-20">
-                <CounterAnimation
-                  end={comparisonData.taiwan.value}
-                  suffix={comparisonData.taiwan.suffix}
-                  value={taiwanCounterValue}
-                  className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
-                />
+              <div className="comparison-item flex-1 flex flex-col items-center text-center">
+                <div className="inline-flex items-center justify-center gap-2 md:gap-3">
+                  <CounterAnimation
+                    end={comparisonData.taiwan.value}
+                    suffix=""
+                    value={taiwanCounterValue}
+                    className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary font-[family-name:var(--font-heading)]"
+                  />
+                  <Image
+                    src="/箭頭.png"
+                    alt=""
+                    width={120}
+                    height={120}
+                    aria-hidden="true"
+                    className="w-6 sm:w-9 md:w-11 lg:w-14 h-auto select-none"
+                  />
+                </div>
                 <p className="mt-6 text-sm md:text-base text-dark/60 font-[family-name:var(--font-body)]">
                   {t("taiwanLabel")}
                 </p>
