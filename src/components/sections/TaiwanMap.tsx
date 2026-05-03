@@ -30,7 +30,13 @@ const EXCLUDED = ["kinmen-county", "lienchiang-county"];
 // Taiwan center on world map
 const TW_WORLD = { x: 811, y: 395 };
 
+// === Asia-zoomed viewBox ===
+// 把世界 viewBox（0 0 1010 666）裁到亞洲區，Taiwan 置中偏上
+// minX=651, minY=325, w=320, h=200 → center (811, 425)，Taiwan(811,395) 在中心線上方 30 單位
+const ASIA_VIEW_BOX = "651 325 320 200";
+
 // City positions (geographic accuracy verified against SVG country data)
+// labelDx/Dy 是 viewBox 單位 — 因為 zoom 後 1 單位 ≈ 3.5px，這裡用較小值讓 label 緊貼 city dot
 const BRIDGE_CITIES = [
   {
     nameKey: "tokyo",
@@ -38,8 +44,8 @@ const BRIDGE_CITIES = [
     y: 358,
     cpx: 845,
     cpy: 368,
-    labelDx: 14,
-    labelDy: 4,
+    labelDx: 5,
+    labelDy: 1.5,
     anchor: "start" as const,
   },
   {
@@ -49,7 +55,7 @@ const BRIDGE_CITIES = [
     cpx: 808,
     cpy: 366,
     labelDx: 0,
-    labelDy: -14,
+    labelDy: -4,
     anchor: "middle" as const,
   },
   {
@@ -58,8 +64,8 @@ const BRIDGE_CITIES = [
     y: 372,
     cpx: 799,
     cpy: 380,
-    labelDx: -14,
-    labelDy: 3,
+    labelDx: -5,
+    labelDy: 1,
     anchor: "end" as const,
   },
   {
@@ -69,7 +75,7 @@ const BRIDGE_CITIES = [
     cpx: 802,
     cpy: 436,
     labelDx: 0,
-    labelDy: 18,
+    labelDy: 5,
     anchor: "middle" as const,
   },
   {
@@ -78,8 +84,8 @@ const BRIDGE_CITIES = [
     y: 440,
     cpx: 800,
     cpy: 424,
-    labelDx: 14,
-    labelDy: 5,
+    labelDx: 5,
+    labelDy: 1.5,
     anchor: "start" as const,
   },
   {
@@ -88,8 +94,8 @@ const BRIDGE_CITIES = [
     y: 428,
     cpx: 794,
     cpy: 418,
-    labelDx: -14,
-    labelDy: 4,
+    labelDx: -5,
+    labelDy: 1.5,
     anchor: "end" as const,
   },
 ];
@@ -290,7 +296,7 @@ export default function TaiwanMap() {
           className="absolute inset-0 flex items-center justify-center opacity-0"
         >
           <svg
-            viewBox={(World as unknown as { viewBox: string }).viewBox}
+            viewBox={ASIA_VIEW_BOX}
             className="w-[95%] h-[90%] max-w-7xl"
             preserveAspectRatio="xMidYMid meet"
           >
@@ -302,10 +308,10 @@ export default function TaiwanMap() {
                 key={loc.id}
                 d={loc.path}
                 fill="white"
-                fillOpacity={loc.id === "tw" ? 0.15 : 0.04}
+                fillOpacity={loc.id === "tw" ? 0.18 : 0.05}
                 stroke="white"
-                strokeOpacity={loc.id === "tw" ? 0.2 : 0.06}
-                strokeWidth={loc.id === "tw" ? 0.5 : 0.3}
+                strokeOpacity={loc.id === "tw" ? 0.25 : 0.08}
+                strokeWidth={loc.id === "tw" ? 0.2 : 0.12}
               />
             ))}
 
@@ -313,19 +319,19 @@ export default function TaiwanMap() {
             <circle
               cx={TW_WORLD.x}
               cy={TW_WORLD.y}
-              r="3"
+              r="1.2"
               fill="#C8364B"
             />
             <circle
               cx={TW_WORLD.x}
               cy={TW_WORLD.y}
-              r="6"
+              r="2.5"
               fill="#C8364B"
               fillOpacity="0.3"
             >
               <animate
                 attributeName="r"
-                values="6;10;6"
+                values="2.5;4;2.5"
                 dur="2s"
                 repeatCount="indefinite"
               />
@@ -345,7 +351,7 @@ export default function TaiwanMap() {
                 d={`M${TW_WORLD.x},${TW_WORLD.y} Q${city.cpx},${city.cpy} ${city.x},${city.y}`}
                 fill="none"
                 stroke="white"
-                strokeWidth="0.8"
+                strokeWidth="0.4"
                 strokeDasharray="500"
                 strokeDashoffset="500"
                 opacity="0.5"
@@ -363,17 +369,17 @@ export default function TaiwanMap() {
                 <circle
                   cx={city.x}
                   cy={city.y}
-                  r="5"
+                  r="2"
                   fill="white"
-                  fillOpacity="0.1"
+                  fillOpacity="0.12"
                 />
                 {/* Dot */}
                 <circle
                   cx={city.x}
                   cy={city.y}
-                  r="2"
+                  r="0.9"
                   fill="white"
-                  fillOpacity="0.9"
+                  fillOpacity="0.95"
                 />
                 {/* City name */}
                 <text
@@ -381,8 +387,8 @@ export default function TaiwanMap() {
                   y={city.y + city.labelDy}
                   textAnchor={city.anchor}
                   fill="white"
-                  fillOpacity="0.7"
-                  fontSize="7"
+                  fillOpacity="0.85"
+                  fontSize="3.5"
                   fontWeight="500"
                   letterSpacing="0.06em"
                   style={{ fontFamily: "var(--font-heading)" }}
