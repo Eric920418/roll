@@ -20,27 +20,18 @@ export default function AboutHero() {
         const dotEl = dotRef.current!;
         const ballEl = ballRef.current!;
         const sectionEl = sectionRef.current!;
-        const wordmarkEl = wordmarkRef.current!;
 
         const dotRect = dotEl.getBoundingClientRect();
         const sectionRect = sectionEl.getBoundingClientRect();
 
-        // Ball ≈ visual size of the period glyph (font-size × ~0.18 in ExtraBold)
-        const fontSize = parseFloat(getComputedStyle(wordmarkEl).fontSize) || 96;
-        const ballSize = Math.max(fontSize * 0.13, 14);
+        // Ball must match the CSS dot exactly so the handoff is invisible.
+        const ballSize = dotRect.width;
         ballEl.style.width = `${ballSize}px`;
         ballEl.style.height = `${ballSize}px`;
 
-        // Period sits low on the baseline. Compute its visual center using font metrics:
-        // baseline ≈ top + fontSize × 0.82 (rough cap+x-height region)
-        // The "." sits centered around y = baseline - ballSize/2
-        const baselineY = dotRect.top + fontSize * 0.82;
-        const dotCenterY = baselineY - ballSize / 2;
-        // Horizontal: dot rect already covers the " ." span — use its right edge minus half ball
-        const dotCenterX = dotRect.right - ballSize / 2 - 4;
-
-        const targetX = dotCenterX - sectionRect.left - ballSize / 2;
-        const targetY = dotCenterY - sectionRect.top - ballSize / 2;
+        // Target = exact center of the CSS dot.
+        const targetX = dotRect.left + dotRect.width / 2 - sectionRect.left - ballSize / 2;
+        const targetY = dotRect.top + dotRect.height / 2 - sectionRect.top - ballSize / 2;
 
         // Start off-screen left at same Y as the dot
         const startX = -ballSize - 100;
@@ -147,11 +138,12 @@ export default function AboutHero() {
           <span
             ref={dotRef}
             aria-hidden="true"
-            className="inline-block align-baseline rounded-full bg-primary"
+            className="inline-block rounded-full bg-primary"
             style={{
-              width: "0.13em",
-              height: "0.13em",
-              marginLeft: "0.08em",
+              width: "0.18em",
+              height: "0.18em",
+              marginLeft: "0.04em",
+              verticalAlign: "baseline",
               opacity: 0,
             }}
           />

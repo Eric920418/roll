@@ -17,11 +17,23 @@ const item: Variants = {
   },
 };
 
+function Paragraphs({ text, className }: { text: string; className?: string }) {
+  return (
+    <>
+      {text.split("\n\n").map((p, i) => (
+        <p key={i} className={`${className ?? ""} ${i > 0 ? "mt-5" : ""}`}>
+          {p}
+        </p>
+      ))}
+    </>
+  );
+}
+
 export default function AboutPhilosophy() {
   const t = useTranslations("AboutPage.philosophy");
 
   return (
-    <section className="bg-primary text-cream py-24 md:py-32 px-5 md:px-8">
+    <section className="bg-cream text-dark py-24 md:py-32 px-5 md:px-8">
       <motion.div
         initial="hidden"
         whileInView="visible"
@@ -31,41 +43,41 @@ export default function AboutPhilosophy() {
       >
         <motion.h2
           variants={item}
-          className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-[-0.04em] font-[family-name:var(--font-heading)]"
+          className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-primary leading-[1.05] tracking-[-0.04em] font-[family-name:var(--font-heading)]"
         >
           {t("title")}
-          <span className="text-cream/50">.</span>
+          <span className="text-primary">.</span>
         </motion.h2>
 
         <motion.p
           variants={item}
-          className="mt-8 max-w-3xl text-base md:text-lg text-cream/85 leading-relaxed font-[family-name:var(--font-body)]"
+          className="mt-8 max-w-3xl text-base md:text-lg text-dark/85 leading-relaxed font-[family-name:var(--font-body)]"
         >
           {t("intro")}
         </motion.p>
 
         <motion.hr
           variants={item}
-          className="my-14 md:my-20 border-cream/25"
+          className="my-14 md:my-20 border-primary/20"
         />
 
         <div className="grid md:grid-cols-2 gap-10 md:gap-16">
-          <motion.div variants={item} className="border-l-2 border-cream/40 pl-6">
-            <h3 className="text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)]">
+          <motion.div variants={item} className="border-l-4 border-primary pl-6 md:pl-8">
+            <h3 className="text-3xl md:text-4xl font-extrabold text-primary tracking-[-0.04em] font-[family-name:var(--font-heading)]">
               {t("forwardMotionTitle")}
             </h3>
-            <p className="mt-5 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)]">
-              {t("forwardMotionBody")}
-            </p>
+            <div className="mt-5 text-dark/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)]">
+              <Paragraphs text={t("forwardMotionBody")} />
+            </div>
           </motion.div>
 
-          <motion.div variants={item} className="border-l-2 border-cream/40 pl-6">
-            <h3 className="text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)]">
+          <motion.div variants={item} className="border-l-4 border-primary pl-6 md:pl-8">
+            <h3 className="text-3xl md:text-4xl font-extrabold text-primary tracking-[-0.04em] font-[family-name:var(--font-heading)]">
               {t("visionImpactTitle")}
             </h3>
-            <p className="mt-5 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)]">
-              {t("visionImpactBody")}
-            </p>
+            <div className="mt-5 text-dark/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)]">
+              <Paragraphs text={t("visionImpactBody")} />
+            </div>
           </motion.div>
         </div>
       </motion.div>
