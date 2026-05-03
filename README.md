@@ -89,7 +89,7 @@ public/
 
 ## 首頁 Sections（由 `src/app/[locale]/page.tsx` 組合）
 
-1. **Navbar** — 固定導航（連到首頁 anchors；從內頁也可回跳）
+1. **Navbar** — 固定導航；漢堡選單只保留 `About` 與 `ESG` 兩個獨立頁面入口（首頁回跳由左上 Logo 提供，避免重複）
 2. **RollMap** — 滾動三頁：品牌 Hero → 全球 vs 台灣外商數量對比 → Forbes Global 2000 排名（含 ROLL ON 客戶）
    - 包含 `sr-only` SSR 純文字版本供 LLM / 螢幕閱讀器讀取（視覺化數據雙軌化）
 3. **TaiwanMap** — 台灣地圖縮放 → 全球 + 6 座橋樑城市；5 行品牌宣言
