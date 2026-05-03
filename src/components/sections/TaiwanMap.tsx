@@ -155,11 +155,11 @@ export default function TaiwanMap() {
           ease: "power2.in",
         })
 
-      // Phase 1: Taiwan zoom in (1.5-2.5x bigger than before, slightly above center)
+      // Phase 1: Taiwan zoom in
       .fromTo(
         taiwanRef.current,
-        { scale: 0.4, opacity: 0, y: -40 },
-        { scale: 2, opacity: 1, y: -60, duration: 1.2, ease: "power2.inOut" }
+        { scale: 0.3, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 1, ease: "power2.inOut" }
       )
         // "Roll on" label at Taipei
         .fromTo(
@@ -173,10 +173,9 @@ export default function TaiwanMap() {
 
         // Phase 2: Zoom OUT — Taiwan shrinks to its world-map dot, world map fades in
         .to(taiwanRef.current, {
-          scale: 0.12,
+          scale: 0.15,
           opacity: 0,
-          y: 0,
-          duration: 1.4,
+          duration: 1.2,
           ease: "power2.inOut",
         })
         .to(labelRef.current, { opacity: 0, duration: 0.3 }, "<")

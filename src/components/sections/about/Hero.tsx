@@ -20,18 +20,27 @@ export default function AboutHero() {
         const dotEl = dotRef.current!;
         const ballEl = ballRef.current!;
         const sectionEl = sectionRef.current!;
+        const wordmarkEl = wordmarkRef.current!;
 
         const dotRect = dotEl.getBoundingClientRect();
         const sectionRect = sectionEl.getBoundingClientRect();
 
-        // Ball visual size matches the dot's height (the period in Hero New ExtraBold renders compact)
-        const ballSize = Math.max(dotRect.height * 0.55, 32);
+        // Ball ≈ visual size of the period glyph (font-size × ~0.18 in ExtraBold)
+        const fontSize = parseFloat(getComputedStyle(wordmarkEl).fontSize) || 96;
+        const ballSize = Math.max(fontSize * 0.13, 14);
         ballEl.style.width = `${ballSize}px`;
         ballEl.style.height = `${ballSize}px`;
 
-        // Target = center of dot, relative to section
-        const targetX = dotRect.left + dotRect.width / 2 - sectionRect.left - ballSize / 2;
-        const targetY = dotRect.top + dotRect.height / 2 - sectionRect.top - ballSize / 2;
+        // Period sits low on the baseline. Compute its visual center using font metrics:
+        // baseline ≈ top + fontSize × 0.82 (rough cap+x-height region)
+        // The "." sits centered around y = baseline - ballSize/2
+        const baselineY = dotRect.top + fontSize * 0.82;
+        const dotCenterY = baselineY - ballSize / 2;
+        // Horizontal: dot rect already covers the " ." span — use its right edge minus half ball
+        const dotCenterX = dotRect.right - ballSize / 2 - 4;
+
+        const targetX = dotCenterX - sectionRect.left - ballSize / 2;
+        const targetY = dotCenterY - sectionRect.top - ballSize / 2;
 
         // Start off-screen left at same Y as the dot
         const startX = -ballSize - 100;
@@ -120,9 +129,9 @@ export default function AboutHero() {
         className="absolute top-0 left-0 rounded-full pointer-events-none"
         style={{
           background:
-            "radial-gradient(circle at 30% 30%, #C8364B 0%, #7B1A2C 55%, #5A1220 100%)",
+            "radial-gradient(circle at 32% 30%, #C8364B 0%, #7B1A2C 60%, #5A1220 100%)",
           boxShadow:
-            "0 12px 40px rgba(123,26,44,0.45), inset -4px -6px 10px rgba(0,0,0,0.25), inset 4px 6px 10px rgba(255,255,255,0.12)",
+            "0 6px 18px rgba(123,26,44,0.40), inset -2px -3px 5px rgba(0,0,0,0.28), inset 2px 3px 5px rgba(255,255,255,0.14)",
         }}
       />
 
@@ -133,7 +142,19 @@ export default function AboutHero() {
           style={{ opacity: 0 }}
         >
           {t("wordmark")}
-          <span ref={dotRef} className="text-primary" style={{ opacity: 0 }}> .</span>
+          {/* The "period" is a controlled circle (not a glyph) so its visual
+              size matches the rolling ball exactly during the handoff. */}
+          <span
+            ref={dotRef}
+            aria-hidden="true"
+            className="inline-block align-baseline rounded-full bg-primary"
+            style={{
+              width: "0.13em",
+              height: "0.13em",
+              marginLeft: "0.08em",
+              opacity: 0,
+            }}
+          />
         </h1>
         <p
           ref={taglineRef}
