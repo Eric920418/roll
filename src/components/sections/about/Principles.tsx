@@ -17,26 +17,35 @@ const card: Variants = {
   },
 };
 
-type CardProps = { num: string; title: string; body: string };
+type CardProps = { num: string; title: string; body: React.ReactNode };
 
 function PrincipleCard({ num, title, body }: CardProps) {
   return (
-    <motion.div variants={card} className="px-6 md:px-10 py-8 md:py-12 flex flex-col">
-      <div className="text-6xl md:text-7xl lg:text-8xl text-cream/35 font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] leading-none">
+    <motion.div
+      variants={card}
+      className="px-6 md:px-8 py-10 md:py-14 flex flex-col items-center text-center"
+    >
+      <div className="text-6xl md:text-7xl lg:text-8xl text-cream/30 font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] leading-none">
         {num}
       </div>
-      <h3 className="mt-6 md:mt-8 text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)]">
+      <h3 className="mt-8 md:mt-10 text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] text-cream">
         {title}
       </h3>
-      <p className="mt-4 md:mt-5 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)]">
+      <div className="mt-6 md:mt-8 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)] whitespace-pre-line max-w-[28ch]">
         {body}
-      </p>
+      </div>
     </motion.div>
   );
 }
 
 export default function AboutPrinciples() {
   const t = useTranslations("AboutPage.principles");
+
+  // Bold spans (e.g. "unfair advantage", "value, not price.") 來自 i18n 的 <b> 標籤
+  const renderBody = (key: "p1Body" | "p2Body" | "p3Body") =>
+    t.rich(key, {
+      b: (chunks) => <strong className="font-bold text-cream">{chunks}</strong>,
+    });
 
   return (
     <section className="bg-primary text-cream py-20 md:py-28 px-5 md:px-8">
@@ -45,11 +54,11 @@ export default function AboutPrinciples() {
         whileInView="visible"
         viewport={{ once: true, margin: "-12%" }}
         variants={container}
-        className="max-w-7xl mx-auto grid md:grid-cols-3 md:divide-x divide-cream/40"
+        className="max-w-7xl mx-auto grid md:grid-cols-3 md:divide-x divide-cream/30"
       >
-        <PrincipleCard num="01" title={t("p1Title")} body={t("p1Body")} />
-        <PrincipleCard num="02" title={t("p2Title")} body={t("p2Body")} />
-        <PrincipleCard num="03" title={t("p3Title")} body={t("p3Body")} />
+        <PrincipleCard num="01" title={t("p1Title")} body={renderBody("p1Body")} />
+        <PrincipleCard num="02" title={t("p2Title")} body={renderBody("p2Body")} />
+        <PrincipleCard num="03" title={t("p3Title")} body={renderBody("p3Body")} />
       </motion.div>
     </section>
   );
