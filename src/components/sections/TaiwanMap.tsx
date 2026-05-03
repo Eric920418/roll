@@ -30,13 +30,13 @@ const EXCLUDED = ["kinmen-county", "lienchiang-county"];
 // Taiwan center on world map
 const TW_WORLD = { x: 811, y: 395 };
 
-// === Asia-zoomed viewBox ===
-// 把世界 viewBox（0 0 1010 666）裁到亞洲區，Taiwan 置中偏上
-// minX=651, minY=325, w=320, h=200 → center (811, 425)，Taiwan(811,395) 在中心線上方 30 單位
-const ASIA_VIEW_BOX = "651 325 320 200";
+// === Asia + Eurasia + Africa viewBox ===
+// 把世界 viewBox（0 0 1010 666）裁到「Taiwan 為中心、向西延伸到土耳其/非洲、向東到日本」
+// minX=550, minY=315, w=360, h=220 → Taiwan(811,395) 在右中位置（橋樑向西 fan 開）
+const MAP_VIEW_BOX = "550 315 360 220";
 
 // City positions (geographic accuracy verified against SVG country data)
-// labelDx/Dy 是 viewBox 單位 — 因為 zoom 後 1 單位 ≈ 3.5px，這裡用較小值讓 label 緊貼 city dot
+// labelDx/Dy 是 viewBox 單位 — 因為 zoom 後 1 單位 ≈ 3px，這裡用較小值讓 label 緊貼 city dot
 const BRIDGE_CITIES = [
   {
     nameKey: "tokyo",
@@ -94,6 +94,47 @@ const BRIDGE_CITIES = [
     y: 428,
     cpx: 794,
     cpy: 418,
+    labelDx: -5,
+    labelDy: 1.5,
+    anchor: "end" as const,
+  },
+  // 新增 4 個 — Phnom Penh / Jakarta / Istanbul / Nairobi 為各區代表點
+  {
+    nameKey: "cambodia",
+    x: 768,
+    y: 422,
+    cpx: 790,
+    cpy: 412,
+    labelDx: -5,
+    labelDy: -2.5,
+    anchor: "end" as const,
+  },
+  {
+    nameKey: "indonesia",
+    x: 790,
+    y: 488,
+    cpx: 815,
+    cpy: 448,
+    labelDx: 5,
+    labelDy: 2,
+    anchor: "start" as const,
+  },
+  {
+    nameKey: "turkey",
+    x: 588,
+    y: 350,
+    cpx: 720,
+    cpy: 358,
+    labelDx: -5,
+    labelDy: 1.5,
+    anchor: "end" as const,
+  },
+  {
+    nameKey: "africa",
+    x: 580,
+    y: 462,
+    cpx: 720,
+    cpy: 420,
     labelDx: -5,
     labelDy: 1.5,
     anchor: "end" as const,
@@ -296,7 +337,7 @@ export default function TaiwanMap() {
           className="absolute inset-0 flex items-center justify-center opacity-0"
         >
           <svg
-            viewBox={ASIA_VIEW_BOX}
+            viewBox={MAP_VIEW_BOX}
             className="w-[95%] h-[90%] max-w-7xl"
             preserveAspectRatio="xMidYMid meet"
           >
