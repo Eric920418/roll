@@ -27,13 +27,13 @@ export default async function Clients() {
         <div className="flex flex-wrap items-center gap-6 sm:gap-10 md:gap-14">
           {clients.map((client, i) => (
             <ScrollReveal key={client.name} delay={i * 0.1}>
-              <div className="relative w-28 h-20 md:w-36 md:h-24 bg-white rounded-md overflow-hidden">
+              <div className="relative w-28 h-20 md:w-36 md:h-24">
                 <Image
                   src={client.logo}
                   alt={client.name}
                   fill
                   sizes="(max-width: 768px) 112px, 144px"
-                  className="object-contain"
+                  className="object-contain brightness-0 invert opacity-100"
                 />
               </div>
             </ScrollReveal>
