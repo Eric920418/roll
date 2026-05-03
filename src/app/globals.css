@@ -19,6 +19,23 @@ html {
   scroll-behavior: smooth;
 }
 
+/* When the custom red-dot cursor is active, hide the native cursor everywhere
+   except inside text-editable fields where the I-beam is needed. */
+html.custom-cursor-active,
+html.custom-cursor-active * {
+  cursor: none !important;
+}
+html.custom-cursor-active input[type="text"],
+html.custom-cursor-active input[type="email"],
+html.custom-cursor-active input[type="search"],
+html.custom-cursor-active input[type="url"],
+html.custom-cursor-active input[type="tel"],
+html.custom-cursor-active input[type="password"],
+html.custom-cursor-active input[type="number"],
+html.custom-cursor-active textarea {
+  cursor: text !important;
+}
+
 body {
   font-family: var(--font-body);
   background: #ffffff;

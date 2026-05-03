@@ -19,7 +19,7 @@ export default function AboutClosingCTA() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         className="max-w-4xl mx-auto flex flex-col items-center text-center gap-8"
       >
-        <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] font-[family-name:var(--font-heading)]">
+        <h2 className="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-[-0.04em] leading-[1.1] font-[family-name:var(--font-heading)]">
           {t("title")}
         </h2>
         <p className="text-base md:text-lg text-dark/75 max-w-2xl leading-relaxed font-[family-name:var(--font-body)]">

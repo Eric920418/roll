@@ -20,7 +20,7 @@ const item: Variants = {
 function EquationCell({ label, body }: { label: string; body: string }) {
   return (
     <motion.div variants={item} className="flex flex-col gap-3 md:gap-4">
-      <div className="text-4xl md:text-5xl lg:text-6xl text-primary font-[family-name:var(--font-display)] leading-none tracking-tight">
+      <div className="text-4xl md:text-5xl lg:text-6xl text-primary font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] leading-none">
         {label}
       </div>
       <p className="text-sm md:text-base text-dark/80 leading-relaxed font-[family-name:var(--font-body)] max-w-[28ch]">
@@ -35,7 +35,7 @@ function Symbol({ char }: { char: string }) {
     <motion.div
       variants={item}
       aria-hidden="true"
-      className="text-4xl md:text-5xl lg:text-6xl text-primary font-[family-name:var(--font-display)] leading-none flex items-start pt-1 md:pt-0"
+      className="text-4xl md:text-5xl lg:text-6xl text-primary font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] leading-none flex items-start pt-1 md:pt-0"
     >
       {char}
     </motion.div>

@@ -155,11 +155,11 @@ export default function TaiwanMap() {
           ease: "power2.in",
         })
 
-      // Phase 1: Taiwan zoom in
+      // Phase 1: Taiwan zoom in (1.5-2.5x bigger than before, slightly above center)
       .fromTo(
         taiwanRef.current,
-        { scale: 0.3, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 1, ease: "power2.inOut" }
+        { scale: 0.4, opacity: 0, y: -40 },
+        { scale: 2, opacity: 1, y: -60, duration: 1.2, ease: "power2.inOut" }
       )
         // "Roll on" label at Taipei
         .fromTo(
@@ -171,12 +171,12 @@ export default function TaiwanMap() {
         // Pause
         .to({}, { duration: 0.6 })
 
-        // Phase 2: Zoom out → global view
-        // Taiwan fades out while world map fades in
+        // Phase 2: Zoom OUT — Taiwan shrinks to its world-map dot, world map fades in
         .to(taiwanRef.current, {
-          scale: 0.15,
+          scale: 0.12,
           opacity: 0,
-          duration: 1.2,
+          y: 0,
+          duration: 1.4,
           ease: "power2.inOut",
         })
         .to(labelRef.current, { opacity: 0, duration: 0.3 }, "<")
@@ -189,9 +189,10 @@ export default function TaiwanMap() {
         // Phase 3: Bridges radiate from Taiwan on world map
         .fromTo(
           bridgeLines,
-          { strokeDashoffset: 500 },
+          { strokeDashoffset: 500, opacity: 0.5 },
           {
             strokeDashoffset: 0,
+            opacity: 0.9,
             duration: 1.4,
             stagger: 0.1,
             ease: "power2.out",
@@ -210,11 +211,29 @@ export default function TaiwanMap() {
           },
           "<+0.4"
         )
-        // Pause after bridges
-        .to({}, { duration: 0.4 })
+        // Hold so user reads the bridge map
+        .to({}, { duration: 0.6 })
 
-        // Phase 4: Manifesto — line by line
-        .to(manifestoRef.current, { opacity: 1, duration: 0.3 })
+        // Phase 3.5: FADE OUT lines & cities, prepare for manifesto
+        .to(bridgeLines, {
+          opacity: 0,
+          duration: 0.7,
+          ease: "power2.inOut",
+        })
+        .to(
+          cityMarkers,
+          { opacity: 0, duration: 0.6, ease: "power2.inOut" },
+          "<"
+        )
+        // World map dims down for text legibility
+        .to(
+          worldMapRef.current,
+          { opacity: 0.25, duration: 0.6, ease: "power2.inOut" },
+          "<"
+        )
+
+        // Phase 4: Manifesto — line by line emerges over the dimmed map
+        .to(manifestoRef.current, { opacity: 1, duration: 0.3 }, "-=0.3")
         .fromTo(
           manifestoLines,
           { opacity: 0, y: 28 },

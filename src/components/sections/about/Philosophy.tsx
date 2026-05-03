@@ -31,7 +31,7 @@ export default function AboutPhilosophy() {
       >
         <motion.h2
           variants={item}
-          className="text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight font-[family-name:var(--font-heading)]"
+          className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-[-0.04em] font-[family-name:var(--font-heading)]"
         >
           {t("title")}
           <span className="text-cream/50">.</span>
@@ -51,7 +51,7 @@ export default function AboutPhilosophy() {
 
         <div className="grid md:grid-cols-2 gap-10 md:gap-16">
           <motion.div variants={item} className="border-l-2 border-cream/40 pl-6">
-            <h3 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-heading)]">
+            <h3 className="text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)]">
               {t("forwardMotionTitle")}
             </h3>
             <p className="mt-5 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)]">
@@ -60,7 +60,7 @@ export default function AboutPhilosophy() {
           </motion.div>
 
           <motion.div variants={item} className="border-l-2 border-cream/40 pl-6">
-            <h3 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-heading)]">
+            <h3 className="text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)]">
               {t("visionImpactTitle")}
             </h3>
             <p className="mt-5 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)]">

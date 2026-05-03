@@ -20,12 +20,13 @@ export default function CoreBelief() {
       >
         <span
           aria-hidden="true"
-          className="absolute -top-6 -left-2 md:-top-10 md:-left-12 text-[8rem] md:text-[14rem] leading-none text-dark/10 select-none font-bold font-[family-name:var(--font-heading)] z-0"
+          className="absolute -top-6 -left-2 md:-top-10 md:-left-12 text-[8rem] md:text-[14rem] leading-none text-primary/10 select-none z-0"
+          style={{ fontFamily: '"Arial Black", Arial, sans-serif', fontWeight: 400 }}
         >
           &ldquo;
         </span>
 
-        <h2 className="relative z-10 text-3xl md:text-5xl lg:text-6xl font-bold text-dark tracking-tight font-[family-name:var(--font-heading)]">
+        <h2 className="relative z-10 text-3xl md:text-5xl lg:text-6xl font-extrabold text-dark tracking-[-0.04em] font-[family-name:var(--font-heading)]">
           {titleBase}
           {hasTrailingDot && <span className="text-primary">.</span>}
         </h2>
@@ -36,7 +37,8 @@ export default function CoreBelief() {
 
         <span
           aria-hidden="true"
-          className="absolute -bottom-20 -right-2 md:-bottom-28 md:-right-12 text-[8rem] md:text-[14rem] leading-none text-dark/10 select-none font-bold font-[family-name:var(--font-heading)] z-0"
+          className="absolute -bottom-20 -right-2 md:-bottom-28 md:-right-12 text-[8rem] md:text-[14rem] leading-none text-primary/10 select-none z-0"
+          style={{ fontFamily: '"Arial Black", Arial, sans-serif', fontWeight: 400 }}
         >
           &rdquo;
         </span>

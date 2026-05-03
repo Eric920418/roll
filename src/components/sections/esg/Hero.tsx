@@ -49,13 +49,13 @@ export default function EsgHero() {
         <div>
           <motion.h1
             variants={item}
-            className="text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.05] tracking-tight font-[family-name:var(--font-heading)]"
+            className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-white leading-[1.05] tracking-[-0.04em] font-[family-name:var(--font-heading)]"
           >
             {t("titleLine1")}
           </motion.h1>
           <motion.h1
             variants={item}
-            className="text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.05] tracking-tight font-[family-name:var(--font-heading)]"
+            className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-white leading-[1.05] tracking-[-0.04em] font-[family-name:var(--font-heading)]"
           >
             {t("titleLine2")}
           </motion.h1>
@@ -76,7 +76,7 @@ export default function EsgHero() {
             <CounterAnimation
               end={3}
               suffix="x"
-              className="text-4xl md:text-6xl font-bold text-white font-[family-name:var(--font-heading)]"
+              className="text-4xl md:text-6xl font-extrabold text-white tracking-[-0.04em] font-[family-name:var(--font-heading)]"
             />
             <p className="text-[10px] md:text-xs text-white/60 uppercase tracking-widest font-[family-name:var(--font-heading)]">
               {t("stat1Label")}
@@ -86,14 +86,14 @@ export default function EsgHero() {
             <CounterAnimation
               end={20000}
               suffix="+"
-              className="text-4xl md:text-6xl font-bold text-white font-[family-name:var(--font-heading)]"
+              className="text-4xl md:text-6xl font-extrabold text-white tracking-[-0.04em] font-[family-name:var(--font-heading)]"
             />
             <p className="text-[10px] md:text-xs text-white/60 uppercase tracking-widest font-[family-name:var(--font-heading)]">
               {t("stat2Label")}
             </p>
           </motion.div>
           <motion.div variants={statItem} className="flex flex-col items-center gap-2 text-center">
-            <span className="text-4xl md:text-6xl font-bold text-white font-[family-name:var(--font-heading)]">
+            <span className="text-4xl md:text-6xl font-extrabold text-white tracking-[-0.04em] font-[family-name:var(--font-heading)]">
               MIT
             </span>
             <p className="text-[10px] md:text-xs text-white/60 uppercase tracking-widest font-[family-name:var(--font-heading)]">

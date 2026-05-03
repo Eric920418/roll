@@ -16,10 +16,10 @@ export default async function Clients() {
   const t = await getTranslations("Clients");
 
   return (
-    <section className="bg-primary min-h-[70vh] flex items-center justify-center py-12 md:py-16">
+    <section className="bg-primary min-h-[55vh] flex items-center justify-center py-10 md:py-12">
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-4 md:gap-8">
         <ScrollReveal>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white font-[family-name:var(--font-heading)]">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-[-0.04em] font-[family-name:var(--font-heading)]">
             {t("title")}
           </h2>
         </ScrollReveal>
@@ -33,7 +33,7 @@ export default async function Clients() {
                   alt={client.name}
                   fill
                   sizes="(max-width: 768px) 112px, 144px"
-                  className="object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-opacity duration-300"
+                  className="object-contain brightness-0 invert"
                 />
               </div>
             </ScrollReveal>

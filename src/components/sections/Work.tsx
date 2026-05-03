@@ -83,7 +83,7 @@ export default function Work() {
   return (
     <section
       id="work"
-      className="bg-primary min-h-[70vh] flex items-center justify-center py-12 md:py-16 overflow-hidden"
+      className="bg-primary min-h-[55vh] flex items-center justify-center py-10 md:py-12 overflow-hidden"
     >
       <motion.div
         className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-8 md:gap-10"
@@ -94,7 +94,7 @@ export default function Work() {
         <motion.h2
           aria-label={titleText}
           variants={titleContainer}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold text-white font-[family-name:var(--font-heading)]"
+          className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-[-0.04em] font-[family-name:var(--font-heading)]"
           style={{ perspective: "800px" }}
         >
           {titleText.split("").map((ch, i) => (

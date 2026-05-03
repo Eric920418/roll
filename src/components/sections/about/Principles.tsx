@@ -22,10 +22,10 @@ type CardProps = { num: string; title: string; body: string };
 function PrincipleCard({ num, title, body }: CardProps) {
   return (
     <motion.div variants={card} className="px-6 md:px-10 py-8 md:py-12 flex flex-col">
-      <div className="text-6xl md:text-7xl lg:text-8xl text-cream/35 font-[family-name:var(--font-display)] leading-none">
+      <div className="text-6xl md:text-7xl lg:text-8xl text-cream/35 font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] leading-none">
         {num}
       </div>
-      <h3 className="mt-6 md:mt-8 text-2xl md:text-3xl font-bold font-[family-name:var(--font-heading)]">
+      <h3 className="mt-6 md:mt-8 text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)]">
         {title}
       </h3>
       <p className="mt-4 md:mt-5 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)]">
