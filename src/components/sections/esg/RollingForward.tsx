@@ -44,7 +44,7 @@ export default function RollingForward() {
       >
         <motion.h2
           variants={item}
-          className="text-4xl md:text-5xl lg:text-6xl font-black text-dark tracking-tight leading-[0.95] font-[family-name:var(--font-heading)]"
+          className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-dark tracking-[-0.04em] leading-[0.95] font-[family-name:var(--font-heading)]"
         >
           <span className="block">{titleFirstLine}</span>
           <span className="block">

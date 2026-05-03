@@ -20,10 +20,10 @@ export default function JoinCTA() {
         className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col md:flex-row items-start md:items-end justify-between gap-8 md:gap-12"
       >
         <div className="flex flex-col leading-tight">
-          <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-dark tracking-tight font-[family-name:var(--font-heading)]">
+          <h2 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-dark tracking-[-0.04em] font-[family-name:var(--font-heading)]">
             {t("line1")}
           </h2>
-          <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-primary tracking-tight font-[family-name:var(--font-heading)]">
+          <h2 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-primary tracking-[-0.04em] font-[family-name:var(--font-heading)]">
             {t("line2")}
           </h2>
         </div>

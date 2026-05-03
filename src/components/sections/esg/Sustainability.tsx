@@ -38,7 +38,7 @@ export default function Sustainability() {
       >
         <motion.h2
           variants={item}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight font-[family-name:var(--font-heading)]"
+          className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-[-0.04em] font-[family-name:var(--font-heading)]"
         >
           {t("title")}
         </motion.h2>
