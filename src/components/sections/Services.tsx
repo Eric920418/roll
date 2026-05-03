@@ -49,7 +49,7 @@ export default async function Services() {
   const locale = (await getLocale()) as Locale;
 
   return (
-    <section id="services" className="bg-primary min-h-[75vh] flex items-center justify-center py-16 md:py-20">
+    <section id="services" className="bg-primary flex items-center justify-center py-12 md:py-16">
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-4 md:gap-8">
         {/* Title */}
         <ScrollReveal>

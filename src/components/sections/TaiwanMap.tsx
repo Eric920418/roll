@@ -276,13 +276,13 @@ export default function TaiwanMap() {
         >
           <div className="text-center px-6">
             <p
-              className="intro-line-1 opacity-0 text-white/90 text-2xl md:text-4xl lg:text-5xl font-bold tracking-wide leading-tight"
+              className="intro-line-1 opacity-0 text-white/90 text-2xl md:text-4xl lg:text-5xl font-extrabold tracking-[-0.04em] leading-tight"
               style={{ fontFamily: "var(--font-heading)" }}
             >
               {tMap("introLine1")}
             </p>
             <p
-              className="intro-line-2 opacity-0 text-white/70 text-lg md:text-2xl lg:text-3xl mt-4 md:mt-6 tracking-wide"
+              className="intro-line-2 opacity-0 text-white/70 text-lg md:text-2xl lg:text-3xl mt-4 md:mt-6 font-extrabold tracking-[-0.04em]"
               style={{ fontFamily: "var(--font-heading)" }}
             >
               {tMap("introLine2")}

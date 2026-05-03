@@ -83,7 +83,7 @@ export default function Work() {
   return (
     <section
       id="work"
-      className="bg-primary min-h-[55vh] flex items-center justify-center py-10 md:py-12 overflow-hidden"
+      className="bg-primary flex items-center justify-center py-8 md:py-10 overflow-hidden"
     >
       <motion.div
         className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col gap-8 md:gap-10"

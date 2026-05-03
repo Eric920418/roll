@@ -382,7 +382,7 @@ export default function RollMap() {
           >
             <h2
               ref={titleRef}
-              className="text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-dark tracking-tight font-[family-name:var(--font-heading)]"
+              className="text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-dark tracking-[-0.04em] font-[family-name:var(--font-heading)]"
             >
               <span className="inline-block relative" style={{ perspective: "800px" }}>
                 <span
@@ -463,7 +463,7 @@ export default function RollMap() {
             className="mb-10 md:mb-14 text-center max-w-3xl mx-auto px-2"
           >
             <h2
-              className="why-taiwan-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-dark tracking-tight mb-6 md:mb-8 font-[family-name:var(--font-heading)]"
+              className="why-taiwan-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-dark tracking-[-0.04em] mb-6 md:mb-8 font-[family-name:var(--font-heading)]"
               style={{ opacity: 0 }}
             >
               Why Taiwan, Why Now?
