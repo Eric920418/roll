@@ -66,7 +66,7 @@ export default function AboutPhilosophy() {
         whileInView="visible"
         viewport={{ once: true, margin: "-15%" }}
         variants={container}
-        className="bg-cream text-dark py-16 md:py-24 px-5 md:px-8"
+        className="bg-white text-dark py-16 md:py-24 px-5 md:px-8"
       >
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 md:gap-16">
           <motion.div variants={item} className="border-l-4 border-primary pl-6 md:pl-8">

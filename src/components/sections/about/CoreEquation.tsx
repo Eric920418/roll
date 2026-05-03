@@ -46,7 +46,7 @@ export default function AboutCoreEquation() {
   const t = useTranslations("AboutPage.coreEquation");
 
   return (
-    <section className="bg-cream text-dark py-20 md:py-28 px-5 md:px-8">
+    <section className="bg-white text-dark py-20 md:py-28 px-5 md:px-8">
       <motion.div
         initial="hidden"
         whileInView="visible"

@@ -111,7 +111,7 @@ export default function AboutHero() {
   return (
     <section
       ref={sectionRef}
-      className="relative bg-cream text-dark min-h-[88vh] flex flex-col items-center justify-center px-5 md:px-8 pt-32 pb-20 overflow-hidden"
+      className="relative bg-white text-dark min-h-[88vh] flex flex-col items-center justify-center px-5 md:px-8 pt-32 pb-20 overflow-hidden"
     >
       {/* Rolling ball — absolutely positioned, GSAP-controlled */}
       <div

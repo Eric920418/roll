@@ -16,7 +16,7 @@ export default function AboutClosingCTA() {
   const titleHasDot = rawTitle.endsWith(".");
 
   return (
-    <section className="bg-cream text-dark py-16 md:py-24 px-5 md:px-8">
+    <section className="bg-white text-dark py-16 md:py-24 px-5 md:px-8">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}

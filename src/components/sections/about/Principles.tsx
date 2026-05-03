@@ -48,7 +48,7 @@ export default function AboutPrinciples() {
     });
 
   return (
-    <section className="bg-cream py-20 md:py-28 px-5 md:px-8">
+    <section className="bg-white py-20 md:py-28 px-5 md:px-8">
       <motion.div
         initial="hidden"
         whileInView="visible"
