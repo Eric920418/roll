@@ -34,6 +34,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     alternates: { languages: languageAlternates("/") },
   });
 
+  // About (static brand narrative page)
+  entries.push({
+    url: urlFor("/about", "en"),
+    lastModified: now,
+    changeFrequency: "monthly" as Freq,
+    priority: 0.8,
+    alternates: { languages: languageAlternates("/about") },
+  });
+
   // ESG (static brand narrative page)
   entries.push({
     url: urlFor("/esg", "en"),

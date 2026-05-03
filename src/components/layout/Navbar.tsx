@@ -32,6 +32,7 @@ export default function Navbar() {
     { label: t("home"), ariaLabel: t("home"), link: homePath },
     { label: t("service"), ariaLabel: t("service"), link: `${homePath}#services` },
     { label: t("cases"), ariaLabel: t("cases"), link: `${homePath}#work` },
+    { label: t("about"), ariaLabel: t("about"), link: pathForLocale("/about", locale) },
     { label: t("esg"), ariaLabel: t("esg"), link: pathForLocale("/esg", locale) },
     { label: t("contact"), ariaLabel: t("contact"), link: `${homePath}#contact` },
   ];

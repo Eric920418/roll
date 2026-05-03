@@ -7,10 +7,12 @@
   --color-accent: #D4A574;
   --color-dark: #1A1A1A;
   --color-light: #F5F5F5;
+  --color-cream: #F4EFE7;
 
   --font-heading: "hero-new", "Noto Sans TC", sans-serif;
   --font-body: "hero-new", "Noto Sans TC", sans-serif;
   --font-chinese: "Noto Sans TC", sans-serif;
+  --font-display: var(--font-display-archivo), "hero-new", "Noto Sans TC", sans-serif;
 }
 
 html {

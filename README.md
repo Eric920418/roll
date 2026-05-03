@@ -11,7 +11,7 @@
 - **GSAP + ScrollTrigger** — 滾動驅動動畫
 - **next-intl** — 雙語 i18n（`en` 預設、`zh-tw`）
 - **next-mdx-remote** — 內容頁 MDX 渲染
-- **字型**：**Hero New** (Adobe Fonts / Typekit) + Noto Sans TC（中文 fallback）
+- **字型**：**Hero New** (Adobe Fonts / Typekit) + Noto Sans TC（中文 fallback）+ **Archivo Black**（About 頁 wordmark 展示字型，next/font/google）
 - **zod** — MDX frontmatter 驗證（錯誤完整顯示）
 - **pnpm** — 套件管理（禁止 npm / yarn）
 
@@ -48,6 +48,7 @@ src/
 │   │   ├── cases/[slug]/      # 案例研究
 │   │   ├── services/[slug]/   # 服務子頁（6 項）
 │   │   ├── from/[country]/    # 國別指南（6 國）Programmatic SEO
+│   │   ├── about/             # About Us 品牌哲學頁（靜態）
 │   │   └── esg/               # ESG 品牌敘事頁（靜態）
 │   ├── sitemap.ts             # 動態 sitemap（含 hreflang）
 │   ├── robots.ts              # 含 AI bot 白名單
@@ -56,6 +57,7 @@ src/
 ├── components/
 │   ├── layout/                # Navbar (client), Footer (client)
 │   ├── sections/              # RollMap, TaiwanMap, Work, Events 為 client；Services, Clients, GoldenTicket 為 server (RSC) + ScrollReveal client child；InsightsTeaser 目前未掛在首頁
+│   │   ├── about/             # About 頁 sections — 全為 client（Hero / Philosophy / RollUpSpirit (GSAP) / CoreEquation / Principles / ClosingCTA）
 │   │   └── esg/               # ESG 頁 sections — 全為 client（直接用 motion variants）
 │   ├── content/               # ContentPage, FaqList, JsonLd（內容頁共用）
 │   └── ui/                    # ScrollReveal, CounterAnimation, LanguageSwitch（皆為 client）
@@ -105,6 +107,7 @@ public/
 
 | 路由 | 主搜尋意圖 |
 |---|---|
+| `/about` | ROLL ON. brand philosophy（Roll On + Roll Up + Impact） |
 | `/insights/taiwan-market-entry-guide` | Taiwan market entry consultant |
 | `/insights/foreign-company-setup-taiwan` | how to set up a company in Taiwan foreign |
 | `/insights/asia-expansion-from-taiwan` | Asia expansion from Taiwan bridge |
@@ -127,7 +130,7 @@ public/
 - 每個內容頁 — `BreadcrumbList` + `Article`/`Service` + `FAQPage` schema
 
 ### Sitemap & Robots
-- `src/app/sitemap.ts` — 動態列出所有路由 × 2 語系 × hreflang alternates（= 33 URL）
+- `src/app/sitemap.ts` — 動態列出所有路由 × 2 語系 × hreflang alternates（含 `/about`、`/esg`）
 - `src/app/robots.ts` — 允許所有爬蟲 + 明確白名單 AI bots：GPTBot / Google-Extended / PerplexityBot / ChatGPT-User / Applebot-Extended / anthropic-ai / CCBot
 
 ### GEO（LLM 爬取）
@@ -155,7 +158,10 @@ public/
   - 已優化的圖再跑一次 idempotent（buf 比原檔小才覆蓋）
 - 已知不該載入的「未引用素材」會被腳本印 warning，請手動移到 `public/_originals/unused/`
 - 圖片元件統一用 `next/image`，禁止再用原生 `<img>`（除非有特殊 reason，例如非常小的 SVG inline）
-- 字型：Typekit 在 `<body>` 用 `<link rel="preload" as="style">` 加速首屏字型解析（React 19 hoist 到 head）；Noto Sans TC 用 `next/font/google` 自動子集化
+- 字型：Typekit 在 `<body>` 用 `<link rel="preload" as="style">` 加速首屏字型解析（React 19 hoist 到 head）；Noto Sans TC + Archivo Black 用 `next/font/google` 自動子集化
+- 設計 token（`src/app/globals.css` `@theme`）：
+  - 顏色：`--color-primary` `#7B1A2C`、`--color-primary-light/dark`、`--color-accent` 暖金、`--color-cream` `#F4EFE7`（About 頁暖米白底）、`--color-dark` `--color-light`
+  - 字型：`--font-heading`（Hero New）、`--font-body`、`--font-chinese`、`--font-display`（Archivo Black，僅 About 頁 wordmark 使用）
 
 ## 部署
 

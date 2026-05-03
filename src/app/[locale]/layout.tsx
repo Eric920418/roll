@@ -4,7 +4,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing, type Locale } from "@/i18n/routing";
-import { Noto_Sans_TC } from "next/font/google";
+import { Noto_Sans_TC, Archivo_Black } from "next/font/google";
 import { SITE_URL } from "@/lib/routes";
 import { localBusinessSchema } from "@/lib/schema";
 import "../globals.css";
@@ -49,6 +49,14 @@ const notoSansTC = Noto_Sans_TC({
   display: "swap",
 });
 
+// Archivo Black — 用於 About 頁的展示型粗體 wordmark（ROLL ON.）
+const archivoBlack = Archivo_Black({
+  subsets: ["latin"],
+  variable: "--font-display-archivo",
+  weight: "400",
+  display: "swap",
+});
+
 // Adobe Fonts (Typekit) — Hero New
 const TYPEKIT_CSS_URL = "https://use.typekit.net/vvw0spn.css";
 
@@ -75,7 +83,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html
       lang={locale}
-      className={notoSansTC.variable}
+      className={`${notoSansTC.variable} ${archivoBlack.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen antialiased">
