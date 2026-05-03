@@ -23,15 +23,15 @@ function PrincipleCard({ num, title, body }: CardProps) {
   return (
     <motion.div
       variants={card}
-      className="px-6 md:px-8 py-10 md:py-14 flex flex-col items-center text-center"
+      className="bg-primary text-cream rounded-lg px-7 md:px-8 py-12 md:py-16 flex flex-col items-center text-center min-h-[420px] md:min-h-[480px]"
     >
       <div className="text-6xl md:text-7xl lg:text-8xl text-cream/30 font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] leading-none">
         {num}
       </div>
-      <h3 className="mt-8 md:mt-10 text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] text-cream">
+      <h3 className="mt-6 md:mt-8 text-2xl md:text-3xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)] text-cream">
         {title}
       </h3>
-      <div className="mt-6 md:mt-8 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)] whitespace-pre-line max-w-[28ch]">
+      <div className="mt-8 md:mt-10 text-cream/85 leading-relaxed text-sm md:text-base font-[family-name:var(--font-body)] whitespace-pre-line max-w-[28ch]">
         {body}
       </div>
     </motion.div>
@@ -48,13 +48,13 @@ export default function AboutPrinciples() {
     });
 
   return (
-    <section className="bg-primary text-cream py-20 md:py-28 px-5 md:px-8">
+    <section className="bg-cream py-20 md:py-28 px-5 md:px-8">
       <motion.div
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-12%" }}
         variants={container}
-        className="max-w-7xl mx-auto grid md:grid-cols-3 md:divide-x divide-cream/30"
+        className="max-w-7xl mx-auto grid md:grid-cols-3 gap-4 md:gap-5"
       >
         <PrincipleCard num="01" title={t("p1Title")} body={renderBody("p1Body")} />
         <PrincipleCard num="02" title={t("p2Title")} body={renderBody("p2Body")} />
