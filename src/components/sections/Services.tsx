@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import ScrollReveal from "@/components/ui/ScrollReveal";
@@ -5,12 +6,42 @@ import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
 const services = [
-  { key: "fundraising", descKey: "fundraisingDesc", slug: "fundraising" },
-  { key: "globalExpansion", descKey: "globalExpansionDesc", slug: "market-entry" },
-  { key: "marketing", descKey: "marketingDesc", slug: "marketing" },
-  { key: "legalSupport", descKey: "legalSupportDesc", slug: "legal" },
-  { key: "salesChannel", descKey: "salesChannelDesc", slug: "sales-channel" },
-  { key: "community", descKey: "communityDesc", slug: "investor-access" },
+  {
+    key: "fundraising",
+    descKey: "fundraisingDesc",
+    slug: "fundraising",
+    icon: "/1-fundraising.png",
+  },
+  {
+    key: "globalExpansion",
+    descKey: "globalExpansionDesc",
+    slug: "market-entry",
+    icon: "/2-global expansion.png",
+  },
+  {
+    key: "marketing",
+    descKey: "marketingDesc",
+    slug: "marketing",
+    icon: "/3-Marketing.png",
+  },
+  {
+    key: "legalSupport",
+    descKey: "legalSupportDesc",
+    slug: "legal",
+    icon: "/4-legal support.png",
+  },
+  {
+    key: "salesChannel",
+    descKey: "salesChannelDesc",
+    slug: "sales-channel",
+    icon: "/5-sales channel development.png",
+  },
+  {
+    key: "community",
+    descKey: "communityDesc",
+    slug: "investor-access",
+    icon: "/6-all nighter community.png",
+  },
 ] as const;
 
 export default async function Services() {
@@ -37,8 +68,17 @@ export default async function Services() {
                   href={pathForLocale(`/services/${service.slug}`, locale)}
                   className="block cursor-pointer group"
                 >
-                  {/* White circle */}
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white mb-4 transition-transform duration-300 group-hover:scale-110" />
+                  {/* Icon badge — white circle 內嵌 service icon */}
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white mb-4 transition-transform duration-300 group-hover:scale-110 overflow-hidden flex items-center justify-center">
+                    <Image
+                      src={service.icon}
+                      alt=""
+                      width={48}
+                      height={48}
+                      aria-hidden="true"
+                      className="w-3/4 h-3/4 object-contain select-none"
+                    />
+                  </div>
                   <h3 className="font-bold text-sm md:text-base text-white mb-1 font-[family-name:var(--font-heading)] group-hover:text-accent transition-colors">
                     {t(service.key)}
                   </h3>

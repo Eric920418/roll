@@ -21,7 +21,7 @@ const events = [
   },
   {
     date: "MAY",
-    image: "/3.jpg",
+    image: "",
     title: "2026 Dragon's Chamber",
     location: "Taipei City",
     description: "科技新創與投資人聚會 — Ensypre × ROLL ON",
