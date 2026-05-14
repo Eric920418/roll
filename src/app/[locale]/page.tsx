@@ -26,7 +26,7 @@ const HOME_META: Record<Locale, { title: string; description: string }> = {
       "ROLL ON. is the Taipei-based consulting firm helping foreign companies enter Taiwan and scale across Asia — fundraising, company setup, legal compliance, marketing, distribution, and investor access.",
   },
   "zh-tw": {
-    title: "外商進入台灣與亞洲市場的顧問公司｜ROLL ON.",
+    title: "顧問公司改為 商業拓展夥伴 Expansion Partner",
     description:
       "ROLL ON. 協助外商進入台灣與亞洲市場：募資、公司設立、法規合規、精準行銷、通路開發、投資人對接。台北辦公室，服務全亞洲。",
   },
