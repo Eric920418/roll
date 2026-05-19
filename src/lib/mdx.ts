@@ -62,7 +62,7 @@ export async function loadContent(
 ): Promise<MdxContent> {
   const candidates = fileCandidates(type, slug, locale);
   let raw: string | null = null;
-  let triedPaths: string[] = [];
+  const triedPaths: string[] = [];
 
   for (const file of candidates) {
     triedPaths.push(file);

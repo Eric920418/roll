@@ -20,10 +20,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const l = locale as Locale;
   const t = await getTranslations({ locale, namespace: "AboutPage" });
   const url = absoluteUrl("/about", l);
+  const title = t("metaTitle");
+  const description = t("metaDescription");
+  const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(description.slice(0, 120))}&eyebrow=${encodeURIComponent("About")}`;
 
   return {
-    title: t("metaTitle"),
-    description: t("metaDescription"),
+    title,
+    description,
     alternates: {
       canonical: url,
       languages: {
@@ -32,15 +35,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     },
     openGraph: {
-      title: t("metaTitle"),
-      description: t("metaDescription"),
+      title,
+      description,
       url,
       locale: l === "zh-tw" ? "zh_TW" : "en",
       type: "website",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
-      title: t("metaTitle"),
-      description: t("metaDescription"),
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
     },
   };
 }

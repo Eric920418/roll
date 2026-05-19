@@ -31,6 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const l = locale as Locale;
   const m = META[l] ?? META.en;
   const url = absoluteUrl("/esg", l);
+  const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?title=${encodeURIComponent(m.title)}&subtitle=${encodeURIComponent(m.description.slice(0, 120))}&eyebrow=${encodeURIComponent("ESG")}`;
 
   return {
     title: m.title,
@@ -48,10 +49,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       locale: l === "zh-tw" ? "zh_TW" : "en",
       type: "website",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: m.title }],
     },
     twitter: {
+      card: "summary_large_image",
       title: m.title,
       description: m.description,
+      images: [ogImage],
     },
   };
 }

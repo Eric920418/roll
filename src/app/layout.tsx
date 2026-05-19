@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 const SITE_URL = "https://rollgrp.com";
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og?title=${encodeURIComponent("ROLL ON.")}&subtitle=${encodeURIComponent("Taiwan & Asia Market Entry Consulting")}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -41,12 +42,21 @@ export const metadata: Metadata = {
     title: "ROLL ON. | From Visions to Big Impacts",
     description:
       "ROLL ON. is a Taiwan-based consulting firm helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
+    images: [
+      {
+        url: DEFAULT_OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "ROLL ON. — Taiwan & Asia Market Entry Consulting",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "ROLL ON. | From Visions to Big Impacts",
     description:
       "ROLL ON. is a Taiwan-based consulting firm helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
+    images: [DEFAULT_OG_IMAGE],
   },
   robots: {
     index: true,

@@ -19,10 +19,13 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "Metadata" });
 
   const url = locale === "en" ? SITE_URL : `${SITE_URL}/${locale}`;
+  const title = t("title");
+  const description = t("description");
+  const ogImage = `${SITE_URL}${locale === "en" ? "" : `/${locale}`}/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(description.slice(0, 120))}`;
 
   return {
-    title: t("title"),
-    description: t("description"),
+    title,
+    description,
     alternates: {
       canonical: url,
       languages: {
@@ -31,14 +34,17 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: t("title"),
-      description: t("description"),
+      title,
+      description,
       url,
       locale: locale === "zh-tw" ? "zh_TW" : "en",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
-      title: t("title"),
-      description: t("description"),
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
     },
   };
 }
@@ -156,6 +162,11 @@ export default async function LocaleLayout({ children, params }: Props) {
                   name: "ROLL ON.",
                   publisher: { "@id": "https://rollgrp.com/#organization" },
                   inLanguage: ["en", "zh-TW"],
+                  // Speakable — 提升 Google Assistant / Siri 語音播報引用機率
+                  speakable: {
+                    "@type": "SpeakableSpecification",
+                    cssSelector: ["h1", "h2", ".speakable"],
+                  },
                 },
                 localBusinessSchema(locale as Locale),
               ],
