@@ -11,7 +11,7 @@ import InsightsTeaser from "@/components/sections/InsightsTeaser";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import JsonLd from "@/components/content/JsonLd";
-import FaqList from "@/components/content/FaqList";
+// import FaqList from "@/components/content/FaqList"; // FAQ 視覺區塊暫時隱藏
 import { faqSchema, SITE_FAQS } from "@/lib/schema";
 import { SITE_URL, absoluteUrl } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
@@ -92,6 +92,8 @@ export default async function HomePage({ params }: Props) {
       <Clients />
       <GoldenTicket />
       <InsightsTeaser locale={l} />
+      {/* FAQ 視覺區塊暫時隱藏；JSON-LD schema 保留供搜尋引擎抓 FAQPage rich result */}
+      {/*
       <section
         aria-labelledby="faq-heading"
         className="bg-white py-20 px-5 md:px-8"
@@ -100,6 +102,7 @@ export default async function HomePage({ params }: Props) {
           <FaqList faqs={faqs} locale={l} />
         </div>
       </section>
+      */}
       <Footer />
     </main>
   );

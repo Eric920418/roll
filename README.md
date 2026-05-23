@@ -95,7 +95,7 @@ public/
 3. **TaiwanMap** — 台灣地圖縮放 → 全球 + 6 座橋樑城市；5 行品牌宣言
 4. **Services** — 6 項服務卡片，每張連到 `/services/[slug]` + Investor Access CTA
 5. **Work** — 案例章節：`Medix LLC` 可展開/收合（`+` toggle + spring rotate），展開顯示 3 張圖 + 短描述 + `learn more` → `/cases/medix`；標題字元 stagger / 卡片 blur-to-focus + scale 進場
-6. **Events** — R Event. 3 張活動卡（日期 pill + 圖片區 + 標題 + 地址）；標題字元 stagger / 卡片 3D `rotateY` + blur + stagger，pill 獨立 spring pop
+6. **Events** — R Event. 4 張活動卡（日期 pill + 圖片區 + 標題 + 地址），桌機 4 欄、平板 2x2；標題字元 stagger / 卡片 3D `rotateY` + blur + stagger，pill 獨立 spring pop
 7. **Clients** — 6 家客戶 logo 牆（server component）
 8. **GoldenTicket** — YouTube 頻道預覽（server component）
 9. ~~**InsightsTeaser**~~ — 3 篇 pillar guides 入口（**目前未掛在 page.tsx**，預留下一波啟用）
@@ -238,8 +238,8 @@ public/
 
 - `src/lib/schema.ts:SITE_FAQS` — 雙語各 30 對長尾問題（從 11 對擴充）
 - 涵蓋：法人型態（子公司 vs 分公司 vs 辦事處）、外資持股、外匯、稅務、簽證、薪資行情、政府獎勵、銀行開戶時程、亞洲樞紐選擇、ROLL ON. 收費模式、跟律師事務所差異等
-- 首頁 `FaqList` 元件已啟用（之前註解掉）
-- FAQPage schema 同步以 JSON-LD 注入
+- 首頁 `FaqList` 視覺區塊**目前註解隱藏**（`page.tsx`），等內容定稿再開
+- FAQPage schema 仍以 JSON-LD 注入首頁 — 視覺隱藏不影響 Google rich result 命中
 
 ### Speakable schema
 

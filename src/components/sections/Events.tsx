@@ -26,6 +26,13 @@ const events = [
     location: "Taipei City",
     description: "科技新創與投資人聚會 — Ensypre × ROLL ON",
   },
+  {
+    date: "Coming Up",
+    image: "",
+    title: "2026 Founder's Cafe",
+    location: "",
+    description: "",
+  },
 ];
 
 const titleContainer: Variants = {
@@ -125,7 +132,7 @@ export default function Events() {
 
         <motion.div
           variants={cardGrid}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
           style={{ perspective: "1200px" }}
         >
           {events.map((event, i) => (
