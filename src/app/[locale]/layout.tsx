@@ -159,7 +159,8 @@ export default async function LocaleLayout({ children, params }: Props) {
                   "@type": "WebSite",
                   "@id": "https://rollgrp.com/#website",
                   url: "https://rollgrp.com",
-                  name: "ROLL ON.",
+                  name: "ROLL ON Taiwan",
+                  alternateName: "ROLL ON.",
                   publisher: { "@id": "https://rollgrp.com/#organization" },
                   inLanguage: ["en", "zh-TW"],
                   // Speakable — 提升 Google Assistant / Siri 語音播報引用機率

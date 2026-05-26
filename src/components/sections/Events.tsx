@@ -20,7 +20,7 @@ const events = [
     description: "演講主題：解決落地的最後一哩路",
   },
   {
-    date: "MAY",
+    date: "May 29th",
     image: "",
     title: "2026 Dragon's Chamber",
     location: "Taipei City",

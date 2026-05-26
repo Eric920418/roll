@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     locale: "en",
     alternateLocale: "zh-TW",
     url: SITE_URL,
-    siteName: "ROLL ON.",
+    siteName: "ROLL ON Taiwan",
     title: "ROLL ON. | From Visions to Big Impacts",
     description:
       "ROLL ON. is a Taiwan-based consulting firm helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
