@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
     // 對齊實際使用裝置（行動 + 桌面），減少 Next 產出多餘尺寸
     deviceSizes: [360, 640, 828, 1080, 1280, 1920],
     imageSizes: [64, 128, 256, 384],
+    // CMS 圖片儲存於 Vercel Blob
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
+    ],
   },
 };
 

@@ -1,19 +1,11 @@
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import ScrollReveal from "@/components/ui/ScrollReveal";
-
-const clients = [
-  { name: "Max", logo: "/Max.png" },
-  { name: "Solo automatic", logo: "/solo.png" },
-  { name: "INSPO", logo: "/inspo.png" },
-  { name: "Medix", logo: "/Medix.png" },
-  { name: "R.co", logo: "/R.co.png" },
-  // { name: "Solo Automotive", logo: "/solo.png" },
-  { name: "Teotihuacan", logo: "/Teotihuacan.png" },
-];
+import { getClients } from "@/lib/cms/content";
 
 export default async function Clients() {
   const t = await getTranslations("Clients");
+  const clients = await getClients();
 
   return (
     <section className="bg-primary flex items-center justify-center py-8 md:py-10">
@@ -26,7 +18,7 @@ export default async function Clients() {
 
         <div className="flex flex-wrap items-center gap-6 sm:gap-10 md:gap-14">
           {clients.map((client, i) => (
-            <ScrollReveal key={client.name} delay={i * 0.1}>
+            <ScrollReveal key={client.id} delay={i * 0.1}>
               <div className="relative w-28 h-20 md:w-36 md:h-24">
                 <Image
                   src={client.logo}

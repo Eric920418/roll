@@ -11,8 +11,11 @@
 - **GSAP + ScrollTrigger** — 滾動驅動動畫
 - **next-intl** — 雙語 i18n（`en` 預設、`zh-tw`）
 - **next-mdx-remote** — 內容頁 MDX 渲染
+- **Prisma 7 + Neon Postgres** — CMS 內容資料庫（`@prisma/adapter-neon` serverless 驅動）
+- **Vercel Blob** — CMS 圖片儲存（`@vercel/blob`）
+- **jose** — 後台單一管理員認證（簽章 cookie + proxy 保護，未用 NextAuth）
 - **字型**：**Hero New** (Adobe Fonts / Typekit) + Noto Sans TC（中文 fallback）+ **Archivo Black**（About 頁 wordmark 展示字型，next/font/google）
-- **zod** — MDX frontmatter 驗證（錯誤完整顯示）
+- **zod** — MDX frontmatter + CMS 輸入驗證（錯誤完整顯示）
 - **pnpm** — 套件管理（禁止 npm / yarn）
 
 ## 開發
@@ -20,9 +23,36 @@
 ```bash
 pnpm install
 pnpm dev        # http://localhost:3000
-pnpm build      # 生產建置
+pnpm build      # 生產建置（含 prisma generate）
 pnpm lint       # ESLint
+
+# 資料庫（Neon Postgres）
+pnpm db:push    # 推送 schema 到 Neon（禁用 --accept-data-loss）
+pnpm db:seed    # 灌入初始內容（count-guard，不覆蓋既有資料）
+pnpm db:studio  # Prisma Studio 檢視資料
 ```
+
+### 環境變數
+
+`.env`（Prisma CLI 與 runtime 共用）：
+
+```bash
+DATABASE_URL="postgresql://...neon.tech/neondb?sslmode=require&channel_binding=require"
+```
+
+`.env.local`（僅 Next.js 讀取，後台密鑰）：
+
+```bash
+AUTH_SECRET="..."                # jose 簽章密鑰（openssl rand -base64 32）
+ADMIN_EMAIL="admin@roll-grp.com"
+ADMIN_PASSWORD_HASH="\$2b\$..."  # bcrypt hash，$ 必須跳脫為 \$（見下方）
+BLOB_READ_WRITE_TOKEN="..."      # Vercel 連結 Blob store 後複製
+```
+
+> `.env*` 已 `.gitignore`。產生密碼 hash：
+> `node -e "console.log(require('bcryptjs').hashSync('你的密碼',12))"`
+> ⚠️ **bcrypt hash 內的每個 `$` 在 `.env.local` 必須跳脫為 `\$`**，否則 Next 的 env 載入器（dotenv-expand）會把 `$2b`、`$12` 當成變數展開而破壞 hash，導致登入永遠失敗。
+> 預設帳號 `admin@roll-grp.com` / 密碼 `rollon-admin-2026`（上線前務必更換）。
 
 ### 效能 / 圖片工具
 
@@ -93,13 +123,72 @@ public/
 2. **RollMap** — 滾動三頁：品牌 Hero → 全球 vs 台灣外商數量對比 → Forbes Global 2000 排名（含 ROLL ON 客戶）
    - 包含 `sr-only` SSR 純文字版本供 LLM / 螢幕閱讀器讀取（視覺化數據雙軌化）
 3. **TaiwanMap** — 台灣地圖縮放 → 全球 + 6 座橋樑城市；5 行品牌宣言
-4. **Services** — 6 項服務卡片，每張連到 `/services/[slug]` + Investor Access CTA
-5. **Work** — 案例章節：`Medix LLC` 可展開/收合（`+` toggle + spring rotate），展開顯示 3 張圖 + 短描述 + `learn more` → `/cases/medix`；標題字元 stagger / 卡片 blur-to-focus + scale 進場
-6. **Events** — R Event. 4 張活動卡（日期 pill + 圖片區 + 標題 + 地址），桌機 4 欄、平板 2x2；標題字元 stagger / 卡片 3D `rotateY` + blur + stagger，pill 獨立 spring pop
-7. **Clients** — 6 家客戶 logo 牆（server component）
-8. **GoldenTicket** — YouTube 頻道預覽（server component）
-9. ~~**InsightsTeaser**~~ — 3 篇 pillar guides 入口（**目前未掛在 page.tsx**，預留下一波啟用）
-10. **Footer** — 聯絡表單 + 社群
+4. **Services** — 服務卡片（**CMS 管理**），每張連到 `/services/[slug]` + Investor Access CTA
+5. **Work** — 案例章節（**CMS 管理**）：`Medix LLC` 可展開/收合；server wrapper 抓資料 → `WorkClient` 渲染 motion
+6. **Events** — R Event. 活動卡（**CMS 管理**）；server wrapper → `EventsClient` 渲染 motion
+7. **Clients** — 客戶 logo 牆（**CMS 管理**，server component）
+8. **GoldenTicket** — YouTube 頻道預覽（**CMS 管理**：影片清單 + 頻道設定）
+9. **InsightsTeaser** — 3 篇 pillar guides 入口（**CMS 管理**，已掛在 page.tsx）
+10. **Footer** — 聯絡表單（投遞到 `/api/contact` → 後台收件匣）+ 社群連結（**CMS 管理**）
+
+> 所有 section 文字（含區塊標題、About / ESG 整頁）皆可由後台「文案翻譯」即時編輯；清單型內容（4–9）由各自 CRUD 管理。**例外**：RollMap 的數值（mapData / Forbes 排名）與地圖幾何座標仍寫死在程式碼（屬呈現邏輯），其文字標籤可由翻譯覆蓋編輯。
+
+## CMS 後台
+
+`/admin` 提供業主自助編輯前台所有內容，資料存 Neon Postgres、圖片存 Vercel Blob。後台位於 `[locale]` 之外，不走 i18n、不被搜尋引擎索引。
+
+### 登入與保護
+
+- 登入頁 `/admin/login`，以 `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH`（bcrypt）驗證
+- 通過後簽發 jose JWT 存 httpOnly cookie（`admin_session`，7 天）
+- `src/proxy.ts`（Next 16 取代 `middleware`）攔截 `/admin/*` 與 `/api/admin/*`：未登入 → 導向登入 / 回 401；前台其餘路徑交給 next-intl。proxy 跑在 Edge，僅用 jose（不 import prisma）
+
+### 後台頁面
+
+| 路由 | 功能 |
+|---|---|
+| `/admin` | 儀表板（各內容筆數、未讀訊息數） |
+| `/admin/services`、`/events`、`/clients`、`/work`、`/videos`、`/insights` | 清單型內容 CRUD（共用泛型表單與列表） |
+| `/admin/translations` | 文案翻譯編輯器（依 namespace 分組、en/zh-tw 並排，涵蓋 About / ESG / 全站 UI 文字） |
+| `/admin/settings` | 頁尾聯絡資訊、社群連結、Golden Ticket 頻道 |
+| `/admin/messages` | 聯絡表單收件匣（標記已讀 / 刪除） |
+
+### 雙語內容模型
+
+- 清單型內容（`Service` / `Event` / `Client` / `WorkCase` / `Video` / `InsightTeaser`）的文字欄位以 Json `{ en, "zh-tw" }` 儲存；非文字欄位（slug / 圖片 URL / 連結 / 排序）為普通 column
+- zod `LocalizedString` 在 API 層驗證；前台以 `pick(value, locale)` 取值（fallback：指定語系 → en → 空字串）
+- 泛型 CRUD：`src/lib/cms/resources.ts`（server registry：prisma delegate + schema + tag）+ `src/lib/cms/resource-fields.ts`（client 欄位設定）驅動單一 `[resource]` 路由與 `ResourceForm` / `ResourceList`
+
+### 翻譯覆蓋層（核心機制）
+
+讓現有所有 `t()` 呼叫**零改動**即可被 CMS 編輯：
+
+- `src/i18n/request.ts` 載入靜態 `messages/*.json`（base / fallback）後，deep-merge DB 覆蓋值（`Setting` blob `messages.en` / `messages.zh-tw`，只存被改過的鍵）
+- 翻譯編輯器清空欄位 = 回退至預設值（deep-merge 視空字串為未覆蓋）
+
+### 圖片上傳（Vercel Blob）
+
+- `POST /api/admin/upload`（multipart）→ `put()` 上傳、回傳公開 URL；編輯時帶 `oldUrl` 自動 `del()` 清孤兒舊圖
+- 限制：型別 JPG/PNG/GIF/WebP/SVG、≤ 4.5 MB（Vercel server upload body 上限）
+- `next.config.ts` `images.remotePatterns` 已允許 `*.public.blob.vercel-storage.com`
+- seed 的初始圖片仍指向 `/public/*.png`；業主在後台上傳後即改為 Blob URL
+
+### 快取與即時更新
+
+未啟用 `cacheComponents`，走 Previous Model：
+
+- 前台 getter（`src/lib/cms/content.ts`）用 `unstable_cache` + tag + `revalidate: 60`
+- mutation 後 `src/lib/cms/revalidate.ts` 的 `revalidateContent()` 呼叫 `revalidateTag(tag, "max")`（Next 16 雙參數）+ `revalidatePath("/", "layout")`
+- 首頁另設 `export const revalidate = 60` 作為兜底；編輯後前台最多 60 秒內更新（多數情況即時）
+
+### 初始化流程
+
+```bash
+pnpm db:push && pnpm db:seed   # 建表 + 灌入現有內容（與切換前顯示一致）
+pnpm dev                        # /admin/login 登入後即可編輯
+```
+
+> seed 使用 count-guard：每個表僅在為空時寫入，重跑不覆蓋業主編輯（符合「不亂覆蓋資料庫資料」規則）。
 
 ## 內容頁（SEO / GEO 主引擎）
 

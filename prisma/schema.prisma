@@ -1,0 +1,136 @@
+// ROLL ON. CMS — Prisma Schema
+// 雙語官網 CMS：所有文字欄位用 Json {en, "zh-tw"} 儲存（雙語），
+// 非文字欄位（slug / 圖片 URL / 外部連結 / 排序）用普通 column。
+// 文檔單一事實來源：見專案根目錄 README.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// 清單型內容（首頁各區塊，可 CRUD + 排序 + 隱藏）
+// 文字欄位 Json 形如 { "en": "...", "zh-tw": "..." }
+// ============================================
+
+/// 服務項目（Services 區塊）
+model Service {
+  id        String   @id @default(cuid())
+  slug      String   @unique // 對應 /services/[slug] 路由
+  icon      String // 圖示圖片 URL（Vercel Blob）
+  title     Json // 雙語
+  desc      Json // 雙語
+  order     Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, order])
+}
+
+/// 活動（Events 區塊）
+model Event {
+  id          String   @id @default(cuid())
+  date        Json // 顯示用雙語字串，如 {en:"11–12 MAY","zh-tw":"5月11–12日"}
+  title       Json
+  location    Json
+  description Json
+  image       String? // 活動圖片 URL，可空
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([published, order])
+}
+
+/// 客戶 Logo（Clients 區塊）
+model Client {
+  id        String   @id @default(cuid())
+  name      String // 品牌名（通常不翻譯）
+  logo      String // logo 圖片 URL
+  order     Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, order])
+}
+
+/// 案例（Work 區塊；目前皆屬 Medix LLC 群組）
+model WorkCase {
+  id          String   @id @default(cuid())
+  group       String   @default("Medix LLC") // 案例分組標題
+  image       String
+  href        String // 外部連結（LinkedIn）
+  description Json
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([published, order])
+}
+
+/// 影片（GoldenTicket 區塊）
+model Video {
+  id        String   @id @default(cuid())
+  thumb     String // 縮圖 URL
+  href      String // YouTube 連結
+  title     Json // 雙語
+  views     String // 觀看數展示字串，如 "312 次"
+  order     Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, order])
+}
+
+/// 深度指南預覽卡（InsightsTeaser 區塊；對應 /insights/[slug] 的 MDX 文章）
+model InsightTeaser {
+  id        String   @id @default(cuid())
+  slug      String   @unique // 對應 MDX 檔案 slug
+  title     Json
+  blurb     Json
+  order     Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, order])
+}
+
+// ============================================
+// Singleton 設定 / 翻譯覆蓋
+// ============================================
+
+/// 通用鍵值設定。key 範例：
+///   "messages.en" / "messages.zh-tw" — next-intl 翻譯覆蓋（partial JSON，覆蓋靜態 messages/*.json）
+///   "rollMapStats" — RollMap 區塊數值（mapData / comparison / topCompanies）
+///   "contactInfo"  — Footer 聯絡資訊與社群連結
+///   "goldenTicket" — GoldenTicket channel 標題 / 訂閱連結 / 圖片
+model Setting {
+  key       String   @id
+  value     Json     @default("{}")
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// 聯絡訊息（Footer 表單投遞）
+// ============================================
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  locale    String? // 投遞時的語系
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([isRead, createdAt])
+}

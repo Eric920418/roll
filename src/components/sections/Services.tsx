@@ -4,49 +4,13 @@ import { getTranslations, getLocale } from "next-intl/server";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
-
-const services = [
-  {
-    key: "fundraising",
-    descKey: "fundraisingDesc",
-    slug: "fundraising",
-    icon: "/10.png",
-  },
-  {
-    key: "globalExpansion",
-    descKey: "globalExpansionDesc",
-    slug: "market-entry",
-    icon: "/20.png",
-  },
-  {
-    key: "marketing",
-    descKey: "marketingDesc",
-    slug: "marketing",
-    icon: "/30.png",
-  },
-  {
-    key: "legalSupport",
-    descKey: "legalSupportDesc",
-    slug: "legal",
-    icon: "/40.png",
-  },
-  {
-    key: "salesChannel",
-    descKey: "salesChannelDesc",
-    slug: "sales-channel",
-    icon: "/50.png",
-  },
-  {
-    key: "community",
-    descKey: "communityDesc",
-    slug: "investor-access",
-    icon: "/60.png",
-  },
-] as const;
+import { getServices } from "@/lib/cms/content";
+import { pick } from "@/lib/cms/i18n";
 
 export default async function Services() {
   const t = await getTranslations("Services");
   const locale = (await getLocale()) as Locale;
+  const services = await getServices();
 
   return (
     <section id="services" className="bg-primary flex items-center justify-center py-12 md:py-16">
@@ -63,7 +27,7 @@ export default async function Services() {
           {/* Services Grid - Left */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6 sm:gap-x-6 sm:gap-y-8 md:gap-x-10 md:gap-y-10 flex-1">
             {services.map((service, i) => (
-              <ScrollReveal key={service.key} delay={i * 0.1}>
+              <ScrollReveal key={service.id} delay={i * 0.1}>
                 <Link
                   href={pathForLocale(`/services/${service.slug}`, locale)}
                   className="block cursor-pointer group"
@@ -80,10 +44,10 @@ export default async function Services() {
                     />
                   </div>
                   <h3 className="font-bold text-sm md:text-base text-white mb-1 font-[family-name:var(--font-heading)] group-hover:text-accent transition-colors">
-                    {t(service.key)}
+                    {pick(service.title, locale)}
                   </h3>
                   <p className="text-xs md:text-sm text-white/60 font-[family-name:var(--font-chinese)]">
-                    {t(service.descKey)}
+                    {pick(service.desc, locale)}
                   </p>
                 </Link>
               </ScrollReveal>
