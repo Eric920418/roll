@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import EsgHero from "@/components/sections/esg/Hero";
@@ -13,28 +13,18 @@ import type { Locale } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string }> };
 
-const META: Record<Locale, { title: string; description: string }> = {
-  en: {
-    title: "ESG & Strategic Impact | ROLL ON.",
-    description:
-      "ROLL ON views ESG as a vehicle for economic empowerment, talent elevation, and global connectivity — positioning Taiwan as Asia's entry point for foreign companies.",
-  },
-  "zh-tw": {
-    title: "ESG 與戰略影響｜ROLL ON.",
-    description:
-      "ROLL ON 視 ESG 為經濟賦權、人才提升與全球連結的載體——讓台灣成為外商進入亞洲的第一站。",
-  },
-};
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const l = locale as Locale;
-  const m = META[l] ?? META.en;
+  // 標題／描述改由 CMS「文案翻譯 → ESG」管理（後台可編）
+  const t = await getTranslations({ locale, namespace: "ESG" });
+  const m = { title: t("metaTitle"), description: t("metaDescription") };
   const url = absoluteUrl("/esg", l);
   const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?title=${encodeURIComponent(m.title)}&subtitle=${encodeURIComponent(m.description.slice(0, 120))}&eyebrow=${encodeURIComponent("ESG")}`;
 
   return {
-    title: m.title,
+    // absolute：避免 root layout 的「%s | ROLL ON.」模板造成品牌後綴重複
+    title: { absolute: m.title },
     description: m.description,
     alternates: {
       canonical: url,

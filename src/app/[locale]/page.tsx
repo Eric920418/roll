@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import RollMap from "@/components/sections/RollMap";
 import TaiwanMap from "@/components/sections/TaiwanMap";
 import Services from "@/components/sections/Services";
@@ -23,32 +23,20 @@ type Props = {
   params: Promise<{ locale: string }>;
 };
 
-const HOME_META: Record<Locale, { title: string; description: string; h1: string }> = {
-  en: {
-    title:
-      "Taiwan & Asia Market Entry Consulting for Foreign Companies | ROLL ON.",
-    description:
-      "ROLL ON. is the Taipei-based consulting firm helping foreign companies enter Taiwan and scale across Asia — fundraising, company setup, legal compliance, marketing, distribution, and investor access.",
-    h1: "ROLL ON. — Taiwan & Asia Market Entry Consulting for Foreign Companies",
-  },
-  "zh-tw": {
-    title: "外商進入台灣與亞洲市場的拓展夥伴｜ROLL ON.",
-    description:
-      "ROLL ON. 協助外商進入台灣與亞洲市場：募資、公司設立、法規合規、精準行銷、通路開發、投資人對接。台北辦公室，服務全亞洲。",
-    h1: "ROLL ON. — 外商進入台灣與亞洲市場的拓展夥伴",
-  },
-};
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const l = locale as Locale;
-  const meta = HOME_META[l] ?? HOME_META.en;
+  // 標題／描述改由 CMS「文案翻譯 → Metadata」管理（後台可編）
+  const t = await getTranslations({ locale, namespace: "Metadata" });
+  const title = t("title");
+  const description = t("description");
   const url = absoluteUrl("", l);
-  const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?title=${encodeURIComponent(meta.title)}&subtitle=${encodeURIComponent("Taiwan & Asia Market Entry Consulting")}`;
+  const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent("Taiwan & Asia Market Entry Consulting")}`;
 
   return {
-    title: meta.title,
-    description: meta.description,
+    // absolute：不套用 root layout 的「%s | ROLL ON.」模板，避免品牌後綴重複
+    title: { absolute: title },
+    description,
     alternates: {
       canonical: url,
       languages: {
@@ -57,17 +45,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     },
     openGraph: {
-      title: meta.title,
-      description: meta.description,
+      title,
+      description,
       url,
       locale: l === "zh-tw" ? "zh_TW" : "en",
       type: "website",
-      images: [{ url: ogImage, width: 1200, height: 630, alt: meta.title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: "summary_large_image",
-      title: meta.title,
-      description: meta.description,
+      title,
+      description,
       images: [ogImage],
     },
   };
@@ -79,12 +67,12 @@ export default async function HomePage({ params }: Props) {
   setRequestLocale(locale);
 
   const faqs = SITE_FAQS[l] ?? SITE_FAQS.en;
-  const meta = HOME_META[l] ?? HOME_META.en;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
 
   return (
     <main>
       {/* SEO h1 — 視覺隱藏但 SSR 進 DOM 供搜尋引擎與 AI 爬蟲讀取（首屏視覺由 RollMap 提供品牌印象，不需可見大標題） */}
-      <h1 className="sr-only">{meta.h1}</h1>
+      <h1 className="sr-only">{t("h1")}</h1>
       <JsonLd data={faqSchema(faqs)} />
       <Navbar />
       <RollMap />
