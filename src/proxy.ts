@@ -10,8 +10,13 @@ export default async function middleware(req: NextRequest) {
 
   // --- 後台 API（/api/admin/*）---
   if (pathname.startsWith("/api/admin")) {
-    // 登入 / 登出為公開端點
-    if (pathname === "/api/admin/login" || pathname === "/api/admin/logout") {
+    // 公開端點：登入 / 登出；以及 Blob client 直傳（其完成回呼由 Blob 伺服器發出、不帶 cookie，
+    // 授權改在 route 的 onBeforeGenerateToken 內以 session 把關）
+    if (
+      pathname === "/api/admin/login" ||
+      pathname === "/api/admin/logout" ||
+      pathname === "/api/admin/upload"
+    ) {
       return NextResponse.next();
     }
     const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);

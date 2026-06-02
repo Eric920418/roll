@@ -166,10 +166,14 @@ public/
 - `src/i18n/request.ts` 載入靜態 `messages/*.json`（base / fallback）後，deep-merge DB 覆蓋值（`Setting` blob `messages.en` / `messages.zh-tw`，只存被改過的鍵）
 - 翻譯編輯器清空欄位 = 回退至預設值（deep-merge 視空字串為未覆蓋）
 
-### 圖片上傳（Vercel Blob）
+### 圖片上傳（Vercel Blob，client 直傳）
 
-- `POST /api/admin/upload`（multipart）→ `put()` 上傳、回傳公開 URL；編輯時帶 `oldUrl` 自動 `del()` 清孤兒舊圖
-- 限制：型別 JPG/PNG/GIF/WebP/SVG、≤ 4.5 MB（Vercel server upload body 上限）
+- 採 **client-side 直傳**（`@vercel/blob/client` 的 `upload()`）：瀏覽器直接把檔案送到 Blob，**繞過 Serverless Function 4.5MB body 上限**（否則大圖會被平台層回 `413 FUNCTION_PAYLOAD_TOO_LARGE`）
+- `POST /api/admin/upload` 改為 `handleUpload` 的 **token 簽發端點**（不經手檔案位元組），兩階段：
+  1. `blob.generate-client-token`（瀏覽器發起、帶 admin cookie）→ 在 `onBeforeGenerateToken` 內以 `getAdminSession()` 驗證管理員
+  2. `blob.upload-completed`（Blob 伺服器回呼、無 cookie，由簽章驗證）→ `onUploadCompleted` 清理被取代的舊圖（本機 localhost 不觸發，僅正式環境）
+- 因回呼無 cookie，`proxy.ts` 讓 `/api/admin/upload` **略過 cookie 攔截**，授權改在 route 內把關
+- 限制：型別 JPG/PNG/GIF/WebP（不含 SVG，避免儲存型 XSS）、≤ 20 MB（前後端一致）
 - `next.config.ts` `images.remotePatterns` 已允許 `*.public.blob.vercel-storage.com`
 - seed 的初始圖片仍指向 `/public/*.png`；業主在後台上傳後即改為 Blob URL
 
