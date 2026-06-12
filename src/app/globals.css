@@ -13,6 +13,28 @@
   --font-body: "hero-new", "Noto Sans TC", sans-serif;
   --font-chinese: "Noto Sans TC", sans-serif;
   --font-display: var(--font-display-archivo), "hero-new", "Noto Sans TC", sans-serif;
+
+  /* TW Industry 公司情報頁專用（equity-research 識別，不影響 roll 既有設計） */
+  --color-navy: #0d2840;
+  --color-navy-light: #1b4060;
+  --color-gold: #c9a961;
+  --color-ink: #14202b;
+  --color-muted: #5b6b78;
+  --color-line: #e3e8ec;
+  --color-paper: #ffffff;
+  --color-canvas: #f7f9fb;
+  --color-positive: #1a7f5a;
+  --color-negative: #c0392b;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* 公司情報頁：sticky header 補償 + TOC 錨點 */
+.report-body :is(h1, h2, h3) {
+  scroll-margin-top: 6rem;
+}
+.anchor {
+  color: inherit;
+  text-decoration: none;
 }
 
 html {
