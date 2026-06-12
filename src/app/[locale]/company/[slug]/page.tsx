@@ -61,7 +61,21 @@ function groupMetrics(metrics: Metric[]) {
   return byKey;
 }
 
-const SNAPSHOT_KEYS = ["monthlyRevenue", "revenue", "grossMargin", "opMargin", "eps"];
+// 頭條快照（每個取最新值；不存在則略過）
+const SNAPSHOT_KEYS = [
+  "monthlyRevenue", "revenue", "grossMargin", "opMargin", "netMargin", "eps", "roe", "pe", "dividendYield",
+];
+
+// 趨勢圖（有 >1 期才畫）
+const CHART_SPECS: { key: string; kind: "bar" | "line"; color?: string }[] = [
+  { key: "monthlyRevenue", kind: "bar" },
+  { key: "revenue", kind: "bar" },
+  { key: "grossMargin", kind: "line", color: "var(--color-gold)" },
+  { key: "netMargin", kind: "line", color: "var(--color-positive)" },
+  { key: "eps", kind: "bar", color: "var(--color-navy-light)" },
+  { key: "operatingCashFlow", kind: "bar", color: "var(--color-navy-light)" },
+  { key: "stockPrice", kind: "line" },
+];
 
 export default async function CompanyPage({ params }: Props) {
   const { locale, slug } = await params;
@@ -82,9 +96,8 @@ export default async function CompanyPage({ params }: Props) {
   }).filter((x): x is NonNullable<typeof x> => x !== null);
 
   const revenueSeries = byKey.get("monthlyRevenue") ?? byKey.get("revenue");
-  const marginSeries = byKey.get("grossMargin");
-  const epsSeries = byKey.get("eps");
   const revenueKey = byKey.has("monthlyRevenue") ? "monthlyRevenue" : "revenue";
+  const dividendSeries = byKey.get("cashDividend");
 
   const toc: TocItem[] = [
     { id: "key-facts", label: "Key Facts" },
@@ -188,24 +201,38 @@ export default async function CompanyPage({ params }: Props) {
                     Financials
                   </h2>
                   <div className="space-y-8">
-                    {revenueSeries && revenueSeries.length > 1 && (
-                      <ChartBlock title={metricLabel(revenueKey)}>
-                        <MetricChart points={revenueSeries} kind="bar" unit={revenueSeries[0].unit} />
-                      </ChartBlock>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      {CHART_SPECS.map((c) => {
+                        const s = byKey.get(c.key);
+                        if (!s || s.length < 2) return null;
+                        return (
+                          <ChartBlock key={c.key} title={metricLabel(c.key)}>
+                            <MetricChart points={s} kind={c.kind} unit={s[0].unit} color={c.color} />
+                          </ChartBlock>
+                        );
+                      })}
+                    </div>
+
+                    <FinCards title="Valuation" byKey={byKey} keys={["pe", "pb", "dividendYield"]} />
+                    <FinCards
+                      title="Balance Sheet & Cash Flow"
+                      byKey={byKey}
+                      keys={["totalAssets", "totalEquity", "debtRatio", "cash", "operatingCashFlow"]}
+                    />
+
+                    {dividendSeries && dividendSeries.length > 0 && (
+                      <div>
+                        <h3 className="mb-1 font-[family-name:var(--font-heading)] text-lg font-semibold text-navy">
+                          Dividend History
+                        </h3>
+                        <p className="mb-3 text-sm text-muted">Cash dividend per share, by fiscal year.</p>
+                        <FactTable metricKey="cashDividend" rows={[...dividendSeries].reverse()} />
+                      </div>
                     )}
-                    {marginSeries && marginSeries.length > 1 && (
-                      <ChartBlock title={metricLabel("grossMargin")}>
-                        <MetricChart points={marginSeries} kind="line" unit="percent" color="var(--color-gold)" />
-                      </ChartBlock>
-                    )}
-                    {epsSeries && epsSeries.length > 1 && (
-                      <ChartBlock title={metricLabel("eps")}>
-                        <MetricChart points={epsSeries} kind="bar" unit={epsSeries[0].unit} color="var(--color-navy-light)" />
-                      </ChartBlock>
-                    )}
+
                     {revenueSeries && revenueSeries.length > 0 && (
                       <details className="rounded-lg border border-line bg-paper p-4">
-                        <summary className="cursor-pointer text-sm font-medium text-navy">Show full data table</summary>
+                        <summary className="cursor-pointer text-sm font-medium text-navy">Show full monthly revenue table</summary>
                         <div className="mt-4">
                           <FactTable metricKey={revenueKey} rows={[...revenueSeries].reverse()} />
                         </div>
@@ -280,6 +307,37 @@ function ChartBlock({ title, children }: { title: string; children: React.ReactN
     <div className="rounded-lg border border-line bg-paper p-5">
       <p className="mb-3 text-sm font-semibold text-navy">{title}</p>
       {children}
+    </div>
+  );
+}
+
+// 一組指標的最新值卡片（不存在的 key 自動略過）
+function FinCards({
+  title,
+  byKey,
+  keys,
+}: {
+  title: string;
+  byKey: Map<string, { period: string; value: number; unit: string | null }[]>;
+  keys: string[];
+}) {
+  const cards = keys
+    .map((k) => {
+      const s = byKey.get(k);
+      if (!s || s.length === 0) return null;
+      const latest = s[s.length - 1];
+      return { key: k, ...latest };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  if (cards.length === 0) return null;
+  return (
+    <div>
+      <h3 className="mb-3 font-[family-name:var(--font-heading)] text-lg font-semibold text-navy">{title}</h3>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+        {cards.map((c) => (
+          <SnapshotCard key={c.key} label={metricLabel(c.key)} value={c.value} unit={c.unit} period={c.period} />
+        ))}
+      </div>
     </div>
   );
 }

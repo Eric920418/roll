@@ -19,6 +19,8 @@ export function formatMetric(value: number, unit?: string | null): string {
       return formatTWD(value * 1000);
     case "TWD":
       return formatTWD(value);
+    case "TWD_per_share":
+      return `NT$${value.toFixed(2)}`;
     case "x":
       return `${value.toFixed(2)}×`;
     default:
@@ -33,7 +35,18 @@ export const METRIC_LABELS: Record<string, string> = {
   grossMargin: "Gross Margin",
   opMargin: "Operating Margin",
   netMargin: "Net Margin",
+  netIncome: "Net Income",
   eps: "EPS",
+  roe: "ROE (TTM)",
+  totalAssets: "Total Assets",
+  totalEquity: "Total Equity",
+  debtRatio: "Debt Ratio",
+  cash: "Cash & Equivalents",
+  operatingCashFlow: "Operating Cash Flow",
+  cashDividend: "Cash Dividend",
+  pe: "P/E",
+  pb: "P/B",
+  dividendYield: "Dividend Yield",
   stockPrice: "Share Price",
 };
 
