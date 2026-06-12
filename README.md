@@ -79,7 +79,8 @@ src/
 │   │   ├── services/[slug]/   # 服務子頁（6 項）
 │   │   ├── from/[country]/    # 國別指南（6 國）Programmatic SEO
 │   │   ├── about/             # About Us 品牌哲學頁（靜態）
-│   │   └── esg/               # ESG 品牌敘事頁（靜態）
+│   │   ├── esg/               # ESG 品牌敘事頁（靜態）
+│   │   └── product/           # 產品著陸頁 /product（SaaS 產品行銷頁，文案走翻譯覆蓋）
 │   ├── sitemap.ts             # 動態 sitemap（含 hreflang）
 │   ├── robots.ts              # 含 AI bot 白名單
 │   └── layout.tsx             # Root metadata
@@ -88,7 +89,8 @@ src/
 │   ├── layout/                # Navbar (client), Footer (client)
 │   ├── sections/              # RollMap, TaiwanMap, Work, Events 為 client；Services, Clients, GoldenTicket 為 server (RSC) + ScrollReveal client child；InsightsTeaser 目前未掛在首頁
 │   │   ├── about/             # About 頁 sections — 全為 client（Hero / Philosophy / RollUpSpirit (GSAP + 打字機循環) / CoreEquation / Principles / ClosingCTA）
-│   │   └── esg/               # ESG 頁 sections — 全為 client（直接用 motion variants）
+│   │   ├── esg/               # ESG 頁 sections — 全為 client（直接用 motion variants）
+│   │   └── product/           # 產品著陸頁 sections — 全為 client（ProductNav / ProductHero / HowItWorks / Pricing / ProductCTA）
 │   ├── content/               # ContentPage, FaqList, JsonLd（內容頁共用）
 │   └── ui/                    # ScrollReveal, CounterAnimation, LanguageSwitch（皆為 client）
 │
@@ -119,7 +121,7 @@ public/
 
 ## 首頁 Sections（由 `src/app/[locale]/page.tsx` 組合）
 
-1. **Navbar** — 固定導航；漢堡選單只保留 `About` 與 `ESG` 兩個獨立頁面入口（首頁回跳由左上 Logo 提供，避免重複）
+1. **Navbar** — 固定導航；漢堡選單保留 `About`、`ESG`、`Product` 三個獨立頁面入口（首頁回跳由左上 Logo 提供，避免重複）
 2. **RollMap** — 滾動三頁：品牌 Hero → 全球 vs 台灣外商數量對比 → Forbes Global 2000 排名（含 ROLL ON 客戶）
    - 包含 `sr-only` SSR 純文字版本供 LLM / 螢幕閱讀器讀取（視覺化數據雙軌化）
 3. **TaiwanMap** — 台灣地圖縮放 → 全球 + 6 座橋樑城市；5 行品牌宣言
@@ -132,6 +134,19 @@ public/
 10. **Footer** — 聯絡表單（投遞到 `/api/contact` → 後台收件匣）+ 社群連結（**CMS 管理**）
 
 > 所有 section 文字（含區塊標題、About / ESG 整頁）皆可由後台「文案翻譯」即時編輯；清單型內容（4–9）由各自 CRUD 管理。**例外**：RollMap 的數值（mapData / Forbes 排名）與地圖幾何座標仍寫死在程式碼（屬呈現邏輯），其文字標籤可由翻譯覆蓋編輯。
+
+## 產品著陸頁 `/product`（由 `src/app/[locale]/product/page.tsx` 組合）
+
+新產品（自助式 SaaS：Free / Pro / Business 訂閱 + 專屬 Dashboard）的獨立行銷著陸頁。視覺沿用全站設計系統（`hero-new` 字體、`#7B1A2C` 暗紅、Motion `[0.22,1,0.36,1]` 進場），結構參考設計草稿 `介紹頁.png`。
+
+1. **ProductNav** — 著陸頁專屬頂部列（非全站漢堡）：左 Logo → 首頁，右 `Login` / `Sign Up` + 語言切換；捲動加玻璃背景
+2. **ProductHero** — 大標題 + 副標（"Thinking about expanding in Taiwan?"）+ `Get Started`（→ `#pricing`）+ 右側 3 張問題式卡片（何時募資 / 是否在地聘僱 / 在地 CEO 如何決策）— 對齊外商決策者真正會問的問題
+3. **HowItWorks** — 「如何開始」三步驟（01 註冊 → 02 客製化 Dashboard → 03 媒合夥伴）
+4. **Pricing** — 「選擇方案」三卡（Free NT$0 / Pro NT$590〔推薦〕/ Business NT$890），CTA → `#contact`
+5. **ProductCTA** — 底部暗紅大 CTA（`免費開始使用` → `#contact`）
+6. **Footer** — 沿用全站 Footer（含 `id="contact"` 聯絡表單，即暫行候補名單，留言進後台收件匣）
+
+> **文案管理**：整頁文字（含 NT$ 定價）放在 `messages/*.json` 的 `Product` namespace，自動出現在後台「文案翻譯 → Product」分組可即時編輯（沿用 Home / ESG 的翻譯覆蓋機制，**無新增資料表**）。**範圍**：本頁僅為行銷著陸頁，`Login` / `Sign Up` / `Get Started` 暫導向 `#contact`；真正的會員系統與 Dashboard 為後續另案。
 
 ## CMS 後台
 

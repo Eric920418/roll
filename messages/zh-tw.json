@@ -6,7 +6,8 @@
   },
   "Nav": {
     "about": "關於我們",
-    "esg": "ESG"
+    "esg": "ESG",
+    "product": "產品"
   },
   "AboutPage": {
     "metaTitle": "關於 ROLL ON.｜持續滾動的影響力",
@@ -191,6 +192,89 @@
       "line1": "Ideas are everywhere.",
       "line2": "Execution is rare.",
       "button": "Join Us"
+    }
+  },
+  "Product": {
+    "metaTitle": "ROLL ON. 產品 — 你的台灣與亞洲落地 Dashboard",
+    "metaDescription": "把繁瑣的市場進入流程，化為清晰的行動步驟。ROLL ON. 自助式平台提供專屬 Dashboard、合規 Checklist 與專業服務媒合，讓外商更快落地台灣與亞洲。",
+    "nav": {
+      "login": "登入",
+      "signup": "註冊"
+    },
+    "hero": {
+      "brand": "ROLL ON.",
+      "tagline": "正在考慮進入台灣市場嗎？",
+      "ctaPrimary": "立即開始",
+      "ctaNote": "90 天，帶著信心拓展"
+    },
+    "features": {
+      "fundraising": {
+        "title": "我們什麼時候該募資？",
+        "desc": "抓準台灣與亞洲的募資時機，不再只憑感覺。"
+      },
+      "hiring": {
+        "title": "我們該在當地聘僱嗎？",
+        "desc": "判斷何時在地團隊勝過遠端，以及如何組建能留得住的團隊。"
+      },
+      "culture": {
+        "title": "在地 CEO 如何做決策？",
+        "desc": "解讀真正促成交易的人脈，以及在地的潛規則。"
+      }
+    },
+    "steps": {
+      "title": "如何開始",
+      "s1": {
+        "num": "01",
+        "title": "註冊資料",
+        "desc": "幾分鐘填好基本資料，立即建立你的專屬帳號。"
+      },
+      "s2": {
+        "num": "02",
+        "title": "客製化 Dashboard",
+        "desc": "系統依你的產業與目標市場，生成專屬的進度藍圖與待辦清單。"
+      },
+      "s3": {
+        "num": "03",
+        "title": "媒合在地合作夥伴",
+        "desc": "與我們的顧問及 Asia Founders Club 夥伴對接，加速你的落地。"
+      }
+    },
+    "pricing": {
+      "title": "選擇方案",
+      "badge": "推薦",
+      "free": {
+        "name": "Free",
+        "price": "NT$0",
+        "unit": "永久免費",
+        "f1": "基礎落地進度藍圖",
+        "f2": "公司設立 Checklist",
+        "f3": "社群資源存取",
+        "cta": "免費開始"
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "NT$590",
+        "unit": "/ 月",
+        "f1": "包含 Free 全部功能",
+        "f2": "客製化 Dashboard 與 Milestone 管理",
+        "f3": "優先服務媒合",
+        "cta": "升級 Pro"
+      },
+      "business": {
+        "name": "Business",
+        "price": "NT$890",
+        "unit": "/ 月",
+        "f1": "包含 Pro 全部功能",
+        "f2": "專屬顧問與季度策略會議",
+        "f3": "Asia Founders Club 完整權限",
+        "cta": "聯絡我們"
+      }
+    },
+    "cta": {
+      "brand": "ROLL ON.",
+      "line1": "準備好開始了嗎？",
+      "line2": "免費註冊，3 分鐘打造你的專屬 Dashboard。",
+      "button": "免費開始使用"
     }
   }
 }

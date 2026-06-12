@@ -6,7 +6,8 @@
   },
   "Nav": {
     "about": "About",
-    "esg": "ESG"
+    "esg": "ESG",
+    "product": "Product"
   },
   "AboutPage": {
     "metaTitle": "About ROLL ON. | The Momentum of Impact",
@@ -191,6 +192,89 @@
       "line1": "Ideas are everywhere.",
       "line2": "Execution is rare.",
       "button": "Join Us"
+    }
+  },
+  "Product": {
+    "metaTitle": "ROLL ON. Platform — Your Taiwan & Asia Market-Entry Dashboard",
+    "metaDescription": "Turn tedious market-entry admin into clear, actionable steps. ROLL ON.'s self-serve platform gives foreign founders a tailored dashboard, compliance checklists, and expert matching to land in Taiwan and Asia — faster.",
+    "nav": {
+      "login": "Login",
+      "signup": "Sign Up"
+    },
+    "hero": {
+      "brand": "ROLL ON.",
+      "tagline": "Thinking about expanding in Taiwan?",
+      "ctaPrimary": "Get Started",
+      "ctaNote": "90 days, expand with confidence"
+    },
+    "features": {
+      "fundraising": {
+        "title": "When should we raise?",
+        "desc": "Time your round to the Taiwan and Asia funding window — not guesswork."
+      },
+      "hiring": {
+        "title": "Should we hire locally?",
+        "desc": "Know when a local team beats going remote, and how to build one that stays."
+      },
+      "culture": {
+        "title": "How do local CEOs make decisions?",
+        "desc": "Decode the relationships and unwritten rules that actually close deals here."
+      }
+    },
+    "steps": {
+      "title": "How it works",
+      "s1": {
+        "num": "01",
+        "title": "Sign up",
+        "desc": "Fill in your basics in a few minutes and create your own account."
+      },
+      "s2": {
+        "num": "02",
+        "title": "Customize your dashboard",
+        "desc": "We generate a tailored checklist and roadmap for your industry and target market."
+      },
+      "s3": {
+        "num": "03",
+        "title": "Match with local partners",
+        "desc": "Connect with our advisors and Asia Founders Club partners to accelerate your landing."
+      }
+    },
+    "pricing": {
+      "title": "Choose your plan",
+      "badge": "Popular",
+      "free": {
+        "name": "Free",
+        "price": "NT$0",
+        "unit": "forever",
+        "f1": "Basic landing roadmap",
+        "f2": "Company setup checklist",
+        "f3": "Community access",
+        "cta": "Start free"
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "NT$590",
+        "unit": "/ month",
+        "f1": "Everything in Free",
+        "f2": "Custom dashboard & milestone tracking",
+        "f3": "Priority expert matching",
+        "cta": "Get Pro"
+      },
+      "business": {
+        "name": "Business",
+        "price": "NT$890",
+        "unit": "/ month",
+        "f1": "Everything in Pro",
+        "f2": "Dedicated advisor & quarterly reviews",
+        "f3": "Full Asia Founders Club access",
+        "cta": "Contact sales"
+      }
+    },
+    "cta": {
+      "brand": "ROLL ON.",
+      "line1": "Ready to roll?",
+      "line2": "Sign up free and build your own dashboard in 3 minutes.",
+      "button": "Start for free"
     }
   }
 }

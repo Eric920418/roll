@@ -31,6 +31,7 @@ export default function Navbar() {
   const items: StaggeredMenuItem[] = [
     { label: t("about"), ariaLabel: t("about"), link: pathForLocale("/about", locale) },
     { label: t("esg"), ariaLabel: t("esg"), link: pathForLocale("/esg", locale) },
+    { label: t("product"), ariaLabel: t("product"), link: pathForLocale("/product", locale) },
   ];
 
   const position: "left" | "right" = "right";
