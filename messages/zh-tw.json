@@ -242,31 +242,31 @@
     "pricing": {
       "title": "選擇方案",
       "badge": "推薦",
-      "free": {
-        "name": "Free",
-        "price": "NT$0",
-        "unit": "永久免費",
-        "f1": "基礎落地進度藍圖",
-        "f2": "公司設立 Checklist",
-        "f3": "社群資源存取",
-        "cta": "免費開始"
-      },
       "pro": {
         "name": "Pro",
         "price": "NT$590",
         "unit": "/ 月",
-        "f1": "包含 Free 全部功能",
+        "f1": "一步步的落地進度藍圖",
         "f2": "客製化 Dashboard 與 Milestone 管理",
-        "f3": "優先服務媒合",
-        "cta": "升級 Pro"
+        "f3": "社群資源存取",
+        "cta": "立即開始"
       },
       "business": {
         "name": "Business",
         "price": "NT$890",
         "unit": "/ 月",
         "f1": "包含 Pro 全部功能",
-        "f2": "專屬顧問與季度策略會議",
-        "f3": "Asia Founders Club 完整權限",
+        "f2": "優先服務媒合",
+        "f3": "專屬顧問與季度策略會議",
+        "cta": "立即開始"
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "price": "客製",
+        "unit": "",
+        "f1": "包含 Business 全部功能",
+        "f2": "Asia Founders Club 完整權限",
+        "f3": "量身打造的市場進入方案",
         "cta": "聯絡我們"
       }
     },

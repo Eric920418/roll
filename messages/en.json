@@ -242,31 +242,31 @@
     "pricing": {
       "title": "Choose your plan",
       "badge": "Popular",
-      "free": {
-        "name": "Free",
-        "price": "NT$0",
-        "unit": "forever",
-        "f1": "Basic landing roadmap",
-        "f2": "Company setup checklist",
-        "f3": "Community access",
-        "cta": "Start free"
-      },
       "pro": {
         "name": "Pro",
         "price": "NT$590",
         "unit": "/ month",
-        "f1": "Everything in Free",
+        "f1": "Step-by-step landing roadmap",
         "f2": "Custom dashboard & milestone tracking",
-        "f3": "Priority expert matching",
-        "cta": "Get Pro"
+        "f3": "Community access",
+        "cta": "Get started"
       },
       "business": {
         "name": "Business",
         "price": "NT$890",
         "unit": "/ month",
         "f1": "Everything in Pro",
-        "f2": "Dedicated advisor & quarterly reviews",
-        "f3": "Full Asia Founders Club access",
+        "f2": "Priority expert matching",
+        "f3": "Dedicated advisor & quarterly reviews",
+        "cta": "Get started"
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "price": "Custom",
+        "unit": "",
+        "f1": "Everything in Business",
+        "f2": "Full Asia Founders Club access",
+        "f3": "Tailored market-entry program",
         "cta": "Contact sales"
       }
     },

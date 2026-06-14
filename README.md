@@ -142,7 +142,7 @@ public/
 1. **ProductNav** — 著陸頁專屬頂部列（非全站漢堡）：左 Logo → 首頁，右 `Login` / `Sign Up` + 語言切換；捲動加玻璃背景
 2. **ProductHero** — 大標題 + 副標（"Thinking about expanding in Taiwan?"）+ `Get Started`（→ `#pricing`）+ 右側 3 張問題式卡片（何時募資 / 是否在地聘僱 / 在地 CEO 如何決策）— 對齊外商決策者真正會問的問題
 3. **HowItWorks** — 「如何開始」三步驟（01 註冊 → 02 客製化 Dashboard → 03 媒合夥伴）
-4. **Pricing** — 「選擇方案」三卡（Free NT$0 / Pro NT$590〔推薦〕/ Business NT$890），CTA → `#contact`
+4. **Pricing** — 「選擇方案」三卡（Pro NT$590 / Business NT$890〔推薦，中間突出〕/ Enterprise 洽詢），CTA → `#contact`
 5. **ProductCTA** — 底部暗紅大 CTA（`免費開始使用` → `#contact`）
 6. **Footer** — 沿用全站 Footer（含 `id="contact"` 聯絡表單，即暫行候補名單，留言進後台收件匣）
 

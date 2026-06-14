@@ -17,12 +17,12 @@ const card: Variants = {
   },
 };
 
-type Plan = { key: "free" | "pro" | "business"; featured?: boolean };
+type Plan = { key: "pro" | "business" | "enterprise"; featured?: boolean };
 
 const PLANS: Plan[] = [
-  { key: "free" },
-  { key: "pro", featured: true },
-  { key: "business" },
+  { key: "pro" },
+  { key: "business", featured: true },
+  { key: "enterprise" },
 ];
 
 const FEATS = ["f1", "f2", "f3"] as const;
@@ -95,16 +95,18 @@ export default function Pricing() {
               </h3>
 
               <div className="mt-4 flex items-end gap-2">
-                <span className="text-4xl md:text-5xl font-extrabold tracking-[-0.04em] font-[family-name:var(--font-heading)]">
+                <span className="text-4xl lg:text-5xl font-extrabold tracking-[-0.04em] leading-none whitespace-nowrap font-[family-name:var(--font-heading)]">
                   {t(`${key}.price`)}
                 </span>
-                <span
-                  className={`pb-1.5 text-sm font-[family-name:var(--font-body)] ${
-                    featured ? "text-white/70" : "text-dark/50"
-                  }`}
-                >
-                  {t(`${key}.unit`)}
-                </span>
+                {t(`${key}.unit`) && (
+                  <span
+                    className={`pb-1 text-sm font-[family-name:var(--font-body)] ${
+                      featured ? "text-white/70" : "text-dark/50"
+                    }`}
+                  >
+                    {t(`${key}.unit`)}
+                  </span>
+                )}
               </div>
 
               <ul className="mt-8 flex flex-col gap-4">
