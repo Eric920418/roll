@@ -124,16 +124,18 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              <a
-                href="#contact"
-                className={`mt-9 md:mt-auto md:pt-9 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold font-[family-name:var(--font-heading)] transition-colors duration-300 ${
-                  featured
-                    ? "bg-white text-primary hover:bg-cream"
-                    : "bg-primary text-white hover:bg-primary-dark"
-                }`}
-              >
-                {t(`${key}.cta`)}
-              </a>
+              <div className="mt-9 md:mt-auto md:pt-9">
+                <a
+                  href="#contact"
+                  className={`flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold font-[family-name:var(--font-heading)] transition-colors duration-300 ${
+                    featured
+                      ? "bg-white text-primary hover:bg-cream"
+                      : "bg-primary text-white hover:bg-primary-dark"
+                  }`}
+                >
+                  {t(`${key}.cta`)}
+                </a>
+              </div>
             </motion.div>
           ))}
         </motion.div>
