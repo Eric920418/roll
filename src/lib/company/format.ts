@@ -4,6 +4,7 @@ export function formatTWD(amount: number): string {
   if (!isFinite(amount)) return "—";
   const sign = amount < 0 ? "-" : "";
   const abs = Math.abs(amount);
+  if (abs >= 1e12) return `${sign}NT$${(abs / 1e12).toFixed(2)}T`;
   if (abs >= 1e9) return `${sign}NT$${(abs / 1e9).toFixed(2)}B`;
   if (abs >= 1e6) return `${sign}NT$${(abs / 1e6).toFixed(1)}M`;
   if (abs >= 1e3) return `${sign}NT$${(abs / 1e3).toFixed(0)}K`;
