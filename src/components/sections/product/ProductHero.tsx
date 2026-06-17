@@ -66,7 +66,7 @@ export default function ProductHero() {
         <div className="flex flex-col">
           <motion.h1
             variants={item}
-            className="text-6xl md:text-7xl lg:text-8xl font-extrabold text-primary leading-[0.95] tracking-[-0.04em] font-[family-name:var(--font-heading)]"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-primary leading-[0.95] tracking-[-0.04em] font-[family-name:var(--font-heading)]"
           >
             {t("hero.brand")}
           </motion.h1>
