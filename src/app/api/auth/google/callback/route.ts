@@ -44,40 +44,42 @@ export async function GET(req: NextRequest) {
 
     const profile = await exchangeCodeForProfile(code);
 
-    // 以 googleId 為主鍵；同 email 既有帳號則連結 googleId（避免 unique 衝突）
+    // 以 googleId 為主鍵查既有 Google 用戶
     let user = await prisma.user.findUnique({
       where: { googleId: profile.sub },
     });
     if (!user) {
+      // 安全：絕不以 email 自動連結既有（密碼）帳號 —— 防 OAuth 帳號預劫持。
+      // 攻擊者可先用受害者 email 註冊密碼帳號（signup 不驗證 email），
+      // 受害者之後用 Google 登入若被自動連結，就會被導進攻擊者控制的帳號。
       const byEmail = await prisma.user.findUnique({
         where: { email: profile.email },
       });
       if (byEmail) {
-        user = await prisma.user.update({
-          where: { id: byEmail.id },
-          data: {
-            googleId: profile.sub,
-            image: byEmail.image ?? profile.picture,
-            firstName: byEmail.firstName ?? profile.firstName,
-            lastName: byEmail.lastName ?? profile.lastName,
-            emailVerified:
-              byEmail.emailVerified ??
-              (profile.emailVerified ? new Date() : null),
-          },
-        });
-      } else {
-        user = await prisma.user.create({
-          data: {
-            email: profile.email,
-            googleId: profile.sub,
-            firstName: profile.firstName,
-            lastName: profile.lastName,
-            image: profile.picture,
-            emailVerified: profile.emailVerified ? new Date() : null,
-            onboardingStep: 2, // Google 註冊即完成帳號步驟
-          },
-        });
+        return NextResponse.redirect(
+          new URL(
+            `${prefix}/login?error=${encodeURIComponent(
+              "此 Email 已有帳號，請改用密碼登入。",
+            )}`,
+            req.url,
+          ),
+        );
       }
+      // 僅在 Google 已驗證該 email 時才建立新帳號
+      if (!profile.emailVerified) {
+        return redirectError("你的 Google 帳號 Email 尚未驗證，無法以此註冊");
+      }
+      user = await prisma.user.create({
+        data: {
+          email: profile.email,
+          googleId: profile.sub,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          image: profile.picture,
+          emailVerified: new Date(), // Google 已驗證
+          onboardingStep: 2, // Google 註冊即完成帳號步驟
+        },
+      });
     }
 
     const token = await createUserSession(user.id, user.email);
