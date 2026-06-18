@@ -1,7 +1,12 @@
 import createMiddleware from "next-intl/middleware";
 import { NextResponse, type NextRequest } from "next/server";
 import { routing } from "./i18n/routing";
-import { SESSION_COOKIE, verifySession } from "./lib/auth/session";
+import {
+  SESSION_COOKIE,
+  USER_SESSION_COOKIE,
+  verifySession,
+  verifyUserSession,
+} from "./lib/auth/session";
 
 const intl = createMiddleware(routing);
 
@@ -44,6 +49,20 @@ export default async function middleware(req: NextRequest) {
       return NextResponse.redirect(url);
     }
     return NextResponse.next();
+  }
+
+  // --- 前台：保護 onboarding（需公開用戶登入；涵蓋 /onboarding 與 /zh-tw/onboarding）---
+  if (/^\/(zh-tw\/)?onboarding(\/|$)/.test(pathname)) {
+    const userSession = await verifyUserSession(
+      req.cookies.get(USER_SESSION_COOKIE)?.value,
+    );
+    if (!userSession) {
+      const url = req.nextUrl.clone();
+      url.pathname = pathname.startsWith("/zh-tw") ? "/zh-tw/login" : "/login";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    // 已登入 → 落到下方 intl(req) 處理 locale
   }
 
   // --- 前台：交給 next-intl 處理 locale ---

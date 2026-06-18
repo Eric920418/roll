@@ -43,10 +43,15 @@ DATABASE_URL="postgresql://...neon.tech/neondb?sslmode=require&channel_binding=r
 `.env.local`（僅 Next.js 讀取，後台密鑰）：
 
 ```bash
-AUTH_SECRET="..."                # jose 簽章密鑰（openssl rand -base64 32）
+AUTH_SECRET="..."                # jose 簽章密鑰（openssl rand -base64 32）— 後台 admin 與公開用戶 session 共用
 ADMIN_EMAIL="admin@roll-grp.com"
 ADMIN_PASSWORD_HASH="\$2b\$..."  # bcrypt hash，$ 必須跳脫為 \$（見下方）
 BLOB_READ_WRITE_TOKEN="..."      # Vercel 連結 Blob store 後複製
+
+# 公開用戶 Google 登入（缺少時 Email 註冊/登入仍可用，Google 按鈕會在前端顯示設定錯誤）
+GOOGLE_CLIENT_ID="...apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="..."
+GOOGLE_REDIRECT_URI="http://localhost:3000/api/auth/google/callback"  # 上線改成 https://<網域>/api/auth/google/callback
 ```
 
 > `.env*` 已 `.gitignore`。產生密碼 hash：
@@ -208,6 +213,47 @@ pnpm dev                        # /admin/login 登入後即可編輯
 ```
 
 > seed 使用 count-guard：每個表僅在為空時寫入，重跑不覆蓋業主編輯（符合「不亂覆蓋資料庫資料」規則）。
+
+## 公開用戶系統（註冊 / 登入 / Onboarding）
+
+與後台 admin 完全獨立的公開平台帳號系統，雙語、含 Email + Google 兩種註冊登入方式，以及 3 步驟 onboarding。設計對齊 `Sass design-01/02`。
+
+### 與 admin auth 的隔離
+
+沿用同一套 jose（`AUTH_SECRET`）+ bcrypt，但**獨立 cookie 與角色**，互不干擾：
+
+| | cookie | 角色 | 簽發 / 驗證 |
+| --- | --- | --- | --- |
+| 後台 admin | `admin_session` | `admin` | `createSession` / `verifySession` |
+| 公開用戶 | `user_session` | `user` | `createUserSession` / `verifyUserSession`（見 `src/lib/auth/session.ts`） |
+
+兩個 `verify*` 都會檢查 `payload.role`，admin token 不可冒用為 user，反之亦然。`getUserSession()` 在 `src/lib/auth/guard.ts`。
+
+### 路由
+
+| 路徑 | 說明 |
+| --- | --- |
+| `/[locale]/signup` | 註冊頁（STEP 1）。Email 分頁＝姓名/Email/密碼；Google 分頁＝Google 登入。 |
+| `/[locale]/login` | 登入頁（Email + 密碼，或 Google）。 |
+| `/[locale]/onboarding/[step]` | `step` = `company`(Step 2) / `requirements`(Step 3)。**proxy 守衛**：未登入導向 `/login`。 |
+| `/api/auth/signup\|login\|logout` | Email 流程（POST，回 `{data}` / `{error,code}`）。 |
+| `/api/auth/onboarding` | PATCH，`getUserSession` 把關，寫入 `OnboardingProfile` 並推進 `onboardingStep`。 |
+| `/api/auth/google/authorize\|callback` | 手寫 Google OAuth 2.0（locale 無關）。 |
+
+UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、`SignupForm`、`LoginForm`、`Onboarding*Form` 等）。ProductNav 的 Login/Sign Up 已接到 `/login`、`/signup`。
+
+### 資料模型（`prisma/schema.prisma`）
+
+- `User`：`email`(unique)、`passwordHash`(Google 用戶為 null)、`googleId`(unique)、姓名/頭像、`onboardingStep`(1/2/3)、`completed`。
+- `OnboardingProfile`(1:1)：Step 2 公司/產業/規模/網站/母國；Step 3 目標市場[]、需求[]、時程、預算、備註。**欄位內容為推測，待設計確認。**
+
+### Google OAuth 設定（前置）
+
+1. Google Cloud Console 建 OAuth Web client，同意畫面 scope `openid email profile`。
+2. 授權 redirect URI 加 dev + prod 兩組（須與 `GOOGLE_REDIRECT_URI` 完全一致，路徑為 `/api/auth/google/callback`）。
+3. 將 client id/secret + redirect uri 填入 `.env.local`（見上方環境變數）。未設定時 Email 流程仍可用，Google 按鈕會在前端顯示設定錯誤。
+
+> Terms / Privacy 連結目前為 `#` placeholder，待有正式條款頁再接。
 
 ## 內容頁（SEO / GEO 主引擎）
 

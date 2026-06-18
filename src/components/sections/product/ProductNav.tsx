@@ -7,12 +7,14 @@ import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
 // 產品著陸頁專屬頂部列（與全站漢堡 Navbar 不同）：
-// 左 logo → 首頁，右 Login / Sign Up → #contact（暫行候補名單）+ 語言切換。
+// 左 logo → 首頁，右 Login → /login、Sign Up → /signup（公開用戶 auth）+ 語言切換。
 // 捲動超過 8px 時加上玻璃背景，初始在淺色 Hero 上維持透明。
 export default function ProductNav() {
   const t = useTranslations("Product.nav");
   const locale = useLocale() as Locale;
   const homeHref = pathForLocale("/", locale);
+  const loginHref = pathForLocale("/login", locale);
+  const signupHref = pathForLocale("/signup", locale);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -44,13 +46,13 @@ export default function ProductNav() {
             <LanguageSwitch variant="dark" />
           </div>
           <a
-            href="#contact"
+            href={loginHref}
             className="text-sm font-medium text-dark/70 hover:text-primary transition-colors duration-300 font-[family-name:var(--font-heading)]"
           >
             {t("login")}
           </a>
           <a
-            href="#contact"
+            href={signupHref}
             className="inline-flex items-center rounded-full bg-primary text-white px-5 md:px-6 py-2 md:py-2.5 text-sm font-semibold font-[family-name:var(--font-heading)] hover:bg-primary-dark transition-colors duration-300"
           >
             {t("signup")}
