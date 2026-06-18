@@ -276,5 +276,145 @@
       "line2": "Sign up free and build your own dashboard in 3 minutes.",
       "button": "Start for free"
     }
+  },
+  "Auth": {
+    "brand": "ROLL ON.",
+    "tagline": "Partner for foreign companies entering Taiwan and expanding into Asian markets.",
+    "intro": "Complete your profile, and the system will initialize your personalized dashboard, recommending the most relevant service providers and localized milestones.",
+    "steps": {
+      "stepLabel": "STEP {current} OF {total}",
+      "account": "Create your account",
+      "accountHint": "Sign in with Email or Google",
+      "company": "Company and industry information",
+      "companyHint": "Initializing your dashboard",
+      "requirements": "Landing requirements assessment",
+      "requirementsHint": "Personalized recommendations"
+    },
+    "signup": {
+      "metaTitle": "Create your account",
+      "metaDescription": "Sign up to build your personalized Taiwan & Asia market-entry dashboard.",
+      "title": "Create your account",
+      "haveAccount": "Already have an account?",
+      "logIn": "Log in",
+      "emailTab": "Email Sign Up",
+      "googleTab": "Continue with Google",
+      "firstName": "First Name",
+      "firstNamePlaceholder": "First Name",
+      "lastName": "Last Name",
+      "lastNamePlaceholder": "Last Name",
+      "email": "Email",
+      "emailPlaceholder": "you@startup.com",
+      "password": "Password",
+      "passwordPlaceholder": "At least 8 characters",
+      "continue": "Continue",
+      "submitting": "Creating account…",
+      "googleNote": "We will only access your basic profile information and will not access any other content in your Google account.",
+      "googleButton": "sign in with Google",
+      "terms": "By continuing, you agree to our",
+      "termsOfService": "Terms of Service",
+      "and": "and",
+      "privacyPolicy": "Privacy Policy"
+    },
+    "login": {
+      "metaTitle": "Log in",
+      "metaDescription": "Log in to your ROLL ON. dashboard.",
+      "title": "Welcome back",
+      "subtitle": "Log in to continue building your dashboard.",
+      "email": "Email",
+      "emailPlaceholder": "you@startup.com",
+      "password": "Password",
+      "passwordPlaceholder": "Your password",
+      "submit": "Log in",
+      "submitting": "Logging in…",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "googleButton": "Continue with Google",
+      "or": "or"
+    },
+    "company": {
+      "title": "Company and industry information",
+      "subtitle": "We'll use this to initialize your dashboard.",
+      "companyName": "Company name",
+      "companyNamePlaceholder": "Acme Inc.",
+      "industry": "Industry",
+      "industryPlaceholder": "Select industry",
+      "companySize": "Company size",
+      "companySizePlaceholder": "Select size",
+      "website": "Website",
+      "websitePlaceholder": "https://",
+      "country": "Home market / country",
+      "countryPlaceholder": "e.g. United States",
+      "continue": "Continue",
+      "back": "Back",
+      "submitting": "Saving…"
+    },
+    "requirements": {
+      "title": "Landing requirements assessment",
+      "subtitle": "So we can tailor recommendations to you.",
+      "targetMarkets": "Target Asian markets",
+      "needs": "What do you need help with?",
+      "timeline": "Timeline",
+      "timelinePlaceholder": "Select timeline",
+      "budgetRange": "Budget range",
+      "budgetRangePlaceholder": "Select budget",
+      "notes": "Anything else?",
+      "notesPlaceholder": "Tell us more about your goals…",
+      "finish": "Finish & build my dashboard",
+      "back": "Back",
+      "submitting": "Finishing…"
+    },
+    "options": {
+      "industry": {
+        "saas": "SaaS / Software",
+        "hardware": "Hardware / IoT",
+        "biotech": "Biotech / Health",
+        "consumer": "Consumer / Retail",
+        "fintech": "Fintech",
+        "other": "Other"
+      },
+      "companySize": {
+        "1-10": "1–10",
+        "11-50": "11–50",
+        "51-200": "51–200",
+        "200+": "200+"
+      },
+      "markets": {
+        "taiwan": "Taiwan",
+        "japan": "Japan",
+        "korea": "South Korea",
+        "china": "China",
+        "singapore": "Singapore",
+        "vietnam": "Vietnam",
+        "thailand": "Thailand"
+      },
+      "needs": {
+        "fundraising": "Fundraising",
+        "market-entry": "Market entry",
+        "legal": "Legal & compliance",
+        "marketing": "Marketing",
+        "sales-channel": "Sales channel",
+        "investor-access": "Investor access"
+      },
+      "timeline": {
+        "lt3m": "Within 3 months",
+        "3-6m": "3–6 months",
+        "6-12m": "6–12 months",
+        "exploring": "Just exploring"
+      },
+      "budget": {
+        "lt10k": "Under US$10k",
+        "10-50k": "US$10k–50k",
+        "50-200k": "US$50k–200k",
+        "gt200k": "US$200k+"
+      }
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "emailTaken": "An account with this email already exists.",
+      "invalidCredentials": "Email or password is incorrect.",
+      "missingFields": "Please fill in all required fields.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "invalidEmail": "Please enter a valid email address."
+    }
   }
 }

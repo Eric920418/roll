@@ -276,5 +276,145 @@
       "line2": "免費註冊，3 分鐘打造你的專屬 Dashboard。",
       "button": "免費開始使用"
     }
+  },
+  "Auth": {
+    "brand": "ROLL ON.",
+    "tagline": "協助外商進入台灣、拓展亞洲市場的夥伴。",
+    "intro": "完成你的資料，系統將初始化你的專屬 Dashboard，推薦最相關的服務夥伴與在地化里程碑。",
+    "steps": {
+      "stepLabel": "第 {current} 步，共 {total} 步",
+      "account": "建立你的帳號",
+      "accountHint": "使用 Email 或 Google 註冊",
+      "company": "公司與產業資訊",
+      "companyHint": "初始化你的 Dashboard",
+      "requirements": "落地需求評估",
+      "requirementsHint": "個人化推薦"
+    },
+    "signup": {
+      "metaTitle": "建立你的帳號",
+      "metaDescription": "註冊以打造你的專屬台灣與亞洲市場進入 Dashboard。",
+      "title": "建立你的帳號",
+      "haveAccount": "已經有帳號了嗎？",
+      "logIn": "登入",
+      "emailTab": "Email 註冊",
+      "googleTab": "使用 Google 繼續",
+      "firstName": "名字",
+      "firstNamePlaceholder": "名字",
+      "lastName": "姓氏",
+      "lastNamePlaceholder": "姓氏",
+      "email": "電子信箱",
+      "emailPlaceholder": "you@startup.com",
+      "password": "密碼",
+      "passwordPlaceholder": "至少 8 個字元",
+      "continue": "繼續",
+      "submitting": "建立帳號中…",
+      "googleNote": "我們僅會存取你的基本個人資料，不會存取你 Google 帳號中的其他內容。",
+      "googleButton": "使用 Google 登入",
+      "terms": "繼續即表示你同意我們的",
+      "termsOfService": "服務條款",
+      "and": "與",
+      "privacyPolicy": "隱私政策"
+    },
+    "login": {
+      "metaTitle": "登入",
+      "metaDescription": "登入你的 ROLL ON. Dashboard。",
+      "title": "歡迎回來",
+      "subtitle": "登入以繼續打造你的 Dashboard。",
+      "email": "電子信箱",
+      "emailPlaceholder": "you@startup.com",
+      "password": "密碼",
+      "passwordPlaceholder": "你的密碼",
+      "submit": "登入",
+      "submitting": "登入中…",
+      "noAccount": "還沒有帳號嗎？",
+      "signUp": "註冊",
+      "googleButton": "使用 Google 繼續",
+      "or": "或"
+    },
+    "company": {
+      "title": "公司與產業資訊",
+      "subtitle": "我們將用這些資訊初始化你的 Dashboard。",
+      "companyName": "公司名稱",
+      "companyNamePlaceholder": "Acme Inc.",
+      "industry": "產業",
+      "industryPlaceholder": "選擇產業",
+      "companySize": "公司規模",
+      "companySizePlaceholder": "選擇規模",
+      "website": "網站",
+      "websitePlaceholder": "https://",
+      "country": "母國市場 / 國家",
+      "countryPlaceholder": "例如：美國",
+      "continue": "繼續",
+      "back": "上一步",
+      "submitting": "儲存中…"
+    },
+    "requirements": {
+      "title": "落地需求評估",
+      "subtitle": "讓我們能為你量身推薦。",
+      "targetMarkets": "目標亞洲市場",
+      "needs": "你需要哪些協助？",
+      "timeline": "時程",
+      "timelinePlaceholder": "選擇時程",
+      "budgetRange": "預算範圍",
+      "budgetRangePlaceholder": "選擇預算",
+      "notes": "還有其他想補充的嗎？",
+      "notesPlaceholder": "多告訴我們一些你的目標…",
+      "finish": "完成並建立我的 Dashboard",
+      "back": "上一步",
+      "submitting": "完成中…"
+    },
+    "options": {
+      "industry": {
+        "saas": "SaaS / 軟體",
+        "hardware": "硬體 / 物聯網",
+        "biotech": "生技 / 醫療",
+        "consumer": "消費 / 零售",
+        "fintech": "金融科技",
+        "other": "其他"
+      },
+      "companySize": {
+        "1-10": "1–10 人",
+        "11-50": "11–50 人",
+        "51-200": "51–200 人",
+        "200+": "200 人以上"
+      },
+      "markets": {
+        "taiwan": "台灣",
+        "japan": "日本",
+        "korea": "南韓",
+        "china": "中國",
+        "singapore": "新加坡",
+        "vietnam": "越南",
+        "thailand": "泰國"
+      },
+      "needs": {
+        "fundraising": "募資",
+        "market-entry": "市場進入",
+        "legal": "法務與合規",
+        "marketing": "行銷",
+        "sales-channel": "銷售通路",
+        "investor-access": "投資人對接"
+      },
+      "timeline": {
+        "lt3m": "3 個月內",
+        "3-6m": "3–6 個月",
+        "6-12m": "6–12 個月",
+        "exploring": "還在了解中"
+      },
+      "budget": {
+        "lt10k": "US$10k 以下",
+        "10-50k": "US$10k–50k",
+        "50-200k": "US$50k–200k",
+        "gt200k": "US$200k 以上"
+      }
+    },
+    "errors": {
+      "generic": "發生錯誤，請再試一次。",
+      "emailTaken": "此電子信箱已被註冊。",
+      "invalidCredentials": "電子信箱或密碼錯誤。",
+      "missingFields": "請填寫所有必填欄位。",
+      "passwordTooShort": "密碼至少需 8 個字元。",
+      "invalidEmail": "請輸入有效的電子信箱。"
+    }
   }
 }
