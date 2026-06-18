@@ -255,6 +255,20 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 > Terms / Privacy 連結目前為 `#` placeholder，待有正式條款頁再接。
 
+### 創辦人決策風格測驗（onboarding 之後）
+
+完成 onboarding（requirements）後 → `/[locale]/quiz`（3 題二選一）→ `/[locale]/quiz/result`（配對一位創辦人）→「完成」回首頁。`User.onboardingStep` 擴成 4=quiz；`completed` 改在**測驗完成**才設 true。`/quiz/*` 由 proxy 以 `user_session` 守衛（同 onboarding）。
+
+- **配對邏輯**（`src/lib/quiz/match.ts`，純函式）：每題對應一決策維度（planning/execution/vision），選項帶 0~100 分；作答 → 三維分數 → 配對**向量距離最近**的已發布創辦人。submit 端（`/api/quiz/submit`）**重新從 DB 取題目自算分數**，不信任前端。
+- **資料皆 DB、CMS 可編輯**：`QuizQuestion`、`Founder`（連結既有 `content/companies` 的 `companySlug`，結果頁放「看完整公司分析」）、`QuizSubmission`（每次作答存一筆）。雙語文字用 Json `{en,"zh-tw"}`。
+- **為何不直接擴充 `content/companies/*.json`**：那是檔案、Vercel FS 唯讀、網頁後台無法寫檔；故創辦人/題目改放 DB 並用 `companySlug` 連結現有公司頁。
+- **Seed**（`prisma/seed.ts`，count-guard）：3 題（設計圖原文）+ 5 位台灣創辦人（張忠謀/郭台銘/洪鎮海/高清愿/中華電信），decisionStyle 為 sample，待後台精修。
+
+### 後台測驗管理（`/admin`，自動受保護）
+
+- `/admin/quiz-submissions` — 唯讀清單（用戶 / 作答 / 配對創辦人 / 決策分數 / 時間 + 刪除）。
+- `/admin/quiz-questions`、`/admin/founders` — 以 JSON 編輯器增刪改（含雙語、timeline、businessDetails 等巢狀結構）；API 在 `/api/admin/{quiz-questions,founders,quiz-submissions}`，皆 `requireAdmin` 把關。
+
 ## 內容頁（SEO / GEO 主引擎）
 
 總計 16 主題 × 2 語系 = **32 個可索引 URL**。每個主題綁一個搜尋意圖：

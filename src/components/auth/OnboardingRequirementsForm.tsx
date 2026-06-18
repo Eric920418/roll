@@ -107,7 +107,7 @@ export default function OnboardingRequirementsForm({
           ),
         );
       }
-      router.push(pathForLocale("/", locale));
+      router.push(pathForLocale("/quiz", locale));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : tErr("generic"));

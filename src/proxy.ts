@@ -51,8 +51,8 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // --- 前台：保護 onboarding（需公開用戶登入；涵蓋 /onboarding 與 /zh-tw/onboarding）---
-  if (/^\/(zh-tw\/)?onboarding(\/|$)/.test(pathname)) {
+  // --- 前台：保護 onboarding + quiz（需公開用戶登入；涵蓋預設與 /zh-tw）---
+  if (/^\/(zh-tw\/)?(onboarding|quiz)(\/|$)/.test(pathname)) {
     const userSession = await verifyUserSession(
       req.cookies.get(USER_SESSION_COOKIE)?.value,
     );

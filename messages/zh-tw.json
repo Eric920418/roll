@@ -416,5 +416,28 @@
       "passwordTooShort": "密碼至少需 8 個字元。",
       "invalidEmail": "請輸入有效的電子信箱。"
     }
+  },
+  "Quiz": {
+    "metaTitle": "決策風格測驗",
+    "metaDescription": "3 題測驗，把你的決策風格配對到一位創辦人。",
+    "next": "下一題",
+    "back": "上一題",
+    "seeResult": "看我的結果",
+    "submitting": "分析中…",
+    "result": {
+      "metaTitle": "你的創辦人配對",
+      "eyebrow": "你的創辦人配對",
+      "decisionAlignment": "決策風格對齊",
+      "planningDepth": "規劃深度",
+      "executionStrength": "執行強度",
+      "visionClarity": "願景清晰度",
+      "timeline": "時間軸",
+      "businessDetails": "事業細節",
+      "founded": "成立",
+      "marketCap": "市值",
+      "fullAnalysis": "看完整公司分析",
+      "intro": "ROLL 以 AI 分析你的創辦人決策風格，並依你的進度給出個人化的下一步行動。",
+      "finish": "完成"
+    }
   }
 }

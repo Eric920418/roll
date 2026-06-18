@@ -416,5 +416,28 @@
       "passwordTooShort": "Password must be at least 8 characters.",
       "invalidEmail": "Please enter a valid email address."
     }
+  },
+  "Quiz": {
+    "metaTitle": "Decision Style Assessment",
+    "metaDescription": "A 3-question assessment that matches your decision style to a founder.",
+    "next": "Next",
+    "back": "Back",
+    "seeResult": "See My Result",
+    "submitting": "Analyzing…",
+    "result": {
+      "metaTitle": "Your Founder Match",
+      "eyebrow": "Your founder match",
+      "decisionAlignment": "Decision style alignment",
+      "planningDepth": "Planning depth",
+      "executionStrength": "Execution strength",
+      "visionClarity": "Vision clarity",
+      "timeline": "Timeline",
+      "businessDetails": "Business Details",
+      "founded": "Founded",
+      "marketCap": "Market Cap",
+      "fullAnalysis": "View full company analysis",
+      "intro": "ROLL uses AI to analyze your founder's decision style and gives you personalized next-step actions based on your progress.",
+      "finish": "Done"
+    }
   }
 }

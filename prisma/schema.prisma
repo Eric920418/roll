@@ -150,12 +150,14 @@ model User {
   googleId       String?   @unique // Google sub；Email 註冊者為 null
   image          String? // Google 頭像 URL，可空
   emailVerified  DateTime? // Google 帳號即視為已驗證
-  onboardingStep Int       @default(1) // 1=account 2=company 3=requirements
-  completed      Boolean   @default(false)
+  onboardingStep Int       @default(1) // 1=account 2=company 3=requirements 4=quiz
+  completed      Boolean   @default(false) // 全流程（含測驗）完成
+  quizCompleted  Boolean   @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  profile OnboardingProfile?
+  profile         OnboardingProfile?
+  quizSubmissions QuizSubmission[]
 
   @@index([email])
 }
@@ -182,4 +184,71 @@ model OnboardingProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// 創辦人決策風格測驗（註冊後流程）
+// 題目與創辦人皆 CMS 可編輯（DB）；雙語文字用 Json {en, "zh-tw"}
+// ============================================
+
+/// 測驗題目（每題對應一個決策維度，兩選項各推一端）
+model QuizQuestion {
+  id        String   @id @default(cuid())
+  order     Int      @default(0)
+  dimension String // "planning" | "execution" | "vision"
+  prompt    Json // 雙語
+  subtitle  Json // 雙語
+  optionA   Json // { label, desc, icon, value } label/desc 雙語；value=該維度分數(0~100)
+  optionB   Json
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, order])
+}
+
+/// 配對用創辦人 profile（連結既有 content/companies 檔）
+model Founder {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  companySlug String? // 連結 /company/<slug>，結果頁放「看完整分析」
+  name        Json // 雙語
+  role        Json // 雙語
+  blurb       Json // 雙語
+  traits      Json // 雙語字串陣列
+
+  foundedYear   Int?
+  statMarketCap String? // 顯示字串，如 "$2.0T"
+  statSecondary Json? // { label:雙語, value:string } 第三張數據卡
+
+  planningDepth     Int // 0~100（決策風格三維：配對 + 結果頁 bar）
+  executionStrength Int
+  visionClarity     Int
+
+  timeline        Json // [{ year, title:雙語, desc:雙語 }]
+  businessDetails Json // [{ heading:雙語, body:雙語 }]
+
+  order     Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submissions QuizSubmission[]
+
+  @@index([published, order])
+}
+
+/// 測驗提交紀錄（後台唯讀清單）
+model QuizSubmission {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  founderId String?
+  founder   Founder? @relation(fields: [founderId], references: [id], onDelete: SetNull)
+  answers   Json // [{ questionId, choice:"A"|"B" }]
+  scores    Json // { planningDepth, executionStrength, visionClarity }
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }

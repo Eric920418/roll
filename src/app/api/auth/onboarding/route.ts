@@ -52,11 +52,12 @@ export async function PATCH(req: NextRequest) {
         create: { userId: session.uid, ...fields },
         update: fields,
       });
+      // 需求填完 → 進入測驗（Step 4）；completed 留待測驗完成才設
       await prisma.user.update({
         where: { id: session.uid },
-        data: { onboardingStep: 3, completed: true },
+        data: { onboardingStep: 4 },
       });
-      return ok({ completed: true });
+      return ok({ nextStep: "quiz" });
     }
 
     return fail("未知的 onboarding 步驟", 400);
