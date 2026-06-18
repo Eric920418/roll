@@ -28,7 +28,47 @@ export async function verifySession(
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, getSecret());
+    // 僅接受 admin token，避免 user token 被當成後台 session
+    if (payload.role !== "admin") return null;
     return payload as AdminSession;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================
+// 公開平台用戶 session（與後台 admin 完全隔離：獨立 cookie + role 檢查，共用 AUTH_SECRET）
+// ============================================
+
+export const USER_SESSION_COOKIE = "user_session";
+
+export type UserSession = JWTPayload & {
+  uid: string;
+  email: string;
+  role: "user";
+};
+
+/** 簽發用戶 session token（payload 帶 User.id，免再以 email 查庫） */
+export async function createUserSession(
+  uid: string,
+  email: string,
+): Promise<string> {
+  return new SignJWT({ uid, email, role: "user" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(getSecret());
+}
+
+/** 驗證用戶 token；無效、過期、或非 user 角色一律回 null */
+export async function verifyUserSession(
+  token?: string,
+): Promise<UserSession | null> {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, getSecret());
+    if (payload.role !== "user") return null;
+    return payload as UserSession;
   } catch {
     return null;
   }

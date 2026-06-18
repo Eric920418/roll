@@ -1,11 +1,24 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE, verifySession, type AdminSession } from "./session";
+import {
+  SESSION_COOKIE,
+  USER_SESSION_COOKIE,
+  verifySession,
+  verifyUserSession,
+  type AdminSession,
+  type UserSession,
+} from "./session";
 
 /** 讀取目前後台 session（route handler / server component 用） */
 export async function getAdminSession(): Promise<AdminSession | null> {
   const store = await cookies();
   return verifySession(store.get(SESSION_COOKIE)?.value);
+}
+
+/** 讀取目前公開平台用戶 session（route handler / server component 用） */
+export async function getUserSession(): Promise<UserSession | null> {
+  const store = await cookies();
+  return verifyUserSession(store.get(USER_SESSION_COOKIE)?.value);
 }
 
 /**

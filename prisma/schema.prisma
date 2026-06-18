@@ -134,3 +134,52 @@ model ContactMessage {
 
   @@index([isRead, createdAt])
 }
+
+// ============================================
+// 公開註冊使用者（與後台單一 admin 無關，獨立 user_session cookie）
+// 註：使用者填寫的資料非雙語內容，故用一般欄位（非 Json 雙語）
+// ============================================
+
+/// 公開平台註冊用戶
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String? // Email 註冊者有值；Google 註冊者為 null
+  firstName      String?
+  lastName       String?
+  googleId       String?   @unique // Google sub；Email 註冊者為 null
+  image          String? // Google 頭像 URL，可空
+  emailVerified  DateTime? // Google 帳號即視為已驗證
+  onboardingStep Int       @default(1) // 1=account 2=company 3=requirements
+  completed      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  profile OnboardingProfile?
+
+  @@index([email])
+}
+
+/// Onboarding Step 2/3 資料（與 User 1:1）。欄位內容為推測，待設計確認。
+model OnboardingProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // --- Step 2：Company and industry information ---
+  companyName String?
+  industry    String?
+  companySize String?
+  website     String?
+  country     String?
+
+  // --- Step 3：Landing requirements assessment ---
+  targetMarkets String[] // 目標亞洲市場（多選）
+  needs         String[] // 服務需求（多選）
+  timeline      String?
+  budgetRange   String?
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
