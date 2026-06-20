@@ -335,6 +335,31 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 2. 在 `content/{type}/{slug}.{locale}.mdx` 撰寫內容，frontmatter 必填 `title, description, slug, targetQuery, publishedAt, updatedAt, type`，選填 `faqs, heroImage`
 3. `pnpm dev` 驗證；frontmatter 錯誤會以完整 zod 錯誤訊息在前端丟出（符合專案規則）
 
+## 公司分析頁（Company Profiles，FinMind 驅動）
+
+英文版台股上市公司深度分析頁，風格對標 startups.rip。**目錄** `/company`、**詳情** `/company/[slug]`。
+
+- **資料**：純檔案 JSON，每家一檔於 `content/companies/<slug>.json`，build 時由 `src/lib/company/content.ts` 以 `fs` 讀取（無 DB；Vercel FS 唯讀也能用）。
+- **事實來源**：FinMind 開放 API（月營收、損益、資產負債、現金流、股利、估值、股價）→ 由外部 ingest 管線 `tw-industry-report/ingest/pipeline.py <ticker> --no-generate` 正規化後寫入。**所有數字必為 FinMind 來源**。
+- **英文分析**：10 段（overview / founding-story / timeline / financing / thesis / business-model / industry / swot / risks / outlook），由 Claude Code 親手撰寫並逐一**查證**（交叉比對維基/官方財報/新聞），不捏造、最高級用語需來源、虧損/循環/槓桿誠實兩面講。
+- **渲染韌性**：缺指標自動略過（如金控無毛利率/ROE；92% 負債比為存款＋保險準備金的正常結構，非危機）。
+- **狀態**：目前 `noindex`、未上導覽列，待決定公開。
+
+| Ticker | Slug | 公司 | 產業 |
+|---|---|---|---|
+| 1216 | `uni-president` | Uni-President Enterprises | Food & Beverage |
+| 2330 | `tsmc` | TSMC | Semiconductors |
+| 2317 | `hon-hai` | Hon Hai (Foxconn) | Electronics Manufacturing |
+| 2412 | `chunghwa-telecom` | Chunghwa Telecom | Communications & Networking |
+| 1476 | `eclat-textile` | Eclat Textile | Textiles & Apparel |
+| 9921 | `giant` | Giant Manufacturing | Bicycles |
+| 6472 | `bora` | Bora Pharmaceuticals | Pharmaceuticals (CDMO) |
+| 2727 | `wowprime` | Wowprime | Restaurants |
+| 2603 | `evergreen-marine` | Evergreen Marine | Shipping |
+| 2881 | `fubon-financial` | Fubon Financial Holding | Financials |
+
+新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
+
 ## SEO / GEO 基礎設施
 
 ### Metadata
