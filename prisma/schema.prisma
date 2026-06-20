@@ -153,11 +153,20 @@ model User {
   onboardingStep Int       @default(1) // 1=account 2=company 3=requirements 4=quiz
   completed      Boolean   @default(false) // 全流程（含測驗）完成
   quizCompleted  Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+
+  // --- 計費 / 訂閱（全部 nullable 或有 default，純疊加；權威狀態由 webhook 對帳，此處為即時快取）---
+  plan                 String    @default("free") // "free" | "pro" | "business" | "enterprise"
+  subscriptionStatus   String? // PayPal 訂閱狀態快取：ACTIVE/PAST_DUE/SUSPENDED/CANCELLED/EXPIRED
+  paypalSubscriptionId String?   @unique // 目前生效的 PayPal subscription id（I-XXXX）
+  currentPeriodEnd     DateTime? // 本期到期 / 下次扣款時間，用於寬限期判斷
+  planUpdatedAt        DateTime? // 最後一次方案異動時間
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   profile         OnboardingProfile?
   quizSubmissions QuizSubmission[]
+  subscriptions   Subscription[]
 
   @@index([email])
 }
@@ -251,4 +260,41 @@ model QuizSubmission {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+// ============================================
+// 訂閱金流（PayPal）
+// User 上的計費欄位是「目前生效狀態」快取；下列表記錄完整訂閱歷史與 webhook 事件，供對帳/除錯/出帳。
+// ============================================
+
+/// PayPal 訂閱紀錄（每次建立一筆；webhook 更新狀態）
+model Subscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  paypalSubscriptionId String  @unique // I-XXXXXXXX
+  paypalPlanId         String // PayPal Billing Plan id（P-XXXX）
+  plan                 String // 冗餘存方案 key（free/pro/business/enterprise），方便查詢
+  status               String // APPROVAL_PENDING/ACTIVE/SUSPENDED/CANCELLED/EXPIRED
+  currentPeriodEnd     DateTime?
+  startedAt            DateTime?
+  cancelledAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Webhook 事件去重（PayPal 會重送 + 可能亂序；event id 直接當主鍵天然冪等）
+model WebhookEvent {
+  id          String   @id // PayPal event id
+  eventType   String
+  resourceId  String? // subscription id 等
+  payload     Json
+  processedAt DateTime @default(now())
+
+  @@index([eventType])
 }
