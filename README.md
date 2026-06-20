@@ -357,6 +357,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2727 | `wowprime` | Wowprime | Restaurants |
 | 2603 | `evergreen-marine` | Evergreen Marine | Shipping |
 | 2881 | `fubon-financial` | Fubon Financial Holding | Financials |
+| 3034 | `novatek` | Novatek Microelectronics | Semiconductors (fabless) |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
