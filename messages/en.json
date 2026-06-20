@@ -242,6 +242,15 @@
     "pricing": {
       "title": "Choose your plan",
       "badge": "Popular",
+      "free": {
+        "name": "Free",
+        "price": "NT$0",
+        "unit": "",
+        "f1": "Browse market insights",
+        "f2": "Basic onboarding & founder quiz",
+        "f3": "Community newsletter",
+        "cta": "Get started"
+      },
       "pro": {
         "name": "Pro",
         "price": "NT$590",
@@ -438,6 +447,97 @@
       "fullAnalysis": "View full company analysis",
       "intro": "ROLL uses AI to analyze your founder's decision style and gives you personalized next-step actions based on your progress.",
       "finish": "Done"
+    }
+  },
+  "Dashboard": {
+    "brand": "Member area",
+    "logout": "Log out",
+    "plans": {
+      "free": "Free",
+      "pro": "Pro",
+      "business": "Business",
+      "enterprise": "Enterprise"
+    },
+    "nav": {
+      "overview": "Overview",
+      "account": "Account",
+      "billing": "Billing",
+      "tools": "Tools"
+    },
+    "overview": {
+      "title": "Welcome back",
+      "subtitle": "Your ROLL ON. member dashboard.",
+      "planCard": "Current plan",
+      "statusCard": "Subscription",
+      "onboardingCard": "Onboarding",
+      "onboardingComplete": "Complete",
+      "stepOf": "Step {step} of {total}",
+      "noSubscription": "No active subscription",
+      "renews": "Renews {date}",
+      "editAccount": "Edit profile",
+      "manageBilling": "Manage subscription",
+      "goToTools": "Open tools"
+    },
+    "account": {
+      "title": "Account & profile",
+      "subtitle": "The information we use to tailor your dashboard. Update anytime.",
+      "companySection": "Company information",
+      "requirementsSection": "Landing requirements",
+      "companyName": "Company name",
+      "industry": "Industry",
+      "companySize": "Company size",
+      "website": "Website",
+      "country": "Home market / country",
+      "targetMarkets": "Target markets",
+      "needs": "What you need",
+      "timeline": "Timeline",
+      "budgetRange": "Budget range",
+      "notes": "Notes",
+      "notesPlaceholder": "Anything else we should know?",
+      "selectPlaceholder": "Select…",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "saved": "Saved."
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "PAST_DUE": "Payment past due",
+      "SUSPENDED": "Suspended",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired"
+    },
+    "tools": {
+      "title": "Tools",
+      "subtitle": "Self-serve tools to plan and track your Taiwan / Asia market entry.",
+      "lockedTitle": "Unlock with Pro",
+      "lockedBody": "This tool is available on the Pro plan and above. Upgrade to get access.",
+      "upgrade": "Upgrade plan",
+      "placeholderTitle": "Market-entry checklist generator",
+      "placeholderBody": "Coming soon — a personalized, step-by-step landing checklist generated from your profile."
+    }
+  },
+  "Billing": {
+    "title": "Billing & subscription",
+    "subtitle": "Manage your plan and payments.",
+    "currentPlan": "Current plan",
+    "status": "Status",
+    "renews": "Next charge {date}",
+    "noSubscription": "You're on the Free plan.",
+    "choosePlan": "Choose a plan",
+    "subscribe": "Subscribe",
+    "cancel": "Cancel subscription",
+    "cancelConfirm": "Cancel your subscription? You'll keep access until the end of the current period.",
+    "contactSales": "Contact sales",
+    "processing": "Processing…",
+    "returnPending": "Your subscription is being confirmed. This page will update shortly.",
+    "returnSuccess": "Subscription active. Welcome aboard!",
+    "perMonth": "/ month",
+    "errors": {
+      "planRequired": "This feature requires a paid plan. Please upgrade to continue.",
+      "unknownPlan": "Unknown plan.",
+      "notSelfServe": "This plan isn't available for self-service checkout. Please contact sales.",
+      "paypalNotConfigured": "Payment is not configured yet. Please contact support.",
+      "noSubscription": "No active subscription to cancel."
     }
   }
 }

@@ -242,6 +242,15 @@
     "pricing": {
       "title": "選擇方案",
       "badge": "推薦",
+      "free": {
+        "name": "免費",
+        "price": "NT$0",
+        "unit": "",
+        "f1": "瀏覽市場洞察",
+        "f2": "基礎引導與創辦人測驗",
+        "f3": "社群電子報",
+        "cta": "免費開始"
+      },
       "pro": {
         "name": "Pro",
         "price": "NT$590",
@@ -438,6 +447,97 @@
       "fullAnalysis": "看完整公司分析",
       "intro": "ROLL 以 AI 分析你的創辦人決策風格，並依你的進度給出個人化的下一步行動。",
       "finish": "完成"
+    }
+  },
+  "Dashboard": {
+    "brand": "會員專區",
+    "logout": "登出",
+    "plans": {
+      "free": "免費",
+      "pro": "Pro",
+      "business": "Business",
+      "enterprise": "Enterprise"
+    },
+    "nav": {
+      "overview": "總覽",
+      "account": "帳號",
+      "billing": "訂閱帳單",
+      "tools": "工具"
+    },
+    "overview": {
+      "title": "歡迎回來",
+      "subtitle": "你的 ROLL ON. 會員後台。",
+      "planCard": "目前方案",
+      "statusCard": "訂閱狀態",
+      "onboardingCard": "引導設定",
+      "onboardingComplete": "已完成",
+      "stepOf": "第 {step} / {total} 步",
+      "noSubscription": "尚無生效訂閱",
+      "renews": "{date} 續訂",
+      "editAccount": "編輯個人資料",
+      "manageBilling": "管理訂閱",
+      "goToTools": "開啟工具"
+    },
+    "account": {
+      "title": "帳號與個人資料",
+      "subtitle": "我們用這些資訊為你客製化後台，隨時可更新。",
+      "companySection": "公司資訊",
+      "requirementsSection": "進入需求",
+      "companyName": "公司名稱",
+      "industry": "產業",
+      "companySize": "公司規模",
+      "website": "網站",
+      "country": "母國市場 / 國家",
+      "targetMarkets": "目標市場",
+      "needs": "你的需求",
+      "timeline": "時程",
+      "budgetRange": "預算範圍",
+      "notes": "備註",
+      "notesPlaceholder": "還有什麼想讓我們知道的嗎？",
+      "selectPlaceholder": "選擇…",
+      "save": "儲存變更",
+      "saving": "儲存中…",
+      "saved": "已儲存。"
+    },
+    "status": {
+      "ACTIVE": "生效中",
+      "PAST_DUE": "款項逾期",
+      "SUSPENDED": "已暫停",
+      "CANCELLED": "已取消",
+      "EXPIRED": "已到期"
+    },
+    "tools": {
+      "title": "工具",
+      "subtitle": "自助工具，協助你規劃與追蹤進入台灣 / 亞洲市場的進度。",
+      "lockedTitle": "升級 Pro 解鎖",
+      "lockedBody": "此工具需 Pro 以上方案才能使用。升級即可解鎖。",
+      "upgrade": "升級方案",
+      "placeholderTitle": "進入市場查核表產生器",
+      "placeholderBody": "即將推出 — 依你的資料自動生成個人化的逐步落地查核表。"
+    }
+  },
+  "Billing": {
+    "title": "訂閱與帳單",
+    "subtitle": "管理你的方案與付款。",
+    "currentPlan": "目前方案",
+    "status": "狀態",
+    "renews": "下次扣款 {date}",
+    "noSubscription": "你目前使用免費方案。",
+    "choosePlan": "選擇方案",
+    "subscribe": "訂閱",
+    "cancel": "取消訂閱",
+    "cancelConfirm": "確定取消訂閱？你在本期結束前仍可使用。",
+    "contactSales": "聯絡業務",
+    "processing": "處理中…",
+    "returnPending": "訂閱確認中，此頁稍後會自動更新。",
+    "returnSuccess": "訂閱已生效，歡迎加入！",
+    "perMonth": "/ 月",
+    "errors": {
+      "planRequired": "此功能需付費方案，請先升級。",
+      "unknownPlan": "未知的方案。",
+      "notSelfServe": "此方案無法線上自助訂閱，請聯絡業務。",
+      "paypalNotConfigured": "金流尚未設定完成，請聯絡客服。",
+      "noSubscription": "沒有可取消的生效訂閱。"
     }
   }
 }

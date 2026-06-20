@@ -52,6 +52,15 @@ BLOB_READ_WRITE_TOKEN="..."      # Vercel 連結 Blob store 後複製
 GOOGLE_CLIENT_ID="...apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="..."
 GOOGLE_REDIRECT_URI="http://localhost:3000/api/auth/google/callback"  # 上線改成 https://<網域>/api/auth/google/callback
+
+# 訂閱金流（PayPal）— 缺少時前端訂閱顯示「金流尚未設定」而非崩潰（isPaypalConfigured 把關）
+PAYPAL_ENV="sandbox"              # sandbox | live
+PAYPAL_CLIENT_ID="..."           # PayPal Developer Dashboard 建立 app 取得
+PAYPAL_CLIENT_SECRET="..."
+PAYPAL_WEBHOOK_ID="..."           # 註冊 webhook（{網域}/api/billing/webhook）後取得，供簽章驗證
+PAYPAL_PLAN_ID_PRO="P-..."        # 由 scripts/paypal-setup.mjs 產生
+PAYPAL_PLAN_ID_BUSINESS="P-..."
+NEXT_PUBLIC_APP_URL="http://localhost:3000"  # 組 PayPal return/cancel URL；上線填正式網域（不要結尾斜線）
 ```
 
 > `.env*` 已 `.gitignore`。產生密碼 hash：
@@ -147,11 +156,11 @@ public/
 1. **ProductNav** — 著陸頁專屬頂部列（非全站漢堡）：左 Logo → 首頁，右 `Login` / `Sign Up` + 語言切換；捲動加玻璃背景
 2. **ProductHero** — 大標題 + 副標（"Thinking about expanding in Taiwan?"）+ `Get Started`（→ `#pricing`）+ 右側 3 張問題式卡片（何時募資 / 是否在地聘僱 / 在地 CEO 如何決策）— 對齊外商決策者真正會問的問題
 3. **HowItWorks** — 「如何開始」三步驟（01 註冊 → 02 客製化 Dashboard → 03 媒合夥伴）
-4. **Pricing** — 「選擇方案」三卡（Pro NT$590 / Business NT$890〔推薦，中間突出〕/ Enterprise 洽詢），CTA → `#contact`
+4. **Pricing** — 「選擇方案」四卡（Free NT$0 / Pro NT$590 / Business NT$890〔推薦，中間突出〕/ Enterprise 洽詢）。CTA：付費方案 → 註冊（`/signup`，開始漏斗）；Enterprise → `#contact`
 5. **ProductCTA** — 底部暗紅大 CTA（`免費開始使用` → `#contact`）
 6. **Footer** — 沿用全站 Footer（含 `id="contact"` 聯絡表單，即暫行候補名單，留言進後台收件匣）
 
-> **文案管理**：整頁文字（含 NT$ 定價）放在 `messages/*.json` 的 `Product` namespace，自動出現在後台「文案翻譯 → Product」分組可即時編輯（沿用 Home / ESG 的翻譯覆蓋機制，**無新增資料表**）。**範圍**：本頁僅為行銷著陸頁，`Login` / `Sign Up` / `Get Started` 暫導向 `#contact`；真正的會員系統與 Dashboard 為後續另案。
+> **文案管理**：整頁文字（含 NT$ 定價）放在 `messages/*.json` 的 `Product` namespace，自動出現在後台「文案翻譯 → Product」分組可即時編輯（沿用 Home / ESG 的翻譯覆蓋機制，**無新增資料表**）。**價格分工**：顯示文案只信 i18n；gating / 驗證邏輯只信 `src/lib/billing/plans.ts`（避免雙重事實來源）。**會員系統與專屬 Dashboard 已實作**，見下方「會員專屬後台 + 訂閱金流」。
 
 ## CMS 後台
 
@@ -244,8 +253,10 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 ### 資料模型（`prisma/schema.prisma`）
 
-- `User`：`email`(unique)、`passwordHash`(Google 用戶為 null)、`googleId`(unique)、姓名/頭像、`onboardingStep`(1/2/3)、`completed`。
-- `OnboardingProfile`(1:1)：Step 2 公司/產業/規模/網站/母國；Step 3 目標市場[]、需求[]、時程、預算、備註。**欄位內容為推測，待設計確認。**
+- `User`：`email`(unique)、`passwordHash`(Google 用戶為 null)、`googleId`(unique)、姓名/頭像、`onboardingStep`(1/2/3/4)、`completed`；**計費快取**：`plan`(預設 `free`)、`subscriptionStatus`、`paypalSubscriptionId`(unique)、`currentPeriodEnd`、`planUpdatedAt`。
+- `OnboardingProfile`(1:1)：Step 2 公司/產業/規模/網站/母國；Step 3 目標市場[]、需求[]、時程、預算、備註。
+- `Subscription`：PayPal 訂閱歷史（`paypalSubscriptionId` unique、`paypalPlanId`、`plan`、`status`、`currentPeriodEnd` 等），對帳/審計用。
+- `WebhookEvent`：PayPal webhook 事件審計（event id 當主鍵，天然去重）。
 
 ### Google OAuth 設定（前置）
 
@@ -268,6 +279,42 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 - `/admin/quiz-submissions` — 唯讀清單（用戶 / 作答 / 配對創辦人 / 決策分數 / 時間 + 刪除）。
 - `/admin/quiz-questions`、`/admin/founders` — 以 JSON 編輯器增刪改（含雙語、timeline、businessDetails 等巢狀結構）；API 在 `/api/admin/{quiz-questions,founders,quiz-submissions}`，皆 `requireAdmin` 把關。
+
+## 會員專屬後台 + 訂閱金流（PayPal）
+
+登入會員的自助 Dashboard，與 onboarding/quiz 共用 `user_session`。proxy 已把 `/dashboard` 納入保護（`^/(zh-tw/)?(onboarding|quiz|dashboard)`）；proxy 只樂觀驗 session，方案 gating 由各頁面 / API 的 DAL 即時查 DB（不在 proxy 查庫）。
+
+### 路由
+
+| 路徑 | 說明 |
+| --- | --- |
+| `/[locale]/dashboard` | 總覽：方案徽章、訂閱狀態、onboarding 完成度、快速入口。 |
+| `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）。 |
+| `/[locale]/dashboard/billing` | 訂閱：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。 |
+| `/[locale]/dashboard/billing/return` | PayPal 核准後返回頁，呼叫 confirm 即時對帳。 |
+| `/[locale]/dashboard/tools` | 付費牆示範：`requirePlan("pro")`，不足顯示鎖定 + 升級 CTA（未來工具掛載點）。 |
+| `/api/account/profile` | PATCH 更新 profile（自守衛 `getUserSession`）。 |
+| `/api/billing/subscribe\|confirm\|cancel` | 建立 / 確認 / 取消訂閱（自守衛）。 |
+| `/api/billing/webhook` | PayPal webhook：不查 session、改以簽章驗證；冪等 + 對帳。 |
+
+UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `BillingPanel` / `BillingReturn`）。i18n 在 `messages/*.json` 的 `Dashboard` / `Billing` namespace。
+
+### 方案與 gating
+
+- 方案邏輯單一事實來源：`src/lib/billing/plans.ts`（`PLAN_KEYS` / `PLAN_RANK` / `PLAN_CONFIG`，PayPal plan id 走 env 名）。價格顯示只信 i18n、邏輯只信此檔。
+- gating：`src/lib/billing/gate.ts` 的 `getEffectivePlan` / `getUserPlan` / `requirePlan`。**寬限期**：付費方案僅在 `currentPeriodEnd > now` 且狀態授予存取（ACTIVE/PAST_DUE/CANCELLED）時有效，否則退回 free — 即使 PayPal 漏送 CANCELLED，到期也會自動降級。
+- DAL：`src/lib/auth/account.ts` 的 `getCurrentAccount()`（React `cache()` 包裝、回安全 DTO，不含 passwordHash）。
+
+### PayPal 訂閱流程
+
+1. **一次性設定**：`node --env-file=.env.local scripts/paypal-setup.mjs` 建立 Product + Pro/Business 月費 Plan（TWD），把印出的 `PAYPAL_PLAN_ID_*` 填回 `.env.local`。
+2. **訂閱**：billing 頁 → `POST /api/billing/subscribe` 建立 PayPal 訂閱 → 前端 redirect 到核准頁 → 返回 `billing/return` → `POST /api/billing/confirm` 即時對帳。
+3. **對帳權威來源**：`/api/billing/webhook`（驗章 → `WebhookEvent` 審計 → `reconcileById` 以 PayPal 為準更新 `User` + `Subscription`）。`reconcile` 為 idempotent，故 webhook 失敗回 500 讓 PayPal 重送是安全的。
+4. PayPal 直打 REST（`src/lib/billing/paypal.ts`，**無 SDK 依賴**）；env 未設妥時 `isPaypalConfigured()` 回 false，前端顯示「金流尚未設定」而非崩潰。
+
+> **schema 演進零資料遺失**：計費欄位 / 表全為 nullable 或有 default 的純疊加；用 `prisma db push`，**禁止 `--accept-data-loss`**（若 push 要求該旗標代表改成破壞性了，需退回改正）。
+>
+> **台灣電子發票（待辦，法遵需求）**：對台灣客戶收費須開立電子發票（綠界 ECPay / ezPay 發票 API），掛在 webhook `PAYMENT.SALE.COMPLETED` 後開立，另需 `Invoice` model 與買受人 / 統編 / 載具欄位。列為後續階段，不阻塞前面金流上線。
 
 ## 內容頁（SEO / GEO 主引擎）
 

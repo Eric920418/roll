@@ -1,7 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { motion, type Variants } from "motion/react";
+import { pathForLocale } from "@/lib/routes";
+import type { Locale } from "@/i18n/routing";
 
 const container: Variants = {
   hidden: {},
@@ -49,6 +51,12 @@ function Check({ featured }: { featured?: boolean }) {
 
 export default function Pricing() {
   const t = useTranslations("Product.pricing");
+  const locale = useLocale() as Locale;
+
+  // 公開行銷頁：訪客尚未登入，無法直接觸發 PayPal。
+  // 付費方案 → 導向註冊開始漏斗（完成 onboarding 後於 /dashboard/billing 訂閱）；Enterprise → 洽詢。
+  const ctaHref = (key: Plan["key"]) =>
+    key === "enterprise" ? "#contact" : pathForLocale("/signup", locale);
 
   return (
     <section id="pricing" className="bg-cream py-20 md:py-28 px-5 md:px-8 scroll-mt-24">
@@ -126,7 +134,7 @@ export default function Pricing() {
 
               <div className="mt-9 md:mt-auto md:pt-9">
                 <a
-                  href="#contact"
+                  href={ctaHref(key)}
                   className={`flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold font-[family-name:var(--font-heading)] transition-colors duration-300 ${
                     featured
                       ? "bg-white text-primary hover:bg-cream"
