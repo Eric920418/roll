@@ -51,8 +51,9 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // --- 前台：保護 onboarding + quiz（需公開用戶登入；涵蓋預設與 /zh-tw）---
-  if (/^\/(zh-tw\/)?(onboarding|quiz)(\/|$)/.test(pathname)) {
+  // --- 前台：保護 onboarding + quiz + dashboard（需公開用戶登入；涵蓋預設與 /zh-tw）---
+  // 注意：proxy 只樂觀驗證 session 存在與否，不查 DB / 不查方案（方案 gating 由各頁面/API 的 DAL 即時把關）。
+  if (/^\/(zh-tw\/)?(onboarding|quiz|dashboard)(\/|$)/.test(pathname)) {
     const userSession = await verifyUserSession(
       req.cookies.get(USER_SESSION_COOKIE)?.value,
     );
