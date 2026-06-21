@@ -360,6 +360,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 3034 | `novatek` | Novatek Microelectronics | Semiconductors (fabless) |
 | 2548 | `huaku` | Huaku Development | Real Estate & Construction |
 | 4147 | `taimed` | TaiMed Biologics（TPEx 上櫃） | Biotech & Healthcare |
+| 1304 | `usi` | USI Corporation 台聚 | Plastics（commodity petrochemical） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
