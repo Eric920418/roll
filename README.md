@@ -362,6 +362,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 4147 | `taimed` | TaiMed Biologics（TPEx 上櫃） | Biotech & Healthcare |
 | 1304 | `usi` | USI Corporation 台聚 | Plastics（commodity petrochemical） |
 | 3293 | `igs` | International Games System 鈊象（TPEx 上櫃） | Gaming & Digital Entertainment |
+| 2618 | `eva-air` | EVA Air 長榮航空 | Airlines |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
