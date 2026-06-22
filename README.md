@@ -374,6 +374,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 3711 | `ase` | ASE Technology 日月光投控 | Semiconductors（OSAT） |
 | 1101 | `taiwan-cement` | Taiwan Cement 台灣水泥 | Cement |
 | 2454 | `mediatek` | MediaTek 聯發科 | Semiconductors（fabless SoC） |
+| 2303 | `umc` | United Microelectronics (UMC) 聯電 | Semiconductors（mature-node foundry） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
