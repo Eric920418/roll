@@ -214,6 +214,11 @@ public/
 - mutation 後 `src/lib/cms/revalidate.ts` 的 `revalidateContent()` 呼叫 `revalidateTag(tag, "max")`（Next 16 雙參數）+ `revalidatePath("/", "layout")`
 - 首頁另設 `export const revalidate = 60` 作為兜底；編輯後前台最多 60 秒內更新（多數情況即時）
 
+### Build 期間 DB 讀取重試（`src/lib/prisma.ts`）
+
+Prisma client 以 extension 包裝：所有**讀取**操作走 `withReadRetry`（4 次、指數退避 + jitter），**寫入不重試**（避免非冪等重複寫入）。
+原因：靜態生成上百頁時，多 worker 在 `unstable_cache` 冷啟同時對 Neon 發大量 WebSocket 查詢，偶發連線抖動會丟 `prisma:error undefined` 使單頁 prerender 失敗、整個部署掛掉（非程式碼問題）。讀取重試讓暫時性錯誤自癒，避免新增頁面時 build 隨機失敗。
+
 ### 初始化流程
 
 ```bash
