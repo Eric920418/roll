@@ -365,6 +365,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2618 | `eva-air` | EVA Air 長榮航空 | Airlines |
 | 9904 | `pou-chen` | Pou Chen 寶成工業 | Footwear Manufacturing |
 | 2015 | `feng-hsin` | Feng Hsin Steel 豐興鋼鐵 | Steel |
+| 2731 | `lion-travel` | Lion Travel 雄獅旅遊 | Travel Services |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
