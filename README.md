@@ -367,6 +367,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2015 | `feng-hsin` | Feng Hsin Steel 豐興鋼鐵 | Steel |
 | 2731 | `lion-travel` | Lion Travel 雄獅旅遊 | Travel Services |
 | 6469 | `great-tree` | Great Tree Pharmacy 大樹醫藥（TPEx 上櫃） | Pharmacy Retail |
+| 2327 | `yageo` | Yageo 國巨 | Electronic Components |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
