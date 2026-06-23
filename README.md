@@ -387,6 +387,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2395 | `advantech` | Advantech 研華科技 | Industrial Computing & IoT |
 | 1722 | `taiwan-fertilizer` | Taiwan Fertilizer 台灣肥料 | Chemicals（land-asset / NAV play） |
 | 2382 | `quanta` | Quanta Computer 廣達電腦 | Computer & Server ODM |
+| 1210 | `dachan` | Dachan Great Wall 大成長城 | Agribusiness & Food |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
