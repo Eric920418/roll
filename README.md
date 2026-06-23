@@ -384,6 +384,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 3008 | `largan` | Largan Precision 大立光 | Optoelectronics |
 | 5871 | `chailease` | Chailease Holding 中租控股（中租-KY） | Leasing & Finance |
 | 2912 | `president-chain-store` | President Chain Store 統一超商（7-ELEVEN） | Convenience Retail |
+| 2395 | `advantech` | Advantech 研華科技 | Industrial Computing & IoT |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
