@@ -393,6 +393,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2409 | `auo` | AUO Corporation 友達光電 | Display Panels（commodity TFT-LCD / 雙軸轉型） |
 | 2634 | `aidc` | AIDC 漢翔航空工業 | Aerospace & Defense（國機國造 / F-16 MRO；薄利） |
 | 9933 | `ctci` | CTCI 中鼎工程 | Engineering & Construction（EPC 統包；BKRF 踩雷） |
+| 2105 | `maxxis` | Cheng Shin Rubber 正新橡膠（Maxxis） | Tires & Rubber（全球品牌；高息價值股） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
