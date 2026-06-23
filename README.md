@@ -390,6 +390,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 1210 | `dachan` | Dachan Great Wall 大成長城 | Agribusiness & Food |
 | 2707 | `formosa-hotels` | Formosa Int'l Hotels 晶華國際酒店（Regent） | Hotels & Hospitality |
 | 5274 | `aspeed` | Aspeed Technology 信驊科技（TPEx 上櫃） | Semiconductors（BMC monopoly） |
+| 2409 | `auo` | AUO Corporation 友達光電 | Display Panels（commodity TFT-LCD / 雙軸轉型） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
