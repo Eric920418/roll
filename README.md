@@ -392,6 +392,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 5274 | `aspeed` | Aspeed Technology 信驊科技（TPEx 上櫃） | Semiconductors（BMC monopoly） |
 | 2409 | `auo` | AUO Corporation 友達光電 | Display Panels（commodity TFT-LCD / 雙軸轉型） |
 | 2634 | `aidc` | AIDC 漢翔航空工業 | Aerospace & Defense（國機國造 / F-16 MRO；薄利） |
+| 9933 | `ctci` | CTCI 中鼎工程 | Engineering & Construction（EPC 統包；BKRF 踩雷） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
