@@ -382,6 +382,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2303 | `umc` | United Microelectronics (UMC) 聯電 | Semiconductors（mature-node foundry） |
 | 2207 | `hotai-motor` | Hotai Motor 和泰汽車 | Automotive |
 | 3008 | `largan` | Largan Precision 大立光 | Optoelectronics |
+| 5871 | `chailease` | Chailease Holding 中租控股（中租-KY） | Leasing & Finance |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
