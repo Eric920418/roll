@@ -14,6 +14,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/translations", label: "文案翻譯" },
   { href: "/admin/settings", label: "全站設定" },
   { href: "/admin/messages", label: "聯絡訊息" },
+  { href: "/admin/users", label: "註冊帳戶" },
   { href: "/admin/quiz-submissions", label: "測驗提交紀錄" },
   { href: "/admin/quiz-questions", label: "測驗題目" },
   { href: "/admin/founders", label: "創辦人" },

@@ -176,11 +176,12 @@ public/
 
 | 路由 | 功能 |
 |---|---|
-| `/admin` | 儀表板（各內容筆數、未讀訊息數） |
+| `/admin` | 儀表板（各內容筆數、未讀訊息數、註冊帳戶數） |
 | `/admin/services`、`/events`、`/clients`、`/work`、`/videos`、`/insights` | 清單型內容 CRUD（共用泛型表單與列表） |
 | `/admin/translations` | 文案翻譯編輯器（依 namespace 分組、en/zh-tw 並排，涵蓋 About / ESG / 全站 UI 文字） |
 | `/admin/settings` | 頁尾聯絡資訊、社群連結、Golden Ticket 頻道 |
 | `/admin/messages` | 聯絡表單收件匣（標記已讀 / 刪除） |
+| `/admin/users` | **註冊帳戶（庫戶）唯讀檢視** — 列出 `User` 表所有公開平台註冊用戶，含 **email 個資**、姓名、註冊方式（Google/Email）、email 驗證狀態、訂閱方案、onboarding/測驗狀態、註冊時間；支援 email/姓名搜尋。**個資注意**：依目前設定 email **直接顯示完整明碼**（未遮罩、無存取稽核），故此頁僅在後台 admin session 登入後可見（`proxy.ts` + layout 雙重把關）；Server 端以 Prisma `select` 取欄位、**刻意不撈 `passwordHash`**。刻意**唯讀不提供刪除**（刪 `User` 會 cascade 連帶清除訂閱與測驗紀錄）。若日後需通過個資稽核，可升級為「server 端遮罩 + reveal API 留存取紀錄」。 |
 
 ### 雙語內容模型
 
