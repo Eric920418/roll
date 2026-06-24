@@ -396,6 +396,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2105 | `maxxis` | Cheng Shin Rubber 正新橡膠（Maxxis） | Tires & Rubber（全球品牌；高息價值股） |
 | 1319 | `tong-yang` | Tong Yang Industry 東陽實業（TYG） | Auto Parts（AM 碰撞件全球第一；業外撐獲利） |
 | 3702 | `wpg` | WPG Holdings 大聯大控股 | Electronics Distribution（亞洲最大半導體通路；薄利/成長吞現金） |
+| 1907 | `yfy` | YFY 永豐餘投控（Yuen Foong Yu） | Paper & Materials（百年紙業控股；本業虧/靠 E Ink；0.57× 淨值） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
