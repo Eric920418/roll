@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const HOVER_SELECTOR =
   'a, button, input, textarea, select, summary, [role="button"], [role="link"], label[for], [data-cursor-hover]';
@@ -31,6 +31,17 @@ function nearestOpaqueBg(target: Element | null): string {
   return getComputedStyle(document.body).backgroundColor;
 }
 
+// 以 useSyncExternalStore 讀「是否為精準指標裝置（桌機滑鼠）」。
+// 避免在 effect 內同步 setState（react-hooks/set-state-in-effect）；SSR 回 false。
+function subscribeFinePointer(cb: () => void): () => void {
+  const mq = window.matchMedia("(pointer: fine)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+function getFinePointer(): boolean {
+  return window.matchMedia("(pointer: fine)").matches;
+}
+
 export default function RedDotCursor() {
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
@@ -39,16 +50,17 @@ export default function RedDotCursor() {
   const targetY = useRef(0);
   const currentX = useRef(0);
   const currentY = useRef(0);
-  const [enabled, setEnabled] = useState(false);
+  const enabled = useSyncExternalStore(
+    subscribeFinePointer,
+    getFinePointer,
+    () => false,
+  );
   const [hovering, setHovering] = useState(false);
   const [onDark, setOnDark] = useState(false);
 
   useEffect(() => {
-    // Disable on touch devices
-    if (typeof window === "undefined") return;
-    const fine = window.matchMedia("(pointer: fine)").matches;
-    if (!fine) return;
-    setEnabled(true);
+    // 僅在精準指標裝置（桌機滑鼠）啟用；enabled 由 useSyncExternalStore 提供
+    if (!enabled) return;
 
     document.documentElement.classList.add("custom-cursor-active");
 
@@ -105,7 +117,7 @@ export default function RedDotCursor() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       document.documentElement.classList.remove("custom-cursor-active");
     };
-  }, []);
+  }, [enabled]);
 
   if (!enabled) return null;
 
