@@ -13,7 +13,7 @@ export function destinationFor(
   state: { completed: boolean; onboardingStep: number },
   locale: Locale,
 ): string {
-  if (state.completed) return pathForLocale("/", locale);
+  if (state.completed) return pathForLocale("/dashboard", locale);
   if (state.onboardingStep >= 4) return pathForLocale("/quiz", locale);
   return pathForLocale(`/onboarding/${stepSlug(state.onboardingStep)}`, locale);
 }

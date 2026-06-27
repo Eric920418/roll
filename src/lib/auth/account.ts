@@ -18,6 +18,10 @@ export interface Account {
   onboardingStep: number;
   completed: boolean;
   quizCompleted: boolean;
+  /** 是否設有密碼（Google-only 用戶為 false）；不外洩 hash */
+  hasPassword: boolean;
+  /** Tools 落地清單勾選狀態 { itemKey: true } */
+  checklistState: Record<string, boolean>;
   /** 帳上儲存的方案（未套寬限期）；要判權限請用 gate.ts 的 getEffectivePlan */
   plan: PlanKey;
   subscriptionStatus: string | null;
@@ -60,6 +64,9 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     onboardingStep: user.onboardingStep,
     completed: user.completed,
     quizCompleted: user.quizCompleted,
+    hasPassword: Boolean(user.passwordHash),
+    checklistState:
+      (user.checklistState as Record<string, boolean> | null) ?? {},
     plan: toPlanKey(user.plan),
     subscriptionStatus: user.subscriptionStatus,
     paypalSubscriptionId: user.paypalSubscriptionId,

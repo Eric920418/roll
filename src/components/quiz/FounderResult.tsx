@@ -18,6 +18,7 @@ export type FounderResultView = {
   businessDetails: { heading: string; body: string }[];
   companyHref: string | null;
   homeHref: string;
+  dashboardHref: string;
 };
 
 function initials(name: string): string {
@@ -143,7 +144,7 @@ export default function FounderResult({
 
         <div className="mt-6 flex justify-center">
           <a
-            href={f.homeHref}
+            href={f.dashboardHref}
             className="inline-flex items-center justify-center rounded-full bg-primary px-10 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark font-[family-name:var(--font-heading)]"
           >
             {t("finish")}

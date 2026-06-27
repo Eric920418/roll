@@ -32,6 +32,7 @@ export default function Navbar() {
     { label: t("about"), ariaLabel: t("about"), link: pathForLocale("/about", locale) },
     { label: t("esg"), ariaLabel: t("esg"), link: pathForLocale("/esg", locale) },
     { label: t("product"), ariaLabel: t("product"), link: pathForLocale("/product", locale) },
+    { label: t("dashboard"), ariaLabel: t("dashboard"), link: pathForLocale("/dashboard", locale) },
   ];
 
   const position: "left" | "right" = "right";

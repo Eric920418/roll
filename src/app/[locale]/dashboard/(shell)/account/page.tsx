@@ -1,5 +1,7 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import AccountProfileForm from "@/components/dashboard/AccountProfileForm";
+import AccountSecurityForm from "@/components/dashboard/AccountSecurityForm";
+import AccountDangerZone from "@/components/dashboard/AccountDangerZone";
 import { getCurrentAccount } from "@/lib/auth/account";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -35,6 +37,9 @@ export default async function AccountPage({ params }: Props) {
           notes: p?.notes,
         }}
       />
+
+      <AccountSecurityForm hasPassword={account.hasPassword} />
+      <AccountDangerZone />
     </div>
   );
 }

@@ -73,6 +73,7 @@ export default async function QuizResultPage({ params }: Props) {
       ? pathForLocale(`/company/${f.companySlug}`, l)
       : null,
     homeHref: pathForLocale("/", l),
+    dashboardHref: pathForLocale("/dashboard", l),
   };
 
   return <FounderResult founder={view} />;

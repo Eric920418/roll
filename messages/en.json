@@ -7,7 +7,8 @@
   "Nav": {
     "about": "About",
     "esg": "ESG",
-    "product": "Product"
+    "product": "Product",
+    "dashboard": "Member Center"
   },
   "AboutPage": {
     "metaTitle": "About ROLL ON. | The Momentum of Impact",
@@ -497,7 +498,30 @@
       "selectPlaceholder": "Select…",
       "save": "Save changes",
       "saving": "Saving…",
-      "saved": "Saved."
+      "saved": "Saved.",
+      "security": {
+        "title": "Password",
+        "current": "Current password",
+        "new": "New password",
+        "set": "Set a password",
+        "placeholder": "At least 8 characters",
+        "changeBtn": "Update password",
+        "setBtn": "Set password",
+        "saving": "Saving…",
+        "saved": "Password updated.",
+        "googleNote": "You signed up with Google. Set a password to also sign in with email.",
+        "errWrong": "Current password is incorrect.",
+        "errTooShort": "Password must be at least 8 characters.",
+        "errMissing": "Please enter your current password."
+      },
+      "danger": {
+        "title": "Delete account",
+        "warning": "This permanently deletes your account, profile, quiz results and subscription records. This cannot be undone.",
+        "confirmWord": "DELETE",
+        "confirmLabel": "Type {word} to confirm",
+        "deleteBtn": "Delete my account",
+        "deleting": "Deleting…"
+      }
     },
     "status": {
       "ACTIVE": "Active",
@@ -512,8 +536,10 @@
       "lockedTitle": "Unlock with Pro",
       "lockedBody": "This tool is available on the Pro plan and above. Upgrade to get access.",
       "upgrade": "Upgrade plan",
-      "placeholderTitle": "Market-entry checklist generator",
-      "placeholderBody": "Coming soon — a personalized, step-by-step landing checklist generated from your profile."
+      "progress": "Progress",
+      "emptyTitle": "Tell us your needs first",
+      "emptyBody": "Fill in your landing requirements in Account, and we'll generate a personalized market-entry checklist here.",
+      "emptyCta": "Go to Account"
     }
   },
   "Billing": {

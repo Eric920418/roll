@@ -161,6 +161,9 @@ model User {
   currentPeriodEnd     DateTime? // 本期到期 / 下次扣款時間，用於寬限期判斷
   planUpdatedAt        DateTime? // 最後一次方案異動時間
 
+  // Tools 落地清單勾選狀態 { itemKey: true }
+  checklistState Json @default("{}")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

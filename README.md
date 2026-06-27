@@ -274,7 +274,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 ### 創辦人決策風格測驗（onboarding 之後）
 
-完成 onboarding（requirements）後 → `/[locale]/quiz`（3 題二選一）→ `/[locale]/quiz/result`（配對一位創辦人）→「完成」回首頁。`User.onboardingStep` 擴成 4=quiz；`completed` 改在**測驗完成**才設 true。`/quiz/*` 由 proxy 以 `user_session` 守衛（同 onboarding）。
+完成 onboarding（requirements）後 → `/[locale]/quiz`（3 題二選一）→ `/[locale]/quiz/result`（配對一位創辦人）→「完成」進 `/dashboard`。`User.onboardingStep` 擴成 4=quiz；`completed` 改在**測驗完成**才設 true。`/quiz/*` 由 proxy 以 `user_session` 守衛（同 onboarding）。
 
 - **配對邏輯**（`src/lib/quiz/match.ts`，純函式）：每題對應一決策維度（planning/execution/vision），選項帶 0~100 分；作答 → 三維分數 → 配對**向量距離最近**的已發布創辦人。submit 端（`/api/quiz/submit`）**重新從 DB 取題目自算分數**，不信任前端。
 - **資料皆 DB、CMS 可編輯**：`QuizQuestion`、`Founder`（連結既有 `content/companies` 的 `companySlug`，結果頁放「看完整公司分析」）、`QuizSubmission`（每次作答存一筆）。雙語文字用 Json `{en,"zh-tw"}`。
@@ -295,21 +295,26 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | 路徑 | 說明 |
 | --- | --- |
 | `/[locale]/dashboard` | 總覽：方案徽章、訂閱狀態、onboarding 完成度、快速入口。 |
-| `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）。 |
+| `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）+ 變更/設定密碼 + 刪除帳號（危險區，需輸入確認字）。 |
 | `/[locale]/dashboard/billing` | 訂閱：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。 |
 | `/[locale]/dashboard/billing/return` | PayPal 核准後返回頁，呼叫 confirm 即時對帳。 |
-| `/[locale]/dashboard/tools` | 付費牆示範：`requirePlan("pro")`，不足顯示鎖定 + 升級 CTA（未來工具掛載點）。 |
+| `/[locale]/dashboard/tools` | **進入市場落地清單**（真工具）：`requirePlan("pro")`；依 `OnboardingProfile.needs` 由 `src/lib/tools/checklist.ts` 生成分組可勾選清單，勾選存 `User.checklistState`；未填 needs 顯示引導、方案不足顯示升級牆。 |
 | `/api/account/profile` | PATCH 更新 profile（自守衛 `getUserSession`）。 |
+| `/api/account/password` | POST 變更/設定密碼（有密碼者需驗舊密碼；Google-only 免舊密碼直接設定）。 |
+| `/api/account/delete` | POST 刪帳號（best-effort 取消 PayPal 訂閱 → `prisma.user.delete` cascade → 清 `user_session`）。 |
+| `/api/tools/checklist` | PATCH 更新落地清單勾選（`requirePlan("pro")` 守衛，merge 進 `User.checklistState`）。 |
 | `/api/billing/subscribe\|confirm\|cancel` | 建立 / 確認 / 取消訂閱（自守衛）。 |
 | `/api/billing/webhook` | PayPal webhook：不查 session、改以簽章驗證；冪等 + 對帳。 |
 
-UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `BillingPanel` / `BillingReturn`）。i18n 在 `messages/*.json` 的 `Dashboard` / `Billing` namespace。
+UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn`）。i18n 在 `messages/*.json` 的 `Dashboard` / `Billing` namespace。
+
+**入口接通**：登入 / onboarding / 測驗完成後由 `destinationFor`（`src/lib/auth/onboarding.ts`，`completed → /dashboard`）導向後台；全站 Navbar 有「會員中心」入口（靜態連結 → `/dashboard`，未登入由 proxy 導 `/login`）。
 
 ### 方案與 gating
 
 - 方案邏輯單一事實來源：`src/lib/billing/plans.ts`（`PLAN_KEYS` / `PLAN_RANK` / `PLAN_CONFIG`，PayPal plan id 走 env 名）。價格顯示只信 i18n、邏輯只信此檔。
 - gating：`src/lib/billing/gate.ts` 的 `getEffectivePlan` / `getUserPlan` / `requirePlan`。**寬限期**：付費方案僅在 `currentPeriodEnd > now` 且狀態授予存取（ACTIVE/PAST_DUE/CANCELLED）時有效，否則退回 free — 即使 PayPal 漏送 CANCELLED，到期也會自動降級。
-- DAL：`src/lib/auth/account.ts` 的 `getCurrentAccount()`（React `cache()` 包裝、回安全 DTO，不含 passwordHash）。
+- DAL：`src/lib/auth/account.ts` 的 `getCurrentAccount()`（React `cache()` 包裝、回安全 DTO，不含 passwordHash；含 `hasPassword` 布林與 `checklistState`）。
 
 ### PayPal 訂閱流程
 

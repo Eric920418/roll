@@ -7,7 +7,8 @@
   "Nav": {
     "about": "關於我們",
     "esg": "ESG",
-    "product": "產品"
+    "product": "產品",
+    "dashboard": "會員中心"
   },
   "AboutPage": {
     "metaTitle": "關於 ROLL ON.｜持續滾動的影響力",
@@ -497,7 +498,30 @@
       "selectPlaceholder": "選擇…",
       "save": "儲存變更",
       "saving": "儲存中…",
-      "saved": "已儲存。"
+      "saved": "已儲存。",
+      "security": {
+        "title": "密碼",
+        "current": "目前密碼",
+        "new": "新密碼",
+        "set": "設定密碼",
+        "placeholder": "至少 8 個字元",
+        "changeBtn": "更新密碼",
+        "setBtn": "設定密碼",
+        "saving": "儲存中…",
+        "saved": "密碼已更新。",
+        "googleNote": "你是用 Google 註冊的。設定密碼後也能用 Email 登入。",
+        "errWrong": "目前密碼不正確。",
+        "errTooShort": "密碼至少需 8 個字元。",
+        "errMissing": "請輸入目前密碼。"
+      },
+      "danger": {
+        "title": "刪除帳號",
+        "warning": "這會永久刪除你的帳號、個人資料、測驗結果與訂閱紀錄，且無法復原。",
+        "confirmWord": "刪除",
+        "confirmLabel": "輸入「{word}」以確認",
+        "deleteBtn": "刪除我的帳號",
+        "deleting": "刪除中…"
+      }
     },
     "status": {
       "ACTIVE": "生效中",
@@ -512,8 +536,10 @@
       "lockedTitle": "升級 Pro 解鎖",
       "lockedBody": "此工具需 Pro 以上方案才能使用。升級即可解鎖。",
       "upgrade": "升級方案",
-      "placeholderTitle": "進入市場查核表產生器",
-      "placeholderBody": "即將推出 — 依你的資料自動生成個人化的逐步落地查核表。"
+      "progress": "完成進度",
+      "emptyTitle": "先告訴我們你的需求",
+      "emptyBody": "到「帳號」頁填寫你的落地需求，我們就會在這裡生成個人化的進入市場查核清單。",
+      "emptyCta": "前往帳號頁"
     }
   },
   "Billing": {
