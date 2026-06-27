@@ -401,6 +401,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2345 | `accton` | Accton 智邦科技 | Networking Hardware（白牌交換器全球龍頭；AI 網通成長贏家／估值貴） |
 | 2885 | `yuanta-financial` | Yuanta Financial 元大金控 | Financials（證券/ETF 為主金控；0050·0056；ETF 狂潮順風／經紀循環） |
 | 2903 | `feds` | Far Eastern Department Stores 遠東百貨 | Department Stores（最大百貨集團+SOGO；高息近淨值；58% 毛利為抽成假象） |
+| 3037 | `unimicron` | Unimicron 欣興電子 | PCB & IC Substrates（全球最大載板廠／ABF 近寡占；深度循環；估值已 price 滿） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
