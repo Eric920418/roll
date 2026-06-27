@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const title = (searchParams.get("title") ?? "ROLL ON.").slice(0, 120);
   const subtitle = (
     searchParams.get("subtitle") ??
-    "Taiwan & Asia Market Entry Consulting"
+    "Taiwan & Asia Expansion Partner"
   ).slice(0, 160);
   const eyebrow = (searchParams.get("eyebrow") ?? "ROLL ON.").slice(0, 40);
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 const SITE_URL = "https://rollgrp.com";
-const DEFAULT_OG_IMAGE = `${SITE_URL}/og?title=${encodeURIComponent("ROLL ON.")}&subtitle=${encodeURIComponent("Taiwan & Asia Market Entry Consulting")}`;
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og?title=${encodeURIComponent("ROLL ON.")}&subtitle=${encodeURIComponent("Taiwan & Asia Expansion Partner")}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: "%s | ROLL ON.",
   },
   description:
-    "ROLL ON. is a Taiwan-based consulting firm helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
+    "ROLL ON. is a Taiwan-based market entry & expansion partner helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
   keywords: [
     "ROLL ON",
     "台灣市場進入",
@@ -41,13 +41,13 @@ export const metadata: Metadata = {
     siteName: "ROLL ON Taiwan",
     title: "ROLL ON. | From Visions to Big Impacts",
     description:
-      "ROLL ON. is a Taiwan-based consulting firm helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
+      "ROLL ON. is a Taiwan-based market entry & expansion partner helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
     images: [
       {
         url: DEFAULT_OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: "ROLL ON. — Taiwan & Asia Market Entry Consulting",
+        alt: "ROLL ON. — Taiwan & Asia Expansion Partner",
       },
     ],
   },
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ROLL ON. | From Visions to Big Impacts",
     description:
-      "ROLL ON. is a Taiwan-based consulting firm helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
+      "ROLL ON. is a Taiwan-based market entry & expansion partner helping foreign companies enter Taiwan and Asian markets. Services: fundraising, market entry strategy, legal compliance, marketing, and investor access.",
     images: [DEFAULT_OG_IMAGE],
   },
   robots: {

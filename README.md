@@ -410,7 +410,8 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 - **Google 搜尋顯示的網站名稱**：`ROLL ON Taiwan`（site name），由 `og:site_name` + WebSite schema `name` 決定；`alternateName: "ROLL ON."` 標註舊名稱以利平滑過渡。法人名稱 `ROLL ON. LTD` 仍保留在 `Organization` schema，不受影響
 - `src/app/layout.tsx` — 全站 fallback metadata（OG / Twitter / canonical / keywords）
 - `src/app/[locale]/layout.tsx` — locale-specific metadata + **完整 JSON-LD `@graph`**：Organization / ProfessionalService / WebSite / FAQPage（11 題，雙語） / LocalBusiness（地址、geo、營業時間、社群）
-- `src/app/[locale]/page.tsx` — 首頁 `generateMetadata`，獨立針對 "Taiwan & Asia market entry consulting" 搜尋意圖
+- `src/app/[locale]/page.tsx` — 首頁 `generateMetadata`，獨立針對 "Taiwan & Asia market entry / expansion partner" 搜尋意圖
+  - ⚠️ 首頁 `Metadata.title` / `description` 由 `t()` 讀翻譯，**可被後台「文案翻譯」的 DB override（`Setting.messages.<locale>` → `Metadata.title`）覆蓋且 override 優先於 `messages/*.json`**。改正式站標題要同步改這筆 override（後台 `/admin/translations` 或直接更新該列），只改 json 不會生效
 - 每個內容頁 — `generateMetadata` 讀 MDX frontmatter，產 title / description / canonical / hreflang / og:image（動態）
 - 每個內容頁 — `BreadcrumbList` + `Article`/`Service` + `FAQPage` schema
 

@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = t("title");
   const description = t("description");
   const url = absoluteUrl("", l);
-  const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent("Taiwan & Asia Market Entry Consulting")}`;
+  const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent("Taiwan & Asia Expansion Partner")}`;
 
   return {
     // absolute：不套用 root layout 的「%s | ROLL ON.」模板，避免品牌後綴重複

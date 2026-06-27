@@ -265,7 +265,7 @@ export default function RollMap() {
           ROLL MAP — Foreign companies served by ROLL ON. across regions
         </h2>
         <p>
-          ROLL ON. is a Taipei-based consulting firm. Below is the distribution
+          ROLL ON. is a Taipei-based expansion partner. Below is the distribution
           of foreign companies we have supported, by region.
         </p>
         <dl>

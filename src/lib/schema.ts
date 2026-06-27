@@ -171,7 +171,7 @@ export const SITE_FAQS: Record<Locale, Faq[]> = {
   en: [
     {
       q: "What does ROLL ON. do?",
-      a: "ROLL ON. is a Taipei-based consulting firm that helps foreign companies enter the Taiwan and broader Asian markets. Core services: fundraising (angel to IPO), market entry strategy, company setup & legal compliance, marketing, sales channel development, and investor access.",
+      a: "ROLL ON. is a Taipei-based market entry & expansion partner that helps foreign companies enter the Taiwan and broader Asian markets. Core services: fundraising (angel to IPO), market entry strategy, company setup & legal compliance, marketing, sales channel development, and investor access.",
     },
     {
       q: "Which markets does ROLL ON. cover?",
