@@ -1,0 +1,3117 @@
+{
+  "slug": "formosa-plastics",
+  "ticker": "1301",
+  "market": "TWSE",
+  "nameEn": "Formosa Plastics Corporation",
+  "nameZh": "台塑",
+  "logoUrl": null,
+  "sector": "Petrochemicals",
+  "foundedYear": 1954,
+  "listedYear": null,
+  "headquarters": "Taipei, Taiwan",
+  "websiteUrl": "https://www.fpc.com.tw/",
+  "status": "active",
+  "summaryEn": "The flagship of Wang Yung-ching's Formosa Plastics Group — Taiwan's iconic petrochemical empire — now in a deep structural downturn: its core plastics business is loss-making (its first-ever annual loss came in 2024), profit comes from its cross-holdings, and the dividend has been slashed ~94%. A fortress balance sheet trading below book.",
+  "factsHash": null,
+  "updatedAt": "2026-06-29",
+  "model": "editorial (truth-audited: FinMind + Wikipedia/press; petrochemical framing — the legendary group's fortress balance sheet and cross-holding/NAV value credited, but the FIRST-EVER loss, operating losses, ~94% dividend cut and STRUCTURAL (Chinese-overcapacity) downturn stated bluntly; net>op non-operating income noted; P/E 0.00 stripped as loss-meaningless; sector fixed to Petrochemicals; listedYear left null where uncertain — no fabricated precision)",
+  "metrics": [
+    {
+      "period": "2021-12",
+      "metricKey": "monthlyRevenue",
+      "value": 25199437000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-01",
+      "metricKey": "monthlyRevenue",
+      "value": 23937795000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-02",
+      "metricKey": "monthlyRevenue",
+      "value": 20591656000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-03",
+      "metricKey": "monthlyRevenue",
+      "value": 26474312000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-04",
+      "metricKey": "monthlyRevenue",
+      "value": 25145986000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-05",
+      "metricKey": "monthlyRevenue",
+      "value": 24846638000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-06",
+      "metricKey": "monthlyRevenue",
+      "value": 23931750000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-07",
+      "metricKey": "monthlyRevenue",
+      "value": 19936058000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-08",
+      "metricKey": "monthlyRevenue",
+      "value": 17450790000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-09",
+      "metricKey": "monthlyRevenue",
+      "value": 18266287000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-10",
+      "metricKey": "monthlyRevenue",
+      "value": 17040281000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-11",
+      "metricKey": "monthlyRevenue",
+      "value": 17363777000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-12",
+      "metricKey": "monthlyRevenue",
+      "value": 16662024000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-01",
+      "metricKey": "monthlyRevenue",
+      "value": 14408136000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-02",
+      "metricKey": "monthlyRevenue",
+      "value": 17688186000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-03",
+      "metricKey": "monthlyRevenue",
+      "value": 20116995000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-04",
+      "metricKey": "monthlyRevenue",
+      "value": 16196620000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-05",
+      "metricKey": "monthlyRevenue",
+      "value": 16356337000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-06",
+      "metricKey": "monthlyRevenue",
+      "value": 15893871000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-07",
+      "metricKey": "monthlyRevenue",
+      "value": 16645025000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-08",
+      "metricKey": "monthlyRevenue",
+      "value": 17501985000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-09",
+      "metricKey": "monthlyRevenue",
+      "value": 16588777000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-10",
+      "metricKey": "monthlyRevenue",
+      "value": 16306347000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-11",
+      "metricKey": "monthlyRevenue",
+      "value": 16406350000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-12",
+      "metricKey": "monthlyRevenue",
+      "value": 15030148000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-01",
+      "metricKey": "monthlyRevenue",
+      "value": 17516214000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-02",
+      "metricKey": "monthlyRevenue",
+      "value": 12932676000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-03",
+      "metricKey": "monthlyRevenue",
+      "value": 17659603000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-04",
+      "metricKey": "monthlyRevenue",
+      "value": 16660677000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-05",
+      "metricKey": "monthlyRevenue",
+      "value": 17396479000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-06",
+      "metricKey": "monthlyRevenue",
+      "value": 17051698000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-07",
+      "metricKey": "monthlyRevenue",
+      "value": 17709919000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-08",
+      "metricKey": "monthlyRevenue",
+      "value": 16140806000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-09",
+      "metricKey": "monthlyRevenue",
+      "value": 16641520000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-10",
+      "metricKey": "monthlyRevenue",
+      "value": 15738889000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-11",
+      "metricKey": "monthlyRevenue",
+      "value": 18146582000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-12",
+      "metricKey": "monthlyRevenue",
+      "value": 16445283000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-01",
+      "metricKey": "monthlyRevenue",
+      "value": 13980022000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-02",
+      "metricKey": "monthlyRevenue",
+      "value": 16129819000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-03",
+      "metricKey": "monthlyRevenue",
+      "value": 17092363000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-04",
+      "metricKey": "monthlyRevenue",
+      "value": 16172957000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-05",
+      "metricKey": "monthlyRevenue",
+      "value": 14852023000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-06",
+      "metricKey": "monthlyRevenue",
+      "value": 14362122000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-07",
+      "metricKey": "monthlyRevenue",
+      "value": 14597054000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-08",
+      "metricKey": "monthlyRevenue",
+      "value": 13103184000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-09",
+      "metricKey": "monthlyRevenue",
+      "value": 14017714000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-10",
+      "metricKey": "monthlyRevenue",
+      "value": 13410015000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-11",
+      "metricKey": "monthlyRevenue",
+      "value": 13389395000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-12",
+      "metricKey": "monthlyRevenue",
+      "value": 14304735000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-01",
+      "metricKey": "monthlyRevenue",
+      "value": 13891082000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-02",
+      "metricKey": "monthlyRevenue",
+      "value": 10739649000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-03",
+      "metricKey": "monthlyRevenue",
+      "value": 17354391000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-04",
+      "metricKey": "monthlyRevenue",
+      "value": 18326272000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-05",
+      "metricKey": "monthlyRevenue",
+      "value": 14951422000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022-12",
+      "metricKey": "revenueYoY",
+      "value": -33.88,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-01",
+      "metricKey": "revenueYoY",
+      "value": -39.81,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-02",
+      "metricKey": "revenueYoY",
+      "value": -14.1,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-03",
+      "metricKey": "revenueYoY",
+      "value": -24.01,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-04",
+      "metricKey": "revenueYoY",
+      "value": -35.59,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-05",
+      "metricKey": "revenueYoY",
+      "value": -34.17,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-06",
+      "metricKey": "revenueYoY",
+      "value": -33.59,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-07",
+      "metricKey": "revenueYoY",
+      "value": -16.51,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-08",
+      "metricKey": "revenueYoY",
+      "value": 0.29,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-09",
+      "metricKey": "revenueYoY",
+      "value": -9.18,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-10",
+      "metricKey": "revenueYoY",
+      "value": -4.31,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-11",
+      "metricKey": "revenueYoY",
+      "value": -5.51,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2023-12",
+      "metricKey": "revenueYoY",
+      "value": -9.79,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-01",
+      "metricKey": "revenueYoY",
+      "value": 21.57,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-02",
+      "metricKey": "revenueYoY",
+      "value": -26.89,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-03",
+      "metricKey": "revenueYoY",
+      "value": -12.22,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-04",
+      "metricKey": "revenueYoY",
+      "value": 2.87,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-05",
+      "metricKey": "revenueYoY",
+      "value": 6.36,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-06",
+      "metricKey": "revenueYoY",
+      "value": 7.28,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-07",
+      "metricKey": "revenueYoY",
+      "value": 6.4,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-08",
+      "metricKey": "revenueYoY",
+      "value": -7.78,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-09",
+      "metricKey": "revenueYoY",
+      "value": 0.32,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-10",
+      "metricKey": "revenueYoY",
+      "value": -3.48,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-11",
+      "metricKey": "revenueYoY",
+      "value": 10.61,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2024-12",
+      "metricKey": "revenueYoY",
+      "value": 9.42,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-01",
+      "metricKey": "revenueYoY",
+      "value": -20.19,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-02",
+      "metricKey": "revenueYoY",
+      "value": 24.72,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-03",
+      "metricKey": "revenueYoY",
+      "value": -3.21,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-04",
+      "metricKey": "revenueYoY",
+      "value": -2.93,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-05",
+      "metricKey": "revenueYoY",
+      "value": -14.63,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-06",
+      "metricKey": "revenueYoY",
+      "value": -15.77,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-07",
+      "metricKey": "revenueYoY",
+      "value": -17.58,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-08",
+      "metricKey": "revenueYoY",
+      "value": -18.82,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-09",
+      "metricKey": "revenueYoY",
+      "value": -15.77,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-10",
+      "metricKey": "revenueYoY",
+      "value": -14.8,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-11",
+      "metricKey": "revenueYoY",
+      "value": -26.22,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2025-12",
+      "metricKey": "revenueYoY",
+      "value": -13.02,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-01",
+      "metricKey": "revenueYoY",
+      "value": -0.64,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-02",
+      "metricKey": "revenueYoY",
+      "value": -33.42,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-03",
+      "metricKey": "revenueYoY",
+      "value": 1.53,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-04",
+      "metricKey": "revenueYoY",
+      "value": 13.31,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2026-05",
+      "metricKey": "revenueYoY",
+      "value": 0.67,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockMonthRevenue"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "grossMargin",
+      "value": 24.71,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "opMargin",
+      "value": 18.77,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "netMargin",
+      "value": 23.34,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "netIncome",
+      "value": 16574021000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "eps",
+      "value": 2.6,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "grossMargin",
+      "value": 26.27,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "opMargin",
+      "value": 20.69,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "netMargin",
+      "value": 28.68,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "netIncome",
+      "value": 21201728000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "eps",
+      "value": 3.33,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "grossMargin",
+      "value": 7.72,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "opMargin",
+      "value": 0.86,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "netMargin",
+      "value": 10.35,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "netIncome",
+      "value": 5760357000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "eps",
+      "value": 0.9,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q4",
+      "metricKey": "grossMargin",
+      "value": 2.55,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q4",
+      "metricKey": "opMargin",
+      "value": -4.52,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q4",
+      "metricKey": "netMargin",
+      "value": -14.48,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q4",
+      "metricKey": "netIncome",
+      "value": -7393238000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q4",
+      "metricKey": "eps",
+      "value": -1.16,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "grossMargin",
+      "value": 6.64,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "opMargin",
+      "value": 0.03,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "netMargin",
+      "value": 4.49,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "netIncome",
+      "value": 2342508000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "eps",
+      "value": 0.37,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "grossMargin",
+      "value": 1.92,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "opMargin",
+      "value": -5.1,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "netMargin",
+      "value": 2.53,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "netIncome",
+      "value": 1225054000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "eps",
+      "value": 0.19,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q3",
+      "metricKey": "grossMargin",
+      "value": 7.22,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q3",
+      "metricKey": "opMargin",
+      "value": 0.35,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q3",
+      "metricKey": "netMargin",
+      "value": 13.15,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q3",
+      "metricKey": "netIncome",
+      "value": 6671405000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q3",
+      "metricKey": "eps",
+      "value": 1.05,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q4",
+      "metricKey": "grossMargin",
+      "value": 3.7,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q4",
+      "metricKey": "opMargin",
+      "value": -3.66,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q4",
+      "metricKey": "netMargin",
+      "value": -6.08,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q4",
+      "metricKey": "netIncome",
+      "value": -2901258000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2023Q4",
+      "metricKey": "eps",
+      "value": -0.46,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q1",
+      "metricKey": "grossMargin",
+      "value": 3.81,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q1",
+      "metricKey": "opMargin",
+      "value": -3.0,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q1",
+      "metricKey": "netMargin",
+      "value": 0.46,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q1",
+      "metricKey": "netIncome",
+      "value": 220856000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q1",
+      "metricKey": "eps",
+      "value": 0.03,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q2",
+      "metricKey": "grossMargin",
+      "value": 7.31,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q2",
+      "metricKey": "opMargin",
+      "value": 0.33,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q2",
+      "metricKey": "netMargin",
+      "value": 2.67,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q2",
+      "metricKey": "netIncome",
+      "value": 1364591000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q2",
+      "metricKey": "eps",
+      "value": 0.21,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "grossMargin",
+      "value": 4.93,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "opMargin",
+      "value": -2.98,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "netMargin",
+      "value": -6.12,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "netIncome",
+      "value": -3092465000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "eps",
+      "value": -0.49,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "grossMargin",
+      "value": 4.14,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "opMargin",
+      "value": -2.74,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "netMargin",
+      "value": 0.55,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "netIncome",
+      "value": 275253000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "eps",
+      "value": 0.05,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "grossMargin",
+      "value": 5.21,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "opMargin",
+      "value": -1.89,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "netMargin",
+      "value": 0.11,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "netIncome",
+      "value": 50448000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "eps",
+      "value": 0.01,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "grossMargin",
+      "value": 3.5,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "opMargin",
+      "value": -3.44,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "netMargin",
+      "value": -14.6,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "netIncome",
+      "value": -6625710000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "eps",
+      "value": -1.04,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "grossMargin",
+      "value": 1.38,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "opMargin",
+      "value": -6.44,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "netMargin",
+      "value": -1.44,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "netIncome",
+      "value": -602125000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "eps",
+      "value": -0.09,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "grossMargin",
+      "value": 2.38,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "opMargin",
+      "value": -5.76,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "netMargin",
+      "value": -6.99,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "netIncome",
+      "value": -2871272000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "eps",
+      "value": -0.45,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "grossMargin",
+      "value": 3.7,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "opMargin",
+      "value": -3.1,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "netMargin",
+      "value": 7.79,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "netIncome",
+      "value": 3268627000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "eps",
+      "value": 0.51,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockFinancialStatements"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "totalAssets",
+      "value": 565846370000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "totalEquity",
+      "value": 428067312000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "debtRatio",
+      "value": 24.35,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "cash",
+      "value": 20611199000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "totalAssets",
+      "value": 550676392000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "totalEquity",
+      "value": 375616949000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "debtRatio",
+      "value": 31.79,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "cash",
+      "value": 11834909000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "totalAssets",
+      "value": 522773061000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "totalEquity",
+      "value": 368569908000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "debtRatio",
+      "value": 29.5,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "cash",
+      "value": 19609448000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "totalAssets",
+      "value": 525401016000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "totalEquity",
+      "value": 343953716000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "debtRatio",
+      "value": 34.54,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "cash",
+      "value": 16448163000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "totalAssets",
+      "value": 519525595000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "totalEquity",
+      "value": 342386292000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "debtRatio",
+      "value": 34.1,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "cash",
+      "value": 11210121000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "totalAssets",
+      "value": 521676634000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "totalEquity",
+      "value": 314928358000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "debtRatio",
+      "value": 39.63,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "cash",
+      "value": 14299991000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "totalAssets",
+      "value": 496830078000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "totalEquity",
+      "value": 288980935000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "debtRatio",
+      "value": 41.84,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "cash",
+      "value": 18200100000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "totalAssets",
+      "value": 505918652000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "totalEquity",
+      "value": 290352526000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "debtRatio",
+      "value": 42.61,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "cash",
+      "value": 21005029000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "totalAssets",
+      "value": 470042985000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "totalEquity",
+      "value": 266595428000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "debtRatio",
+      "value": 43.28,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "cash",
+      "value": 10909255000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "totalAssets",
+      "value": 489417160000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "totalEquity",
+      "value": 291896930000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "debtRatio",
+      "value": 40.36,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "cash",
+      "value": 8025392000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "totalAssets",
+      "value": 557502008000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "totalEquity",
+      "value": 363222429000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "debtRatio",
+      "value": 34.85,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "cash",
+      "value": 10631822000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "totalAssets",
+      "value": 593528010000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "totalEquity",
+      "value": 390216488000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "debtRatio",
+      "value": 34.25,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "cash",
+      "value": 10197694000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "roe",
+      "value": -1.75,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockFinancialStatements + FinMind:TaiwanStockBalanceSheet"
+    },
+    {
+      "period": "2022Q1",
+      "metricKey": "operatingCashFlow",
+      "value": 15448036000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2022Q2",
+      "metricKey": "operatingCashFlow",
+      "value": 19862740000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2022Q3",
+      "metricKey": "operatingCashFlow",
+      "value": 51851901000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2022Q4",
+      "metricKey": "operatingCashFlow",
+      "value": 56801615000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2023Q1",
+      "metricKey": "operatingCashFlow",
+      "value": -2889592000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2023Q2",
+      "metricKey": "operatingCashFlow",
+      "value": -3976866000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2023Q3",
+      "metricKey": "operatingCashFlow",
+      "value": 8426169000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2023Q4",
+      "metricKey": "operatingCashFlow",
+      "value": 6157311000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2024Q1",
+      "metricKey": "operatingCashFlow",
+      "value": -2309665000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2024Q2",
+      "metricKey": "operatingCashFlow",
+      "value": -8205295000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2024Q3",
+      "metricKey": "operatingCashFlow",
+      "value": 6676381000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2024Q4",
+      "metricKey": "operatingCashFlow",
+      "value": 11461388000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2025Q1",
+      "metricKey": "operatingCashFlow",
+      "value": -106577000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2025Q2",
+      "metricKey": "operatingCashFlow",
+      "value": -1035309000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2025Q3",
+      "metricKey": "operatingCashFlow",
+      "value": 6358061000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2025Q4",
+      "metricKey": "operatingCashFlow",
+      "value": 6619088000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2026Q1",
+      "metricKey": "operatingCashFlow",
+      "value": 1178822000.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockCashFlowsStatement"
+    },
+    {
+      "period": "2004",
+      "metricKey": "cashDividend",
+      "value": 3.6,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2005",
+      "metricKey": "cashDividend",
+      "value": 4.1,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2007",
+      "metricKey": "cashDividend",
+      "value": 4.4,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2008",
+      "metricKey": "cashDividend",
+      "value": 6.7,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2010",
+      "metricKey": "cashDividend",
+      "value": 4.0,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2011",
+      "metricKey": "cashDividend",
+      "value": 6.8,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2012",
+      "metricKey": "cashDividend",
+      "value": 5.2,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2013",
+      "metricKey": "cashDividend",
+      "value": 1.9,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2014",
+      "metricKey": "cashDividend",
+      "value": 1.7,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2015",
+      "metricKey": "cashDividend",
+      "value": 3.6,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2016",
+      "metricKey": "cashDividend",
+      "value": 4.6,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2017",
+      "metricKey": "cashDividend",
+      "value": 5.7,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2018",
+      "metricKey": "cashDividend",
+      "value": 5.8,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2019",
+      "metricKey": "cashDividend",
+      "value": 4.4,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2020",
+      "metricKey": "cashDividend",
+      "value": 2.4,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2021",
+      "metricKey": "cashDividend",
+      "value": 8.2,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2022",
+      "metricKey": "cashDividend",
+      "value": 4.2,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2023",
+      "metricKey": "cashDividend",
+      "value": 1.0,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2024",
+      "metricKey": "cashDividend",
+      "value": 0.5,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2025",
+      "metricKey": "cashDividend",
+      "value": 0.5,
+      "unit": "TWD_per_share",
+      "source": "FinMind:TaiwanStockDividend"
+    },
+    {
+      "period": "2022-01",
+      "metricKey": "pb",
+      "value": 1.74,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-02",
+      "metricKey": "pb",
+      "value": 1.74,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-03",
+      "metricKey": "pb",
+      "value": 1.68,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-04",
+      "metricKey": "pb",
+      "value": 1.67,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-05",
+      "metricKey": "pb",
+      "value": 1.56,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-06",
+      "metricKey": "pb",
+      "value": 1.61,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-07",
+      "metricKey": "pb",
+      "value": 1.37,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-08",
+      "metricKey": "pb",
+      "value": 1.54,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-09",
+      "metricKey": "pb",
+      "value": 1.47,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-10",
+      "metricKey": "pb",
+      "value": 1.41,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-11",
+      "metricKey": "pb",
+      "value": 1.56,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-12",
+      "metricKey": "pb",
+      "value": 1.5,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-01",
+      "metricKey": "pb",
+      "value": 1.54,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-02",
+      "metricKey": "pb",
+      "value": 1.57,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-03",
+      "metricKey": "pb",
+      "value": 1.63,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-04",
+      "metricKey": "pb",
+      "value": 1.67,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-05",
+      "metricKey": "pb",
+      "value": 1.74,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-06",
+      "metricKey": "pb",
+      "value": 1.59,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-07",
+      "metricKey": "pb",
+      "value": 1.54,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-08",
+      "metricKey": "pb",
+      "value": 1.48,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-09",
+      "metricKey": "pb",
+      "value": 1.48,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-10",
+      "metricKey": "pb",
+      "value": 1.43,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-11",
+      "metricKey": "pb",
+      "value": 1.47,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-12",
+      "metricKey": "pb",
+      "value": 1.44,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-01",
+      "metricKey": "pb",
+      "value": 1.31,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-02",
+      "metricKey": "pb",
+      "value": 1.3,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-03",
+      "metricKey": "pb",
+      "value": 1.26,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-04",
+      "metricKey": "pb",
+      "value": 1.26,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-05",
+      "metricKey": "pb",
+      "value": 1.23,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-06",
+      "metricKey": "pb",
+      "value": 1.08,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-07",
+      "metricKey": "pb",
+      "value": 1.09,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-08",
+      "metricKey": "pb",
+      "value": 0.96,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-09",
+      "metricKey": "pb",
+      "value": 1.0,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-10",
+      "metricKey": "pb",
+      "value": 0.88,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-11",
+      "metricKey": "pb",
+      "value": 0.84,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-12",
+      "metricKey": "pb",
+      "value": 0.72,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-01",
+      "metricKey": "pb",
+      "value": 0.73,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-02",
+      "metricKey": "pb",
+      "value": 0.78,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-03",
+      "metricKey": "pb",
+      "value": 0.81,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-04",
+      "metricKey": "pb",
+      "value": 0.75,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-05",
+      "metricKey": "pb",
+      "value": 0.76,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-06",
+      "metricKey": "pb",
+      "value": 0.76,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-07",
+      "metricKey": "pb",
+      "value": 0.94,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-08",
+      "metricKey": "pb",
+      "value": 0.93,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-09",
+      "metricKey": "pb",
+      "value": 0.92,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-10",
+      "metricKey": "pb",
+      "value": 0.91,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-11",
+      "metricKey": "pb",
+      "value": 0.91,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-12",
+      "metricKey": "pb",
+      "value": 0.85,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-01",
+      "metricKey": "pb",
+      "value": 1.03,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-02",
+      "metricKey": "pb",
+      "value": 1.13,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-03",
+      "metricKey": "pb",
+      "value": 0.8,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-04",
+      "metricKey": "pb",
+      "value": 0.9,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-05",
+      "metricKey": "pb",
+      "value": 0.77,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-06",
+      "metricKey": "pb",
+      "value": 0.85,
+      "unit": "x",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-01",
+      "metricKey": "dividendYield",
+      "value": 2.29,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-02",
+      "metricKey": "dividendYield",
+      "value": 2.29,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-03",
+      "metricKey": "dividendYield",
+      "value": 7.7,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-04",
+      "metricKey": "dividendYield",
+      "value": 7.77,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-05",
+      "metricKey": "dividendYield",
+      "value": 7.81,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-06",
+      "metricKey": "dividendYield",
+      "value": 7.56,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-07",
+      "metricKey": "dividendYield",
+      "value": 8.91,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-08",
+      "metricKey": "dividendYield",
+      "value": 9.0,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-09",
+      "metricKey": "dividendYield",
+      "value": 9.47,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-10",
+      "metricKey": "dividendYield",
+      "value": 9.87,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-11",
+      "metricKey": "dividendYield",
+      "value": 9.09,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-12",
+      "metricKey": "dividendYield",
+      "value": 9.45,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-01",
+      "metricKey": "dividendYield",
+      "value": 9.18,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-02",
+      "metricKey": "dividendYield",
+      "value": 9.02,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-03",
+      "metricKey": "dividendYield",
+      "value": 4.58,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-04",
+      "metricKey": "dividendYield",
+      "value": 4.47,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-05",
+      "metricKey": "dividendYield",
+      "value": 4.46,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-06",
+      "metricKey": "dividendYield",
+      "value": 4.9,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-07",
+      "metricKey": "dividendYield",
+      "value": 5.05,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-08",
+      "metricKey": "dividendYield",
+      "value": 5.28,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-09",
+      "metricKey": "dividendYield",
+      "value": 5.26,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-10",
+      "metricKey": "dividendYield",
+      "value": 5.45,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-11",
+      "metricKey": "dividendYield",
+      "value": 5.2,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2023-12",
+      "metricKey": "dividendYield",
+      "value": 5.3,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-01",
+      "metricKey": "dividendYield",
+      "value": 5.83,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-02",
+      "metricKey": "dividendYield",
+      "value": 5.86,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-03",
+      "metricKey": "dividendYield",
+      "value": 1.45,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-04",
+      "metricKey": "dividendYield",
+      "value": 1.46,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-05",
+      "metricKey": "dividendYield",
+      "value": 1.53,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-06",
+      "metricKey": "dividendYield",
+      "value": 1.74,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-07",
+      "metricKey": "dividendYield",
+      "value": 1.73,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-08",
+      "metricKey": "dividendYield",
+      "value": 1.94,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-09",
+      "metricKey": "dividendYield",
+      "value": 1.87,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-10",
+      "metricKey": "dividendYield",
+      "value": 2.11,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-11",
+      "metricKey": "dividendYield",
+      "value": 2.42,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2024-12",
+      "metricKey": "dividendYield",
+      "value": 2.82,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-01",
+      "metricKey": "dividendYield",
+      "value": 2.76,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-02",
+      "metricKey": "dividendYield",
+      "value": 2.61,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-03",
+      "metricKey": "dividendYield",
+      "value": 1.37,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-04",
+      "metricKey": "dividendYield",
+      "value": 1.47,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-05",
+      "metricKey": "dividendYield",
+      "value": 1.44,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-06",
+      "metricKey": "dividendYield",
+      "value": 1.43,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-07",
+      "metricKey": "dividendYield",
+      "value": 1.17,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-08",
+      "metricKey": "dividendYield",
+      "value": 1.28,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-09",
+      "metricKey": "dividendYield",
+      "value": 1.3,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-10",
+      "metricKey": "dividendYield",
+      "value": 1.31,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-11",
+      "metricKey": "dividendYield",
+      "value": 1.2,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2025-12",
+      "metricKey": "dividendYield",
+      "value": 1.28,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-01",
+      "metricKey": "dividendYield",
+      "value": 1.06,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-02",
+      "metricKey": "dividendYield",
+      "value": 0.97,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-03",
+      "metricKey": "dividendYield",
+      "value": 1.09,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-04",
+      "metricKey": "dividendYield",
+      "value": 0.97,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-05",
+      "metricKey": "dividendYield",
+      "value": 1.05,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2026-06",
+      "metricKey": "dividendYield",
+      "value": 0.96,
+      "unit": "percent",
+      "source": "FinMind:TaiwanStockPER"
+    },
+    {
+      "period": "2022-01",
+      "metricKey": "stockPrice",
+      "value": 105.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-02",
+      "metricKey": "stockPrice",
+      "value": 105.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-03",
+      "metricKey": "stockPrice",
+      "value": 106.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-04",
+      "metricKey": "stockPrice",
+      "value": 105.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-05",
+      "metricKey": "stockPrice",
+      "value": 105.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-06",
+      "metricKey": "stockPrice",
+      "value": 108.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-07",
+      "metricKey": "stockPrice",
+      "value": 92.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-08",
+      "metricKey": "stockPrice",
+      "value": 91.1,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-09",
+      "metricKey": "stockPrice",
+      "value": 86.6,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-10",
+      "metricKey": "stockPrice",
+      "value": 83.1,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-11",
+      "metricKey": "stockPrice",
+      "value": 90.2,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2022-12",
+      "metricKey": "stockPrice",
+      "value": 86.8,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-01",
+      "metricKey": "stockPrice",
+      "value": 89.3,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-02",
+      "metricKey": "stockPrice",
+      "value": 90.9,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-03",
+      "metricKey": "stockPrice",
+      "value": 91.8,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-04",
+      "metricKey": "stockPrice",
+      "value": 93.9,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-05",
+      "metricKey": "stockPrice",
+      "value": 94.1,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-06",
+      "metricKey": "stockPrice",
+      "value": 85.7,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-07",
+      "metricKey": "stockPrice",
+      "value": 83.2,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-08",
+      "metricKey": "stockPrice",
+      "value": 79.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-09",
+      "metricKey": "stockPrice",
+      "value": 79.8,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-10",
+      "metricKey": "stockPrice",
+      "value": 77.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-11",
+      "metricKey": "stockPrice",
+      "value": 80.8,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2023-12",
+      "metricKey": "stockPrice",
+      "value": 79.2,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-01",
+      "metricKey": "stockPrice",
+      "value": 72.1,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-02",
+      "metricKey": "stockPrice",
+      "value": 71.7,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-03",
+      "metricKey": "stockPrice",
+      "value": 68.9,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-04",
+      "metricKey": "stockPrice",
+      "value": 68.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-05",
+      "metricKey": "stockPrice",
+      "value": 65.3,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-06",
+      "metricKey": "stockPrice",
+      "value": 57.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-07",
+      "metricKey": "stockPrice",
+      "value": 57.9,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-08",
+      "metricKey": "stockPrice",
+      "value": 51.6,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-09",
+      "metricKey": "stockPrice",
+      "value": 53.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-10",
+      "metricKey": "stockPrice",
+      "value": 47.3,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-11",
+      "metricKey": "stockPrice",
+      "value": 41.35,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2024-12",
+      "metricKey": "stockPrice",
+      "value": 35.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-01",
+      "metricKey": "stockPrice",
+      "value": 36.25,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-02",
+      "metricKey": "stockPrice",
+      "value": 38.8,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-03",
+      "metricKey": "stockPrice",
+      "value": 36.6,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-04",
+      "metricKey": "stockPrice",
+      "value": 34.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-05",
+      "metricKey": "stockPrice",
+      "value": 34.7,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-06",
+      "metricKey": "stockPrice",
+      "value": 34.85,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-07",
+      "metricKey": "stockPrice",
+      "value": 42.65,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-08",
+      "metricKey": "stockPrice",
+      "value": 38.95,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-09",
+      "metricKey": "stockPrice",
+      "value": 38.55,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-10",
+      "metricKey": "stockPrice",
+      "value": 38.1,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-11",
+      "metricKey": "stockPrice",
+      "value": 41.65,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2025-12",
+      "metricKey": "stockPrice",
+      "value": 39.0,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2026-01",
+      "metricKey": "stockPrice",
+      "value": 47.3,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2026-02",
+      "metricKey": "stockPrice",
+      "value": 51.6,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2026-03",
+      "metricKey": "stockPrice",
+      "value": 45.9,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2026-04",
+      "metricKey": "stockPrice",
+      "value": 51.5,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2026-05",
+      "metricKey": "stockPrice",
+      "value": 47.45,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    },
+    {
+      "period": "2026-06",
+      "metricKey": "stockPrice",
+      "value": 52.2,
+      "unit": "TWD",
+      "source": "FinMind:TaiwanStockPrice"
+    }
+  ],
+  "sections": [
+    {
+      "order": 0,
+      "slug": "overview",
+      "headingEn": "Overview",
+      "bodyMarkdown": "Formosa Plastics Corporation (台塑, TWSE: 1301) is the **flagship of the Formosa Plastics Group (台塑集團)** — the iconic petrochemical empire founded by the legendary **Wang Yung-ching (王永慶)**, and one of Taiwan's most important industrial houses. Founded in **1954** (as a PVC maker in Kaohsiung) and a pillar of Taiwanese industry ever since, it anchors the group's **\"Big Four (台塑四寶)\"** — Formosa Plastics, **Nan Ya (1303)**, **Formosa Chemicals & Fibre (1326)** and **Formosa Petrochemical (6505)** — and over 100 affiliates across Taiwan, the US, China and Southeast Asia. It is the **50th company in this collection**, and — fittingly for the truth discipline — it is included **not as a celebration but as an honest portrait of a giant in trouble.**\n\nBecause the honest story is a **deep, structural downturn.** The core petrochemical business is **losing money at the operating level** (operating margin −3.1% in 2026Q1, negative right through 2023–2026; razor-thin ~2–7% gross margins). Annual EPS collapsed from **NT$5.67 (FY2022)** to **NT$1.15 (FY2023)** to **−NT$0.20 (FY2024) — Formosa Plastics's first-ever annual loss** — and then **−NT$1.58 (FY2025)**, a net loss of ~NT$10bn. ROE is negative. The dividend has been **slashed ~94%**: from **NT$8.2 (2021)** to **NT$0.5 (2024–2025)**. When net profit is positive at all (as in 2026Q1), it comes from **non-operating / equity-method income** — its cross-holdings in the other Big Four companies — **not from making plastics** (net margin 7.79% vs operating margin −3.1%).\n\nYet two things temper the gloom, keeping it two-sided. **(1) A fortress balance sheet** — Wang Yung-ching's legacy of conservatism — with a debt ratio of just **~34%**, ~NT$390bn of equity, and huge cross-holdings; and **(2) a below-book valuation** (**P/B ~0.85×**; the P/E is meaningless on a loss) that prices in the pessimism and offers a **deep-value/NAV** angle on its investment stakes plus an eventual cyclical recovery. The honest read: **a legendary, fortress-balance-sheet empire whose commodity core is in a structural downturn — propped up by its investments, priced below book, waiting for a petrochemical cycle that Chinese overcapacity keeps delaying.**"
+    },
+    {
+      "order": 1,
+      "slug": "founding-story",
+      "headingEn": "Founding Story",
+      "bodyMarkdown": "Formosa Plastics is the cornerstone of one of the great rags-to-empire stories in Asian business. In **1954**, **Wang Yung-ching (王永慶)** — a rice-merchant's son who left school early — together with his brother **Wang Yung-tsai (王永在)** and partners (including **the He brothers**, who also co-founded YFY), established a small **PVC plant in Kaohsiung** (renamed **Formosa Plastics** in 1957). It was a contrarian bet: Taiwan had no plastics market to speak of, and the plant's early output went unsold. Wang's response — **integrate downstream to create his own demand** — founded **Nan Ya Plastics (1958)** to process PVC into products, beginning the **vertical integration** that became the group's signature.\n\nOver six decades, Wang built **Formosa Plastics Group** into a sprawling, **vertically integrated petrochemical empire** — from naphtha cracking (the giant **Mailiao / 六輕** complex) through plastics, fibres, chemicals and beyond — famed for Wang's **relentless cost discipline and \"pursuit of the ultimate\" (追根究柢)** management philosophy. The \"**Big Four**\" (台塑/南亞/台化/台塑化) became fixtures of the Taiwanese economy and stock market, **cross-holding one another** and generating enormous, dependable profits and dividends for decades.\n\nThe modern chapter, since Wang's death in 2008, is harder. The **commodity petrochemical industry has turned structurally against incumbents** — and Formosa Plastics, the flagship, has borne the brunt: in **2024 it reported its first annual loss in its history**, a once-unthinkable event that frames its current story."
+    },
+    {
+      "order": 2,
+      "slug": "timeline",
+      "headingEn": "Timeline",
+      "bodyMarkdown": "- **1954** — **Wang Yung-ching** and partners found a PVC plant in Kaohsiung (renamed **Formosa Plastics**, 1957).\n- **1958** — Founds **Nan Ya Plastics** to create downstream demand — the start of vertical integration.\n- **mid-1960s** — Among **Taiwan's earliest listed companies** on the Taiwan Stock Exchange (1301).\n- **1970s–2000s** — Builds **Formosa Plastics Group** into a vertically integrated empire (the Mailiao/六輕 cracker complex; the \"Big Four\"); decades of strong, dependable profits and dividends.\n- **2008** — Founder **Wang Yung-ching dies**; succession and a tougher industry follow.\n- **2021** — Post-COVID petrochemical boom: dividend **NT$8.2**.\n- **2022–2023** — Earnings slide (EPS NT$5.67 → 1.15) as the cycle turns and Chinese capacity floods the market.\n- **2024** — **Formosa Plastics's first-ever annual loss (EPS −NT$0.20)**; the Big Four's combined profit falls ~81%; group market cap sheds ~NT$1.26tn.\n- **2025** — Loss widens (EPS −NT$1.58, ~NT$10bn net loss); dividend NT$0.5; the Big Four post a combined net loss."
+    },
+    {
+      "order": 3,
+      "slug": "financing",
+      "headingEn": "Capital & Financing History",
+      "bodyMarkdown": "Formosa Plastics's finances tell two stories at once: a **fortress balance sheet** built over decades, and an **income statement in the red**.\n\n- **A fortress balance sheet (the legacy).** A **debt ratio of just ~34%** on ~NT$593bn of assets, against ~NT$390bn of equity — exceptionally conservative for a capital-intensive petrochemical major. Wang Yung-ching's discipline left the company financially unbreakable, which is exactly why it can endure a multi-year downturn.\n- **An income statement in losses.** The core is **loss-making operationally** (operating margin −3.1%, negative through 2023–2026); annual EPS went **−0.20 (FY2024, the first-ever loss) → −1.58 (FY2025)**; **ROE is negative**.\n- **Profit, when it appears, is non-operating.** Net margin (7.79% in 2026Q1) exceeds operating margin (−3.1%) because of **equity-method income from its cross-holdings** (Nan Ya, Formosa Chemicals, Formosa Petrochemical) and other investments — so the bottom line is **investment-driven, not plastics-driven**.\n- **A dividend slashed ~94%.** Cash dividends (FinMind, by fiscal year): **NT$8.2 (2021) → 4.2 (2022) → 1.0 (2023) → 0.5 (2024) → 0.5 (2025)** — the clearest measure of the downturn; the yield is now a token ~1%.\n- **A below-book valuation.** The **P/E is meaningless** (a loss), and the stock trades at **P/B ~0.85×** — below net asset value — pricing the pessimism, but also offering a **deep-value/NAV** lens on the fortress equity and the cross-holdings within it.\n\nThe financing reality: a **financially fortress-like but currently loss-making** empire — its strength is survivability and asset/investment value, not current earnings."
+    },
+    {
+      "order": 4,
+      "slug": "thesis",
+      "headingEn": "Investment Thesis",
+      "bodyMarkdown": "**Stance: a legendary, fortress-balance-sheet petrochemical empire in a deep structural downturn — a deep-value/cyclical-recovery bet priced below book, for patient investors who can wait out Chinese overcapacity. Not for current earnings.**\n\nThe bull case:\n\n1. **Fortress balance sheet + survivability.** A ~34% debt ratio and ~NT$390bn equity (Wang Yung-ching's legacy) mean Formosa Plastics can **endure a prolonged downturn** that may break weaker rivals — and emerge with share.\n2. **Below-book + cross-holding value.** At **P/B ~0.85×**, the market prices it below net assets; the **cross-holdings in the Big Four** and other investments provide a **deep-value/NAV** floor and the bulk of current profit.\n3. **Cyclical-recovery option.** Petrochemicals are cyclical; when Chinese capacity rationalizes and demand recovers, integrated low-cost producers re-rate sharply — and the group is pushing into **higher-value/semiconductor materials** (Nan Ya's AI/CCL exposure).\n\nThe counter-arguments are central and current:\n\n- **A structural, not merely cyclical, downturn.** **Chinese overcapacity + a property/demand slump + energy transition** have made the commodity core **loss-making** (first-ever loss in 2024, bigger in 2025) — and the oversupply may persist for years.\n- **Negative returns, slashed dividend.** ROE is negative; the dividend was cut ~94% (NT$8.2 → 0.5) — no income, no earnings support today.\n- **Profit is investment-driven.** The bottom line leans on cross-holdings, not the operating business.\n- **Energy-transition headwind.** Long-run demand and carbon costs pressure commodity petrochemicals.\n\nA **deep-value/patience** thesis: buy the balance sheet, the NAV and the eventual cycle — not the current P&L."
+    },
+    {
+      "order": 5,
+      "slug": "business-model",
+      "headingEn": "Business Model",
+      "bodyMarkdown": "Formosa Plastics makes money by **producing commodity plastics and petrochemicals** — and, increasingly in this downturn, by **owning stakes in its sister companies**:\n\n- **Commodity petrochemicals (the core — currently loss-making).** It is a major producer of **PVC and other plastics/petrochemical intermediates**, deeply **vertically integrated** within the group (from the Mailiao naphtha cracker through olefins to finished plastics). The product is a **global commodity**: price is set by supply and demand, and margins are thin in balance and **negative in oversupply** — which is the situation now (gross margin ~2–7%, operating margin negative). Scale, integration and **cost discipline** are the only durable edges, and even they can't outrun a structural glut.\n- **Cross-holdings (the current profit source).** Formosa Plastics holds significant stakes in **Nan Ya, Formosa Chemicals & Fibre and Formosa Petrochemical** (which cross-hold each other), so a large part of its **net profit is equity-method investment income** — which is why it can be net-profitable in a quarter even while its own operations lose money.\n- **Higher-value pivots (the hope).** The group is pushing toward **specialty and semiconductor-related materials** (e.g., Nan Ya's copper-clad laminate riding AI demand) to escape pure commodity exposure.\n\nThe economic logic: in good times, an **integrated low-cost commodity producer** throwing off huge cash and dividends; in bad times (now), a **loss-making core cushioned by cross-holdings and a fortress balance sheet**. The levers are **the petrochemical cycle (the dominant one), Chinese capacity, integration/cost, and the higher-value pivot** — but the honest point is that, today, **the plastics business does not make the money; the investments and the balance sheet carry it.**"
+    },
+    {
+      "order": 6,
+      "slug": "industry",
+      "headingEn": "Industry & Competition",
+      "bodyMarkdown": "Commodity petrochemicals is a **scale-and-cycle business in a structural glut** — and that glut, made in China, is the whole story right now:\n\n- **Chinese overcapacity is the defining force.** China has added **enormous new petrochemical capacity** (naphtha crackers, PVC, polyolefins) over recent years, even as its **property slump and weak demand** cut consumption. The result is **global oversupply and depressed product prices** — turning a normally cyclical industry into a **prolonged, structural downturn** that has pushed even integrated incumbents into losses.\n- **Energy transition adds a long-run headwind.** Decarbonization, plastics-reduction pressure and carbon costs weigh on commodity petrochemical demand and economics over time.\n- **The competitive set.** Formosa Plastics competes globally with Chinese state and private producers, Middle Eastern (feedstock-advantaged) majors, and other Asian integrateds. Its edge is **vertical integration, scale and cost discipline** — but in a glut, **everyone's margins compress**, and the feedstock-advantaged (Middle East) and subsidized (China) players set the floor.\n\nFormosa Plastics's position is **as strong as a Taiwanese petrochemical can be** — integrated, low-cost-disciplined, fortress-financed — but it competes in a **structurally oversupplied global commodity** where leadership doesn't confer pricing power during a glut. The industry truth: **this is a deep, China-driven down-cycle that may persist**, and the investment question is **survivability and recovery timing**, not competitive moat — Formosa Plastics has the balance sheet to outlast it, but cannot conjure a recovery the cycle won't yet give."
+    },
+    {
+      "order": 7,
+      "slug": "swot",
+      "headingEn": "SWOT",
+      "bodyMarkdown": "**Strengths**\n- **Fortress balance sheet** (debt ratio ~34%, ~NT$390bn equity) — survivability through a long downturn.\n- **Vertical integration, scale and legendary cost discipline** (Wang Yung-ching's legacy); part of the Big Four.\n- **Cross-holding / NAV value** underpinning a below-book (P/B ~0.85×) price; cushions profit.\n\n**Weaknesses**\n- **Loss-making core** (operating margin negative; first-ever annual loss 2024, bigger 2025); negative ROE.\n- **Profit is non-operating** (equity-method), not from making plastics.\n- **Dividend slashed ~94%** (NT$8.2 → 0.5); no income/earnings support today.\n\n**Opportunities**\n- **Petrochemical-cycle recovery** when Chinese capacity rationalizes and demand returns.\n- **Higher-value/semiconductor materials** pivot (e.g., Nan Ya's AI-driven CCL).\n- Survivor's share gains as weaker global rivals exit.\n\n**Threats**\n- **Persistent Chinese overcapacity** + property/demand slump — a structural, not just cyclical, glut.\n- **Energy transition** / decarbonization pressuring commodity petrochemical demand.\n- Feedstock-advantaged (Middle East) and subsidized (China) competitors setting the price floor."
+    },
+    {
+      "order": 8,
+      "slug": "risks",
+      "headingEn": "Key Risks",
+      "bodyMarkdown": "- **Structural oversupply (the core risk).** Chinese capacity additions plus a property/demand slump have created a **global petrochemical glut** that has made the core loss-making and may persist for years — a structural, not merely cyclical, headwind.\n- **Loss-making operations / negative returns.** Operating losses and negative ROE mean the business currently destroys operating value; recovery depends on a cycle outside its control.\n- **Dependence on cross-holdings.** Net profit leans on **equity-method income** from Nan Ya / Formosa Chemicals / Formosa Petrochemical — so weakness across the Big Four (which share the same downturn) hits the bottom line broadly.\n- **Dividend / income risk.** The dividend has already been cut ~94%; there is no income case today, and further weakness could keep it suppressed.\n- **Energy transition.** Long-run decarbonization and plastics-reduction pressure weigh on demand and add carbon costs.\n- **Valuation is a value bet, not a catalyst.** Below-book (P/B ~0.85×) prices the pessimism, but the discount can persist until the cycle turns — patience is required, and timing is uncertain."
+    },
+    {
+      "order": 9,
+      "slug": "outlook",
+      "headingEn": "Strategic Outlook",
+      "bodyMarkdown": "Formosa Plastics's outlook is a **waiting game on the petrochemical cycle, backed by a balance sheet built to wait.** The axes to watch:\n\n- **The petrochemical cycle / Chinese capacity.** The dominant driver — whether **Chinese overcapacity rationalizes** and demand recovers enough to lift product prices and return the core to profit. This is structural and slow; it is the single thing that matters most.\n- **Cross-holding earnings.** How the **Big Four** (Nan Ya, Formosa Chemicals, Formosa Petrochemical) fare — since they carry Formosa Plastics's reported profit through the downturn (Nan Ya's AI/CCL exposure is a relative bright spot).\n- **The higher-value pivot.** Progress moving toward **specialty and semiconductor-related materials** to reduce pure-commodity exposure over time.\n- **Balance-sheet endurance and the dividend.** Sustaining the fortress balance sheet through the losses, and whether/when the dividend can recover from the NT$0.5 trough.\n\nBottom line: Formosa Plastics is a **legendary, fortress-financed petrochemical empire caught in a deep, China-driven structural downturn** — its commodity core is **loss-making** (its first-ever loss came in 2024), its profit leans on **cross-holdings**, and its dividend has been **slashed ~94%**. But it trades **below book**, carries an unbreakable balance sheet and real **NAV/investment value**, and holds a **cyclical-recovery option** for the patient. Judge it on **the petrochemical cycle, Chinese capacity, and balance-sheet endurance** — a deep-value survivor's bet, told honestly: a great name in a hard time, valued for what it owns and can outlast, not for what it currently earns."
+    }
+  ],
+  "sources": [
+    {
+      "label": "FinMind — Taiwan Stock Open Data",
+      "url": "https://finmind.github.io/",
+      "kind": "api"
+    },
+    {
+      "label": "MOPS — filing 1301",
+      "url": "https://mops.twse.com.tw/mops/web/t146sb05?TYPEK=all&CO_ID=1301",
+      "kind": "api"
+    },
+    {
+      "label": "Company website",
+      "url": "https://www.fpc.com.tw/",
+      "kind": "api"
+    },
+    {
+      "label": "Wikipedia — 台塑企業 (1954 王永慶創立 / 1957 更名台塑 / 台塑四寶 / 垂直整合)",
+      "url": "https://zh.wikipedia.org/wiki/台塑企業",
+      "kind": "api"
+    },
+    {
+      "label": "ETtoday — 台塑史上首次虧錢！每股虧 0.2 元，四寶 2024 獲利年減 8 成",
+      "url": "https://finance.ettoday.net/news/2890266",
+      "kind": "news"
+    },
+    {
+      "label": "中央社 — 台塑四寶 2025 財報兩好兩壞，合計虧損 10 億元 (台塑 EPS −1.58)",
+      "url": "https://www.cna.com.tw/news/afe/202601120139.aspx",
+      "kind": "news"
+    }
+  ]
+}

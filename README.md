@@ -407,6 +407,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2885 | `yuanta-financial` | Yuanta Financial 元大金控 | Financials（證券/ETF 為主金控；0050·0056；ETF 狂潮順風／經紀循環） |
 | 2903 | `feds` | Far Eastern Department Stores 遠東百貨 | Department Stores（最大百貨集團+SOGO；高息近淨值；58% 毛利為抽成假象） |
 | 3037 | `unimicron` | Unimicron 欣興電子 | PCB & IC Substrates（全球最大載板廠／ABF 近寡占；深度循環；估值已 price 滿） |
+| 1301 | `formosa-plastics` | Formosa Plastics 台塑 | Petrochemicals（台塑集團旗艦；史上首虧／靠轉投資撐／跌破淨值；中國產能過剩） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
