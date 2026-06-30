@@ -230,90 +230,56 @@ async function main() {
     console.log("✓ seeded InsightTeaser");
   }
 
-  // ---- QuizQuestion（決策風格測驗，設計圖原文；每題對應一維度） ----
+  // ---- QuizQuestion（市場進入風格測驗，3 題 × 4 選項；每選項自帶決策風格三維向量）----
   if ((await prisma.quizQuestion.count()) === 0) {
+    // 4 種市場進入原型，跨題一致：A 分析型 / B 實驗型 / C ROI 型 / D 夥伴型。
+    // scores = { planningDepth, executionStrength, visionClarity }（0~100），決定配對到哪位創辦人。
+    const ARCHETYPE = {
+      A: { planningDepth: 85, executionStrength: 50, visionClarity: 40 },
+      B: { planningDepth: 25, executionStrength: 88, visionClarity: 62 },
+      C: { planningDepth: 92, executionStrength: 72, visionClarity: 55 },
+      D: { planningDepth: 55, executionStrength: 52, visionClarity: 88 },
+    };
     await prisma.quizQuestion.createMany({
       data: [
         {
           order: 0,
-          dimension: "planning",
+          dimension: "entry-style",
           prompt: dual(
-            "When facing an important decision, your first instinct is to…",
-            "面對重要決策時，你的第一直覺是…",
+            "What would you do first when entering the Taiwan market?",
+            "進入台灣市場時，你會先做什麼？",
           ),
-          subtitle: dual(
-            "Pick the option that feels most like your natural rhythm",
-            "選最貼近你天生節奏的那個",
-          ),
-          optionA: {
-            label: dual("Well-planned", "縝密規劃"),
-            desc: dual(
-              "Gather full information before acting, processing and risk assessment come first",
-              "行動前先蒐集完整資訊，分析與風險評估優先",
-            ),
-            icon: "doc",
-            value: 88,
-          },
-          optionB: {
-            label: dual("Straight forward", "直球對決"),
-            desc: dual(
-              "Trust your gut, move fast, and course-correct along the way",
-              "相信直覺、快速行動，邊走邊修正",
-            ),
-            icon: "bolt",
-            value: 28,
-          },
+          subtitle: dual("Pick the move that feels most like you", "選最像你的那一步"),
+          optionA: { label: dual("Analyze case studies", "深入分析案例"), desc: dual("Analyze 3 successful case studies in detail", "深入分析 3 個成功案例"), icon: "doc", scores: ARCHETYPE.A },
+          optionB: { label: dual("Talk & test fast", "對話並快速測試"), desc: dual("Talk directly to local people and start testing quickly", "直接與在地人對話，快速開始測試"), icon: "bolt", scores: ARCHETYPE.B },
+          optionC: { label: dual("Model the ROI", "先建 ROI 模型"), desc: dual("Build a data model and ROI framework before deciding", "先建立數據模型與 ROI 框架再決定"), icon: "target", scores: ARCHETYPE.C },
+          optionD: { label: dual("Find partners first", "先找夥伴/通路"), desc: dual("Find partners or distribution channels first", "先尋找合作夥伴或通路"), icon: "layers", scores: ARCHETYPE.D },
         },
         {
           order: 1,
-          dimension: "execution",
+          dimension: "entry-style",
           prompt: dual(
-            "When faced with uncertainty, you tend to…",
-            "面對不確定性時，你傾向於…",
+            "When information is incomplete, what do you usually do?",
+            "當資訊不完整時，你通常怎麼做？",
           ),
-          subtitle: dual("No right answer. Follow your intuition", "沒有標準答案，跟著直覺走"),
-          optionA: {
-            label: dual("Bold & disruptive", "大膽顛覆"),
-            desc: dual(
-              "Embrace chaos. Break the mold instead of playing it safe",
-              "擁抱混沌，打破框架而非安於現狀",
-            ),
-            icon: "flame",
-            value: 40,
-          },
-          optionB: {
-            label: dual("Steady & systematic", "穩健系統"),
-            desc: dual(
-              "Use logic and evidence to progressively reduce risk",
-              "用邏輯與證據逐步降低風險",
-            ),
-            icon: "layers",
-            value: 90,
-          },
+          subtitle: dual("No right answer — go with your instinct", "沒有標準答案，跟著直覺走"),
+          optionA: { label: dual("Wait for more data", "等更多資料"), desc: dual("Wait for more data before making a decision", "等更多資料再做決定"), icon: "doc", scores: ARCHETYPE.A },
+          optionB: { label: dual("Act and adjust", "先行動再調整"), desc: dual("Act first and adjust along the way", "先行動，邊走邊調整"), icon: "bolt", scores: ARCHETYPE.B },
+          optionC: { label: dual("Consult experts", "諮詢專家"), desc: dual("Consult experts or advisors for validation", "諮詢專家或顧問驗證"), icon: "target", scores: ARCHETYPE.C },
+          optionD: { label: dual("Align the team", "與團隊形成共識"), desc: dual("Discuss with the team until reaching consensus", "與團隊討論到形成共識"), icon: "layers", scores: ARCHETYPE.D },
         },
         {
           order: 2,
-          dimension: "vision",
-          prompt: dual("What ultimately drives you forward?", "最終驅動你前進的是什麼？"),
+          dimension: "entry-style",
+          prompt: dual(
+            "What is your preferred market entry approach?",
+            "你偏好的市場進入方式是？",
+          ),
           subtitle: dual("Last one — choose what resonates most", "最後一題，選最有共鳴的"),
-          optionA: {
-            label: dual("Vision-driven", "願景驅動"),
-            desc: dual(
-              "A long-term mission guides every move. You lead by inspiring others",
-              "長期使命引導每一步，你以啟發他人來領導",
-            ),
-            icon: "telescope",
-            value: 90,
-          },
-          optionB: {
-            label: dual("Execution-first", "執行優先"),
-            desc: dual(
-              "Measurable outcomes matter most. You live in the details and drive efficiency",
-              "可衡量的成果最重要，你深入細節、驅動效率",
-            ),
-            icon: "target",
-            value: 35,
-          },
+          optionA: { label: dual("Replicate proven models", "複製成功模式"), desc: dual("Replicate proven models in a standardized way", "以標準化方式複製成功模式"), icon: "doc", scores: ARCHETYPE.A },
+          optionB: { label: dual("Experiment & localize", "實驗並在地化"), desc: dual("Fast experimentation and local adaptation", "快速實驗並在地化調整"), icon: "bolt", scores: ARCHETYPE.B },
+          optionC: { label: dual("ROI-driven, low risk", "ROI 導向、風險可控"), desc: dual("ROI-driven planning with controlled risk", "ROI 導向、風險可控的規劃"), icon: "target", scores: ARCHETYPE.C },
+          optionD: { label: dual("Partnership-first", "夥伴優先"), desc: dual("Partnership-first market entry strategy", "夥伴優先的市場進入策略"), icon: "layers", scores: ARCHETYPE.D },
         },
       ],
     });

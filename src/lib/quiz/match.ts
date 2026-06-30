@@ -1,5 +1,7 @@
 // 測驗配對：作答 → 決策風格三維分數 → 配對向量距離最近的創辦人。
 // 純函式（不依賴 Prisma 型別），供 /api/quiz/submit 與測試共用。
+// 4 選項制：每個選項自帶三維向量（planningDepth/executionStrength/visionClarity）；
+// 作答彙整各選項向量、逐維取平均 → 三維分數。
 
 export type Dimension = "planning" | "execution" | "vision";
 
@@ -9,22 +11,17 @@ export type Scores = {
   visionClarity: number;
 };
 
-export type Answer = { questionId: string; choice: "A" | "B" };
+export type Choice = "A" | "B" | "C" | "D";
+
+export type Answer = { questionId: string; choice: Choice };
 
 export type ScorableQuestion = {
   id: string;
-  dimension: string; // "planning" | "execution" | "vision"
-  optionA: { value: number };
-  optionB: { value: number };
+  /** 各選項的三維向量；2 選項題只有 A/B */
+  options: Partial<Record<Choice, Scores>>;
 };
 
-const DIM_TO_KEY: Record<string, keyof Scores> = {
-  planning: "planningDepth",
-  execution: "executionStrength",
-  vision: "visionClarity",
-};
-
-/** 依作答彙整三維分數；同維度多題取平均，缺維度回中性 50。 */
+/** 依作答彙整三維分數；逐維對「有作答到的選項」取平均，無資料回中性 50。 */
 export function scoreAnswers(
   questions: ScorableQuestion[],
   answers: Answer[],
@@ -38,11 +35,14 @@ export function scoreAnswers(
   for (const a of answers) {
     const q = byId.get(a.questionId);
     if (!q) continue;
-    const key = DIM_TO_KEY[q.dimension];
-    if (!key) continue;
-    const value = a.choice === "A" ? q.optionA.value : q.optionB.value;
-    acc[key].sum += value;
-    acc[key].n += 1;
+    const opt = q.options[a.choice];
+    if (!opt) continue;
+    acc.planningDepth.sum += opt.planningDepth;
+    acc.planningDepth.n += 1;
+    acc.executionStrength.sum += opt.executionStrength;
+    acc.executionStrength.n += 1;
+    acc.visionClarity.sum += opt.visionClarity;
+    acc.visionClarity.n += 1;
   }
   const avg = (k: keyof Scores) =>
     acc[k].n ? Math.round(acc[k].sum / acc[k].n) : 50;

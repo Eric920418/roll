@@ -260,7 +260,8 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 ### 資料模型（`prisma/schema.prisma`）
 
 - `User`：`email`(unique)、`passwordHash`(Google 用戶為 null)、`googleId`(unique)、姓名/頭像、`onboardingStep`(1/2/3/4)、`completed`；**計費快取**：`plan`(預設 `free`)、`subscriptionStatus`、`paypalSubscriptionId`(unique)、`currentPeriodEnd`、`planUpdatedAt`。
-- `OnboardingProfile`(1:1)：Step 2 公司/產業/規模/網站/母國；Step 3 目標市場[]、需求[]、時程、預算、備註。
+- `OnboardingProfile`(1:1)：Step 2 公司/產業/規模/網站/母國；Step 3 `timeline`（語意已改為**公司成立年限**，slug `lt1y/1-3y/3-5y/gt5y`）、`budgetRange`（前端顯示為 **Seed money**，沿用 US$ 級距）、`needs[]`（服務需求）、`notes`、`targetMarkets[]`。
+  - **表單欄位調整（2026-06）**：onboarding Step 3 只收「成立年限 / Seed money / 備註」；`targetMarkets` 已自所有表單移除、`needs` 僅保留在後台帳號頁（`/dashboard/account`，供 Tools 個人化）。兩欄仍存在於 DB schema、API 停止覆寫 → **既有資料零遺失、無 migration**。
 - `Subscription`：PayPal 訂閱歷史（`paypalSubscriptionId` unique、`paypalPlanId`、`plan`、`status`、`currentPeriodEnd` 等），對帳/審計用。
 - `WebhookEvent`：PayPal webhook 事件審計（event id 當主鍵，天然去重）。
 
@@ -274,12 +275,13 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 ### 創辦人決策風格測驗（onboarding 之後）
 
-完成 onboarding（requirements）後 → `/[locale]/quiz`（3 題二選一）→ `/[locale]/quiz/result`（配對一位創辦人）→「完成」進 `/dashboard`。`User.onboardingStep` 擴成 4=quiz；`completed` 改在**測驗完成**才設 true。`/quiz/*` 由 proxy 以 `user_session` 守衛（同 onboarding）。
+完成 onboarding（requirements）後 → `/[locale]/quiz`（3 題、每題最多 4 選項）→ `/[locale]/quiz/result`（配對一位創辦人）→「完成」進 `/dashboard`。`User.onboardingStep` 擴成 4=quiz；`completed` 改在**測驗完成**才設 true。`/quiz/*` 由 proxy 以 `user_session` 守衛（同 onboarding）。
 
-- **配對邏輯**（`src/lib/quiz/match.ts`，純函式）：每題對應一決策維度（planning/execution/vision），選項帶 0~100 分；作答 → 三維分數 → 配對**向量距離最近**的已發布創辦人。submit 端（`/api/quiz/submit`）**重新從 DB 取題目自算分數**，不信任前端。
-- **資料皆 DB、CMS 可編輯**：`QuizQuestion`、`Founder`（連結既有 `content/companies` 的 `companySlug`，結果頁放「看完整公司分析」）、`QuizSubmission`（每次作答存一筆）。雙語文字用 Json `{en,"zh-tw"}`。
+- **配對邏輯**（`src/lib/quiz/match.ts`，純函式）：**每個選項自帶決策風格三維向量**（planningDepth/executionStrength/visionClarity，0~100）；作答彙整各選項向量、逐維取平均 → 三維分數 → 配對**向量距離最近**的已發布創辦人。submit 端（`/api/quiz/submit`）**重新從 DB 取題目自算分數**，不信任前端；對舊格式選項（單一 `value` + 題目 `dimension`）保留 fallback，不致算錯或崩潰。
+- **資料皆 DB、CMS 可編輯**：`QuizQuestion`（`optionA`–`optionD`，每題最多 4 選項，`optionC/D` 可空＝2 選項題；`dimension` 退化為分類標籤）、`Founder`（連結既有 `content/companies` 的 `companySlug`，結果頁放「看完整公司分析」）、`QuizSubmission`（每次作答存一筆，`choice` 為 A/B/C/D）。雙語文字用 Json `{en,"zh-tw"}`。
 - **為何不直接擴充 `content/companies/*.json`**：那是檔案、Vercel FS 唯讀、網頁後台無法寫檔；故創辦人/題目改放 DB 並用 `companySlug` 連結現有公司頁。
-- **Seed**（`prisma/seed.ts`，count-guard）：3 題（設計圖原文）+ 5 位台灣創辦人（張忠謀/郭台銘/洪鎮海/高清愿/中華電信），decisionStyle 為 sample，待後台精修。
+- **Seed**（`prisma/seed.ts`，count-guard）：3 題**市場進入風格測驗**（4 選項 A/B/C/D，每選項帶三維向量；4 原型＝分析型/實驗型/ROI 型/夥伴型）+ 5 位台灣創辦人（張忠謀/郭台銘/洪鎮海/高清愿/中華電信），decisionStyle 為 sample，待後台精修。
+- **換題／套用到 DB**（2026-06，4 選項制）：schema 新增 `optionC?`/`optionD?` 兩個**可空**欄位（加法式 migration、無資料遺失）。套用順序：`pnpm db:push` → `node scripts/reset-quiz-questions.mjs`（清空舊題）→ `pnpm db:seed`（灌入新 3 題）。或改用後台 `/admin/quiz-questions` 以 JSON 編輯。前端作答 UI（`QuizClient`）已重設計為**字母徽章 A/B/C/D 直式選項列**。
 
 ### 後台測驗管理（`/admin`，自動受保護）
 
@@ -298,7 +300,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）+ 變更/設定密碼 + 刪除帳號（危險區，需輸入確認字）。 |
 | `/[locale]/dashboard/billing` | 訂閱：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。 |
 | `/[locale]/dashboard/billing/return` | PayPal 核准後返回頁，呼叫 confirm 即時對帳。 |
-| `/[locale]/dashboard/tools` | **進入市場落地清單**（真工具）：`requirePlan("pro")`；依 `OnboardingProfile.needs` 由 `src/lib/tools/checklist.ts` 生成分組可勾選清單，勾選存 `User.checklistState`；未填 needs 顯示引導、方案不足顯示升級牆。 |
+| `/[locale]/dashboard/tools` | **進入市場落地清單**（真工具）：`requirePlan("pro")`；依 `OnboardingProfile.needs` 由 `src/lib/tools/checklist.ts` 生成分組可勾選清單，勾選存 `User.checklistState`；未填 needs 顯示引導（引導去 `/dashboard/account` 填 needs，onboarding 已不收此題）、方案不足顯示升級牆。 |
 | `/api/account/profile` | PATCH 更新 profile（自守衛 `getUserSession`）。 |
 | `/api/account/password` | POST 變更/設定密碼（有密碼者需驗舊密碼；Google-only 免舊密碼直接設定）。 |
 | `/api/account/delete` | POST 刪帳號（best-effort 取消 PayPal 訂閱 → `prisma.user.delete` cascade → 清 `user_session`）。 |
@@ -326,6 +328,21 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 > **schema 演進零資料遺失**：計費欄位 / 表全為 nullable 或有 default 的純疊加；用 `prisma db push`，**禁止 `--accept-data-loss`**（若 push 要求該旗標代表改成破壞性了，需退回改正）。
 >
 > **台灣電子發票（待辦，法遵需求）**：對台灣客戶收費須開立電子發票（綠界 ECPay / ezPay 發票 API），掛在 webhook `PAYMENT.SALE.COMPLETED` 後開立，另需 `Invoice` model 與買受人 / 統編 / 載具欄位。列為後續階段，不阻塞前面金流上線。
+
+### Production 上線（Vercel）
+
+正式站 canonical = **`https://www.rollgrp.com`**（apex `rollgrp.com` 會 307 導向 www）。⚠️ **webhook 與 `NEXT_PUBLIC_APP_URL` 一律用 `www`**——否則 PayPal 的 webhook POST 打到 apex 會被 307 擋下、不送達。
+
+`.env.local` 不進版控，故 PayPal 設定要另外設進 Vercel production：
+
+1. sandbox 憑證填 `.env.local` → `node --env-file=.env.local scripts/paypal-setup.mjs` 拿 `PAYPAL_PLAN_ID_*`。
+2. 建 webhook：`node --env-file=.env.local scripts/paypal-create-webhook.mjs https://www.rollgrp.com/api/billing/webhook` → 取得 `PAYPAL_WEBHOOK_ID`（冪等：URL 已存在會查回現有 id）。
+3. 設 Vercel production env（7 個）：`PAYPAL_ENV`、`PAYPAL_CLIENT_ID`、`PAYPAL_CLIENT_SECRET`、`PAYPAL_PLAN_ID_PRO`、`PAYPAL_PLAN_ID_BUSINESS`、`PAYPAL_WEBHOOK_ID`、`NEXT_PUBLIC_APP_URL=https://www.rollgrp.com`。
+   模式：`vercel env rm NAME production --yes; printf '%s' "值" | vercel env add NAME production`。
+4. `vercel deploy --prod --yes` 重新部署（`NEXT_PUBLIC_APP_URL` 為 build-time，必須先設好）。
+5. 煙霧測試：對 `www.rollgrp.com` 建測試帳號 → `POST /api/billing/subscribe` 應回 200 + PayPal approveUrl。
+
+**sandbox → live 切換**：PayPal 開 Live app → 換 `PAYPAL_ENV=live` + live `CLIENT_ID/SECRET` → 重跑 `paypal-setup.mjs`（live plan id）與 `paypal-create-webhook.mjs`（live webhook）→ 更新 Vercel env → redeploy。切換前把舊 sandbox secret 在 PayPal 後台 reset。
 
 ## 內容頁（SEO / GEO 主引擎）
 

@@ -25,6 +25,8 @@ export const QUESTION_FIELDS = [
   "subtitle",
   "optionA",
   "optionB",
+  "optionC",
+  "optionD",
   "published",
 ] as const;
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { pick } from "@/lib/quiz/locale";
+import type { Choice } from "@/lib/quiz/match";
 import QuizClient, { type QuizQuestionView } from "@/components/quiz/QuizClient";
 import type { Locale } from "@/i18n/routing";
 
@@ -30,14 +31,23 @@ export default async function QuizPage({ params }: Props) {
   });
 
   const questions: QuizQuestionView[] = rows.map((r) => {
-    const a = (r.optionA ?? {}) as Record<string, unknown>;
-    const b = (r.optionB ?? {}) as Record<string, unknown>;
+    const cols: [Choice, unknown][] = [
+      ["A", r.optionA],
+      ["B", r.optionB],
+      ["C", r.optionC],
+      ["D", r.optionD],
+    ];
+    const options = cols
+      .filter(([, v]) => v != null)
+      .map(([key, v]) => {
+        const o = (v ?? {}) as Record<string, unknown>;
+        return { key, label: pick(o.label, l), desc: pick(o.desc, l) };
+      });
     return {
       id: r.id,
       prompt: pick(r.prompt, l),
       subtitle: pick(r.subtitle, l),
-      optionA: { label: pick(a.label, l), desc: pick(a.desc, l), icon: String(a.icon ?? "") },
-      optionB: { label: pick(b.label, l), desc: pick(b.desc, l), icon: String(b.icon ?? "") },
+      options,
     };
   });
 

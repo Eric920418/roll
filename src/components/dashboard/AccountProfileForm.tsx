@@ -7,7 +7,6 @@ import { resolveAuthError } from "@/components/auth/error-codes";
 import {
   INDUSTRIES,
   COMPANY_SIZES,
-  MARKETS,
   NEEDS,
   TIMELINES,
   BUDGETS,
@@ -19,7 +18,6 @@ export type ProfileInitial = {
   companySize?: string | null;
   website?: string | null;
   country?: string | null;
-  targetMarkets?: string[];
   needs?: string[];
   timeline?: string | null;
   budgetRange?: string | null;
@@ -32,6 +30,7 @@ const fieldClass =
 const labelClass =
   "text-sm font-semibold text-dark font-[family-name:var(--font-heading)]";
 
+// needs（服務需求）仍保留在帳號頁：Tools 落地清單依此欄位個人化生成。
 function ChipGroup({
   options,
   selected,
@@ -81,7 +80,6 @@ export default function AccountProfileForm({
   const [companySize, setCompanySize] = useState(initial.companySize ?? "");
   const [website, setWebsite] = useState(initial.website ?? "");
   const [country, setCountry] = useState(initial.country ?? "");
-  const [markets, setMarkets] = useState<string[]>(initial.targetMarkets ?? []);
   const [needs, setNeeds] = useState<string[]>(initial.needs ?? []);
   const [timeline, setTimeline] = useState(initial.timeline ?? "");
   const [budgetRange, setBudgetRange] = useState(initial.budgetRange ?? "");
@@ -113,7 +111,6 @@ export default function AccountProfileForm({
             companySize,
             website,
             country,
-            targetMarkets: markets,
             needs,
             timeline,
             budgetRange,
@@ -209,15 +206,6 @@ export default function AccountProfileForm({
         <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
           {t("requirementsSection")}
         </h2>
-        <div className="flex flex-col gap-2">
-          <span className={labelClass}>{t("targetMarkets")}</span>
-          <ChipGroup
-            options={MARKETS}
-            selected={markets}
-            onToggle={toggle(setMarkets)}
-            renderLabel={(s) => tOpt(`markets.${s}`)}
-          />
-        </div>
         <div className="flex flex-col gap-2">
           <span className={labelClass}>{t("needs")}</span>
           <ChipGroup

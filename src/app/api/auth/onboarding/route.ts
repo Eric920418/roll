@@ -6,9 +6,6 @@ import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 const str = (v: unknown): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
 
-const strArray = (v: unknown): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-
 export async function PATCH(req: NextRequest) {
   try {
     const session = await getUserSession();
@@ -40,9 +37,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (step === "requirements") {
+      // 目標市場 / 需求兩欄已自表單移除；此處不再寫入，保留 DB 既有值不覆寫。
       const fields = {
-        targetMarkets: strArray(data.targetMarkets),
-        needs: strArray(data.needs),
         timeline: str(data.timeline),
         budgetRange: str(data.budgetRange),
         notes: str(data.notes),

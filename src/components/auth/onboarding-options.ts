@@ -29,6 +29,7 @@ export const NEEDS = [
   "investor-access",
 ] as const;
 
-export const TIMELINES = ["lt3m", "3-6m", "6-12m", "exploring"] as const;
+// timeline 欄位語意已改為「公司成立多久」（公司年資）；DB 欄位名沿用 timeline，僅 slug 更新。
+export const TIMELINES = ["lt1y", "1-3y", "3-5y", "gt5y"] as const;
 
 export const BUDGETS = ["lt10k", "10-50k", "50-200k", "gt200k"] as const;

@@ -30,7 +30,6 @@ export default async function AccountPage({ params }: Props) {
           companySize: p?.companySize,
           website: p?.website,
           country: p?.country,
-          targetMarkets: p?.targetMarkets ?? [],
           needs: p?.needs ?? [],
           timeline: p?.timeline,
           budgetRange: p?.budgetRange,

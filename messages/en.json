@@ -290,7 +290,7 @@
   "Auth": {
     "brand": "ROLL ON.",
     "tagline": "Partner for foreign companies entering Taiwan and expanding into Asian markets.",
-    "intro": "Complete your profile, and the system will initialize your personalized dashboard, recommending the most relevant service providers and localized milestones.",
+    "intro": "Complete your profile to understand your company through the decision-making patterns of Taiwan's top CEOs, and take your first step into the Asian market.",
     "steps": {
       "stepLabel": "STEP {current} OF {total}",
       "account": "Create your account",
@@ -363,10 +363,10 @@
       "subtitle": "So we can tailor recommendations to you.",
       "targetMarkets": "Target Asian markets",
       "needs": "What do you need help with?",
-      "timeline": "Timeline",
-      "timelinePlaceholder": "Select timeline",
-      "budgetRange": "Budget range",
-      "budgetRangePlaceholder": "Select budget",
+      "timeline": "When was your company established?",
+      "timelinePlaceholder": "Select company age",
+      "budgetRange": "Seed money",
+      "budgetRangePlaceholder": "Select amount",
       "notes": "Anything else?",
       "notesPlaceholder": "Tell us more about your goals…",
       "finish": "Finish & build my dashboard",
@@ -406,10 +406,10 @@
         "investor-access": "Investor access"
       },
       "timeline": {
-        "lt3m": "Within 3 months",
-        "3-6m": "3–6 months",
-        "6-12m": "6–12 months",
-        "exploring": "Just exploring"
+        "lt1y": "Under 1 year",
+        "1-3y": "1–3 years",
+        "3-5y": "3–5 years",
+        "gt5y": "Over 5 years"
       },
       "budget": {
         "lt10k": "Under US$10k",
@@ -491,8 +491,8 @@
       "country": "Home market / country",
       "targetMarkets": "Target markets",
       "needs": "What you need",
-      "timeline": "Timeline",
-      "budgetRange": "Budget range",
+      "timeline": "Company age",
+      "budgetRange": "Seed money",
       "notes": "Notes",
       "notesPlaceholder": "Anything else we should know?",
       "selectPlaceholder": "Select…",

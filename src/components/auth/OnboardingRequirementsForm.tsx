@@ -7,11 +7,9 @@ import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import AuthButton from "./AuthButton";
 import { resolveAuthError } from "./error-codes";
-import { MARKETS, NEEDS, TIMELINES, BUDGETS } from "./onboarding-options";
+import { TIMELINES, BUDGETS } from "./onboarding-options";
 
 type Initial = {
-  targetMarkets?: string[];
-  needs?: string[];
   timeline?: string | null;
   budgetRange?: string | null;
   notes?: string | null;
@@ -19,40 +17,6 @@ type Initial = {
 
 const selectClass =
   "w-full rounded-xl border border-dark/10 bg-dark/[0.03] px-4 py-3 text-sm text-dark outline-none transition focus:border-primary focus:bg-white focus:ring-1 focus:ring-primary/40 font-[family-name:var(--font-body)]";
-
-function ChipGroup({
-  options,
-  selected,
-  onToggle,
-  renderLabel,
-}: {
-  options: readonly string[];
-  selected: string[];
-  onToggle: (slug: string) => void;
-  renderLabel: (slug: string) => string;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((slug) => {
-        const active = selected.includes(slug);
-        return (
-          <button
-            key={slug}
-            type="button"
-            onClick={() => onToggle(slug)}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors font-[family-name:var(--font-heading)] ${
-              active
-                ? "border-primary bg-primary text-white"
-                : "border-dark/15 bg-white text-dark/70 hover:border-primary/40"
-            }`}
-          >
-            {renderLabel(slug)}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function OnboardingRequirementsForm({
   initial,
@@ -66,19 +30,11 @@ export default function OnboardingRequirementsForm({
   const locale = useLocale() as Locale;
   const router = useRouter();
 
-  const [markets, setMarkets] = useState<string[]>(initial.targetMarkets ?? []);
-  const [needs, setNeeds] = useState<string[]>(initial.needs ?? []);
   const [timeline, setTimeline] = useState(initial.timeline ?? "");
   const [budgetRange, setBudgetRange] = useState(initial.budgetRange ?? "");
   const [notes, setNotes] = useState(initial.notes ?? "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const toggle =
-    (set: React.Dispatch<React.SetStateAction<string[]>>) => (slug: string) =>
-      set((prev) =>
-        prev.includes(slug) ? prev.filter((x) => x !== slug) : [...prev, slug],
-      );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,8 +47,6 @@ export default function OnboardingRequirementsForm({
         body: JSON.stringify({
           step: "requirements",
           data: {
-            targetMarkets: markets,
-            needs,
             timeline,
             budgetRange,
             notes,
@@ -127,30 +81,6 @@ export default function OnboardingRequirementsForm({
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
       <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
-            {t("targetMarkets")}
-          </span>
-          <ChipGroup
-            options={MARKETS}
-            selected={markets}
-            onToggle={toggle(setMarkets)}
-            renderLabel={(s) => tOpt(`markets.${s}`)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
-            {t("needs")}
-          </span>
-          <ChipGroup
-            options={NEEDS}
-            selected={needs}
-            onToggle={toggle(setNeeds)}
-            renderLabel={(s) => tOpt(`needs.${s}`)}
-          />
-        </div>
-
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
             {t("timeline")}

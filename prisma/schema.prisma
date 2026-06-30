@@ -203,15 +203,19 @@ model OnboardingProfile {
 // 題目與創辦人皆 CMS 可編輯（DB）；雙語文字用 Json {en, "zh-tw"}
 // ============================================
 
-/// 測驗題目（每題對應一個決策維度，兩選項各推一端）
+/// 測驗題目（3 題 × 最多 4 選項；每選項自帶決策風格三維向量）
 model QuizQuestion {
   id        String   @id @default(cuid())
   order     Int      @default(0)
-  dimension String // "planning" | "execution" | "vision"
+  dimension String // (legacy) 分類標籤；4 選項制改由各選項的 scores 三維向量計分，此欄不再驅動配對
   prompt    Json // 雙語
   subtitle  Json // 雙語
-  optionA   Json // { label, desc, icon, value } label/desc 雙語；value=該維度分數(0~100)
+  // 選項 JSON：{ label, desc, icon, scores:{planningDepth,executionStrength,visionClarity} }，label/desc 雙語。
+  // 舊資料相容：可能為 { ..., value:number }（搭配 dimension），submit 端會自動正規化。
+  optionA   Json
   optionB   Json
+  optionC   Json? // 第 3、4 選項（4 選項制用）；2 選項題留空
+  optionD   Json?
   published Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

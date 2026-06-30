@@ -57,8 +57,6 @@ export default async function OnboardingStepPage({ params }: Props) {
       ) : (
         <OnboardingRequirementsForm
           initial={{
-            targetMarkets: p?.targetMarkets ?? [],
-            needs: p?.needs ?? [],
             timeline: p?.timeline,
             budgetRange: p?.budgetRange,
             notes: p?.notes,

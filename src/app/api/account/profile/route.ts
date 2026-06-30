@@ -29,8 +29,8 @@ export async function PATCH(req: NextRequest) {
       companySize: str(data.companySize),
       website: str(data.website),
       country: str(data.country),
-      // Step 3：需求評估
-      targetMarkets: strArray(data.targetMarkets),
+      // Step 3：需求評估。targetMarkets 已自表單移除、不再寫入（保留 DB 既有值）；
+      // needs 仍保留於帳號頁，供 Tools 落地清單個人化生成。
       needs: strArray(data.needs),
       timeline: str(data.timeline),
       budgetRange: str(data.budgetRange),
