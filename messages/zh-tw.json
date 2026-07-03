@@ -461,9 +461,14 @@
     },
     "nav": {
       "overview": "總覽",
+      "profile": "公司檔案",
+      "companies": "台灣企業",
+      "crm": "CRM 客戶",
+      "pipeline": "銷售管道",
+      "notes": "會議記錄",
+      "tools": "工具",
       "account": "帳號",
-      "billing": "訂閱帳單",
-      "tools": "工具"
+      "billing": "訂閱帳單"
     },
     "overview": {
       "title": "歡迎回來",
@@ -540,6 +545,179 @@
       "emptyTitle": "先告訴我們你的需求",
       "emptyBody": "到「帳號」頁填寫你的落地需求，我們就會在這裡生成個人化的進入市場查核清單。",
       "emptyCta": "前往帳號頁"
+    },
+    "home": {
+      "subtitle": "以下是你今天的台灣拓展動態。",
+      "priority": {
+        "eyebrow": "今日重點",
+        "actionNeeded": "待處理",
+        "onTrack": "進行順利",
+        "onboardingTitle": "完成你的公司檔案",
+        "onboardingBody": "補齊幾項引導設定，我們才能為你客製化進入市場的計畫。",
+        "onboardingCta": "繼續設定",
+        "quizTitle": "做創辦人決策測驗",
+        "quizBody": "找出決策風格與你最相近的台灣上市公司創辦人。",
+        "quizCta": "開始測驗",
+        "upgradeTitle": "解鎖你的進入市場工具",
+        "upgradeBody": "升級 Pro，開啟你的個人化台灣落地查核清單。",
+        "upgradeCta": "查看方案",
+        "readyTitle": "目前一切就緒",
+        "readyBody": "探索台灣企業情報，並持續推進你的查核清單。",
+        "readyCta": "瀏覽企業"
+      },
+      "metrics": {
+        "sectionTitle": "關鍵指標",
+        "companies": "追蹤企業",
+        "companiesHint": "台灣上市情報",
+        "videos": "教學影片",
+        "videosHint": "ROLL ON 頻道",
+        "checklist": "清單進度",
+        "checklistHint": "已完成 {done} / {total}",
+        "events": "近期活動",
+        "eventsHint": "ROLL ON 行事曆"
+      },
+      "alerts": {
+        "sectionTitle": "每日管理提醒",
+        "onboarding": "引導設定",
+        "quiz": "創辦人測驗",
+        "subscription": "訂閱",
+        "done": "已完成",
+        "todo": "尚未完成",
+        "noSub": "免費方案"
+      },
+      "match": {
+        "eyebrow": "企業配對",
+        "title": "你的創辦人配對",
+        "similarity": "相似度",
+        "empty": "做創辦人測驗，看看哪位台灣上市公司創辦人的決策風格與你最相近。",
+        "emptyCta": "開始測驗",
+        "viewCompany": "看完整分析",
+        "planning": "規劃深度",
+        "execution": "執行力",
+        "vision": "願景清晰度"
+      },
+      "video": {
+        "eyebrow": "ROLL ON 教學",
+        "title": "跟著 ROLL ON 學",
+        "empty": "教學影片即將推出。",
+        "watch": "觀看"
+      },
+      "opportunities": {
+        "title": "重點機會",
+        "subtitle": "精選台灣上市公司",
+        "viewAll": "查看全部"
+      },
+      "events": {
+        "title": "近期活動",
+        "viewAll": "查看全部",
+        "empty": "目前尚無近期活動。"
+      },
+      "copilot": {
+        "title": "ROLL ON 助理",
+        "subtitle": "快速行動，推進你的拓展。",
+        "quiz": "找我的創辦人配對",
+        "companies": "探索台灣企業",
+        "tools": "開啟進入市場工具",
+        "profile": "更新公司檔案",
+        "contact": "與我們的團隊聊聊",
+        "placeholder": "有什麼想問的…",
+        "send": "送出",
+        "thinking": "思考中…",
+        "error": "發生錯誤，請再試一次。",
+        "locked": "AI Copilot 為 Pro 方案功能，升級即可對話。",
+        "emptyHint": "問問台灣進入市場、競品分析，或你的下一步。",
+        "clear": "清除"
+      }
+    },
+    "profile": {
+      "title": "公司檔案",
+      "subtitle": "我們在整個後台使用的公司資料。",
+      "edit": "編輯資料",
+      "emptyTitle": "尚未建立公司檔案",
+      "emptyBody": "填寫你的公司資料，我們才能為你客製化台灣進入市場的體驗。",
+      "emptyCta": "完成檔案",
+      "notProvided": "未提供"
+    },
+    "companies": {
+      "title": "台灣企業",
+      "subtitle": "台灣上市公司的深度情報 — 財務、沿革與展望。",
+      "count": "{count} 家企業",
+      "searchPlaceholder": "以名稱、代號或產業搜尋…",
+      "empty": "沒有符合搜尋的企業。",
+      "view": "查看"
+    },
+    "comingSoon": {
+      "badge": "即將推出",
+      "crmTitle": "CRM 客戶關係",
+      "crmBody": "輕量 CRM，追蹤你在台灣的聯絡人、夥伴與往來對話。我們正在打造 — 告訴我們你的需求。",
+      "pipelineTitle": "銷售管道",
+      "pipelineBody": "視覺化管理你在台灣市場的商機，從潛在客戶到成交。我們正在打造 — 告訴我們你的需求。",
+      "notesTitle": "會議記錄",
+      "notesBody": "把所有拓展會議的記錄與待辦集中在一處。我們正在打造 — 告訴我們你的需求。",
+      "cta": "與我們的團隊聊聊"
+    },
+    "gate": {
+      "lockedTitle": "升級 Pro 解鎖",
+      "lockedBody": "此工具需 Pro 以上方案才能使用。升級即可解鎖。",
+      "upgrade": "升級方案"
+    },
+    "actions": {
+      "add": "新增",
+      "save": "儲存",
+      "saving": "儲存中…",
+      "cancel": "取消",
+      "edit": "編輯",
+      "delete": "刪除",
+      "deleting": "刪除中…",
+      "deleteConfirm": "確定刪除此項目？此動作無法復原。"
+    },
+    "crm": {
+      "title": "CRM 客戶",
+      "subtitle": "追蹤你在台灣的聯絡人、夥伴與往來對話。",
+      "add": "新增聯絡人",
+      "name": "姓名",
+      "company": "公司",
+      "email": "Email",
+      "phone": "電話",
+      "status": "狀態",
+      "notes": "備註",
+      "empty": "尚無聯絡人，新增第一位吧。",
+      "count": "{count} 位聯絡人",
+      "statusLabels": {
+        "lead": "潛在",
+        "active": "往來中",
+        "closed": "已結案"
+      }
+    },
+    "pipeline": {
+      "title": "銷售管道",
+      "subtitle": "管理你在台灣市場的商機，從潛在到成交。",
+      "add": "新增商機",
+      "dealTitle": "商機名稱",
+      "stage": "階段",
+      "value": "金額",
+      "contact": "聯絡人",
+      "noContact": "— 無 —",
+      "notes": "備註",
+      "empty": "尚無商機，新增第一筆吧。",
+      "count": "{count} 筆商機",
+      "stageLabels": {
+        "lead": "潛在",
+        "contacted": "已接觸",
+        "proposal": "提案中",
+        "won": "成交",
+        "lost": "流失"
+      }
+    },
+    "notes": {
+      "title": "會議記錄",
+      "subtitle": "把拓展會議的記錄與待辦集中在一處。",
+      "add": "新增記錄",
+      "noteTitle": "標題",
+      "body": "內容",
+      "meetingAt": "會議日期",
+      "empty": "尚無記錄，新增第一筆吧。",
+      "count": "{count} 筆記錄"
     }
   },
   "Billing": {

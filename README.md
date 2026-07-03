@@ -61,6 +61,10 @@ PAYPAL_WEBHOOK_ID="..."           # 註冊 webhook（{網域}/api/billing/webhoo
 PAYPAL_PLAN_ID_PRO="P-..."        # 由 scripts/paypal-setup.mjs 產生
 PAYPAL_PLAN_ID_BUSINESS="P-..."
 NEXT_PUBLIC_APP_URL="http://localhost:3000"  # 組 PayPal return/cancel URL；上線填正式網域（不要結尾斜線）
+
+# 會員 AI Copilot（Pro 方案）— 缺少時 /api/copilot 開始串流前回錯誤全文（不崩潰）
+ANTHROPIC_API_KEY="sk-ant-..."   # Claude API 金鑰（platform.claude.com）
+ANTHROPIC_MODEL="claude-opus-4-8" # 可選，預設 claude-opus-4-8；成本敏感可改 claude-haiku-4-5
 ```
 
 > `.env*` 已 `.gitignore`。產生密碼 hash：
@@ -296,7 +300,10 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 | 路徑 | 說明 |
 | --- | --- |
-| `/[locale]/dashboard` | 總覽：方案徽章、訂閱狀態、onboarding 完成度、快速入口。 |
+| `/[locale]/dashboard` | **總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：`bg-primary` 漸層「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（引導/測驗/訂閱三狀態）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝ROLL ON 助理（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
+| `/[locale]/dashboard/profile` | **公司檔案**（2026-07）：唯讀展示會員 `OnboardingProfile`（公司/需求兩區，slug 經 `Auth.options.*` 轉 label），附「編輯」→ `/dashboard/account`；未填顯示引導卡。 |
+| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 50 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。與 `/company` 同資料源、不同主題色。 |
+| `/[locale]/dashboard/crm\|pipeline\|notes` | **真 CRUD（2026-07，Pro 方案限定）**：各對應新 Prisma 表（`Contact` / `Deal` / `MeetingNote`，`userId` scope + `onDelete: Cascade`）。`requirePlan("pro")`→null 顯示付費牆（`PlanPaywall`），否則查該會員資料傳給 client 元件（`CrmManager` / `PipelineBoard` / `NotesManager`），新增/編輯/刪除後 `router.refresh()`。Pipeline 為 stage 分欄看板（MVP 用下拉改階段，不做拖拉）。Deal 可選連 CRM `Contact`（`SetNull`）。 |
 | `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）+ 變更/設定密碼 + 刪除帳號（危險區，需輸入確認字）。 |
 | `/[locale]/dashboard/billing` | 訂閱：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。 |
 | `/[locale]/dashboard/billing/return` | PayPal 核准後返回頁，呼叫 confirm 即時對帳。 |
@@ -305,10 +312,12 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | `/api/account/password` | POST 變更/設定密碼（有密碼者需驗舊密碼；Google-only 免舊密碼直接設定）。 |
 | `/api/account/delete` | POST 刪帳號（best-effort 取消 PayPal 訂閱 → `prisma.user.delete` cascade → 清 `user_session`）。 |
 | `/api/tools/checklist` | PATCH 更新落地清單勾選（`requirePlan("pro")` 守衛，merge 進 `User.checklistState`）。 |
+| `/api/{crm\|pipeline\|notes}` + `/[id]` | **會員 CRUD（2026-07）**：POST 建立 / PATCH 更新 / DELETE 刪除。自守衛 `getUserSession`（401）+ `requirePlan("pro")`（403），每筆以 `session.uid` scope（`updateMany`/`deleteMany` count 檢查，或 findFirst 驗擁有權），zod 驗證於 `src/lib/dashboard/schemas.ts`。**不重用** admin generic CRUD（那是 admin-only 且無 userId 過濾）。 |
+| `/api/copilot` | **AI Copilot 串流（2026-07）**：POST，`getUserSession`+`requirePlan("pro")` 守衛後以 `@anthropic-ai/sdk` `messages.stream` 逐字回傳（`ReadableStream`, `text/plain`）。model 取 `ANTHROPIC_MODEL`（預設 `claude-opus-4-8`），system prompt 帶會員 `profile` 公司資訊、依 locale 回覆。守衛失敗回真狀態碼；串流開始後的錯誤以文字寫入（前端顯示全文）。**MVP 無 rate limit（成本風險）** → 靠 Pro-gate + 輸入長度/則數上限收斂，正式上線建議加每會員配額。需 `ANTHROPIC_API_KEY`（見環境變數）。 |
 | `/api/billing/subscribe\|confirm\|cancel` | 建立 / 確認 / 取消訂閱（自守衛）。 |
 | `/api/billing/webhook` | PayPal webhook：不查 session、改以簽章驗證；冪等 + 對帳。 |
 
-UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn`）。i18n 在 `messages/*.json` 的 `Dashboard` / `Billing` namespace。
+UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn` / `DashboardCompanyList` / `PlanPaywall` / `CrmManager` / `PipelineBoard` / `NotesManager`），總覽 widget 在 `src/components/dashboard/home/`（`PriorityBanner` / `MetricsRow` / `AlertsRow` / `FounderMatchCard` / `TutorialVideoCard` / `TopOpportunitiesRail` / `UpcomingEventsRail`，皆 server component；`CopilotPanel` 為 client 串流對話）。CRUD 驗證 schema 在 `src/lib/dashboard/schemas.ts`（zod）。`DashboardSidebar` 的 `NAV` 陣列 + `NavKey` 集中管理側欄（新增頁面在此擴充；`soon:true` 顯示「即將」小標，目前無啟用者）。shell 內容欄寬 `max-w-6xl` 供雙欄總覽。輕量公司清單 getter（`getCompanyList` / `countCompanies` / `getCompanyCards`）在 `src/lib/company/content.ts`。i18n 在 `messages/*.json` 的 `Dashboard`（含 `home`/`profile`/`companies`/`comingSoon` 及 2026-07 新增 `gate`/`actions`/`crm`/`pipeline`/`notes` 與 `home.copilot.*` 對話鍵）/ `Billing` namespace，en 與 zh-tw 鍵完全平行。新依賴 `@anthropic-ai/sdk`；新資料表 `Contact`/`Deal`/`MeetingNote` 需跑 `pnpm db:push`（加法式）。
 
 **入口接通**：登入 / onboarding / 測驗完成後由 `destinationFor`（`src/lib/auth/onboarding.ts`，`completed → /dashboard`）導向後台；全站 Navbar 有「會員中心」入口（靜態連結 → `/dashboard`，未登入由 proxy 導 `/login`）。
 

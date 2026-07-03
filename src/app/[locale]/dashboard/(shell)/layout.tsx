@@ -37,7 +37,7 @@ export default async function DashboardLayout({ children, params }: Props) {
         userLabel={userLabel}
       />
       <main className="flex-1 px-5 py-8 md:px-10 md:py-12">
-        <div className="mx-auto w-full max-w-3xl">{children}</div>
+        <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
     </div>
   );

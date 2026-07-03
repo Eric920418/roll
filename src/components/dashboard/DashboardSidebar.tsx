@@ -7,14 +7,29 @@ import { useTranslations } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
-type NavKey = "overview" | "account" | "billing" | "tools";
+type NavKey =
+  | "overview"
+  | "profile"
+  | "companies"
+  | "crm"
+  | "pipeline"
+  | "notes"
+  | "tools"
+  | "account"
+  | "billing";
 
 // 各 nav 項對應的 path（未加 locale 前綴）。新增頁面時在此擴充即可。
-const NAV: { key: NavKey; path: string }[] = [
+// soon: 尚未上線的占位頁，側欄標「即將」小標，點進去是 coming-soon 頁。
+const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "overview", path: "/dashboard" },
+  { key: "profile", path: "/dashboard/profile" },
+  { key: "companies", path: "/dashboard/companies" },
+  { key: "crm", path: "/dashboard/crm" },
+  { key: "pipeline", path: "/dashboard/pipeline" },
+  { key: "notes", path: "/dashboard/notes" },
+  { key: "tools", path: "/dashboard/tools" },
   { key: "account", path: "/dashboard/account" },
   { key: "billing", path: "/dashboard/billing" },
-  { key: "tools", path: "/dashboard/tools" },
 ];
 
 export default function DashboardSidebar({
@@ -63,19 +78,28 @@ export default function DashboardSidebar({
       </div>
 
       <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-        {NAV.map(({ key, path }) => {
+        {NAV.map(({ key, path, soon }) => {
           const active = isActive(path);
           return (
             <Link
               key={key}
               href={pathForLocale(path, locale)}
-              className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors font-[family-name:var(--font-heading)] ${
+              className={`flex shrink-0 items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors font-[family-name:var(--font-heading)] ${
                 active
                   ? "bg-primary text-white"
                   : "text-dark/70 hover:bg-dark/[0.04]"
               }`}
             >
-              {t(`nav.${key}`)}
+              <span>{t(`nav.${key}`)}</span>
+              {soon && (
+                <span
+                  className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    active ? "bg-white/20 text-white" : "bg-accent/20 text-accent"
+                  }`}
+                >
+                  {t("comingSoon.badge")}
+                </span>
+              )}
             </Link>
           );
         })}

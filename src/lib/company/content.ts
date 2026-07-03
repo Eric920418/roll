@@ -58,3 +58,46 @@ export function getCompany(slug: string): Company | null {
   if (!fs.existsSync(p)) return null;
   return JSON.parse(fs.readFileSync(p, "utf-8")) as Company;
 }
+
+// ── 輕量清單型別與 getter（後台用：只取列表需要的欄位，不含 metrics/sections）──
+
+export type CompanyListItem = {
+  slug: string;
+  ticker: string;
+  market: string;
+  nameEn: string;
+  nameZh: string | null;
+  sector: string | null;
+  summaryEn: string | null;
+};
+
+function toListItem(c: Company): CompanyListItem {
+  return {
+    slug: c.slug,
+    ticker: c.ticker,
+    market: c.market,
+    nameEn: c.nameEn,
+    nameZh: c.nameZh ?? null,
+    sector: c.sector ?? null,
+    summaryEn: c.summaryEn ?? null,
+  };
+}
+
+/** 全部公司的輕量清單（依 ticker 排序），供後台 companies 列表頁使用。 */
+export function getCompanyList(): CompanyListItem[] {
+  return getAllCompanies().map(toListItem);
+}
+
+/** 便宜地數 json 檔數量（不解析內容），供 Overview 指標卡使用。 */
+export function countCompanies(): number {
+  if (!fs.existsSync(DIR)) return 0;
+  return fs.readdirSync(DIR).filter((f) => f.endsWith(".json")).length;
+}
+
+/** 依指定 slug 取輕量卡片（略過不存在者），供 Overview「重點機會」精選使用。 */
+export function getCompanyCards(slugs: string[]): CompanyListItem[] {
+  return slugs
+    .map(getCompany)
+    .filter((c): c is Company => c !== null)
+    .map(toListItem);
+}

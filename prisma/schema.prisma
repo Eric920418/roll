@@ -171,6 +171,11 @@ model User {
   quizSubmissions QuizSubmission[]
   subscriptions   Subscription[]
 
+  // 會員後台工具（CRM / 銷售管道 / 會議記錄）— 皆 1:many、刪帳號連帶清除
+  contacts     Contact[]
+  deals        Deal[]
+  meetingNotes MeetingNote[]
+
   @@index([email])
 }
 
@@ -304,4 +309,65 @@ model WebhookEvent {
   processedAt DateTime @default(now())
 
   @@index([eventType])
+}
+
+// ============================================
+// 會員後台自助工具（每筆綁 userId、Pro 方案限定）
+// 使用者自填資料、非雙語內容 → 用一般欄位。stage/status 用 String（app 端驗證）。
+// ============================================
+
+/// CRM 聯絡人（會員自己的客戶/夥伴清單）
+model Contact {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name    String
+  company String?
+  email   String?
+  phone   String?
+  status  String  @default("lead") // lead / active / closed（app 端驗證）
+  notes   String?
+
+  deals Deal[] // 反向關聯：連到此聯絡人的商機（刪聯絡人時商機的 contactId 設 null）
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+/// 銷售管道商機（依 stage 分欄看板）
+model Deal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  stage     String   @default("lead") // lead / contacted / proposal / won / lost
+  value     Int? // 金額（整數，幣別由會員自訂/TWD），可空
+  contactId String? // 可選連 CRM 聯絡人
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+/// 會議記錄
+model MeetingNote {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String?
+  meetingAt DateTime? // 會議時間，可空
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
 }

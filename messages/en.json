@@ -461,9 +461,14 @@
     },
     "nav": {
       "overview": "Overview",
+      "profile": "Company profile",
+      "companies": "Taiwan companies",
+      "crm": "CRM",
+      "pipeline": "Sales pipeline",
+      "notes": "Meeting notes",
+      "tools": "Tools",
       "account": "Account",
-      "billing": "Billing",
-      "tools": "Tools"
+      "billing": "Billing"
     },
     "overview": {
       "title": "Welcome back",
@@ -540,6 +545,179 @@
       "emptyTitle": "Tell us your needs first",
       "emptyBody": "Fill in your landing requirements in Account, and we'll generate a personalized market-entry checklist here.",
       "emptyCta": "Go to Account"
+    },
+    "home": {
+      "subtitle": "Here's what's happening with your Taiwan expansion today.",
+      "priority": {
+        "eyebrow": "Today's priority",
+        "actionNeeded": "Action needed",
+        "onTrack": "On track",
+        "onboardingTitle": "Complete your company profile",
+        "onboardingBody": "Finish a few onboarding details so we can tailor your market-entry plan.",
+        "onboardingCta": "Continue setup",
+        "quizTitle": "Take the founder decision quiz",
+        "quizBody": "Find the Taiwan-listed founder whose decision style matches yours.",
+        "quizCta": "Start the quiz",
+        "upgradeTitle": "Unlock your market-entry tools",
+        "upgradeBody": "Upgrade to Pro to open your personalized Taiwan landing checklist.",
+        "upgradeCta": "See plans",
+        "readyTitle": "You're all set for now",
+        "readyBody": "Explore Taiwan company intelligence and keep your checklist moving.",
+        "readyCta": "Browse companies"
+      },
+      "metrics": {
+        "sectionTitle": "Key metrics",
+        "companies": "Companies tracked",
+        "companiesHint": "Taiwan-listed intel",
+        "videos": "Tutorial videos",
+        "videosHint": "ROLL ON channel",
+        "checklist": "Checklist progress",
+        "checklistHint": "{done} of {total} done",
+        "events": "Upcoming events",
+        "eventsHint": "ROLL ON calendar"
+      },
+      "alerts": {
+        "sectionTitle": "Daily management alerts",
+        "onboarding": "Onboarding",
+        "quiz": "Founder quiz",
+        "subscription": "Subscription",
+        "done": "Completed",
+        "todo": "Not yet",
+        "noSub": "Free plan"
+      },
+      "match": {
+        "eyebrow": "Company matching",
+        "title": "Your founder match",
+        "similarity": "Match",
+        "empty": "Take the founder quiz to see which Taiwan-listed founder matches your decision style.",
+        "emptyCta": "Start the quiz",
+        "viewCompany": "View full analysis",
+        "planning": "Planning depth",
+        "execution": "Execution strength",
+        "vision": "Vision clarity"
+      },
+      "video": {
+        "eyebrow": "ROLL ON tutorials",
+        "title": "Learn with ROLL ON",
+        "empty": "Tutorial videos are coming soon.",
+        "watch": "Watch"
+      },
+      "opportunities": {
+        "title": "Top opportunities",
+        "subtitle": "Featured Taiwan-listed companies",
+        "viewAll": "View all"
+      },
+      "events": {
+        "title": "Upcoming events",
+        "viewAll": "View all",
+        "empty": "No upcoming events yet."
+      },
+      "copilot": {
+        "title": "ROLL ON assistant",
+        "subtitle": "Quick actions to move your expansion forward.",
+        "quiz": "Find my founder match",
+        "companies": "Explore Taiwan companies",
+        "tools": "Open market-entry tools",
+        "profile": "Update company profile",
+        "contact": "Talk to our team",
+        "placeholder": "Ask anything…",
+        "send": "Send",
+        "thinking": "Thinking…",
+        "error": "Something went wrong. Please try again.",
+        "locked": "AI Copilot is available on the Pro plan. Upgrade to chat.",
+        "emptyHint": "Ask about Taiwan market entry, competitors, or your next step.",
+        "clear": "Clear"
+      }
+    },
+    "profile": {
+      "title": "Company profile",
+      "subtitle": "The company details we use across your dashboard.",
+      "edit": "Edit details",
+      "emptyTitle": "No company profile yet",
+      "emptyBody": "Add your company details so we can tailor your Taiwan market-entry experience.",
+      "emptyCta": "Complete profile",
+      "notProvided": "Not provided"
+    },
+    "companies": {
+      "title": "Taiwan companies",
+      "subtitle": "Deep intelligence on Taiwan-listed companies — financials, history, and outlook.",
+      "count": "{count} companies",
+      "searchPlaceholder": "Search by name, ticker, or sector…",
+      "empty": "No companies match your search.",
+      "view": "View"
+    },
+    "comingSoon": {
+      "badge": "Coming soon",
+      "crmTitle": "CRM",
+      "crmBody": "A lightweight CRM to track your Taiwan contacts, partners, and conversations. We're building it — tell us what you need.",
+      "pipelineTitle": "Sales pipeline",
+      "pipelineBody": "Visualize and manage your Taiwan market deals from lead to close. We're building it — tell us what you need.",
+      "notesTitle": "Meeting notes",
+      "notesBody": "Keep all your expansion meeting notes and action items in one place. We're building it — tell us what you need.",
+      "cta": "Talk to our team"
+    },
+    "gate": {
+      "lockedTitle": "Unlock with Pro",
+      "lockedBody": "This tool is available on the Pro plan and above. Upgrade to get access.",
+      "upgrade": "Upgrade plan"
+    },
+    "actions": {
+      "add": "Add",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleting": "Deleting…",
+      "deleteConfirm": "Delete this item? This cannot be undone."
+    },
+    "crm": {
+      "title": "CRM",
+      "subtitle": "Track your Taiwan contacts, partners, and conversations.",
+      "add": "Add contact",
+      "name": "Name",
+      "company": "Company",
+      "email": "Email",
+      "phone": "Phone",
+      "status": "Status",
+      "notes": "Notes",
+      "empty": "No contacts yet. Add your first one.",
+      "count": "{count} contacts",
+      "statusLabels": {
+        "lead": "Lead",
+        "active": "Active",
+        "closed": "Closed"
+      }
+    },
+    "pipeline": {
+      "title": "Sales pipeline",
+      "subtitle": "Manage your Taiwan market deals from lead to close.",
+      "add": "Add deal",
+      "dealTitle": "Deal title",
+      "stage": "Stage",
+      "value": "Value",
+      "contact": "Contact",
+      "noContact": "— none —",
+      "notes": "Notes",
+      "empty": "No deals yet. Add your first one.",
+      "count": "{count} deals",
+      "stageLabels": {
+        "lead": "Lead",
+        "contacted": "Contacted",
+        "proposal": "Proposal",
+        "won": "Won",
+        "lost": "Lost"
+      }
+    },
+    "notes": {
+      "title": "Meeting notes",
+      "subtitle": "Keep your expansion meeting notes and action items in one place.",
+      "add": "Add note",
+      "noteTitle": "Title",
+      "body": "Notes",
+      "meetingAt": "Meeting date",
+      "empty": "No notes yet. Add your first one.",
+      "count": "{count} notes"
     }
   },
   "Billing": {
