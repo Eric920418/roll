@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { setRequestLocale } from "next-intl/server";
-import { routing, type Locale } from "@/i18n/routing";
-import { SITE_URL, pathForLocale } from "@/lib/routes";
+import { routing } from "@/i18n/routing";
+import { SITE_URL } from "@/lib/routes";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { getAllCompanies, getCompany, type Metric } from "@/lib/company/content";
@@ -80,7 +79,6 @@ const CHART_SPECS: { key: string; kind: "bar" | "line"; color?: string }[] = [
 export default async function CompanyPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const l = locale as Locale;
 
   const company = getCompany(slug);
   if (!company) notFound();
@@ -133,10 +131,7 @@ export default async function CompanyPage({ params }: Props) {
         {/* Header strip */}
         <section className="border-b border-line bg-paper pt-20">
           <div className="mx-auto max-w-6xl px-5 py-8">
-            <Link href={pathForLocale("/company", l)} className="text-sm text-muted hover:text-navy">
-              ← All companies
-            </Link>
-            <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
               <h1 className="font-[family-name:var(--font-heading)] text-3xl font-bold text-navy md:text-4xl">
                 {company.nameEn}
               </h1>

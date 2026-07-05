@@ -302,7 +302,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | --- | --- |
 | `/[locale]/dashboard` | **總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：`bg-primary` 漸層「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（引導/測驗/訂閱三狀態）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝ROLL ON 助理（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
 | `/[locale]/dashboard/profile` | **公司檔案**（2026-07）：唯讀展示會員 `OnboardingProfile`（公司/需求兩區，slug 經 `Auth.options.*` 轉 label），附「編輯」→ `/dashboard/account`；未填顯示引導卡。 |
-| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 50 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。與 `/company` 同資料源、不同主題色。 |
+| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 50 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
 | `/[locale]/dashboard/crm\|pipeline\|notes` | **真 CRUD（2026-07，Pro 方案限定）**：各對應新 Prisma 表（`Contact` / `Deal` / `MeetingNote`，`userId` scope + `onDelete: Cascade`）。`requirePlan("pro")`→null 顯示付費牆（`PlanPaywall`），否則查該會員資料傳給 client 元件（`CrmManager` / `PipelineBoard` / `NotesManager`），新增/編輯/刪除後 `router.refresh()`。Pipeline 為 stage 分欄看板（MVP 用下拉改階段，不做拖拉）。Deal 可選連 CRM `Contact`（`SetNull`）。 |
 | `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）+ 變更/設定密碼 + 刪除帳號（危險區，需輸入確認字）。 |
 | `/[locale]/dashboard/billing` | 訂閱：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。 |
@@ -374,7 +374,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 
 ## 公司分析頁（Company Profiles，FinMind 驅動）
 
-英文版台股上市公司深度分析頁，風格對標 startups.rip。**目錄** `/company`、**詳情** `/company/[slug]`。
+英文版台股上市公司深度分析頁，風格對標 startups.rip。**詳情** `/company/[slug]`（公開）。公開目錄列表頁 `/company` 已移除，改由**後台** `/[locale]/dashboard/companies` 呈現清單（每張卡仍連 `/company/[slug]`）。
 
 - **資料**：純檔案 JSON，每家一檔於 `content/companies/<slug>.json`，build 時由 `src/lib/company/content.ts` 以 `fs` 讀取（無 DB；Vercel FS 唯讀也能用）。
 - **事實來源**：FinMind 開放 API（月營收、損益、資產負債、現金流、股利、估值、股價）→ 由外部 ingest 管線 `tw-industry-report/ingest/pipeline.py <ticker> --no-generate` 正規化後寫入。**所有數字必為 FinMind 來源**。
