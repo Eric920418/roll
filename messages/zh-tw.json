@@ -466,6 +466,7 @@
       "crm": "CRM 客戶",
       "pipeline": "銷售管道",
       "notes": "會議記錄",
+      "agenda": "落地待辦",
       "tools": "工具",
       "account": "帳號",
       "billing": "訂閱帳單"
@@ -718,6 +719,31 @@
       "meetingAt": "會議日期",
       "empty": "尚無記錄，新增第一筆吧。",
       "count": "{count} 筆記錄"
+    },
+    "agenda": {
+      "title": "落地待辦",
+      "subtitle": "系統依你的進度，排出台灣落地的下一步。",
+      "reminder": "{overdue} 項逾期・{soon} 項本週到期",
+      "allClear": "進度良好，沒有逾期項目。",
+      "nextTitle": "你的下一步",
+      "milestonesTitle": "落地進度",
+      "milestones": {
+        "onboarding": "完成公司資料",
+        "quiz": "創辦人測驗",
+        "upgrade": "解鎖 Pro 工具"
+      },
+      "tasksTitle": "落地任務",
+      "progress": "已完成 {done} / {total}",
+      "due": "建議 {date} 前完成",
+      "statusLabels": {
+        "overdue": "逾期",
+        "dueSoon": "本週",
+        "upcoming": "待辦",
+        "done": "已完成"
+      },
+      "emptyTitle": "先告訴我們你的需求",
+      "emptyBody": "到「帳號」頁填寫你的落地需求，我們就會在這裡生成你的行動計畫。",
+      "emptyCta": "前往帳號頁"
     }
   },
   "Billing": {

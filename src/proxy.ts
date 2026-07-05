@@ -51,9 +51,10 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // --- 前台：保護 onboarding + quiz + dashboard（需公開用戶登入；涵蓋預設與 /zh-tw）---
-  // 注意：proxy 只樂觀驗證 session 存在與否，不查 DB / 不查方案（方案 gating 由各頁面/API 的 DAL 即時把關）。
-  if (/^\/(zh-tw\/)?(onboarding|quiz|dashboard)(\/|$)/.test(pathname)) {
+  // --- 前台：保護 onboarding + quiz + dashboard + company（需公開用戶登入；涵蓋預設與 /zh-tw）---
+  // 注意：proxy 驗證 user_session JWT 簽章（擋未登入/偽造），但不查 DB / 不查方案（方案 gating 由各頁面/API 的 DAL 即時把關）。
+  // company（台灣企業智庫）改為僅登入會員可見 → 未登入導 /login。
+  if (/^\/(zh-tw\/)?(onboarding|quiz|dashboard|company)(\/|$)/.test(pathname)) {
     const userSession = await verifyUserSession(
       req.cookies.get(USER_SESSION_COOKIE)?.value,
     );

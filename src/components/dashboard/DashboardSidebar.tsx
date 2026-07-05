@@ -14,6 +14,7 @@ type NavKey =
   | "crm"
   | "pipeline"
   | "notes"
+  | "agenda"
   | "tools"
   | "account"
   | "billing";
@@ -27,6 +28,7 @@ const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "crm", path: "/dashboard/crm" },
   { key: "pipeline", path: "/dashboard/pipeline" },
   { key: "notes", path: "/dashboard/notes" },
+  { key: "agenda", path: "/dashboard/agenda" },
   { key: "tools", path: "/dashboard/tools" },
   { key: "account", path: "/dashboard/account" },
   { key: "billing", path: "/dashboard/billing" },

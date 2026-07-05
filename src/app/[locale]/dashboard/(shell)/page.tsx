@@ -1,16 +1,14 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
-import { destinationFor } from "@/lib/auth/onboarding";
+import { computeFocus } from "@/lib/dashboard/agenda";
 import { pathForLocale } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 import { pick } from "@/lib/quiz/locale";
 import { buildChecklist } from "@/lib/tools/checklist";
 import { getVideos, getEvents } from "@/lib/cms/content";
 import { countCompanies, getCompanyCards } from "@/lib/company/content";
-import PriorityBanner, {
-  type PriorityState,
-} from "@/components/dashboard/home/PriorityBanner";
+import PriorityBanner from "@/components/dashboard/home/PriorityBanner";
 import MetricsRow from "@/components/dashboard/home/MetricsRow";
 import AlertsRow from "@/components/dashboard/home/AlertsRow";
 import FounderMatchCard, {
@@ -65,25 +63,8 @@ export default async function DashboardOverview({ params }: Props) {
   const checklistTotal = allKeys.length;
   const checklistDone = allKeys.filter((k) => account.checklistState[k]).length;
 
-  // ── 今日重點狀態（真實個人化）──
-  let priorityState: PriorityState;
-  let priorityHref: string;
-  if (!account.completed && account.onboardingStep < 4) {
-    priorityState = "onboarding";
-    priorityHref = destinationFor(
-      { completed: account.completed, onboardingStep: account.onboardingStep },
-      l,
-    );
-  } else if (!account.quizCompleted) {
-    priorityState = "quiz";
-    priorityHref = pathForLocale("/quiz", l);
-  } else if (!isPaying) {
-    priorityState = "upgrade";
-    priorityHref = pathForLocale("/dashboard/billing", l);
-  } else {
-    priorityState = "ready";
-    priorityHref = pathForLocale("/dashboard/companies", l);
-  }
+  // ── 今日重點狀態（與 Agenda 頁共用 computeFocus，避免兩處判斷不一致）──
+  const focus = computeFocus(account, l);
 
   // ── 創辦人配對（真實：作答分數與創辦人三維向量的距離 → 相似度）──
   let match: FounderMatch | null = null;
@@ -143,7 +124,7 @@ export default async function DashboardOverview({ params }: Props) {
       <div className="mt-7 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 主欄 */}
         <div className="flex flex-col gap-6 lg:col-span-2">
-          <PriorityBanner locale={l} state={priorityState} href={priorityHref} />
+          <PriorityBanner locale={l} state={focus.state} href={focus.href} />
           <AlertsRow
             locale={l}
             onboardingDone={account.completed}

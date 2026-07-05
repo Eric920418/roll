@@ -466,6 +466,7 @@
       "crm": "CRM",
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
+      "agenda": "Action plan",
       "tools": "Tools",
       "account": "Account",
       "billing": "Billing"
@@ -718,6 +719,31 @@
       "meetingAt": "Meeting date",
       "empty": "No notes yet. Add your first one.",
       "count": "{count} notes"
+    },
+    "agenda": {
+      "title": "Action plan",
+      "subtitle": "Your Taiwan landing next steps, scheduled by your progress.",
+      "reminder": "{overdue} overdue · {soon} due this week",
+      "allClear": "You're on track — nothing overdue.",
+      "nextTitle": "Your next move",
+      "milestonesTitle": "Landing progress",
+      "milestones": {
+        "onboarding": "Complete company profile",
+        "quiz": "Founder quiz",
+        "upgrade": "Unlock Pro tools"
+      },
+      "tasksTitle": "Landing tasks",
+      "progress": "{done} of {total} done",
+      "due": "Target by {date}",
+      "statusLabels": {
+        "overdue": "Overdue",
+        "dueSoon": "This week",
+        "upcoming": "Upcoming",
+        "done": "Done"
+      },
+      "emptyTitle": "Tell us your needs first",
+      "emptyBody": "Fill in your landing requirements in Account, and we'll build your action plan here.",
+      "emptyCta": "Go to Account"
     }
   },
   "Billing": {
