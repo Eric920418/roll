@@ -29,8 +29,22 @@ pnpm lint       # ESLint
 # 資料庫（Neon Postgres）
 pnpm db:push    # 推送 schema 到 Neon（禁用 --accept-data-loss）
 pnpm db:seed    # 灌入初始內容（count-guard，不覆蓋既有資料）
+pnpm db:super   # 建立/重置後台超級帳號（pro，見下方「超級帳號」）
 pnpm db:studio  # Prisma Studio 檢視資料
 ```
+
+## 後台超級帳號（Super Account）
+
+會員後台入口 `/login`，登入後進 `/dashboard`。要一個「本來就是 pro、直接進後台」的帳號時跑：
+
+```bash
+pnpm db:super
+# 預設 super@rollgrp.com / RollOn2026!Super，可覆蓋：
+SUPER_EMAIL=you@x.com SUPER_PASSWORD='你的密碼' pnpm db:super
+SUPER_PLAN=enterprise pnpm db:super   # 永不過期版（不需訂閱期）
+```
+
+腳本 `scripts/create-super-user.ts` 以 `upsert` 建號（可重複執行，會重設密碼與方案），設定 `plan=pro`＋`subscriptionStatus=ACTIVE`＋`currentPeriodEnd=2099`（滿足 `getEffectivePlan` 寬限期判定，否則 pro 會被降級為 free），並 `completed=true`／`onboardingStep=4` 讓登入後直達 `/dashboard`。**注意**：pro 靠遠期到期日維持；若要真正永久不過期用 `SUPER_PLAN=enterprise`（`src/lib/billing/gate.ts` 對 enterprise 無條件信任）。
 
 ### 環境變數
 
@@ -434,6 +448,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2903 | `feds` | Far Eastern Department Stores 遠東百貨 | Department Stores（最大百貨集團+SOGO；高息近淨值；58% 毛利為抽成假象） |
 | 3037 | `unimicron` | Unimicron 欣興電子 | PCB & IC Substrates（全球最大載板廠／ABF 近寡占；深度循環；估值已 price 滿） |
 | 1301 | `formosa-plastics` | Formosa Plastics 台塑 | Petrochemicals（台塑集團旗艦；史上首虧／靠轉投資撐／跌破淨值；中國產能過剩） |
+| 2201 | `yulon` | Yulon Motor 裕隆汽車 | Automotive（汽車先驅；自有品牌夢碎→2025 賣 Luxgen 給鴻海；0.47× 淨值深度價值） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
