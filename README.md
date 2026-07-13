@@ -449,6 +449,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 3037 | `unimicron` | Unimicron 欣興電子 | PCB & IC Substrates（全球最大載板廠／ABF 近寡占；深度循環；估值已 price 滿） |
 | 1301 | `formosa-plastics` | Formosa Plastics 台塑 | Petrochemicals（台塑集團旗艦；史上首虧／靠轉投資撐／跌破淨值；中國產能過剩） |
 | 2201 | `yulon` | Yulon Motor 裕隆汽車 | Automotive（汽車先驅；自有品牌夢碎→2025 賣 Luxgen 給鴻海；0.47× 淨值深度價值） |
+| 1565 | `st-shine` | St. Shine Optical 精華光學（TPEx 上櫃） | Contact Lenses（全球最大隱形眼鏡 ODM；昔日暴利→結構性褪色；無負債高息／跌破淨值） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
