@@ -84,6 +84,7 @@ ANTHROPIC_MODEL="claude-opus-4-8" # 可選，預設 claude-opus-4-8；成本敏�
 > `.env*` 已 `.gitignore`。產生密碼 hash：
 > `node -e "console.log(require('bcryptjs').hashSync('你的密碼',12))"`
 > ⚠️ **bcrypt hash 內的每個 `$` 在 `.env.local` 必須跳脫為 `\$`**，否則 Next 的 env 載入器（dotenv-expand）會把 `$2b`、`$12` 當成變數展開而破壞 hash，導致登入永遠失敗。
+> ⚠️ **shell 已匯出的環境變數會壓過 `.env.local`**：Next.js（與 `node --env-file` / `process.loadEnvFile`）遵循「不覆蓋 process.env 既有值」原則。若你的終端機 profile（或 Claude Code CLI）已 export `ANTHROPIC_API_KEY`，本機 `pnpm dev` 會用那把、忽略 `.env.local` 的值，導致 AI 用到錯的 key。本機要驗 copilot 時用 `env -u ANTHROPIC_API_KEY pnpm dev` 起服務。正式站（Vercel）無此問題 —— runtime 只注入專案設定的環境變數。
 > 預設帳號 `admin@roll-grp.com` / 密碼 `rollon-admin-2026`（上線前務必更換）。
 
 ### 效能 / 圖片工具
