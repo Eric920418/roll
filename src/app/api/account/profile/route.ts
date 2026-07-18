@@ -11,6 +11,19 @@ import { ok, unauthorized, failFromError } from "@/lib/api";
 const str = (v: unknown): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
 
+// 基本 URL 正規化：補上 https:// 後能被 URL() 解析才保留，否則存 null（僅資料品質）。
+const webUrl = (v: unknown): string | null => {
+  const s = str(v);
+  if (!s) return null;
+  const withScheme = /^https?:\/\//i.test(s) ? s : `https://${s}`;
+  try {
+    new URL(withScheme);
+    return withScheme;
+  } catch {
+    return null;
+  }
+};
+
 const strArray = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
@@ -27,7 +40,7 @@ export async function PATCH(req: NextRequest) {
       companyName: str(data.companyName),
       industry: str(data.industry),
       companySize: str(data.companySize),
-      website: str(data.website),
+      website: webUrl(data.website),
       country: str(data.country),
       // Step 3：需求評估。targetMarkets 已自表單移除、不再寫入（保留 DB 既有值）；
       // needs 仍保留於帳號頁，供 Tools 落地清單個人化生成。

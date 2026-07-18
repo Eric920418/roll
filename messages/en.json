@@ -424,7 +424,8 @@
       "invalidCredentials": "Email or password is incorrect.",
       "missingFields": "Please fill in all required fields.",
       "passwordTooShort": "Password must be at least 8 characters.",
-      "invalidEmail": "Please enter a valid email address."
+      "invalidEmail": "Please enter a valid email address.",
+      "tooManyAttempts": "Too many attempts. Please try again in a few minutes."
     }
   },
   "Quiz": {
@@ -627,7 +628,12 @@
         "error": "Something went wrong. Please try again.",
         "locked": "AI Copilot is available on the Pro plan. Upgrade to chat.",
         "emptyHint": "Ask about Taiwan market entry, competitors, or your next step.",
-        "clear": "Clear"
+        "clear": "Clear",
+        "upsell": {
+          "title": "AI Copilot is a Pro feature",
+          "body": "Upgrade to Pro to chat with the ROLL ON assistant about your Taiwan and Asia expansion.",
+          "cta": "Upgrade to Pro"
+        }
       }
     },
     "profile": {
@@ -767,7 +773,8 @@
       "unknownPlan": "Unknown plan.",
       "notSelfServe": "This plan isn't available for self-service checkout. Please contact sales.",
       "paypalNotConfigured": "Payment is not configured yet. Please contact support.",
-      "noSubscription": "No active subscription to cancel."
+      "noSubscription": "No active subscription to cancel.",
+      "alreadySubscribed": "You already have an active subscription. Please cancel it before switching plans."
     }
   }
 }

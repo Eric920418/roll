@@ -11,7 +11,7 @@ import {
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// 更新商機 — 先驗擁有權（findFirst），再 update（可改 contactId 這個 FK 純量）。
+// 更新商機 — 以 updateMany({ id, userId }) 一次完成擁有權把關 + 更新（與 crm/notes 模式一致）。
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     const session = await getUserSession();
@@ -23,13 +23,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (!parsed.success) return fail(zodMessage(parsed.error), 400);
     const d = parsed.data;
 
-    const owned = await prisma.deal.findFirst({
-      where: { id, userId: session.uid },
-      select: { id: true },
-    });
-    if (!owned) return fail("找不到資料", 404);
-
-    // contactId 若有值，需屬於本人
+    // contactId 若有值，需屬於本人（避免把商機連到別人的聯絡人）
     if (d.contactId) {
       const c = await prisma.contact.findFirst({
         where: { id: d.contactId, userId: session.uid },
@@ -46,7 +40,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       ...(d.notes !== undefined && { notes: nullifyEmpty(d.notes) }),
     };
 
-    await prisma.deal.update({ where: { id }, data });
+    const res = await prisma.deal.updateMany({
+      where: { id, userId: session.uid },
+      data,
+    });
+    if (res.count === 0) return fail("找不到資料", 404);
     return ok({ updated: true });
   } catch (error) {
     return failFromError(error);

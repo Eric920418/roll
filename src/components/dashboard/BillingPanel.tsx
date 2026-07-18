@@ -15,6 +15,7 @@ const BILLING_ERROR_CODES = [
   "notSelfServe",
   "paypalNotConfigured",
   "noSubscription",
+  "alreadySubscribed",
 ];
 
 export default function BillingPanel({

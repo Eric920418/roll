@@ -8,9 +8,10 @@ import { planAtLeast, type PlanKey } from "@/lib/billing/plans";
 
 // 在 currentPeriodEnd 之前仍授予存取的狀態：
 //   ACTIVE     — 正常
-//   PAST_DUE   — 扣款失敗但在寬限期內，暫不剝奪
-//   CANCELLED  — 用戶已取消，但已付到本期末，到期才降級
-const ACCESS_STATUSES = new Set(["ACTIVE", "PAST_DUE", "CANCELLED"]);
+//   CANCELLED  — 用戶已取消，但已付到本期末，到期才降級（寬限期）
+// 註：PayPal 訂閱沒有 "PAST_DUE" 狀態；扣款失敗會轉為 SUSPENDED，我們刻意「不」給寬限
+//     （付款失敗即降級為安全預設）。故此集合不含 SUSPENDED / EXPIRED。
+const ACCESS_STATUSES = new Set(["ACTIVE", "CANCELLED"]);
 
 /**
  * 計算帳號的「有效方案」（純函式，套寬限期）。
@@ -41,7 +42,7 @@ export async function getUserPlan(): Promise<PlanKey> {
 
 /**
  * 要求至少達到 min 階級。
- * 達標回 account；未登入或方案不足回 null（頁面應 redirect / API 回 402）。
+ * 達標回 account；未登入或方案不足回 null（頁面應 redirect / API 回 403）。
  */
 export async function requirePlan(min: PlanKey): Promise<Account | null> {
   const account = await getCurrentAccount();

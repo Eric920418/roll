@@ -153,7 +153,7 @@ export default async function DashboardOverview({ params }: Props) {
 
         {/* 右欄 */}
         <div className="flex flex-col gap-6">
-          <CopilotPanel quizDone={account.quizCompleted} />
+          <CopilotPanel quizDone={account.quizCompleted} canUse={isPaying} />
           {featured.length > 0 && (
             <TopOpportunitiesRail locale={l} companies={featured} />
           )}

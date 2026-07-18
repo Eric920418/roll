@@ -152,6 +152,13 @@ export type ChecklistGroupView = {
   items: { key: string; text: string }[];
 };
 
+/** 所有合法 checklist item key（`need-i`）；供 PATCH 白名單過濾，擋任意鍵灌入撐大 JSON。 */
+export const ALL_CHECKLIST_KEYS: ReadonlySet<string> = new Set(
+  ORDER.flatMap((need) =>
+    (TEMPLATES[need]?.items ?? []).map((_, i) => `${need}-${i + 1}`),
+  ),
+);
+
 /** 依用戶選的 needs 產生清單；沒選任何 need → 回 []（頁面顯示引導去填資料）。 */
 export function buildChecklist(
   needs: string[],

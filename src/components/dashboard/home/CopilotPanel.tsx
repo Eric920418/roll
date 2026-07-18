@@ -10,7 +10,14 @@ import type { Locale } from "@/i18n/routing";
 type Msg = { role: "user" | "assistant"; content: string };
 
 // 右欄「ROLL ON 助理」：真 AI 對話（串流）+ 快捷連結。取代靜態 CopilotShortcuts。
-export default function CopilotPanel({ quizDone }: { quizDone: boolean }) {
+// canUse=false（未達 Pro）→ 顯示 upsell 卡，不渲染輸入框（避免送出後才吃 403）。
+export default function CopilotPanel({
+  quizDone,
+  canUse,
+}: {
+  quizDone: boolean;
+  canUse: boolean;
+}) {
   const t = useTranslations("Dashboard.home.copilot");
   const locale = useLocale() as Locale;
 
@@ -94,63 +101,83 @@ export default function CopilotPanel({ quizDone }: { quizDone: boolean }) {
         ))}
       </div>
 
-      {/* 對話 */}
-      <div
-        ref={scrollRef}
-        className="mt-3 max-h-64 overflow-y-auto rounded-xl bg-white/70 p-3"
-      >
-        {messages.length === 0 ? (
-          <p className="py-4 text-center text-xs text-dark/50">{t("emptyHint")}</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {messages.map((m, i) =>
-              m.role === "user" ? (
-                <p
-                  key={i}
-                  className="ml-auto max-w-[85%] rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white"
-                >
-                  {m.content}
-                </p>
-              ) : (
-                <div
-                  key={i}
-                  className="prose-copilot max-w-[92%] rounded-xl rounded-bl-sm bg-dark/[0.04] px-3 py-2 text-sm text-dark/85"
-                >
-                  {m.content ? (
-                    <ReactMarkdown>{m.content}</ReactMarkdown>
+      {canUse ? (
+        <>
+          {/* 對話 */}
+          <div
+            ref={scrollRef}
+            className="mt-3 max-h-64 overflow-y-auto rounded-xl bg-white/70 p-3"
+          >
+            {messages.length === 0 ? (
+              <p className="py-4 text-center text-xs text-dark/50">{t("emptyHint")}</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {messages.map((m, i) =>
+                  m.role === "user" ? (
+                    <p
+                      key={i}
+                      className="ml-auto max-w-[85%] rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white"
+                    >
+                      {m.content}
+                    </p>
                   ) : (
-                    <span className="text-dark/40">{t("thinking")}</span>
-                  )}
-                </div>
-              ),
+                    <div
+                      key={i}
+                      className="prose-copilot max-w-[92%] rounded-xl rounded-bl-sm bg-dark/[0.04] px-3 py-2 text-sm text-dark/85"
+                    >
+                      {m.content ? (
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      ) : (
+                        <span className="text-dark/40">{t("thinking")}</span>
+                      )}
+                    </div>
+                  ),
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {error && (
-        <p className="mt-2 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-          {error}
-        </p>
+          {error && (
+            <p className="mt-2 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+              {error}
+            </p>
+          )}
+
+          {/* 輸入 */}
+          <form onSubmit={send} className="mt-2 flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t("placeholder")}
+              disabled={streaming}
+              className="min-w-0 flex-1 rounded-xl border border-dark/10 bg-white px-3 py-2 text-sm text-dark outline-none transition placeholder:text-dark/35 focus:border-primary focus:ring-1 focus:ring-primary/40 disabled:opacity-60 font-[family-name:var(--font-body)]"
+            />
+            <button
+              type="submit"
+              disabled={streaming || !input.trim()}
+              className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 font-[family-name:var(--font-heading)]"
+            >
+              {streaming ? t("thinking") : t("send")}
+            </button>
+          </form>
+        </>
+      ) : (
+        /* 未達 Pro：upsell 卡（不渲染輸入框，避免送出後才吃 403） */
+        <div className="mt-3 rounded-xl bg-white/70 p-4 text-center">
+          <p className="text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
+            {t("upsell.title")}
+          </p>
+          <p className="mt-1.5 text-xs leading-relaxed text-dark/60">
+            {t("upsell.body")}
+          </p>
+          <Link
+            href={pathForLocale("/dashboard/billing", locale)}
+            className="mt-3 inline-block rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
+          >
+            {t("upsell.cta")}
+          </Link>
+        </div>
       )}
-
-      {/* 輸入 */}
-      <form onSubmit={send} className="mt-2 flex gap-2">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={t("placeholder")}
-          disabled={streaming}
-          className="min-w-0 flex-1 rounded-xl border border-dark/10 bg-white px-3 py-2 text-sm text-dark outline-none transition placeholder:text-dark/35 focus:border-primary focus:ring-1 focus:ring-primary/40 disabled:opacity-60 font-[family-name:var(--font-body)]"
-        />
-        <button
-          type="submit"
-          disabled={streaming || !input.trim()}
-          className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 font-[family-name:var(--font-heading)]"
-        >
-          {streaming ? t("thinking") : t("send")}
-        </button>
-      </form>
     </div>
   );
 }

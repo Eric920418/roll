@@ -55,7 +55,10 @@ export async function reconcileFromPaypal(
       plan: storedPlan,
       subscriptionStatus: status,
       paypalSubscriptionId: paypalSub.id,
-      currentPeriodEnd: nextBilling,
+      // 與上方 Subscription 表一致：PayPal 對已取消/非活躍訂閱常不回 next_billing_time
+      // （nextBilling=null），此時「保留」既有到期日，切勿用 null 覆寫 —— 否則 gate 的
+      // CANCELLED 寬限期會被清空，導致取消後立即失去 Pro（本次修的阻斷 bug）。
+      currentPeriodEnd: nextBilling ?? local?.currentPeriodEnd ?? null,
       planUpdatedAt: new Date(),
     },
   });

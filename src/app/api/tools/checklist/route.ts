@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import { requirePlan } from "@/lib/billing/gate";
+import { ALL_CHECKLIST_KEYS } from "@/lib/tools/checklist";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 
 export async function PATCH(req: NextRequest) {
@@ -16,9 +17,10 @@ export async function PATCH(req: NextRequest) {
     const patch = body?.state;
     if (!patch || typeof patch !== "object") return fail("缺少 state", 400);
 
+    // 只收合法的 checklist key（白名單），擋任意鍵灌入撐大 checklistState JSON
     const clean: Record<string, boolean> = {};
     for (const [k, v] of Object.entries(patch)) {
-      if (typeof k === "string") clean[k] = Boolean(v);
+      if (ALL_CHECKLIST_KEYS.has(k)) clean[k] = Boolean(v);
     }
 
     const user = await prisma.user.findUnique({

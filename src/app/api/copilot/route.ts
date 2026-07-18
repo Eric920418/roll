@@ -4,14 +4,19 @@ import { z } from "zod";
 import { getUserSession } from "@/lib/auth/guard";
 import { requirePlan } from "@/lib/billing/gate";
 import { fail, unauthorized, failFromError } from "@/lib/api";
+import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
+import { buildSystemPrompt } from "@/lib/ai/system-prompt";
+import { runGroundedChat } from "@/lib/ai/run";
 
 // 會員 AI Copilot 串流端點。
-// - 守衛：session（401）+ Pro 方案（403，控成本）—— 皆在串流開始前，故能回真正的狀態碼。
+// - 守衛：session（401）+ Pro 方案（403，控成本）+ 每會員每日配額（429）—— 皆在串流開始前，故能回真正的狀態碼。
 // - 一旦開始串流即 committed 200，之後的錯誤只能以文字寫入串流（顯示於前端）。
-// - MVP 無 rate limit（成本風險）：以 Pro-gate + 輸入長度/則數上限收斂；正式上線建議加每會員配額。
+// - 受治理：system prompt / 找資料（工具查檔）/ 個人化皆由 src/lib/ai 統一處理，見該目錄。
 
 const MAX_MESSAGES = 30;
 const MAX_CHARS = 4000;
+// 成本護欄：每會員每日對話則數上限（DB-based rate limit）。集中常數，易調整。
+const COPILOT_DAILY_LIMIT = 50;
 
 const bodySchema = z.object({
   messages: z
@@ -26,33 +31,6 @@ const bodySchema = z.object({
   locale: z.string().optional(),
 });
 
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-8";
-
-function buildSystem(
-  locale: string | undefined,
-  profile: {
-    companyName: string | null;
-    industry: string | null;
-    needs: string[];
-  } | null,
-): string {
-  const lang =
-    locale === "zh-tw"
-      ? "Reply in Traditional Chinese (繁體中文)."
-      : "Reply in the same language the user writes in (English or Traditional Chinese).";
-  const ctx = profile
-    ? `Member context — company: ${profile.companyName || "n/a"}; industry: ${profile.industry || "n/a"}; needs: ${profile.needs.join(", ") || "n/a"}.`
-    : "";
-  return [
-    "You are ROLL ON's AI assistant. ROLL ON is a Taipei-based consultancy that helps foreign companies enter the Taiwan and Asia market — market entry, company setup, legal/compliance, fundraising, partnerships, and investor access.",
-    "Give practical, concrete, concise answers focused on the member's Taiwan / Asia expansion. If you are unsure or something needs a specialist, say so and suggest contacting the ROLL ON team.",
-    lang,
-    ctx,
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
 export async function POST(req: NextRequest) {
   try {
     const session = await getUserSession();
@@ -60,6 +38,20 @@ export async function POST(req: NextRequest) {
 
     const account = await requirePlan("pro");
     if (!account) return fail("此功能需 Pro 以上方案", 403);
+
+    // 每會員每日配額（成本護欄）—— 串流開始前，可回真正的 429。
+    const rl = await checkRateLimit(
+      `copilot:${session.uid}`,
+      COPILOT_DAILY_LIMIT,
+      DAY_MS,
+    );
+    if (!rl.ok) {
+      const mins = Math.max(1, Math.ceil(rl.retryAfterMs / 60000));
+      return fail(
+        `已達本日 AI 對話上限（每日 ${COPILOT_DAILY_LIMIT} 則）。約 ${mins} 分鐘後重試。`,
+        429,
+      );
+    }
 
     const parsed = bodySchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -79,26 +71,22 @@ export async function POST(req: NextRequest) {
       return failFromError(err);
     }
 
-    const system = buildSystem(parsed.data.locale, account.profile);
+    const system = buildSystemPrompt({
+      mode: "copilot",
+      locale: parsed.data.locale,
+      memberProfile: account.profile,
+    });
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const llm = client.messages.stream({
-            model: MODEL,
-            max_tokens: 1024,
+          await runGroundedChat({
+            client,
             system,
             messages: parsed.data.messages,
+            onText: (chunk) => controller.enqueue(encoder.encode(chunk)),
           });
-          for await (const event of llm) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              controller.enqueue(encoder.encode(event.delta.text));
-            }
-          }
         } catch (err) {
           // 串流已 committed 200 → 錯誤以文字寫入（前端顯示全文，符合專案規範）
           const msg = err instanceof Error ? err.message : String(err);

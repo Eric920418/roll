@@ -424,7 +424,8 @@
       "invalidCredentials": "電子信箱或密碼錯誤。",
       "missingFields": "請填寫所有必填欄位。",
       "passwordTooShort": "密碼至少需 8 個字元。",
-      "invalidEmail": "請輸入有效的電子信箱。"
+      "invalidEmail": "請輸入有效的電子信箱。",
+      "tooManyAttempts": "嘗試次數過多，請幾分鐘後再試。"
     }
   },
   "Quiz": {
@@ -627,7 +628,12 @@
         "error": "發生錯誤，請再試一次。",
         "locked": "AI Copilot 為 Pro 方案功能，升級即可對話。",
         "emptyHint": "問問台灣進入市場、競品分析，或你的下一步。",
-        "clear": "清除"
+        "clear": "清除",
+        "upsell": {
+          "title": "AI 助理為 Pro 方案功能",
+          "body": "升級 Pro 即可與 ROLL ON 助理對話，討論你的台灣與亞洲拓展。",
+          "cta": "升級 Pro"
+        }
       }
     },
     "profile": {
@@ -767,7 +773,8 @@
       "unknownPlan": "未知的方案。",
       "notSelfServe": "此方案無法線上自助訂閱，請聯絡業務。",
       "paypalNotConfigured": "金流尚未設定完成，請聯絡客服。",
-      "noSubscription": "沒有可取消的生效訂閱。"
+      "noSubscription": "沒有可取消的生效訂閱。",
+      "alreadySubscribed": "您已有生效中的訂閱，請先取消後再更換方案。"
     }
   }
 }

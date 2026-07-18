@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
-import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import {
   createUserSession,
   USER_SESSION_COOKIE,
   SESSION_MAX_AGE,
 } from "@/lib/auth/session";
+import { hashPassword } from "@/lib/auth/password";
+import { checkRateLimit, clientIp, MINUTE_MS } from "@/lib/rate-limit";
 import { ok, failFromError } from "@/lib/api";
 
 // 帶穩定錯誤碼的失敗回應（前端依 code 顯示對應語系訊息，fallback 顯示 error 原文）
@@ -48,6 +49,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 濫註冊護欄：同 IP 15 分鐘內 10 次上限
+    const rl = await checkRateLimit(`signup:${clientIp(req)}`, 10, 15 * MINUTE_MS);
+    if (!rl.ok) {
+      return bad(
+        "tooManyAttempts",
+        "Too many attempts. Please try again later.",
+        429,
+      );
+    }
+
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return bad(
@@ -57,7 +68,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
       data: {
         email,

@@ -371,3 +371,19 @@ model MeetingNote {
   @@index([userId])
   @@index([createdAt])
 }
+
+// ============================================
+// Rate limiting（DB-based 固定視窗；本專案無 KV/Redis，改用 Neon 做跨 serverless 實例的持久計數）
+// 用途：Copilot 每會員每日配額（成本護欄）、登入/註冊/改密碼的暴力嘗試上限。
+// key 範例："copilot:<userId>"、"login:<ip>:<email>"。過窗即重置（見 src/lib/rate-limit.ts）。
+// ============================================
+
+/// 固定視窗計數器（每個 key 一列）
+model RateCounter {
+  key         String   @id
+  windowStart DateTime // 當前視窗起點；now - windowStart >= 視窗長度時重置
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@index([windowStart]) // 供日後清理過期列
+}

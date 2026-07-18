@@ -27,7 +27,9 @@ export async function verifySession(
 ): Promise<AdminSession | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, getSecret(), {
+      algorithms: ["HS256"],
+    });
     // 僅接受 admin token，避免 user token 被當成後台 session
     if (payload.role !== "admin") return null;
     return payload as AdminSession;
@@ -66,7 +68,9 @@ export async function verifyUserSession(
 ): Promise<UserSession | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, getSecret(), {
+      algorithms: ["HS256"],
+    });
     if (payload.role !== "user") return null;
     return payload as UserSession;
   } catch {

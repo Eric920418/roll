@@ -6,6 +6,7 @@ export const AUTH_ERROR_CODES = [
   "missingFields",
   "passwordTooShort",
   "invalidEmail",
+  "tooManyAttempts",
 ] as const;
 
 /** 有已知 code → 回翻譯訊息；否則回 fallback（通常是後端原文 error，符合「錯誤全顯前端」）。 */
