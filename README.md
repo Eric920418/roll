@@ -78,7 +78,7 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"  # 組 PayPal return/cancel URL；�
 
 # 會員 AI Copilot（Pro 方案）— 缺少時 /api/copilot 開始串流前回錯誤全文（不崩潰）
 ANTHROPIC_API_KEY="sk-ant-..."   # Claude API 金鑰（platform.claude.com）
-ANTHROPIC_MODEL="claude-opus-4-8" # 可選，預設 claude-opus-4-8；成本敏感可改 claude-haiku-4-5
+ANTHROPIC_MODEL="claude-sonnet-5" # 可選，預設 claude-sonnet-5；成本敏感可改 claude-haiku-4-5
 ```
 
 > `.env*` 已 `.gitignore`。產生密碼 hash：
@@ -328,11 +328,11 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | `/api/account/delete` | POST 刪帳號（best-effort 取消 PayPal 訂閱 → `prisma.user.delete` cascade → 清 `user_session`）。 |
 | `/api/tools/checklist` | PATCH 更新落地清單勾選（`requirePlan("pro")` 守衛，merge 進 `User.checklistState`）。 |
 | `/api/{crm\|pipeline\|notes}` + `/[id]` | **會員 CRUD（2026-07）**：POST 建立 / PATCH 更新 / DELETE 刪除。自守衛 `getUserSession`（401）+ `requirePlan("pro")`（403），每筆以 `session.uid` scope（`updateMany`/`deleteMany` count 檢查，或 findFirst 驗擁有權），zod 驗證於 `src/lib/dashboard/schemas.ts`。**不重用** admin generic CRUD（那是 admin-only 且無 userId 過濾）。 |
-| `/api/copilot` | **AI Copilot 串流（2026-07）**：POST，`getUserSession`+`requirePlan("pro")` 守衛後以 `@anthropic-ai/sdk` `messages.stream` 逐字回傳（`ReadableStream`, `text/plain`）。model 取 `ANTHROPIC_MODEL`（預設 `claude-opus-4-8`），system prompt 帶會員 `profile` 公司資訊、依 locale 回覆。守衛失敗回真狀態碼；串流開始後的錯誤以文字寫入（前端顯示全文）。**MVP 無 rate limit（成本風險）** → 靠 Pro-gate + 輸入長度/則數上限收斂，正式上線建議加每會員配額。需 `ANTHROPIC_API_KEY`（見環境變數）。 |
-| `/api/billing/subscribe\|confirm\|cancel` | 建立 / 確認 / 取消訂閱（自守衛）。 |
+| `/api/copilot` | **AI Copilot 串流（2026-07）**：POST，`getUserSession`+`requirePlan("pro")`+**每會員每日 50 則 rate limit** 守衛後以 `@anthropic-ai/sdk` `messages.stream` 逐字回傳（`ReadableStream`, `text/plain`）。model 取 `ANTHROPIC_MODEL`（預設 `claude-sonnet-5`），system prompt 帶會員 `profile` 公司資訊、依 locale 回覆。守衛失敗回真狀態碼（含超限 429）；串流開始後的錯誤以文字寫入（前端顯示全文）。成本護欄＝Pro-gate + 輸入長度/則數上限 + rate limit（DB-based，見 `src/lib/rate-limit.ts` / `RateCounter` 表）。需 `ANTHROPIC_API_KEY`（見環境變數）。 |
+| `/api/billing/subscribe\|confirm\|cancel` | 建立 / 確認 / 取消訂閱（自守衛）。subscribe 會擋「已有 ACTIVE/APPROVED 訂閱者重複訂閱」（回 409 `alreadySubscribed`），避免重複扣款。 |
 | `/api/billing/webhook` | PayPal webhook：不查 session、改以簽章驗證；冪等 + 對帳。 |
 
-UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn` / `DashboardCompanyList` / `PlanPaywall` / `CrmManager` / `PipelineBoard` / `NotesManager`），總覽 widget 在 `src/components/dashboard/home/`（`PriorityBanner` / `MetricsRow` / `AlertsRow` / `FounderMatchCard` / `TutorialVideoCard` / `TopOpportunitiesRail` / `UpcomingEventsRail`，皆 server component；`CopilotPanel` 為 client 串流對話）。CRUD 驗證 schema 在 `src/lib/dashboard/schemas.ts`（zod）。`DashboardSidebar` 的 `NAV` 陣列 + `NavKey` 集中管理側欄（新增頁面在此擴充；`soon:true` 顯示「即將」小標，目前無啟用者）。shell 內容欄寬 `max-w-6xl` 供雙欄總覽。輕量公司清單 getter（`getCompanyList` / `countCompanies` / `getCompanyCards`）在 `src/lib/company/content.ts`。i18n 在 `messages/*.json` 的 `Dashboard`（含 `home`/`profile`/`companies`/`comingSoon` 及 2026-07 新增 `gate`/`actions`/`crm`/`pipeline`/`notes` 與 `home.copilot.*` 對話鍵）/ `Billing` namespace，en 與 zh-tw 鍵完全平行。新依賴 `@anthropic-ai/sdk`；新資料表 `Contact`/`Deal`/`MeetingNote` 需跑 `pnpm db:push`（加法式）。
+UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn` / `DashboardCompanyList` / `PlanPaywall` / `CrmManager` / `PipelineBoard` / `NotesManager`），總覽 widget 在 `src/components/dashboard/home/`（`PriorityBanner` / `MetricsRow` / `AlertsRow` / `FounderMatchCard` / `TutorialVideoCard` / `TopOpportunitiesRail` / `UpcomingEventsRail`，皆 server component；`CopilotPanel` 為 client 串流對話）。CRUD 驗證 schema 在 `src/lib/dashboard/schemas.ts`（zod）。`DashboardSidebar` 的 `NAV` 陣列 + `NavKey` 集中管理側欄（新增頁面在此擴充；`soon:true` 顯示「即將」小標，目前無啟用者）。shell 內容欄寬 `max-w-6xl` 供雙欄總覽。輕量公司清單 getter（`getCompanyList` / `countCompanies` / `getCompanyCards`）在 `src/lib/company/content.ts`。i18n 在 `messages/*.json` 的 `Dashboard`（含 `home`/`profile`/`companies`/`comingSoon` 及 2026-07 新增 `gate`/`actions`/`crm`/`pipeline`/`notes` 與 `home.copilot.*` 對話鍵）/ `Billing` namespace，en 與 zh-tw 鍵完全平行。新依賴 `@anthropic-ai/sdk`；新資料表 `Contact`/`Deal`/`MeetingNote`/`RateCounter`（rate limit 計數）需跑 `pnpm db:push`（加法式）。安全強化（2026-07）：login/signup/改密碼皆套 DB-based rate limit（`src/lib/rate-limit.ts`，無 KV 故用 Neon 原子 UPSERT）+ login 等時比對消除帳號枚舉時序側信道；bcrypt cost 提到 12（`src/lib/auth/password.ts`）；JWT 驗證鎖 `HS256`；`api.ts` 對非預期 500 遮蔽內部細節（業務 4xx 仍全顯，符合「錯誤全顯前端」）；金流取消寬限期修正（`reconcile` 不再用 null 覆寫 `User.currentPeriodEnd`）。
 
 **入口接通**：登入 / onboarding / 測驗完成後由 `destinationFor`（`src/lib/auth/onboarding.ts`，`completed → /dashboard`）導向後台；全站 Navbar 有「會員中心」入口（靜態連結 → `/dashboard`，未登入由 proxy 導 `/login`）。
 
@@ -452,6 +452,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2201 | `yulon` | Yulon Motor 裕隆汽車 | Automotive（汽車先驅；自有品牌夢碎→2025 賣 Luxgen 給鴻海；0.47× 淨值深度價值） |
 | 1565 | `st-shine` | St. Shine Optical 精華光學（TPEx 上櫃） | Contact Lenses（全球最大隱形眼鏡 ODM；昔日暴利→結構性褪色；無負債高息／跌破淨值） |
 | 1707 | `grape-king` | Grape King Bio 葡萄王生技 | Health Supplements（靈芝樟芝 >50% 市佔；70% 毛利／15% ROE／6.6% 高息；近期溫和退溫） |
+| 2049 | `hiwin` | Hiwin Technologies 上銀科技 | Motion Control & Automation（滾珠螺桿/線性滑軌世界 #2-#3；深度循環復甦；人形機器人題材／估值貴） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
