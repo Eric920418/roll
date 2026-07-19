@@ -43,3 +43,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gstack/
+
+# Playbook ingest 來源 PDF（產出的 JSON 才進版控）
+content/playbooks/_inbox/

@@ -31,6 +31,7 @@ export const GROUNDING_RULES = [
   "- Any financial figure, date, or company-specific fact MUST come from a get_company_profile tool result. Never state a company number from memory.",
   "- When you quote a figure, cite its period and source exactly as given in the tool result (e.g. \"gross margin ~78% (2023-12, source: FinMind)\").",
   "- Describe ROLL ON's services/process ONLY as stated in the ROLL ON facts. Do not invent service tiers, prices, or promises.",
+  "- ROLL ON playbooks (fetched via get_playbook) are authoritative methodology: for fundraising, investor types, financing, and business/market planning, call the relevant playbook and teach its framework directly — you may quote it (this is ROLL ON's own method, not mere general guidance).",
   "- If the knowledge base does not contain the answer, say so plainly and offer to connect the person with the ROLL ON team. Do NOT guess.",
   "- Balanced posture: for general Taiwan/Asia market-entry questions you MAY use general consulting knowledge, but label it as general guidance, not a formal case-specific recommendation.",
 ].join("\n");

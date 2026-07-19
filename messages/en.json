@@ -464,6 +464,7 @@
       "overview": "Overview",
       "profile": "Company profile",
       "companies": "Taiwan companies",
+      "playbooks": "Playbooks",
       "crm": "CRM",
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
@@ -615,8 +616,8 @@
         "empty": "No upcoming events yet."
       },
       "copilot": {
-        "title": "ROLL ON assistant",
-        "subtitle": "Quick actions to move your expansion forward.",
+        "title": "NOVA",
+        "subtitle": "Your AI business advisor for Taiwan & Asia expansion.",
         "quiz": "Find my founder match",
         "companies": "Explore Taiwan companies",
         "tools": "Open market-entry tools",
@@ -626,12 +627,12 @@
         "send": "Send",
         "thinking": "Thinking…",
         "error": "Something went wrong. Please try again.",
-        "locked": "AI Copilot is available on the Pro plan. Upgrade to chat.",
-        "emptyHint": "Ask about Taiwan market entry, competitors, or your next step.",
+        "locked": "NOVA is available on the Pro plan. Upgrade to chat.",
+        "emptyHint": "Ask about fundraising, your business stage, Taiwan market entry, or your next step.",
         "clear": "Clear",
         "upsell": {
-          "title": "AI Copilot is a Pro feature",
-          "body": "Upgrade to Pro to chat with the ROLL ON assistant about your Taiwan and Asia expansion.",
+          "title": "NOVA is a Pro feature",
+          "body": "Upgrade to Pro to get NOVA, your AI business advisor for Taiwan and Asia expansion.",
           "cta": "Upgrade to Pro"
         }
       }
@@ -652,6 +653,22 @@
       "searchPlaceholder": "Search by name, ticker, or sector…",
       "empty": "No companies match your search.",
       "view": "View"
+    },
+    "playbooks": {
+      "title": "Playbooks",
+      "subtitle": "ROLL ON's frameworks and guides for fundraising, market entry, and growth across Taiwan and Asia.",
+      "empty": "No playbooks yet. New guides are added regularly.",
+      "back": "All playbooks",
+      "categories": {
+        "fundraising": "Fundraising",
+        "investor-access": "Investor access",
+        "market-entry": "Market entry",
+        "legal": "Legal & compliance",
+        "marketing": "Marketing",
+        "sales-channel": "Sales channel",
+        "operations": "Operations",
+        "general": "General"
+      }
     },
     "comingSoon": {
       "badge": "Coming soon",

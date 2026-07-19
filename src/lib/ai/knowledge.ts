@@ -1,6 +1,7 @@
 // AI 知識庫接層：把既有的公司情報讀取層（src/lib/company/content.ts）
 // 轉成適合塞進 system prompt / 工具回傳的文字。不重造資料層，只做「渲染」。
 import { getCompanyList, getCompany, type Metric } from "@/lib/company/content";
+import { getPlaybookList, getPlaybook } from "@/lib/playbook/content";
 
 /** 每家公司在提示裡的一句話截斷長度，控制索引總長度。 */
 const SUMMARY_MAX = 140;
@@ -100,5 +101,32 @@ export function renderCompanyForAI(slug: string): string | null {
     "",
     "## Analysis",
     sections,
+  ].join("\n");
+}
+
+/**
+ * 常駐 playbook 索引：每份一行（slug / 標題 / 一句話摘要）。塞進 system prompt，
+ * 讓模型知道有哪些方法論手冊可查（供 get_playbook 取全文）。英文（模型依語言翻譯輸出）。
+ */
+export function buildPlaybookIndex(): string {
+  const items = getPlaybookList();
+  if (items.length === 0) return "(No playbooks are currently available.)";
+  return items
+    .map((p) => `- [slug: ${p.slug}] ${p.title.en} — ${truncate(p.summary.en, SUMMARY_MAX)}`)
+    .join("\n");
+}
+
+/**
+ * 單份 playbook 的完整渲染，供 get_playbook 工具回傳。
+ * 英文全文（模型依使用者語言翻譯輸出）；為 ROLL ON 權威方法論，可直接引用/教學。找不到回 null。
+ */
+export function renderPlaybookForAI(slug: string): string | null {
+  const p = getPlaybook(slug);
+  if (!p) return null;
+  return [
+    `# ${p.title.en}`,
+    "(ROLL ON playbook — authoritative methodology. You may teach and quote this directly.)",
+    "",
+    p.body.en.trim(),
   ].join("\n");
 }

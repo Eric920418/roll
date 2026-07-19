@@ -2,9 +2,11 @@
 // 目前只有一個工具：依 slug 取單家公司完整情報（重用 knowledge.renderCompanyForAI）。
 // 「找資料」的機制核心 —— 模型要引用任何公司數字/分析，都必須先呼叫這個工具拿到真實資料。
 import type Anthropic from "@anthropic-ai/sdk";
-import { renderCompanyForAI } from "./knowledge";
+import { renderCompanyForAI, renderPlaybookForAI } from "./knowledge";
 import { getCompanyList } from "@/lib/company/content";
+import { getPlaybookList } from "@/lib/playbook/content";
 
+// 「找資料」的兩個工具：公司情報（財務/分析）與 playbook（募資等方法論框架）。
 export const COMPANY_TOOLS: Anthropic.Tool[] = [
   {
     name: "get_company_profile",
@@ -21,6 +23,24 @@ export const COMPANY_TOOLS: Anthropic.Tool[] = [
           type: "string",
           description:
             "The company slug exactly as shown in the company index, e.g. 'grape-king'.",
+        },
+      },
+      required: ["slug"],
+    },
+  },
+  {
+    name: "get_playbook",
+    description:
+      "Fetch the FULL text of ONE ROLL ON playbook — a framework / methodology (e.g. fundraising, how much to raise, investor types, financing structures, market & business planning), by its slug. " +
+      "The valid slugs are listed in the playbook index in the system prompt. " +
+      "Call this whenever the user asks about fundraising, investment readiness, investor types, financing, or business/market planning, then teach the framework grounded in the returned content.",
+    input_schema: {
+      type: "object",
+      properties: {
+        slug: {
+          type: "string",
+          description:
+            "The playbook slug exactly as shown in the playbook index, e.g. 'investment-script-nova-ai'.",
         },
       },
       required: ["slug"],
@@ -45,6 +65,19 @@ export function runTool(name: string, input: unknown): string {
       .map((c) => c.slug)
       .join(", ");
     return `No company found for slug "${slug}". Valid slugs are: ${valid}`;
+  }
+  if (name === "get_playbook") {
+    const slug =
+      input && typeof input === "object" && "slug" in input
+        ? String((input as { slug: unknown }).slug ?? "")
+        : "";
+    if (!slug) return "Error: missing required argument 'slug'.";
+    const rendered = renderPlaybookForAI(slug);
+    if (rendered) return rendered;
+    const valid = getPlaybookList()
+      .map((p) => p.slug)
+      .join(", ");
+    return `No playbook found for slug "${slug}". Valid slugs are: ${valid || "(none)"}`;
   }
   return `Error: unknown tool "${name}".`;
 }

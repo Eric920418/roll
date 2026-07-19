@@ -7,6 +7,7 @@ import { fail, unauthorized, failFromError } from "@/lib/api";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { runGroundedChat } from "@/lib/ai/run";
+import { getLatestQuizResult } from "@/lib/quiz/result";
 
 // 會員 AI Copilot 串流端點。
 // - 守衛：session（401）+ Pro 方案（403，控成本）+ 每會員每日配額（429）—— 皆在串流開始前，故能回真正的狀態碼。
@@ -71,10 +72,13 @@ export async function POST(req: NextRequest) {
       return failFromError(err);
     }
 
+    // NOVA 診斷先用已知資料：會員 profile + 最新一次 quiz 決策風格。
+    const quiz = await getLatestQuizResult(session.uid);
     const system = buildSystemPrompt({
       mode: "copilot",
       locale: parsed.data.locale,
       memberProfile: account.profile,
+      quiz,
     });
     const encoder = new TextEncoder();
 
@@ -86,6 +90,8 @@ export async function POST(req: NextRequest) {
             system,
             messages: parsed.data.messages,
             onText: (chunk) => controller.enqueue(encoder.encode(chunk)),
+            // NOVA 的六段顧問結構較長，放寬輸出上限。
+            maxTokens: 4000,
           });
         } catch (err) {
           // 串流已 committed 200 → 錯誤以文字寫入（前端顯示全文，符合專案規範）

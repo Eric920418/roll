@@ -464,6 +464,7 @@
       "overview": "總覽",
       "profile": "公司檔案",
       "companies": "台灣企業",
+      "playbooks": "知識手冊",
       "crm": "CRM 客戶",
       "pipeline": "銷售管道",
       "notes": "會議記錄",
@@ -615,8 +616,8 @@
         "empty": "目前尚無近期活動。"
       },
       "copilot": {
-        "title": "ROLL ON 助理",
-        "subtitle": "快速行動，推進你的拓展。",
+        "title": "NOVA",
+        "subtitle": "你的 AI 商業顧問，助你拓展台灣與亞洲。",
         "quiz": "找我的創辦人配對",
         "companies": "探索台灣企業",
         "tools": "開啟進入市場工具",
@@ -626,12 +627,12 @@
         "send": "送出",
         "thinking": "思考中…",
         "error": "發生錯誤，請再試一次。",
-        "locked": "AI Copilot 為 Pro 方案功能，升級即可對話。",
-        "emptyHint": "問問台灣進入市場、競品分析，或你的下一步。",
+        "locked": "NOVA 為 Pro 方案功能，升級即可對話。",
+        "emptyHint": "問問募資、你的商業階段、台灣市場進入，或你的下一步。",
         "clear": "清除",
         "upsell": {
-          "title": "AI 助理為 Pro 方案功能",
-          "body": "升級 Pro 即可與 ROLL ON 助理對話，討論你的台灣與亞洲拓展。",
+          "title": "NOVA 為 Pro 方案功能",
+          "body": "升級 Pro 即可使用 NOVA — 你的 AI 商業顧問，討論台灣與亞洲拓展。",
           "cta": "升級 Pro"
         }
       }
@@ -652,6 +653,22 @@
       "searchPlaceholder": "以名稱、代號或產業搜尋…",
       "empty": "沒有符合搜尋的企業。",
       "view": "查看"
+    },
+    "playbooks": {
+      "title": "知識手冊",
+      "subtitle": "ROLL ON 針對募資、市場進入與亞洲成長的方法論與指南。",
+      "empty": "尚無手冊，新指南會陸續新增。",
+      "back": "所有手冊",
+      "categories": {
+        "fundraising": "募資",
+        "investor-access": "投資人對接",
+        "market-entry": "市場進入",
+        "legal": "法務與合規",
+        "marketing": "行銷",
+        "sales-channel": "銷售通路",
+        "operations": "營運",
+        "general": "綜合"
+      }
     },
     "comingSoon": {
       "badge": "即將推出",
