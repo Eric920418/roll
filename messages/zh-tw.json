@@ -196,14 +196,16 @@
     }
   },
   "Product": {
-    "metaTitle": "ROLL ON. 產品 — 你的台灣與亞洲落地 Dashboard",
-    "metaDescription": "把繁瑣的市場進入流程，化為清晰的行動步驟。ROLL ON. 自助式平台提供專屬 Dashboard、合規 Checklist 與專業服務媒合，讓外商更快落地台灣與亞洲。",
+    "metaTitle": "NOVA｜你的台灣與亞洲市場進入平台",
+    "metaDescription": "NOVA by ROLL ON 把繁瑣的市場進入流程化為清晰行動，提供專屬 Dashboard、合規 Checklist 與專業服務媒合，協助企業更快落地台灣與亞洲。",
     "nav": {
+      "byline": "by ROLL ON",
       "login": "登入",
       "signup": "註冊"
     },
     "hero": {
-      "brand": "ROLL ON.",
+      "brand": "NOVA",
+      "byline": "by ROLL ON",
       "tagline": "正在考慮進入台灣市場嗎？",
       "ctaPrimary": "立即開始",
       "ctaNote": "90 天，帶著信心拓展"
@@ -281,15 +283,17 @@
       }
     },
     "cta": {
-      "brand": "ROLL ON.",
+      "brand": "NOVA",
+      "byline": "by ROLL ON",
       "line1": "準備好開始了嗎？",
       "line2": "免費註冊，3 分鐘打造你的專屬 Dashboard。",
       "button": "免費開始使用"
     }
   },
   "Auth": {
-    "brand": "ROLL ON.",
-    "tagline": "協助外商進入台灣、拓展亞洲市場的夥伴。",
+    "brand": "NOVA",
+    "byline": "by ROLL ON",
+    "tagline": "企業邁向下一個市場突破的智慧成長平台。",
     "intro": "完成你的個人檔案，透過台灣頂尖 CEO 的決策模式理解你的公司，踏出進入亞洲市場的第一步。",
     "steps": {
       "stepLabel": "第 {current} 步，共 {total} 步",
@@ -327,7 +331,7 @@
     },
     "login": {
       "metaTitle": "登入",
-      "metaDescription": "登入你的 ROLL ON. Dashboard。",
+      "metaDescription": "登入你的 NOVA Dashboard。",
       "title": "歡迎回來",
       "subtitle": "登入以繼續打造你的 Dashboard。",
       "email": "電子信箱",
@@ -429,14 +433,16 @@
     }
   },
   "Quiz": {
-    "metaTitle": "決策風格測驗",
+    "metaTitle": "NOVA 決策風格測驗",
     "metaDescription": "3 題測驗，把你的決策風格配對到一位創辦人。",
+    "byline": "by ROLL ON",
     "next": "下一題",
     "back": "上一題",
     "seeResult": "看我的結果",
     "submitting": "分析中…",
     "result": {
-      "metaTitle": "你的創辦人配對",
+      "metaTitle": "NOVA｜你的創辦人配對",
+      "byline": "by ROLL ON",
       "eyebrow": "你的創辦人配對",
       "decisionAlignment": "決策風格對齊",
       "planningDepth": "規劃深度",
@@ -447,12 +453,12 @@
       "founded": "成立",
       "marketCap": "市值",
       "fullAnalysis": "看完整公司分析",
-      "intro": "ROLL 以 AI 分析你的創辦人決策風格，並依你的進度給出個人化的下一步行動。",
+      "intro": "NOVA 以 AI 分析你的創辦人決策風格，並依你的進度給出個人化的下一步行動。",
       "finish": "完成"
     }
   },
   "Dashboard": {
-    "brand": "會員專區",
+    "brand": "by ROLL ON",
     "logout": "登出",
     "plans": {
       "free": "免費",
@@ -475,7 +481,7 @@
     },
     "overview": {
       "title": "歡迎回來",
-      "subtitle": "你的 ROLL ON. 會員後台。",
+      "subtitle": "你的 NOVA 會員後台。",
       "planCard": "目前方案",
       "statusCard": "訂閱狀態",
       "onboardingCard": "引導設定",

@@ -2,19 +2,13 @@
 
 import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
+import NovaLogo from "@/components/brand/NovaLogo";
 
 export default function ProductCTA() {
   const t = useTranslations("Product.cta");
 
   return (
-    <section className="relative bg-primary py-20 md:py-28 px-5 md:px-8 overflow-hidden">
-      <div
-        aria-hidden="true"
-        className="absolute -left-[3%] -bottom-[40%] text-[20rem] md:text-[34rem] font-black text-white/[0.06] leading-none font-[family-name:var(--font-heading)] pointer-events-none select-none"
-      >
-        .
-      </div>
-
+    <section className="relative overflow-hidden bg-primary px-5 py-20 md:px-8 md:py-28">
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -22,9 +16,15 @@ export default function ProductCTA() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 max-w-5xl mx-auto flex flex-col items-start gap-6 md:gap-8"
       >
-        <h2 className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-white leading-[0.95] tracking-[-0.04em] font-[family-name:var(--font-heading)]">
-          {t("brand")}
-        </h2>
+        <NovaLogo
+          variant="white"
+          alt={t("brand")}
+          sizes="(min-width: 768px) 520px, 88vw"
+          className="h-auto w-full max-w-[520px]"
+        />
+        <p className="-mt-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/45">
+          {t("byline")}
+        </p>
 
         <div className="flex flex-col gap-1.5">
           <p className="text-xl md:text-2xl font-bold text-white tracking-[-0.02em] font-[family-name:var(--font-heading)]">

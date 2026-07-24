@@ -170,14 +170,25 @@ public/
 
 ## 產品著陸頁 `/product`（由 `src/app/[locale]/product/page.tsx` 組合）
 
-新產品（自助式 SaaS：Free / Pro / Business 訂閱 + 專屬 Dashboard）的獨立行銷著陸頁。視覺沿用全站設計系統（`hero-new` 字體、`#7B1A2C` 暗紅、Motion `[0.22,1,0.36,1]` 進場），結構參考設計草稿 `介紹頁.png`。
+**NOVA by ROLL ON**（自助式 SaaS：Free / Pro / Business 訂閱 + 專屬 Dashboard）的獨立行銷著陸頁。NOVA 採獨立黑白銀品牌系統：Black `#000000`、White `#FAFAFA`、Silver `#BCBDC6`，Motion 維持 `[0.22,1,0.36,1]` 進場；色票以 `.nova-theme[data-brand="nova"]` 局部覆寫，不影響 ROLL ON 官網的暗紅／暖金 token。
 
-1. **ProductNav** — 著陸頁專屬頂部列（非全站漢堡）：左 Logo → 首頁，右 `Login` / `Sign Up` + 語言切換；捲動加玻璃背景
-2. **ProductHero** — 大標題 + 副標（"Thinking about expanding in Taiwan?"）+ `Get Started`（→ `#pricing`）+ 右側 3 張問題式卡片（何時募資 / 是否在地聘僱 / 在地 CEO 如何決策）— 對齊外商決策者真正會問的問題
+1. **ProductNav** — 著陸頁專屬頂部列（非全站漢堡）：NOVA 平面黑 logo → `/product`，`by ROLL ON` → 企業官網，右側 `Login` / `Sign Up` + 語言切換；捲動加玻璃背景
+2. **ProductHero** — 使用設計方提供的金屬 NOVA logo + 副標（"Thinking about expanding in Taiwan?"）+ `Get Started`（→ `#pricing`）+ 右側 3 張問題式卡片（何時募資 / 是否在地聘僱 / 在地 CEO 如何決策）
 3. **HowItWorks** — 「如何開始」三步驟（01 註冊 → 02 客製化 Dashboard → 03 媒合夥伴）
 4. **Pricing** — 「選擇方案」四卡（Free NT$0 / Pro NT$590 / Business NT$890〔推薦，中間突出〕/ Enterprise 洽詢）。CTA：付費方案 → 註冊（`/signup`，開始漏斗）；Enterprise → `#contact`
-5. **ProductCTA** — 底部暗紅大 CTA（`免費開始使用` → `#contact`）
-6. **Footer** — 沿用全站 Footer（含 `id="contact"` 聯絡表單，即暫行候補名單，留言進後台收件匣）
+5. **ProductCTA** — 底部黑色 NOVA CTA（`免費開始使用` → `#contact`）
+6. **Footer** — 共用 Footer 的 `brand="nova"` 變體：NOVA 白 logo + `by ROLL ON`，保留既有聯絡表單與 ROLL ON 聯絡／版權資訊
+
+### NOVA 品牌邊界與資產
+
+- NOVA 路由範圍：`/[locale]/product`、`login`、`signup`、`onboarding/*`、`quiz/*`、`dashboard/**`
+- ROLL ON 保持原樣：首頁、About、ESG、服務、案例、Insights、公司情報、全域 Organization schema、PayPal 商戶識別、CMS `/admin`
+- Logo 資產：`public/nova/logo-black.png`、`logo-white.png`、`logo-metal.png`；皆由正式設計檔裁切／壓縮，功能介面用平面版，只有產品 Hero 使用金屬版
+- 共用元件以品牌參數或最近的 `data-brand` 判斷樣式：Footer、LanguageSwitch、RedDotCursor 不會把 NOVA 黑白銀色系回灌到 ROLL ON
+- CMS 翻譯仍可編輯 SaaS 文案，但 i18n 合併後會在 `Product`、`Auth`、`Quiz`、`Dashboard` namespace 將獨立品牌字 `Nova` 正規化為正式全大寫 `NOVA`；不改寫資料庫覆寫值
+- 語意色不品牌化：錯誤／刪除維持紅、成功維持綠、Google 登入圖示維持官方色
+- NOVA 社群預覽使用 `/[locale]/og?brand=nova`；未帶 `brand` 時仍輸出 ROLL ON 暗紅版本
+- 視覺 QA（2026-07-24）：production 以 390px／768px／1440px 驗證英文與繁中產品、登入、註冊、NOVA Footer 與 NOVA／ROLL ON 兩種 1200×630 OG；確認黑 `#000000`／霧白 `#FAFAFA`／銀灰 `#BCBDC6` token、三套 logo 深淺背景使用、無 `/horizontal.png`、無橫向溢位。未登入狀態的 onboarding、quiz、quiz result、Dashboard 中英文路由皆正確導向 NOVA login，完整登入錯誤訊息仍以前端 `whitespace-pre-wrap` 顯示。因未建立或污染正式會員資料，本輪未進入需登入的 Dashboard／Quiz 內容狀態；其品牌範圍由共用 `.nova-theme` shell、production build 與硬編碼色票掃描驗證。ROLL ON 首頁、About、CMS login 維持暗紅 `#7B1A2C` 與原 logo，預設 OG 仍為暗紅版本。首輪發現的黑 Hero 導覽對比、金屬 logo 明度、Footer 手機動畫溢位、OG 圖片尺寸型別與 CMS `Nova` 大小寫已修正。
 
 > **文案管理**：整頁文字（含 NT$ 定價）放在 `messages/*.json` 的 `Product` namespace，自動出現在後台「文案翻譯 → Product」分組可即時編輯（沿用 Home / ESG 的翻譯覆蓋機制，**無新增資料表**）。**價格分工**：顯示文案只信 i18n；gating / 驗證邏輯只信 `src/lib/billing/plans.ts`（避免雙重事實來源）。**會員系統與專屬 Dashboard 已實作**，見下方「會員專屬後台 + 訂閱金流」。
 
@@ -307,7 +318,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 - `/admin/quiz-submissions` — 唯讀清單（用戶 / 作答 / 配對創辦人 / 決策分數 / 時間 + 刪除）。
 - `/admin/quiz-questions`、`/admin/founders` — 以 JSON 編輯器增刪改（含雙語、timeline、businessDetails 等巢狀結構）；API 在 `/api/admin/{quiz-questions,founders,quiz-submissions}`，皆 `requireAdmin` 把關。
 
-## 會員專屬後台 + 訂閱金流（PayPal）
+## NOVA 會員專屬後台 + 訂閱金流（PayPal）
 
 登入會員的自助 Dashboard，與 onboarding/quiz 共用 `user_session`。proxy 已把 `/dashboard`（及 `/company` 台灣企業智庫）納入保護（`^/(zh-tw/)?(onboarding|quiz|dashboard|company)`）；proxy 只樂觀驗 session，方案 gating 由各頁面 / API 的 DAL 即時查 DB（不在 proxy 查庫）。
 
@@ -315,7 +326,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 | 路徑 | 說明 |
 | --- | --- |
-| `/[locale]/dashboard` | **總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：`bg-primary` 漸層「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（引導/測驗/訂閱三狀態）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝ROLL ON 助理（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
+| `/[locale]/dashboard` | **NOVA 總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：黑白銀「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（引導/測驗/訂閱三狀態）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝NOVA AI 顧問（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
 | `/[locale]/dashboard/profile` | **公司檔案**（2026-07）：唯讀展示會員 `OnboardingProfile`（公司/需求兩區，slug 經 `Auth.options.*` 轉 label），附「編輯」→ `/dashboard/account`；未填顯示引導卡。 |
 | `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 51 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
 | `/[locale]/dashboard/playbooks`（+`[slug]`） | **知識手冊 Playbooks（2026-07）**：ROLL ON 募資／成長方法論指南，登入即可看。一份＝一個 `content/playbooks/<slug>.json`，由 `pnpm ingest:playbook` 把 `content/playbooks/_inbox/` 的 PDF 經 Claude 轉成雙語結構化 JSON。詳情頁用 `PlaybookArticle`（react-markdown + gfm）渲染 body。**雙用**：同一份內容也餵 Nova AI（`get_playbook` 工具）。 |
@@ -502,6 +513,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 - 字型：Typekit 在 `<body>` 用 `<link rel="preload" as="style">` 加速首屏字型解析（React 19 hoist 到 head）；Noto Sans TC + Archivo Black 用 `next/font/google` 自動子集化
 - 設計 token（`src/app/globals.css` `@theme`）：
   - 顏色：`--color-primary` `#7B1A2C`、`--color-primary-light/dark`、`--color-accent` 暖金、`--color-cream` `#F4EFE7`（About 頁暖米白底）、`--color-dark` `--color-light`
+  - NOVA 局部 token：`.nova-theme` 內把 `primary/dark/black` 映射到 `#000000`、`light/cream/white` 映射到 `#FAFAFA`、`accent/primary-light` 映射到 `#BCBDC6`；全域 ROLL ON token 不變
   - 字型：`--font-heading`（Hero New）、`--font-body`、`--font-chinese`、`--font-display`（Archivo Black，僅 About 頁 wordmark 使用）
 
 ## SEO / GEO 內容狀態

@@ -8,12 +8,23 @@ const ACCENT = "#D4A574";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const title = (searchParams.get("title") ?? "ROLL ON.").slice(0, 120);
+  const isNova = searchParams.get("brand") === "nova";
+  const background = isNova ? "#000000" : BRAND_BG;
+  const accent = isNova ? "#BCBDC6" : ACCENT;
+  const foreground = isNova ? "#FAFAFA" : "#fff";
+  const logoUrl = new URL("/nova/logo-white.png", req.url).toString();
+  const title = (
+    searchParams.get("title") ?? (isNova ? "NOVA" : "ROLL ON.")
+  ).slice(0, 120);
   const subtitle = (
     searchParams.get("subtitle") ??
-    "Taiwan & Asia Expansion Partner"
+    (isNova
+      ? "Taiwan & Asia Market-Entry Platform"
+      : "Taiwan & Asia Expansion Partner")
   ).slice(0, 160);
-  const eyebrow = (searchParams.get("eyebrow") ?? "ROLL ON.").slice(0, 40);
+  const eyebrow = (
+    searchParams.get("eyebrow") ?? (isNova ? "NOVA by ROLL ON" : "ROLL ON.")
+  ).slice(0, 40);
 
   return new ImageResponse(
     (
@@ -25,8 +36,8 @@ export async function GET(req: NextRequest) {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "80px",
-          background: BRAND_BG,
-          color: "#fff",
+          background,
+          color: foreground,
           fontFamily: "sans-serif",
         }}
       >
@@ -37,18 +48,32 @@ export async function GET(req: NextRequest) {
             fontSize: 28,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
-            color: ACCENT,
+            color: accent,
           }}
         >
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              background: ACCENT,
-              marginRight: 16,
-            }}
-          />
-          {eyebrow}
+          {isNova ? (
+            // ImageResponse 需使用原生 img 讀取絕對 URL。
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt="NOVA"
+              width={240}
+              height={46}
+              style={{ objectFit: "contain" }}
+            />
+          ) : (
+            <>
+              <div
+                style={{
+                  width: 14,
+                  height: 14,
+                  background: accent,
+                  marginRight: 16,
+                }}
+              />
+              {eyebrow}
+            </>
+          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -87,7 +112,11 @@ export async function GET(req: NextRequest) {
           }}
         >
           <div>rollgrp.com</div>
-          <div style={{ color: ACCENT }}>From Visions to Big Impacts.</div>
+          <div style={{ color: accent }}>
+            {isNova
+              ? "Clean / Intelligent / Future-oriented"
+              : "From Visions to Big Impacts."}
+          </div>
         </div>
       </div>
     ),

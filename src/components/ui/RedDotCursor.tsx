@@ -57,6 +57,7 @@ export default function RedDotCursor() {
   );
   const [hovering, setHovering] = useState(false);
   const [onDark, setOnDark] = useState(false);
+  const [brand, setBrand] = useState<"rollon" | "nova">("rollon");
 
   useEffect(() => {
     // 僅在精準指標裝置（桌機滑鼠）啟用；enabled 由 useSyncExternalStore 提供
@@ -81,6 +82,8 @@ export default function RedDotCursor() {
       );
       const bg = nearestOpaqueBg(under ?? null);
       setOnDark(isDarkBg(bg));
+      const brandRoot = under?.closest<HTMLElement>("[data-brand]");
+      setBrand(brandRoot?.dataset.brand === "nova" ? "nova" : "rollon");
     };
 
     const onLeave = () => {
@@ -121,8 +124,14 @@ export default function RedDotCursor() {
 
   if (!enabled) return null;
 
-  // Color: white on dark backgrounds, primary red on light backgrounds
-  const color = onDark ? "#ffffff" : "var(--color-primary)";
+  // ROLL ON 保持紅色游標；NOVA 在淺色面使用黑、深色面使用霧白。
+  const color = onDark
+    ? brand === "nova"
+      ? "#FAFAFA"
+      : "#ffffff"
+    : brand === "nova"
+      ? "#000000"
+      : "var(--color-primary)";
   const dotSize = hovering ? 20 : 10;
   const ringSize = hovering ? 56 : 36;
 

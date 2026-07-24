@@ -82,7 +82,7 @@ export default function ChecklistTool({
                       type="checkbox"
                       checked={!!done[it.key]}
                       onChange={() => toggle(it.key)}
-                      className="mt-0.5 h-5 w-5 shrink-0 accent-[#7B1A2C]"
+                      className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
                     />
                     <span
                       className={`text-sm leading-snug font-[family-name:var(--font-body)] ${

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import NovaLogo from "@/components/brand/NovaLogo";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import type { Choice } from "@/lib/quiz/match";
@@ -26,6 +27,7 @@ export default function QuizClient({
   const tErr = useTranslations("Auth.errors");
   const locale = useLocale() as Locale;
   const router = useRouter();
+  const productHref = pathForLocale("/product", locale);
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Choice>>({});
@@ -70,8 +72,20 @@ export default function QuizClient({
 
   if (!q) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-white px-5">
-        <p className="text-sm text-dark/50">No questions available.</p>
+      <main
+        className="nova-theme flex min-h-screen items-center justify-center bg-white px-5"
+        data-brand="nova"
+      >
+        <div className="text-center">
+          <a href={productHref} className="inline-flex" aria-label="NOVA">
+            <NovaLogo
+              variant="black"
+              className="h-auto w-[150px]"
+              sizes="150px"
+            />
+          </a>
+          <p className="mt-6 text-sm text-dark/50">No questions available.</p>
+        </div>
       </main>
     );
   }
@@ -79,8 +93,24 @@ export default function QuizClient({
   const progress = ((step + 1) / total) * 100;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-white px-5 py-12 md:px-8">
+    <main
+      className="nova-theme flex min-h-screen items-center justify-center bg-white px-5 py-12 md:px-8"
+      data-brand="nova"
+    >
       <div className="w-full max-w-2xl font-[family-name:var(--font-body)]">
+        <div className="mb-10 flex items-end justify-between border-b border-dark/10 pb-5">
+          <a href={productHref} className="inline-flex" aria-label="NOVA">
+            <NovaLogo
+              variant="black"
+              className="h-auto w-[136px] md:w-[156px]"
+              sizes="(min-width: 768px) 156px, 136px"
+            />
+          </a>
+          <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-dark/35">
+            {t("byline")}
+          </span>
+        </div>
+
         {/* 進度條 + 計數 */}
         <div className="flex items-center gap-4">
           <span className="h-1 flex-1 overflow-hidden rounded-full bg-dark/10">
@@ -177,7 +207,7 @@ function OptionRow({
       aria-pressed={selected}
       className={`group flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all md:p-5 ${
         selected
-          ? "border-primary bg-primary/[0.05] shadow-[0_14px_36px_-20px_rgba(123,26,44,0.55)]"
+          ? "border-primary bg-primary/[0.05] shadow-[0_14px_36px_-20px_rgba(0,0,0,0.35)]"
           : "border-dark/10 bg-white hover:border-primary/40 hover:bg-primary/[0.02]"
       }`}
     >

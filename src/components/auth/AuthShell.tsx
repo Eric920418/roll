@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { getTranslations } from "next-intl/server";
+import NovaLogo from "@/components/brand/NovaLogo";
 import Stepper from "./Stepper";
 
 type Props = {
@@ -7,7 +7,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-// 註冊／登入／onboarding 共用的雙欄版型：左品牌紅欄（白 logo + 標語 + stepper）、右白底表單欄。
+// 註冊／登入／onboarding 共用的 NOVA 雙欄版型。
 export default async function AuthShell({ step, children }: Props) {
   const t = await getTranslations("Auth");
   const steps = [
@@ -17,18 +17,23 @@ export default async function AuthShell({ step, children }: Props) {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-white md:flex-row">
-      {/* 左：品牌紅欄 */}
+    <div
+      className="nova-theme flex min-h-screen flex-col bg-white md:flex-row"
+      data-brand="nova"
+    >
+      {/* 左：NOVA 黑色品牌欄 */}
       <aside className="relative flex flex-col justify-center overflow-hidden bg-primary px-8 py-12 text-white md:w-[42%] md:px-12 md:py-16 lg:w-[40%] lg:px-16">
         <div className="relative z-10 max-w-md">
-          <Image
-            src="/horizontal.png"
+          <NovaLogo
+            variant="white"
             alt={t("brand")}
-            width={1341}
-            height={245}
             priority
+            sizes="(min-width: 1024px) 300px, (min-width: 768px) 270px, 220px"
             className="h-auto w-[220px] object-contain md:w-[270px] lg:w-[300px]"
           />
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
+            {t("byline")}
+          </p>
           <p className="mt-7 text-lg font-bold leading-snug tracking-[-0.01em] font-[family-name:var(--font-heading)] md:mt-9 md:text-xl">
             {t("tagline")}
           </p>
@@ -37,8 +42,7 @@ export default async function AuthShell({ step, children }: Props) {
           </p>
           <Stepper current={step} steps={steps} />
         </div>
-        {/* 底部漸層增加層次（呼應首頁 hero） */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-primary-dark/40 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/15" />
       </aside>
 
       {/* 右：白底表單欄 */}

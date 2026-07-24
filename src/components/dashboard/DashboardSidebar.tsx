@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import NovaLogo from "@/components/brand/NovaLogo";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
@@ -71,14 +72,22 @@ export default function DashboardSidebar({
     <aside className="flex shrink-0 flex-col gap-6 border-b border-dark/10 bg-white p-5 md:w-64 md:border-b-0 md:border-r md:p-7">
       <div>
         <Link
-          href={pathForLocale("/", locale)}
-          className="text-lg font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]"
+          href={pathForLocale("/dashboard", locale)}
+          aria-label="NOVA"
+          className="inline-flex"
         >
-          ROLL ON.
+          <NovaLogo
+            variant="black"
+            className="h-auto w-[132px]"
+            sizes="132px"
+          />
         </Link>
-        <p className="mt-0.5 text-xs uppercase tracking-[0.18em] text-primary font-[family-name:var(--font-heading)]">
+        <Link
+          href={pathForLocale("/", locale)}
+          className="mt-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-dark/40 transition-colors hover:text-dark/70"
+        >
           {t("brand")}
-        </p>
+        </Link>
       </div>
 
       <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">

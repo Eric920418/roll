@@ -5,9 +5,13 @@ import { useRouter, usePathname } from "next/navigation";
 
 interface LanguageSwitchProps {
   variant?: "light" | "dark";
+  brand?: "rollon" | "nova";
 }
 
-export default function LanguageSwitch({ variant = "light" }: LanguageSwitchProps) {
+export default function LanguageSwitch({
+  variant = "light",
+  brand = "rollon",
+}: LanguageSwitchProps) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -33,7 +37,9 @@ export default function LanguageSwitch({ variant = "light" }: LanguageSwitchProp
       onClick={switchLocale}
       className={`text-sm font-medium tracking-wider transition-colors duration-300 cursor-pointer font-[family-name:var(--font-heading)] ${
         variant === "dark"
-          ? "text-[#1A1A1A]/70 hover:text-[#D4A574]"
+          ? brand === "nova"
+            ? "text-dark/55 hover:text-dark"
+            : "text-[#1A1A1A]/70 hover:text-[#D4A574]"
           : "text-white/80 hover:text-white"
       }`}
     >

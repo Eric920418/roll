@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import NovaLogo from "@/components/brand/NovaLogo";
 
 export type FounderResultView = {
   name: string;
@@ -36,8 +37,27 @@ export default function FounderResult({
   const [tab, setTab] = useState<"timeline" | "business">("timeline");
 
   return (
-    <main className="min-h-screen bg-white px-5 py-12 font-[family-name:var(--font-body)] md:py-16">
+    <main
+      className="nova-theme min-h-screen bg-white px-5 py-12 font-[family-name:var(--font-body)] md:py-16"
+      data-brand="nova"
+    >
       <div className="mx-auto w-full max-w-xl">
+        <div className="mb-10 flex items-end justify-between border-b border-dark/10 pb-5">
+          <a href={f.dashboardHref} className="inline-flex" aria-label="NOVA">
+            <NovaLogo
+              variant="black"
+              className="h-auto w-[136px] md:w-[156px]"
+              sizes="(min-width: 768px) 156px, 136px"
+            />
+          </a>
+          <a
+            href={f.homeHref}
+            className="text-[9px] font-semibold uppercase tracking-[0.2em] text-dark/35 transition-colors hover:text-dark/70"
+          >
+            {t("byline")}
+          </a>
+        </div>
+
         {/* 頭部 */}
         <div className="flex flex-col items-center text-center">
           <span className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-2xl font-extrabold text-white font-[family-name:var(--font-heading)]">

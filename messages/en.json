@@ -196,14 +196,16 @@
     }
   },
   "Product": {
-    "metaTitle": "ROLL ON. Platform — Your Taiwan & Asia Market-Entry Dashboard",
-    "metaDescription": "Turn tedious market-entry admin into clear, actionable steps. ROLL ON.'s self-serve platform gives foreign founders a tailored dashboard, compliance checklists, and expert matching to land in Taiwan and Asia — faster.",
+    "metaTitle": "NOVA | Your Taiwan & Asia Market-Entry Platform",
+    "metaDescription": "NOVA by ROLL ON turns market-entry complexity into clear action with a tailored dashboard, compliance checklists, and expert matching for Taiwan and Asia.",
     "nav": {
+      "byline": "by ROLL ON",
       "login": "Login",
       "signup": "Sign Up"
     },
     "hero": {
-      "brand": "ROLL ON.",
+      "brand": "NOVA",
+      "byline": "by ROLL ON",
       "tagline": "Thinking about expanding in Taiwan?",
       "ctaPrimary": "Get Started",
       "ctaNote": "90 days, expand with confidence"
@@ -281,15 +283,17 @@
       }
     },
     "cta": {
-      "brand": "ROLL ON.",
+      "brand": "NOVA",
+      "byline": "by ROLL ON",
       "line1": "Ready to roll?",
       "line2": "Sign up free and build your own dashboard in 3 minutes.",
       "button": "Start for free"
     }
   },
   "Auth": {
-    "brand": "ROLL ON.",
-    "tagline": "Partner for foreign companies entering Taiwan and expanding into Asian markets.",
+    "brand": "NOVA",
+    "byline": "by ROLL ON",
+    "tagline": "Intelligent growth infrastructure for your next market breakthrough.",
     "intro": "Complete your profile to understand your company through the decision-making patterns of Taiwan's top CEOs, and take your first step into the Asian market.",
     "steps": {
       "stepLabel": "STEP {current} OF {total}",
@@ -327,7 +331,7 @@
     },
     "login": {
       "metaTitle": "Log in",
-      "metaDescription": "Log in to your ROLL ON. dashboard.",
+      "metaDescription": "Log in to your NOVA dashboard.",
       "title": "Welcome back",
       "subtitle": "Log in to continue building your dashboard.",
       "email": "Email",
@@ -429,14 +433,16 @@
     }
   },
   "Quiz": {
-    "metaTitle": "Decision Style Assessment",
+    "metaTitle": "NOVA Decision Style Assessment",
     "metaDescription": "A 3-question assessment that matches your decision style to a founder.",
+    "byline": "by ROLL ON",
     "next": "Next",
     "back": "Back",
     "seeResult": "See My Result",
     "submitting": "Analyzing…",
     "result": {
-      "metaTitle": "Your Founder Match",
+      "metaTitle": "NOVA | Your Founder Match",
+      "byline": "by ROLL ON",
       "eyebrow": "Your founder match",
       "decisionAlignment": "Decision style alignment",
       "planningDepth": "Planning depth",
@@ -447,12 +453,12 @@
       "founded": "Founded",
       "marketCap": "Market Cap",
       "fullAnalysis": "View full company analysis",
-      "intro": "ROLL uses AI to analyze your founder's decision style and gives you personalized next-step actions based on your progress.",
+      "intro": "NOVA uses AI to analyze your founder decision style and gives you personalized next-step actions based on your progress.",
       "finish": "Done"
     }
   },
   "Dashboard": {
-    "brand": "Member area",
+    "brand": "by ROLL ON",
     "logout": "Log out",
     "plans": {
       "free": "Free",
@@ -475,7 +481,7 @@
     },
     "overview": {
       "title": "Welcome back",
-      "subtitle": "Your ROLL ON. member dashboard.",
+      "subtitle": "Your NOVA member dashboard.",
       "planCard": "Current plan",
       "statusCard": "Subscription",
       "onboardingCard": "Onboarding",

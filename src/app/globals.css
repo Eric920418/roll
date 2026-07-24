@@ -28,6 +28,30 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/*
+ * NOVA SaaS 品牌主題。
+ * 僅掛在 /product、Auth、Quiz、Dashboard 的 data-brand="nova" 根節點，
+ * 不改動 ROLL ON 官網、公司情報與 CMS 的全域色票。
+ */
+.nova-theme {
+  --color-primary: #000000;
+  --color-primary-light: #BCBDC6;
+  --color-primary-dark: #000000;
+  --color-accent: #BCBDC6;
+  --color-dark: #000000;
+  --color-light: #FAFAFA;
+  --color-cream: #FAFAFA;
+  --color-white: #FAFAFA;
+  --color-black: #000000;
+  background: var(--color-light);
+  color: var(--color-dark);
+}
+
+.nova-theme ::selection {
+  background: var(--color-primary);
+  color: var(--color-light);
+}
+
 /* 公司情報頁：sticky header 補償 + TOC 錨點 */
 .report-body :is(h1, h2, h3) {
   scroll-margin-top: 6rem;

@@ -30,7 +30,10 @@ export default async function DashboardLayout({ children, params }: Props) {
     account.email;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f6f5f2] md:flex-row">
+    <div
+      className="nova-theme flex min-h-screen flex-col bg-light md:flex-row"
+      data-brand="nova"
+    >
       <DashboardSidebar
         locale={l}
         planLabel={planLabel}

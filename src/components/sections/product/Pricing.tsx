@@ -84,7 +84,7 @@ export default function Pricing() {
               variants={card}
               className={`relative flex flex-col rounded-2xl px-7 md:px-8 py-9 md:py-10 ${
                 featured
-                  ? "bg-primary text-white shadow-[0_24px_60px_-20px_rgba(123,26,44,0.55)] md:-translate-y-4"
+                  ? "bg-primary text-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.38)] md:-translate-y-4"
                   : "bg-white text-dark border border-dark/5 shadow-[0_4px_24px_rgba(0,0,0,0.04)]"
               }`}
             >

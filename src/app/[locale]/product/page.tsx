@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: "Product" });
   const m = { title: t("metaTitle"), description: t("metaDescription") };
   const url = absoluteUrl("/product", l);
-  const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?title=${encodeURIComponent(m.title)}&subtitle=${encodeURIComponent(m.description.slice(0, 120))}&eyebrow=${encodeURIComponent("Product")}`;
+  const ogImage = `${SITE_URL}${l === "en" ? "" : `/${l}`}/og?brand=nova&title=${encodeURIComponent(m.title)}&subtitle=${encodeURIComponent(m.description.slice(0, 120))}&eyebrow=${encodeURIComponent("NOVA by ROLL ON")}`;
 
   return {
     // absolute：避免 root layout 的「%s | ROLL ON.」模板造成品牌後綴重複
@@ -53,13 +53,13 @@ export default async function ProductPage({ params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <main>
+    <main className="nova-theme" data-brand="nova">
       <ProductNav />
       <ProductHero />
       <HowItWorks />
       <Pricing />
       <ProductCTA />
-      <Footer />
+      <Footer brand="nova" />
     </main>
   );
 }

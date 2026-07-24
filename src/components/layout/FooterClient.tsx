@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import NovaLogo from "@/components/brand/NovaLogo";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 
 export type ContactInfo = {
@@ -13,7 +14,13 @@ export type ContactInfo = {
   linkedin: string;
 };
 
-export default function FooterClient({ contact }: { contact: ContactInfo }) {
+export default function FooterClient({
+  contact,
+  brand = "rollon",
+}: {
+  contact: ContactInfo;
+  brand?: "rollon" | "nova";
+}) {
   const t = useTranslations("Footer");
   const locale = useLocale();
   const [name, setName] = useState("");
@@ -48,7 +55,10 @@ export default function FooterClient({ contact }: { contact: ContactInfo }) {
   return (
     <footer
       id="contact"
-      className="bg-[#2b1326] text-white min-h-[50vh] flex items-end justify-center "
+      data-brand={brand}
+      className={`min-h-[50vh] overflow-hidden text-white flex items-end justify-center ${
+        brand === "nova" ? "bg-primary" : "bg-[#2b1326]"
+      }`}
     >
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col pt-12 ">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 md:gap-24">
@@ -57,13 +67,26 @@ export default function FooterClient({ contact }: { contact: ContactInfo }) {
             <div className="h-full flex flex-col justify-between gap-8">
               <div>
                 <div className="mb-6">
-                  <Image
-                    src="/horizontal.png"
-                    alt="ROLL ON."
-                    width={240}
-                    height={60}
-                    className="h-10 md:h-14 w-auto"
-                  />
+                  {brand === "nova" ? (
+                    <div>
+                      <NovaLogo
+                        variant="white"
+                        className="h-auto w-[220px] md:w-[260px]"
+                        sizes="(min-width: 768px) 260px, 220px"
+                      />
+                      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/40">
+                        by ROLL ON
+                      </p>
+                    </div>
+                  ) : (
+                    <Image
+                      src="/horizontal.png"
+                      alt="ROLL ON."
+                      width={240}
+                      height={60}
+                      className="h-10 md:h-14 w-auto"
+                    />
+                  )}
                 </div>
                 <div className="space-y-2 text-white/40 text-sm">
                   {contact.phone && <p>{contact.phone}</p>}
@@ -168,7 +191,13 @@ export default function FooterClient({ contact }: { contact: ContactInfo }) {
                     disabled={status === "sending"}
                     className="group/btn relative overflow-hidden border border-white/30 text-white text-xs uppercase tracking-[0.25em] py-4 px-10 font-[family-name:var(--font-heading)] transition-all duration-500 hover:border-white/60 hover:tracking-[0.35em] disabled:opacity-50"
                   >
-                    <span className="relative z-10 transition-colors duration-500 group-hover/btn:text-[#2b1326]">
+                    <span
+                      className={`relative z-10 transition-colors duration-500 ${
+                        brand === "nova"
+                          ? "group-hover/btn:text-primary"
+                          : "group-hover/btn:text-[#2b1326]"
+                      }`}
+                    >
                       {status === "sending" ? t("sending") : t("send")}
                     </span>
                     <div className="absolute inset-0 bg-white translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500 ease-out" />
