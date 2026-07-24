@@ -185,7 +185,7 @@ public/
 - ROLL ON 保持原樣：首頁、About、ESG、服務、案例、Insights、公司情報、全域 Organization schema、PayPal 商戶識別、CMS `/admin`
 - Logo 資產：`public/nova/logo-black.png`、`logo-white.png`、`logo-metal.png`；皆由正式設計檔裁切／壓縮，功能介面用平面版，只有產品 Hero 使用金屬版
 - 動態技術：`ogl@1.0.11` 僅由 `/product` 的 client-only 液態金屬元件載入；Hero 使用單一 WebGL context，其他 NOVA 畫面沿用既有 Motion 微動效
-- Hero 液態金屬：保留 `logo-metal.png` 作靜態 fallback，再以同一 PNG alpha 遮罩 OGL 銀階 shader；DPR 上限 1.5、粗略指標 30fps、離開 viewport／背景分頁時暫停，reduced-motion、save-data、低記憶體或 WebGL 失敗時不啟動 canvas
+- Hero 液態金屬：唯一的 OGL canvas 鋪滿完整 Hero 背景，以高對比黑銀波紋、週期性移動高光與游標光點形成可見的液態金屬流場；速度 `0.5`、游標幅度 `0.18`，再以雙層黑色漸層保護 Logo、標題、CTA 與卡片可讀性。金屬 `logo-metal.png` 保持清楚並只疊加 CSS 掃光。DPR 上限 1.5、粗略指標 30fps、離開 viewport／背景分頁時暫停，reduced-motion、save-data、低記憶體或 WebGL 失敗時不啟動 canvas，Hero 直接降級成純黑靜態背景
 - Product 動態語言：Hero 功能卡最多 6px 指標視差、How it works 使用銀色捲動進度軌、Pricing 僅在 hover 執行一次反光與輕抬升、Header 使用金屬訊號線、CTA 反射帶由原生捲動驅動；不做 scroll-jacking
 - 功能介面微動效：Auth 品牌欄 Logo 僅首次載入掃光一次；Quiz 題目切換使用 220ms 淡入位移、選取按壓為 180ms；Dashboard 頁面 260ms 進場、active navigation 以 spring 滑動，首頁卡片只在精準指標 hover 時抬升 2px，沒有持續 WebGL
 - 共用元件以品牌參數或最近的 `data-brand` 判斷樣式：Footer、LanguageSwitch、RedDotCursor 不會把 NOVA 黑白銀色系回灌到 ROLL ON
@@ -194,6 +194,8 @@ public/
 - NOVA 社群預覽使用 `/[locale]/og?brand=nova`；未帶 `brand` 時仍輸出 ROLL ON 暗紅版本
 - 視覺 QA（2026-07-24）：production 以 390px／768px／1440px 驗證英文與繁中產品、登入、註冊、NOVA Footer 與 NOVA／ROLL ON 兩種 1200×630 OG；確認黑 `#000000`／霧白 `#FAFAFA`／銀灰 `#BCBDC6` token、三套 logo 深淺背景使用、無 `/horizontal.png`、無橫向溢位。未登入狀態的 onboarding、quiz、quiz result、Dashboard 中英文路由皆正確導向 NOVA login，完整登入錯誤訊息仍以前端 `whitespace-pre-wrap` 顯示。因未建立或污染正式會員資料，本輪未進入需登入的 Dashboard／Quiz 內容狀態；其品牌範圍由共用 `.nova-theme` shell、production build 與硬編碼色票掃描驗證。ROLL ON 首頁、About、CMS login 維持暗紅 `#7B1A2C` 與原 logo，預設 OG 仍為暗紅版本。首輪發現的黑 Hero 導覽對比、金屬 logo 明度、Footer 手機動畫溢位、OG 圖片尺寸型別與 CMS `Nova` 大小寫已修正。
 - 動態視覺 QA（2026-07-24）：以 production build 重新檢查 `/product` 英文 1440×1000、繁中 768×1024 與手機 390×844；Hero 在 WebGL 可用時只有一個 canvas，連續影格可觀察到遮罩內銀色紋理緩慢位移，Logo 外框、CTA 與文字不受 canvas 攔截，三種尺寸均無 layout shift、Logo 裁切或 NOVA 頁面水平溢位。桌機捲動後 Header 玻璃背景、How it works 進度軌、Pricing 單次反光與 CTA 銀色反射帶皆維持黑白銀；登入頁只有一次 CSS 掃光且 canvas 數為 0，未登入 Dashboard／Quiz 導回同一 NOVA login 且不載入 WebGL。程式分支另確認 reduced-motion、save-data、低記憶體、粗略指標、離開 viewport 與背景分頁降級；瀏覽器 console 無錯誤。ROLL ON 首頁、About 與 CMS login 的 canvas 數皆為 0，品牌 token、logo 與既有動畫路徑未被 NOVA shader 引入。
+- 可見度修正（2026-07-24）：首次版本雖有 WebGL 影格更新，但 canvas 只存在 Logo 遮罩內，固定金屬 PNG 又以 70% 不透明度長駐，且 1.5 秒內 Logo 區域平均色差僅約 `3.6/255`，肉眼近似靜態。修正後將 shader 改為鋪滿整個 Hero 的液態黑銀背景，Logo 回歸清晰金屬識別；Hero 卡片、銀線、步驟數字與 CTA Logo 也加入不需 hover 就能辨識的黑白銀環境動態，Pricing 進入 viewport 時各自掃光一次。reduced-motion 仍完整關閉所有持續動畫並保留清楚的靜態版本。
+- 背景動態複驗（2026-07-24）：production 1440px Hero 相隔 1.5 秒的完整畫面平均色差提升至約 `14.68/255`，約 `72.1%` 色彩通道變化超過 4 階，並排影格可直接辨識大面積波紋與高光位置改變；390×844 手機版維持單一 canvas、無水平溢位且 Logo／CTA／三張卡片皆清楚。Pricing 進場掃光、ROLL ON 首頁 canvas 數為 0、瀏覽器 console 無錯誤也已重新確認。
 
 > **文案管理**：整頁文字（含 NT$ 定價）放在 `messages/*.json` 的 `Product` namespace，自動出現在後台「文案翻譯 → Product」分組可即時編輯（沿用 Home / ESG 的翻譯覆蓋機制，**無新增資料表**）。**價格分工**：顯示文案只信 i18n；gating / 驗證邏輯只信 `src/lib/billing/plans.ts`（避免雙重事實來源）。**會員系統與專屬 Dashboard 已實作**，見下方「會員專屬後台 + 訂閱金流」。
 

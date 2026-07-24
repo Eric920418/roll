@@ -79,7 +79,7 @@ export default function Pricing() {
           variants={container}
           className="mt-14 md:mt-24 grid md:grid-cols-3 gap-5 md:gap-6 items-stretch"
         >
-          {PLANS.map(({ key, featured }) => (
+          {PLANS.map(({ key, featured }, index) => (
             <motion.div
               key={key}
               variants={card}
@@ -96,6 +96,18 @@ export default function Pricing() {
               <span
                 aria-hidden="true"
                 className="nova-pricing-sheen pointer-events-none absolute inset-y-0 left-0 w-1/2"
+              />
+              <motion.span
+                aria-hidden="true"
+                initial={reduceMotion ? false : { x: "-190%", skewX: "-12deg" }}
+                whileInView={reduceMotion ? undefined : { x: "280%", skewX: "-12deg" }}
+                viewport={{ once: true, amount: 0.55 }}
+                transition={{
+                  duration: 1.05,
+                  delay: 0.25 + index * 0.22,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="nova-pricing-reveal pointer-events-none absolute inset-y-0 left-0 w-1/2"
               />
               {featured && (
                 <span className="absolute top-5 right-5 rounded-full bg-accent text-dark text-[11px] font-bold uppercase tracking-[0.12em] px-3 py-1 font-[family-name:var(--font-heading)]">

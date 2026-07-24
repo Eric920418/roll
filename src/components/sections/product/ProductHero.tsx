@@ -96,7 +96,21 @@ export default function ProductHero() {
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-[8%] top-[12%] h-px bg-white/10"
+        className="nova-hero-fluid pointer-events-none absolute inset-0 z-0"
+      >
+        <NovaIridescence speed={0.5} amplitude={0.18} mouseReact />
+      </div>
+      <div
+        aria-hidden="true"
+        className="nova-hero-fluid-shade pointer-events-none absolute inset-0 z-[1]"
+      />
+      <div
+        aria-hidden="true"
+        className="nova-hero-ambient pointer-events-none absolute -left-[12%] top-[8%] z-[2] h-[56%] w-[58%]"
+      />
+      <div
+        aria-hidden="true"
+        className="nova-hero-ambient nova-hero-ambient-secondary pointer-events-none absolute -right-[18%] bottom-[-22%] z-[2] h-[64%] w-[64%]"
       />
       <motion.div
         initial={reduceMotion ? false : "hidden"}
@@ -113,15 +127,12 @@ export default function ProductHero() {
                 priority
                 alt={t("hero.brand")}
                 sizes="(min-width: 768px) 560px, 88vw"
-                className="relative z-10 h-auto w-full opacity-70 [filter:brightness(1.35)_contrast(0.92)]"
+                className="relative z-10 h-auto w-full opacity-95 [filter:brightness(1.28)_contrast(1.04)_drop-shadow(0_16px_36px_rgba(0,0,0,0.42))]"
               />
-              <div className="nova-liquid-logo-mask absolute inset-0 z-20 opacity-90 mix-blend-screen">
-                <NovaIridescence
-                  speed={0.22}
-                  amplitude={0.035}
-                  mouseReact
-                />
-              </div>
+              <div
+                aria-hidden="true"
+                className="nova-liquid-logo-glint pointer-events-none absolute inset-0 z-20"
+              />
             </div>
             <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/45">
               {t("hero.byline")}
@@ -157,10 +168,11 @@ export default function ProductHero() {
                 {
                   "--nova-card-x": `var(--nova-card-x-${index + 1}, 0px)`,
                   "--nova-card-y": `var(--nova-card-y-${index + 1}, 0px)`,
+                  "--nova-card-delay": `${index * 0.85}s`,
                 } as React.CSSProperties
               }
             >
-              <div className="flex items-start gap-4 rounded-2xl border border-accent/20 bg-white/[0.045] px-6 py-5 backdrop-blur-[2px]">
+              <div className="nova-hero-card-surface flex items-start gap-4 rounded-2xl border border-accent/30 bg-white/[0.055] px-6 py-5 backdrop-blur-[3px]">
                 <Check />
                 <div>
                   <h3 className="text-base font-bold tracking-[-0.02em] text-white font-[family-name:var(--font-heading)] md:text-lg">

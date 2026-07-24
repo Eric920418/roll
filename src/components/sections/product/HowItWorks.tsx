@@ -76,13 +76,16 @@ export default function HowItWorks() {
             />
           </div>
 
-          {STEPS.map((s) => (
+          {STEPS.map((s, index) => (
             <motion.div
               key={s}
               variants={item}
               className="relative flex flex-col pl-14 md:pl-0"
             >
-              <div className="relative z-10 -ml-14 w-fit bg-white pr-3 text-5xl font-extrabold leading-none tracking-[-0.04em] text-primary/90 font-[family-name:var(--font-heading)] md:ml-0 md:px-3 md:text-6xl">
+              <div
+                className="nova-step-number relative z-10 -ml-14 w-fit bg-white pr-3 text-5xl font-extrabold leading-none tracking-[-0.04em] text-primary/90 font-[family-name:var(--font-heading)] md:ml-0 md:px-3 md:text-6xl"
+                style={{ "--nova-step-delay": `${index * 0.55}s` } as React.CSSProperties}
+              >
                 {t(`${s}.num`)}
               </div>
               <h3 className="mt-6 text-xl md:text-2xl font-bold text-dark tracking-[-0.02em] font-[family-name:var(--font-heading)]">

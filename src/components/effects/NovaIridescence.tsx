@@ -32,29 +32,34 @@ varying vec2 vUv;
 void main() {
   float mr = min(uResolution.x, uResolution.y);
   vec2 uv = (vUv * 2.0 - 1.0) * uResolution.xy / mr;
-  uv += (uMouse - vec2(0.5)) * uAmplitude * 2.0;
+  vec2 pointer = uMouse - vec2(0.5);
+  uv += pointer * uAmplitude * 3.2;
 
   float t = uTime * uSpeed;
-  float d = -t * 0.55;
-  float a = 0.0;
+  float waveA = sin(uv.x * 3.4 + sin(uv.y * 2.2 - t * 1.8) * 1.35 + t * 1.15);
+  float waveB = cos(uv.y * 4.1 - cos(uv.x * 2.7 + t * 1.25) * 1.1 - t * 0.9);
+  float waveC = sin((uv.x + uv.y) * 5.2 - t * 2.35);
+  float field = clamp(0.5 + waveA * 0.25 + waveB * 0.18 + waveC * 0.11, 0.0, 1.0);
 
-  for (float i = 0.0; i < 8.0; ++i) {
-    a += cos(i - d - a * uv.x);
-    d += sin(uv.y * i + a);
-  }
+  float chromeBody = mix(0.08, 0.82, smoothstep(0.02, 0.95, field));
+  float edgeHighlight = pow(smoothstep(0.62, 0.98, field), 5.0);
+  float darkFold = 1.0 - smoothstep(0.18, 0.46, field);
 
-  float ribbonA = 0.5 + 0.5 * cos(uv.x * 1.2 + d * 0.42 + a * 0.24);
-  float ribbonB = 0.5 + 0.5 * sin(uv.y * 1.7 - a * 0.31 + t);
-  float interference = 0.5 + 0.5 * cos((a + d) * 0.28 + uv.x * uv.y * 1.8);
-  float field = clamp(ribbonA * 0.46 + ribbonB * 0.24 + interference * 0.30, 0.0, 1.0);
+  float sweepPosition = fract(t * 0.28) * 1.5 - 0.25;
+  float movingSweep = exp(-pow((vUv.x - sweepPosition) * 11.0, 2.0));
+  movingSweep *= 0.55 + 0.45 * sin(vUv.y * 16.0 + t * 2.0);
 
-  float body = smoothstep(0.08, 0.88, field);
-  float highlight = pow(smoothstep(0.60, 0.98, field), 3.0);
-  float shadow = smoothstep(0.0, 0.48, field);
+  vec2 mouseUv = vec2(uMouse.x, 1.0 - uMouse.y);
+  float pointerHighlight = exp(-dot(vUv - mouseUv, vUv - mouseUv) * 22.0);
 
-  vec3 color = mix(vec3(0.0), uColor, body);
-  color *= mix(0.44, 1.0, shadow);
-  color = mix(color, vec3(0.98), highlight * 0.92);
+  float luminance = chromeBody - darkFold * 0.13;
+  luminance += edgeHighlight * 0.45;
+  luminance += movingSweep * 0.68;
+  luminance += pointerHighlight * uAmplitude * 2.6;
+  luminance = clamp(luminance, 0.035, 1.0);
+
+  vec3 color = mix(vec3(0.0), uColor, smoothstep(0.02, 0.82, luminance));
+  color = mix(color, vec3(0.98), smoothstep(0.72, 1.0, luminance));
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -75,7 +80,7 @@ type NavigatorWithHints = Navigator & {
 
 export default function NovaIridescence({
   color = DEFAULT_COLOR,
-  speed = 0.22,
+  speed = 0.62,
   amplitude = 0.035,
   mouseReact = true,
   className = "",

@@ -41,7 +41,7 @@ export default function ProductCTA() {
           variant="white"
           alt={t("brand")}
           sizes="(min-width: 768px) 520px, 88vw"
-          className="h-auto w-full max-w-[520px]"
+          className="nova-cta-logo h-auto w-full max-w-[520px]"
         />
         <p className="-mt-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/45">
           {t("byline")}
