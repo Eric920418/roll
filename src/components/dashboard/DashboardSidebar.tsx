@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { motion, useReducedMotion } from "motion/react";
 import NovaLogo from "@/components/brand/NovaLogo";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
@@ -49,6 +50,7 @@ export default function DashboardSidebar({
   const t = useTranslations("Dashboard");
   const pathname = usePathname();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const [loggingOut, setLoggingOut] = useState(false);
 
   // overview 用完全比對（避免被子路由吃掉 active），其餘用前綴比對
@@ -97,16 +99,28 @@ export default function DashboardSidebar({
             <Link
               key={key}
               href={pathForLocale(path, locale)}
-              className={`flex shrink-0 items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors font-[family-name:var(--font-heading)] ${
+              className={`relative flex shrink-0 items-center justify-between gap-2 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors font-[family-name:var(--font-heading)] ${
                 active
-                  ? "bg-primary text-white"
+                  ? "text-white"
                   : "text-dark/70 hover:bg-dark/[0.04]"
               }`}
             >
-              <span>{t(`nav.${key}`)}</span>
+              {active && (
+                <motion.span
+                  layoutId="nova-dashboard-active-nav"
+                  aria-hidden="true"
+                  className="absolute inset-0 rounded-xl bg-primary"
+                  transition={
+                    reduceMotion
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 420, damping: 34 }
+                  }
+                />
+              )}
+              <span className="relative z-10">{t(`nav.${key}`)}</span>
               {soon && (
                 <span
-                  className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                  className={`relative z-10 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                     active ? "bg-white/20 text-white" : "bg-accent/20 text-accent"
                   }`}
                 >

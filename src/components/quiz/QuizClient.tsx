@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import NovaLogo from "@/components/brand/NovaLogo";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
@@ -28,6 +29,7 @@ export default function QuizClient({
   const locale = useLocale() as Locale;
   const router = useRouter();
   const productHref = pathForLocale("/product", locale);
+  const reduceMotion = useReducedMotion();
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Choice>>({});
@@ -124,68 +126,81 @@ export default function QuizClient({
           </span>
         </div>
 
-        <h1 className="mt-8 text-2xl font-extrabold leading-tight tracking-[-0.03em] text-primary font-[family-name:var(--font-heading)] md:text-4xl">
-          {q.prompt}
-        </h1>
-        {q.subtitle && (
-          <p className="mt-3 text-sm text-dark/55 md:text-base">{q.subtitle}</p>
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={q.id}
+            initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <h1 className="mt-8 text-2xl font-extrabold leading-tight tracking-[-0.03em] text-primary font-[family-name:var(--font-heading)] md:text-4xl">
+              {q.prompt}
+            </h1>
+            {q.subtitle && (
+              <p className="mt-3 text-sm text-dark/55 md:text-base">
+                {q.subtitle}
+              </p>
+            )}
 
-        {/* 選項列 */}
-        <div className="mt-8 flex flex-col gap-3 md:mt-10">
-          {q.options.map((o) => (
-            <OptionRow
-              key={o.key}
-              option={o}
-              selected={current === o.key}
-              onSelect={() => choose(o.key)}
-            />
-          ))}
-        </div>
+            {/* 選項列 */}
+            <div className="mt-8 flex flex-col gap-3 md:mt-10">
+              {q.options.map((o) => (
+                <OptionRow
+                  key={o.key}
+                  option={o}
+                  selected={current === o.key}
+                  reduceMotion={Boolean(reduceMotion)}
+                  onSelect={() => choose(o.key)}
+                />
+              ))}
+            </div>
 
-        {error && (
-          <p className="mt-6 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
-          </p>
-        )}
+            {error && (
+              <p className="mt-6 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {error}
+              </p>
+            )}
 
-        {/* 導覽 */}
-        <div className="mt-10 flex items-center justify-between">
-          {step > 0 ? (
-            <button
-              type="button"
-              onClick={() => setStep((s) => s - 1)}
-              className="inline-flex items-center gap-2 rounded-full border border-primary/30 px-6 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/5 font-[family-name:var(--font-heading)]"
-            >
-              <ArrowIcon dir="left" />
-              {t("back")}
-            </button>
-          ) : (
-            <span />
-          )}
+            {/* 導覽 */}
+            <div className="mt-10 flex items-center justify-between">
+              {step > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => s - 1)}
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/30 px-6 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/5 font-[family-name:var(--font-heading)]"
+                >
+                  <ArrowIcon dir="left" />
+                  {t("back")}
+                </button>
+              ) : (
+                <span />
+              )}
 
-          {isLast ? (
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!current || loading}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-bold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40 font-[family-name:var(--font-heading)]"
-            >
-              {loading ? t("submitting") : t("seeResult")}
-              {!loading && <ArrowIcon dir="right" />}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setStep((s) => s + 1)}
-              disabled={!current}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-bold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40 font-[family-name:var(--font-heading)]"
-            >
-              {t("next")}
-              <ArrowIcon dir="right" />
-            </button>
-          )}
-        </div>
+              {isLast ? (
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={!current || loading}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-bold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40 font-[family-name:var(--font-heading)]"
+                >
+                  {loading ? t("submitting") : t("seeResult")}
+                  {!loading && <ArrowIcon dir="right" />}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => s + 1)}
+                  disabled={!current}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-bold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40 font-[family-name:var(--font-heading)]"
+                >
+                  {t("next")}
+                  <ArrowIcon dir="right" />
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </main>
   );
@@ -194,18 +209,22 @@ export default function QuizClient({
 function OptionRow({
   option,
   selected,
+  reduceMotion,
   onSelect,
 }: {
   option: QuizOptionView;
   selected: boolean;
+  reduceMotion: boolean;
   onSelect: () => void;
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`group flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all md:p-5 ${
+      whileTap={reduceMotion ? undefined : { scale: 0.985 }}
+      transition={{ duration: reduceMotion ? 0 : 0.18 }}
+      className={`group flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all duration-200 md:p-5 ${
         selected
           ? "border-primary bg-primary/[0.05] shadow-[0_14px_36px_-20px_rgba(0,0,0,0.35)]"
           : "border-dark/10 bg-white hover:border-primary/40 hover:bg-primary/[0.02]"
@@ -234,7 +253,7 @@ function OptionRow({
           </span>
         )}
       </span>
-    </button>
+    </motion.button>
   );
 }
 

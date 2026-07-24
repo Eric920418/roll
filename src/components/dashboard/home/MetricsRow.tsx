@@ -41,7 +41,10 @@ export default async function MetricsRow({
       </p>
       <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-2xl border border-dark/10 bg-white p-5">
+          <div
+            key={c.label}
+            className="nova-dashboard-card rounded-2xl border border-dark/10 bg-white p-5"
+          >
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-dark/40 font-[family-name:var(--font-heading)]">
               {c.label}
             </p>

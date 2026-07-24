@@ -39,7 +39,7 @@ export default async function DashboardLayout({ children, params }: Props) {
         planLabel={planLabel}
         userLabel={userLabel}
       />
-      <main className="flex-1 px-5 py-8 md:px-10 md:py-12">
+      <main className="nova-page-enter flex-1 px-5 py-8 md:px-10 md:py-12">
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
     </div>

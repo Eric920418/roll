@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
-import { motion, type Variants } from "motion/react";
+import { motion, useReducedMotion, type Variants } from "motion/react";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
@@ -52,6 +52,7 @@ function Check({ featured }: { featured?: boolean }) {
 export default function Pricing() {
   const t = useTranslations("Product.pricing");
   const locale = useLocale() as Locale;
+  const reduceMotion = useReducedMotion();
 
   // 公開行銷頁：訪客尚未登入，無法直接觸發 PayPal。
   // 付費方案 → 導向註冊開始漏斗（完成 onboarding 後於 /dashboard/billing 訂閱）；Enterprise → 洽詢。
@@ -62,7 +63,7 @@ export default function Pricing() {
     <section id="pricing" className="bg-cream py-20 md:py-28 px-5 md:px-8 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <motion.h2
-          initial={{ opacity: 0, y: 24 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-12%" }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
@@ -72,7 +73,7 @@ export default function Pricing() {
         </motion.h2>
 
         <motion.div
-          initial="hidden"
+          initial={reduceMotion ? false : "hidden"}
           whileInView="visible"
           viewport={{ once: true, margin: "-10%" }}
           variants={container}
@@ -82,12 +83,20 @@ export default function Pricing() {
             <motion.div
               key={key}
               variants={card}
-              className={`relative flex flex-col rounded-2xl px-7 md:px-8 py-9 md:py-10 ${
+              whileHover={
+                reduceMotion ? undefined : { y: -6, scale: 1.01 }
+              }
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className={`group relative flex flex-col overflow-hidden rounded-2xl px-7 py-9 transition-[border-color,box-shadow] duration-300 md:px-8 md:py-10 ${
                 featured
-                  ? "bg-primary text-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.38)] md:-translate-y-4"
-                  : "bg-white text-dark border border-dark/5 shadow-[0_4px_24px_rgba(0,0,0,0.04)]"
+                  ? "bg-primary text-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.38)] md:-mb-4 md:-mt-4"
+                  : "border border-dark/5 bg-white text-dark shadow-[0_4px_24px_rgba(0,0,0,0.04)] hover:border-accent/60 hover:shadow-[0_18px_50px_-30px_rgba(0,0,0,0.32)]"
               }`}
             >
+              <span
+                aria-hidden="true"
+                className="nova-pricing-sheen pointer-events-none absolute inset-y-0 left-0 w-1/2"
+              />
               {featured && (
                 <span className="absolute top-5 right-5 rounded-full bg-accent text-dark text-[11px] font-bold uppercase tracking-[0.12em] px-3 py-1 font-[family-name:var(--font-heading)]">
                   {t("badge")}

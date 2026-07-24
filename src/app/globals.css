@@ -52,6 +52,171 @@
   color: var(--color-light);
 }
 
+.nova-liquid-logo-mask {
+  -webkit-mask-image: url("/nova/logo-metal.png");
+  mask-image: url("/nova/logo-metal.png");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.nova-logo-sweep {
+  -webkit-mask-image: url("/nova/logo-white.png");
+  mask-image: url("/nova/logo-white.png");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.nova-logo-sweep::after {
+  content: "";
+  position: absolute;
+  inset: -30% auto -30% -45%;
+  width: 34%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in srgb, var(--color-light) 92%, transparent),
+    transparent
+  );
+  filter: blur(4px);
+  transform: skewX(-14deg);
+  animation: nova-logo-sweep 1100ms 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nova-hero-card {
+  transform: translate3d(var(--nova-card-x), var(--nova-card-y), 0);
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms ease;
+  will-change: transform;
+}
+
+.nova-hero-signal,
+.nova-metal-line {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 74%, transparent),
+    var(--color-light),
+    color-mix(in srgb, var(--color-accent) 74%, transparent),
+    transparent
+  );
+  background-size: 220% 100%;
+  animation: nova-signal-flow 6s linear infinite;
+}
+
+.nova-pricing-sheen {
+  background: linear-gradient(
+    105deg,
+    transparent 10%,
+    color-mix(in srgb, var(--color-accent) 18%, transparent) 44%,
+    color-mix(in srgb, var(--color-light) 55%, transparent) 50%,
+    color-mix(in srgb, var(--color-accent) 18%, transparent) 56%,
+    transparent 90%
+  );
+  transform: translateX(-180%) skewX(-12deg);
+  transition: transform 760ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover > .nova-pricing-sheen {
+  transform: translateX(260%) skewX(-12deg);
+}
+
+.nova-cta-reflection {
+  background: linear-gradient(
+    96deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 16%, transparent),
+    color-mix(in srgb, var(--color-light) 11%, transparent),
+    transparent
+  );
+  filter: blur(14px);
+}
+
+@keyframes nova-signal-flow {
+  from {
+    background-position: 160% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+@keyframes nova-logo-sweep {
+  from {
+    left: -45%;
+  }
+  to {
+    left: 125%;
+  }
+}
+
+.nova-page-enter {
+  animation: nova-page-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nova-dashboard-card {
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms ease,
+    box-shadow 240ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nova-dashboard-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--color-accent) 52%, transparent);
+    box-shadow: 0 18px 46px -34px rgb(0 0 0 / 34%);
+  }
+}
+
+@keyframes nova-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nova-hero-card {
+    transform: none;
+    transition: none;
+  }
+
+  .nova-hero-signal,
+  .nova-metal-line {
+    animation: none;
+  }
+
+  .nova-logo-sweep::after {
+    display: none;
+  }
+
+  .nova-page-enter {
+    animation: none;
+  }
+
+  .nova-dashboard-card {
+    transition: none;
+  }
+
+  .nova-pricing-sheen,
+  .nova-cta-reflection {
+    display: none;
+  }
+}
+
 /* 公司情報頁：sticky header 補償 + TOC 錨點 */
 .report-body :is(h1, h2, h3) {
   scroll-margin-top: 6rem;

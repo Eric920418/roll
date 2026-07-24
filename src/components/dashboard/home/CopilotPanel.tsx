@@ -76,7 +76,7 @@ export default function CopilotPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
+    <div className="nova-dashboard-card rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-white">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>

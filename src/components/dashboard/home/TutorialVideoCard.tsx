@@ -22,7 +22,7 @@ export default async function TutorialVideoCard({
 
   if (!video) {
     return (
-      <div className="flex h-full flex-col rounded-2xl border border-dark/10 bg-white p-6">
+      <div className="nova-dashboard-card flex h-full flex-col rounded-2xl border border-dark/10 bg-white p-6">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
           {t("eyebrow")}
         </p>
@@ -38,7 +38,7 @@ export default async function TutorialVideoCard({
       href={video.href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-dark/10 bg-white"
+      className="nova-dashboard-card group flex h-full flex-col overflow-hidden rounded-2xl border border-dark/10 bg-white"
     >
       <div className="relative aspect-video w-full overflow-hidden bg-dark/5">
         <Image

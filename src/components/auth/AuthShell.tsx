@@ -24,13 +24,19 @@ export default async function AuthShell({ step, children }: Props) {
       {/* 左：NOVA 黑色品牌欄 */}
       <aside className="relative flex flex-col justify-center overflow-hidden bg-primary px-8 py-12 text-white md:w-[42%] md:px-12 md:py-16 lg:w-[40%] lg:px-16">
         <div className="relative z-10 max-w-md">
-          <NovaLogo
-            variant="white"
-            alt={t("brand")}
-            priority
-            sizes="(min-width: 1024px) 300px, (min-width: 768px) 270px, 220px"
-            className="h-auto w-[220px] object-contain md:w-[270px] lg:w-[300px]"
-          />
+          <div className="relative w-fit">
+            <NovaLogo
+              variant="white"
+              alt={t("brand")}
+              priority
+              sizes="(min-width: 1024px) 300px, (min-width: 768px) 270px, 220px"
+              className="h-auto w-[220px] object-contain md:w-[270px] lg:w-[300px]"
+            />
+            <span
+              aria-hidden="true"
+              className="nova-logo-sweep pointer-events-none absolute inset-0"
+            />
+          </div>
           <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
             {t("byline")}
           </p>

@@ -1,16 +1,37 @@
 "use client";
 
+import { useRef } from "react";
 import { useTranslations } from "next-intl";
-import { motion } from "motion/react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "motion/react";
 import NovaLogo from "@/components/brand/NovaLogo";
 
 export default function ProductCTA() {
   const t = useTranslations("Product.cta");
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+  const reflectionX = useTransform(scrollYProgress, [0, 1], ["-65%", "85%"]);
 
   return (
-    <section className="relative overflow-hidden bg-primary px-5 py-20 md:px-8 md:py-28">
+    <section
+      ref={sectionRef}
+      className="relative overflow-hidden bg-primary px-5 py-20 md:px-8 md:py-28"
+    >
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
+        aria-hidden="true"
+        className="nova-cta-reflection pointer-events-none absolute -inset-y-1/2 left-0 w-[42%]"
+        style={{ x: reduceMotion ? 0 : reflectionX }}
+      />
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-12%" }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}

@@ -27,7 +27,7 @@ export default async function FounderMatchCard({
 
   if (!match) {
     return (
-      <div className="flex h-full flex-col rounded-2xl border border-dark/10 bg-white p-6">
+      <div className="nova-dashboard-card flex h-full flex-col rounded-2xl border border-dark/10 bg-white p-6">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
           {t("eyebrow")}
         </p>
@@ -49,7 +49,7 @@ export default async function FounderMatchCard({
   ];
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-dark/10 bg-white p-6">
+    <div className="nova-dashboard-card flex h-full flex-col rounded-2xl border border-dark/10 bg-white p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">

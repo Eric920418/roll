@@ -15,7 +15,7 @@ export default async function TopOpportunitiesRail({
   const t = await getTranslations({ locale, namespace: "Dashboard.home.opportunities" });
 
   return (
-    <div className="rounded-2xl border border-dark/10 bg-white p-5">
+    <div className="nova-dashboard-card rounded-2xl border border-dark/10 bg-white p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-dark font-[family-name:var(--font-heading)]">
           {t("title")}

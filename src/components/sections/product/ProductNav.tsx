@@ -85,6 +85,12 @@ export default function ProductNav() {
           </a>
         </div>
       </div>
+      <span
+        aria-hidden="true"
+        className={`nova-metal-line pointer-events-none absolute inset-x-0 bottom-0 h-px transition-opacity duration-300 ${
+          scrolled ? "opacity-30" : "opacity-65"
+        }`}
+      />
     </header>
   );
 }

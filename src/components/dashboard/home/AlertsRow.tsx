@@ -51,7 +51,7 @@ export default async function AlertsRow({
         {items.map((it) => (
           <div
             key={it.label}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-dark/10 bg-white p-5"
+            className="nova-dashboard-card flex items-center justify-between gap-3 rounded-2xl border border-dark/10 bg-white p-5"
           >
             <div>
               <p className="text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
