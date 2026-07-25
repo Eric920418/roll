@@ -473,6 +473,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 1707 | `grape-king` | Grape King Bio 葡萄王生技 | Health Supplements（靈芝樟芝 >50% 市佔；70% 毛利／15% ROE／6.6% 高息；近期溫和退溫） |
 | 2049 | `hiwin` | Hiwin Technologies 上銀科技 | Motion Control & Automation（滾珠螺桿/線性滑軌世界 #2-#3；深度循環復甦；人形機器人題材／估值貴） |
 | 9911 | `sakura` | Taiwan Sakura 台灣櫻花 | Home Appliances（廚衛家電第一品牌；安裝基礎服務護城河；22% ROE 穩定複利／6% 高息成長） |
+| 8454 | `momo` | Fubon Multimedia 富邦媒體科技（momo） | E-Commerce（最大 B2C 電商／衛星倉物流；1P 薄利高週轉；蝦皮酷澎夾殺、EPS 3 年 −30%） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
