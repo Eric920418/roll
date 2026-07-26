@@ -27,6 +27,8 @@ export interface Account {
   subscriptionStatus: string | null;
   paypalSubscriptionId: string | null;
   currentPeriodEnd: Date | null;
+  /** plan/status 最後異動時間 — SUSPENDED 寬限期的起算點（見 gate.ts） */
+  planUpdatedAt: Date | null;
   profile: {
     companyName: string | null;
     industry: string | null;
@@ -71,6 +73,7 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     subscriptionStatus: user.subscriptionStatus,
     paypalSubscriptionId: user.paypalSubscriptionId,
     currentPeriodEnd: user.currentPeriodEnd,
+    planUpdatedAt: user.planUpdatedAt,
     profile: user.profile
       ? {
           companyName: user.profile.companyName,

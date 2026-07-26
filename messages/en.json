@@ -791,6 +791,9 @@
     "returnPending": "Your subscription is being confirmed. This page will update shortly.",
     "returnSuccess": "Subscription active. Welcome aboard!",
     "perMonth": "/ month",
+    "suspendedTitle": "Payment failed",
+    "suspendedBody": "We couldn't charge your payment method. Update it before {date} — after that your account drops to the Free plan and you'll lose access to paid features.",
+    "suspendedCta": "Update payment method on PayPal",
     "errors": {
       "planRequired": "This feature requires a paid plan. Please upgrade to continue.",
       "unknownPlan": "Unknown plan.",

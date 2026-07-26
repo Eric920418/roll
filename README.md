@@ -339,7 +339,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | `/[locale]/dashboard/playbooks`（+`[slug]`） | **知識手冊 Playbooks（2026-07）**：ROLL ON 募資／成長方法論指南，登入即可看。一份＝一個 `content/playbooks/<slug>.json`，由 `pnpm ingest:playbook` 把 `content/playbooks/_inbox/` 的 PDF 經 Claude 轉成雙語結構化 JSON。詳情頁用 `PlaybookArticle`（react-markdown + gfm）渲染 body。**雙用**：同一份內容也餵 Nova AI（`get_playbook` 工具）。 |
 | `/[locale]/dashboard/crm\|pipeline\|notes` | **真 CRUD（2026-07，Pro 方案限定）**：各對應新 Prisma 表（`Contact` / `Deal` / `MeetingNote`，`userId` scope + `onDelete: Cascade`）。`requirePlan("pro")`→null 顯示付費牆（`PlanPaywall`），否則查該會員資料傳給 client 元件（`CrmManager` / `PipelineBoard` / `NotesManager`），新增/編輯/刪除後 `router.refresh()`。Pipeline 為 stage 分欄看板（MVP 用下拉改階段，不做拖拉）。Deal 可選連 CRM `Contact`（`SetNull`）。 |
 | `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）+ 變更/設定密碼 + 刪除帳號（危險區，需輸入確認字）。 |
-| `/[locale]/dashboard/billing` | 訂閱：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。 |
+| `/[locale]/dashboard/billing` | 訂閱：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。**扣款失敗（SUSPENDED）且仍在 1 天寬限期內**時，最上方顯示琥珀色警告：降級時刻（含時間，非只有日期）+ 「前往 PayPal 更新付款方式」外連（`paypalManagePaymentUrl()` 依 `PAYPAL_ENV` 切 sandbox/live 網域）。寬限期已過則不再顯示（gate 已降級為 free，改由方案卡片引導重新訂閱）。取消按鈕對 **ACTIVE 與 SUSPENDED** 都顯示 — SUSPENDED 客戶若決定不救也該能自行終止，不必寫信求客服。 |
 | `/[locale]/dashboard/billing/return` | PayPal 核准後返回頁，呼叫 confirm 即時對帳。 |
 | `/[locale]/dashboard/tools` | **進入市場落地清單**（真工具）：`requirePlan("pro")`；依 `OnboardingProfile.needs` 由 `src/lib/tools/checklist.ts` 生成分組可勾選清單，勾選存 `User.checklistState`；未填 needs 顯示引導（引導去 `/dashboard/account` 填 needs，onboarding 已不收此題）、方案不足顯示升級牆。 |
 | `/api/account/profile` | PATCH 更新 profile（自守衛 `getUserSession`）。 |
@@ -349,7 +349,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | `/api/{crm\|pipeline\|notes}` + `/[id]` | **會員 CRUD（2026-07）**：POST 建立 / PATCH 更新 / DELETE 刪除。自守衛 `getUserSession`（401）+ `requirePlan("pro")`（403），每筆以 `session.uid` scope（`updateMany`/`deleteMany` count 檢查，或 findFirst 驗擁有權），zod 驗證於 `src/lib/dashboard/schemas.ts`。**不重用** admin generic CRUD（那是 admin-only 且無 userId 過濾）。 |
 | `/api/copilot` | **AI Copilot 串流（2026-07）**：POST，`getUserSession`+`requirePlan("pro")`+**每會員每日 50 則 rate limit** 守衛後以 `@anthropic-ai/sdk` `messages.stream` 逐字回傳（`ReadableStream`, `text/plain`）。model 取 `ANTHROPIC_MODEL`（預設 `claude-sonnet-5`），system prompt 帶會員 `profile` 公司資訊、依 locale 回覆。守衛失敗回真狀態碼（含超限 429）；串流開始後的錯誤以文字寫入（前端顯示全文）。成本護欄＝Pro-gate + 輸入長度/則數上限 + rate limit（DB-based，見 `src/lib/rate-limit.ts` / `RateCounter` 表）。需 `ANTHROPIC_API_KEY`（見環境變數）。 |
 | `/api/billing/subscribe\|confirm\|cancel` | 建立 / 確認 / 取消訂閱（自守衛）。subscribe 會擋「已有 ACTIVE/APPROVED 訂閱者重複訂閱」（回 409 `alreadySubscribed`），避免重複扣款。 |
-| `/api/billing/webhook` | PayPal webhook：不查 session、改以簽章驗證；冪等 + 對帳。 |
+| `/api/billing/webhook` | PayPal webhook：不查 session、改以簽章驗證；冪等 + 對帳。觸發對帳的事件用 **prefix 比對**（`BILLING.SUBSCRIPTION.*` + `PAYMENT.SALE.COMPLETED`）而非逐一列舉 — 白名單漏一個（如客戶更新付款方式後的 `BILLING.SUBSCRIPTION.RE-ACTIVATED`，官方名稱帶連字號）就等於漏對帳、客戶付了錢權限卻回不來；`reconcile` 冪等且以 PayPal 為權威，多對帳無害、漏對帳才有害。 |
 
 UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn` / `DashboardCompanyList` / `PlanPaywall` / `CrmManager` / `PipelineBoard` / `NotesManager`），總覽 widget 在 `src/components/dashboard/home/`（`PriorityBanner` / `MetricsRow` / `AlertsRow` / `FounderMatchCard` / `TutorialVideoCard` / `TopOpportunitiesRail` / `UpcomingEventsRail`，皆 server component；`CopilotPanel` 為 client 串流對話）。CRUD 驗證 schema 在 `src/lib/dashboard/schemas.ts`（zod）。`DashboardSidebar` 的 `NAV` 陣列 + `NavKey` 集中管理側欄（新增頁面在此擴充；`soon:true` 顯示「即將」小標，目前無啟用者）。shell 內容欄寬 `max-w-6xl` 供雙欄總覽。輕量公司清單 getter（`getCompanyList` / `countCompanies` / `getCompanyCards`）在 `src/lib/company/content.ts`。i18n 在 `messages/*.json` 的 `Dashboard`（含 `home`/`profile`/`companies`/`comingSoon` 及 2026-07 新增 `gate`/`actions`/`crm`/`pipeline`/`notes` 與 `home.copilot.*` 對話鍵）/ `Billing` namespace，en 與 zh-tw 鍵完全平行。新依賴 `@anthropic-ai/sdk`；新資料表 `Contact`/`Deal`/`MeetingNote`/`RateCounter`（rate limit 計數）需跑 `pnpm db:push`（加法式）。安全強化（2026-07）：login/signup/改密碼皆套 DB-based rate limit（`src/lib/rate-limit.ts`，無 KV 故用 Neon 原子 UPSERT）+ login 等時比對消除帳號枚舉時序側信道；bcrypt cost 提到 12（`src/lib/auth/password.ts`）；JWT 驗證鎖 `HS256`；`api.ts` 對非預期 500 遮蔽內部細節（業務 4xx 仍全顯，符合「錯誤全顯前端」）；金流取消寬限期修正（`reconcile` 不再用 null 覆寫 `User.currentPeriodEnd`）。**知識手冊 Playbooks（2026-07）**：`content/playbooks/*.json`（loader `src/lib/playbook/content.ts`），來源 PDF 放 `content/playbooks/_inbox/`（gitignored）→ `pnpm ingest:playbook` 用 Claude（強制工具 + 扁平 schema + 串流累加 `input_json_delta`）轉雙語 JSON；**雙用** = 會員頁 `/dashboard/playbooks`（`PlaybookArticle` 渲染）+ Nova AI（`src/lib/ai/knowledge.ts` 的 `buildPlaybookIndex` 進 prompt、`tools.ts` 的 `get_playbook`、`policy.ts` 視為權威方法論）。每日新增＝丟 PDF 再跑一次 ingest，零改程式。
 
@@ -358,8 +358,12 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 ### 方案與 gating
 
 - 方案邏輯單一事實來源：`src/lib/billing/plans.ts`（`PLAN_KEYS` / `PLAN_RANK` / `PLAN_CONFIG`，PayPal plan id 走 env 名）。價格顯示只信 i18n、邏輯只信此檔。
-- gating：`src/lib/billing/gate.ts` 的 `getEffectivePlan` / `getUserPlan` / `requirePlan`。**寬限期**：付費方案僅在 `currentPeriodEnd > now` 且狀態授予存取（ACTIVE/PAST_DUE/CANCELLED）時有效，否則退回 free — 即使 PayPal 漏送 CANCELLED，到期也會自動降級。
-- DAL：`src/lib/auth/account.ts` 的 `getCurrentAccount()`（React `cache()` 包裝、回安全 DTO，不含 passwordHash；含 `hasPassword` 布林與 `checklistState`）。
+- gating：`src/lib/billing/gate.ts` 的 `getEffectivePlan` / `getUserPlan` / `requirePlan`。**兩種寬限期，起算點刻意不同**：
+  - **ACTIVE / CANCELLED** → 需 `currentPeriodEnd > now`。已取消者付到本期末才降級；即使 PayPal 漏送 CANCELLED，到期也會自動降級。
+  - **SUSPENDED（扣款失敗）** → 走 `SUSPENDED_GRACE_MS`（**1 天**），以 `planUpdatedAt` 起算，**刻意不看 `currentPeriodEnd`**。因為扣款失敗的時間點正是本期到期日，SUSPENDED 時 `currentPeriodEnd` 必然已過期，且 PayPal 轉 SUSPENDED 前會先重試扣款數天 — 若用 `currentPeriodEnd` 當起點，寬限期會在 SUSPENDED 事件送達前就過完＝完全沒有寬限。設計意圖：最常見的扣款失敗原因是信用卡到期，給 1 天讓客戶更新付款方式，避免長期客戶在收到通知前就先失去存取。UI 用 `suspendedGraceEndsAt` / `suspendedGraceActive`（時間比較收在 gate 內，server component render body 直接呼叫 `Date.now()` 會違反 `react-hooks/purity`）。
+  - **前提**：`reconcile` 只在 plan/status **真的變化**時才更新 `planUpdatedAt`。若每次對帳都無條件刷新，PayPal 的重送／重複投遞會不斷延長寬限期，讓扣款失敗的帳號無限期保有付費存取。
+  - EXPIRED 為終局狀態，不授予存取；`enterprise` 由站方手動設定、無條件信任。
+- DAL：`src/lib/auth/account.ts` 的 `getCurrentAccount()`（React `cache()` 包裝、回安全 DTO，不含 passwordHash；含 `hasPassword` 布林、`checklistState`，以及 `planUpdatedAt`——SUSPENDED 寬限期的起算點，gate 需要它才能算寬限期）。
 
 ### PayPal 訂閱流程
 

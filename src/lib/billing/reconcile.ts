@@ -49,6 +49,17 @@ export async function reconcileFromPaypal(
   // EXPIRED（真正結束）才把 User.plan 歸零；其餘狀態保留方案、由 gate 的寬限期邏輯把關存取
   const storedPlan: PlanKey = status === "EXPIRED" ? "free" : plan;
 
+  // planUpdatedAt 只在 plan/status「真的變化」時才更新 —— 它是 gate 的 SUSPENDED 寬限期
+  // 起算點，若每次對帳都無條件刷新，PayPal 的重送／重複投遞會不斷延長寬限期，
+  // 讓扣款失敗的帳號無限期保有付費存取。
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, subscriptionStatus: true },
+  });
+  const planOrStatusChanged =
+    currentUser?.plan !== storedPlan ||
+    currentUser?.subscriptionStatus !== status;
+
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -59,7 +70,7 @@ export async function reconcileFromPaypal(
       // （nextBilling=null），此時「保留」既有到期日，切勿用 null 覆寫 —— 否則 gate 的
       // CANCELLED 寬限期會被清空，導致取消後立即失去 Pro（本次修的阻斷 bug）。
       currentPeriodEnd: nextBilling ?? local?.currentPeriodEnd ?? null,
-      planUpdatedAt: new Date(),
+      ...(planOrStatusChanged ? { planUpdatedAt: new Date() } : {}),
     },
   });
 }

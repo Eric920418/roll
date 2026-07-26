@@ -24,12 +24,15 @@ export default function BillingPanel({
   statusLabel,
   renewsLabel,
   hasActiveSub,
+  suspendedNotice,
 }: {
   locale: Locale;
   currentPlan: string;
   statusLabel: string;
   renewsLabel?: string;
   hasActiveSub: boolean;
+  /** 扣款失敗且仍在寬限期內時提供；deadline 為已格式化的降級時刻 */
+  suspendedNotice?: { deadline: string; manageUrl: string };
 }) {
   const t = useTranslations("Billing");
   const tPlans = useTranslations("Dashboard.plans");
@@ -81,6 +84,26 @@ export default function BillingPanel({
 
   return (
     <div className="mt-7 flex flex-col gap-7">
+      {/* 扣款失敗寬限期警告 — 放在最上方，並帶 PayPal 更新付款方式的自救入口 */}
+      {suspendedNotice && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-6">
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-amber-700 font-[family-name:var(--font-heading)]">
+            {t("suspendedTitle")}
+          </p>
+          <p className="mt-2 text-sm text-amber-900">
+            {t("suspendedBody", { date: suspendedNotice.deadline })}
+          </p>
+          <a
+            href={suspendedNotice.manageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-block rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-amber-700 font-[family-name:var(--font-heading)]"
+          >
+            {t("suspendedCta")}
+          </a>
+        </div>
+      )}
+
       {/* 目前訂閱摘要 */}
       <div className="rounded-2xl border border-dark/10 bg-white p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">

@@ -791,6 +791,9 @@
     "returnPending": "訂閱確認中，此頁稍後會自動更新。",
     "returnSuccess": "訂閱已生效，歡迎加入！",
     "perMonth": "/ 月",
+    "suspendedTitle": "扣款失敗",
+    "suspendedBody": "我們無法向你的付款方式收款。請在 {date} 前更新，逾期帳號將降為 Free 方案並失去付費功能存取權。",
+    "suspendedCta": "前往 PayPal 更新付款方式",
     "errors": {
       "planRequired": "此功能需付費方案，請先升級。",
       "unknownPlan": "未知的方案。",

@@ -20,6 +20,18 @@ export function isPaypalConfigured(): boolean {
   return getCreds() !== null;
 }
 
+/**
+ * PayPal「自動付款／訂閱管理」頁 URL —— 扣款失敗（SUSPENDED）時引導客戶去更新付款方式。
+ * 隨 PAYPAL_ENV 切 sandbox / live 網域（sandbox 帳號在 live 網域找不到訂閱）。
+ */
+export function paypalManagePaymentUrl(): string {
+  const host =
+    process.env.PAYPAL_ENV === "live"
+      ? "https://www.paypal.com"
+      : "https://www.sandbox.paypal.com";
+  return `${host}/myaccount/autopay/`;
+}
+
 async function getAccessToken(): Promise<string> {
   const creds = getCreds();
   if (!creds) {

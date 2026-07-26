@@ -6,16 +6,16 @@ import { reconcileById } from "@/lib/billing/reconcile";
 // PayPal webhook。proxy 對 /api/* 放行；此端點不查 session，改以簽章驗證授權。
 // 設計：驗章 → 記錄事件（審計）→ 對帳（idempotent）→ 200；對帳失敗回 500 讓 PayPal 重送。
 
-// 需要觸發對帳的事件類型
-const RELEVANT = new Set([
-  "BILLING.SUBSCRIPTION.ACTIVATED",
-  "BILLING.SUBSCRIPTION.UPDATED",
-  "BILLING.SUBSCRIPTION.CANCELLED",
-  "BILLING.SUBSCRIPTION.SUSPENDED",
-  "BILLING.SUBSCRIPTION.EXPIRED",
-  "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
-  "PAYMENT.SALE.COMPLETED",
-]);
+// 需要觸發對帳的事件類型。
+// 訂閱類事件用 prefix 比對而非逐一列舉 —— 白名單漏一個事件（例如客戶更新付款方式後的
+// BILLING.SUBSCRIPTION.RE-ACTIVATED，注意官方名稱帶連字號）就等於漏對帳，客戶付了錢
+// 權限卻回不來。reconcile 以 PayPal 為權威來源且冪等，多對帳幾次無害、漏對帳才有害。
+const RELEVANT_PREFIX = "BILLING.SUBSCRIPTION.";
+const RELEVANT_EXACT = new Set(["PAYMENT.SALE.COMPLETED"]);
+
+function needsReconcile(eventType: string): boolean {
+  return eventType.startsWith(RELEVANT_PREFIX) || RELEVANT_EXACT.has(eventType);
+}
 
 type PaypalEvent = {
   id?: string;
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 4. 對帳（idempotent；以 PayPal 為權威來源）
-    if (subId && RELEVANT.has(eventType)) {
+    if (subId && needsReconcile(eventType)) {
       await reconcileById(subId);
     }
 
