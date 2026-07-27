@@ -471,6 +471,7 @@
       "profile": "公司檔案",
       "companies": "台灣企業",
       "playbooks": "知識手冊",
+      "quiz": "本期問答",
       "crm": "CRM 客戶",
       "pipeline": "銷售管道",
       "notes": "會議記錄",
@@ -674,6 +675,30 @@
         "sales-channel": "銷售通路",
         "operations": "營運",
         "general": "綜合"
+      },
+      "reader": {
+        "progress": "已讀 {done}/{total}",
+        "filter": {
+          "all": "全部",
+          "unread": "未讀",
+          "read": "已讀"
+        },
+        "markRead": "標為已讀",
+        "read": "已讀",
+        "emptyFilter": "此篩選沒有段落。"
+      },
+      "quiz": {
+        "title": "本期問答",
+        "subtitle": "每兩週一批新題目，取材自知識手冊。",
+        "empty": "目前沒有題目 —— 手冊上架後再回來看看。",
+        "countHint": "本期共 {count} 題。",
+        "score": "你的得分：{score}/{total}",
+        "done": "你已完成本期。下一批在 {days} 天後。",
+        "correct": "答對",
+        "wrong": "答錯",
+        "submit": "送出答案",
+        "submitting": "送出中…",
+        "error": "發生錯誤，請再試一次。"
       }
     },
     "comingSoon": {

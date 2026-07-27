@@ -14,6 +14,7 @@ type NavKey =
   | "profile"
   | "companies"
   | "playbooks"
+  | "quiz"
   | "crm"
   | "pipeline"
   | "notes"
@@ -29,6 +30,7 @@ const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "profile", path: "/dashboard/profile" },
   { key: "companies", path: "/dashboard/companies" },
   { key: "playbooks", path: "/dashboard/playbooks" },
+  { key: "quiz", path: "/dashboard/quiz" },
   { key: "crm", path: "/dashboard/crm" },
   { key: "pipeline", path: "/dashboard/pipeline" },
   { key: "notes", path: "/dashboard/notes" },

@@ -123,10 +123,14 @@ export function buildPlaybookIndex(): string {
 export function renderPlaybookForAI(slug: string): string | null {
   const p = getPlaybook(slug);
   if (!p) return null;
+  const body = [...p.segments]
+    .sort((a, b) => a.order - b.order)
+    .map((s) => `## ${s.heading.en}\n${s.body.en.trim()}`)
+    .join("\n\n");
   return [
     `# ${p.title.en}`,
     "(ROLL ON playbook — authoritative methodology. You may teach and quote this directly.)",
     "",
-    p.body.en.trim(),
+    body,
   ].join("\n");
 }

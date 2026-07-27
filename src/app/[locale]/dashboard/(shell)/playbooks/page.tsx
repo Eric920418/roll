@@ -1,6 +1,7 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { getPlaybookList, pickDual } from "@/lib/playbook/content";
+import { getCurrentAccount } from "@/lib/auth/account";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
@@ -14,6 +15,8 @@ export default async function PlaybooksPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "Dashboard.playbooks" });
 
   const items = getPlaybookList();
+  const account = await getCurrentAccount();
+  const reads = account?.playbookReads ?? {};
 
   return (
     <div className="font-[family-name:var(--font-body)]">
@@ -32,15 +35,23 @@ export default async function PlaybooksPage({ params }: Props) {
             const catLabel = t.has(`categories.${p.category}`)
               ? t(`categories.${p.category}`)
               : p.category;
+            const done = Object.keys(reads).filter(
+              (k) => k.startsWith(`${p.slug}:`) && reads[k],
+            ).length;
             return (
               <Link
                 key={p.slug}
                 href={pathForLocale(`/dashboard/playbooks/${p.slug}`, l)}
                 className="group rounded-2xl border border-dark/10 bg-white p-6 transition-colors hover:border-primary/40"
               >
-                <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary font-[family-name:var(--font-heading)]">
-                  {catLabel}
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary font-[family-name:var(--font-heading)]">
+                    {catLabel}
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold text-dark/50 font-[family-name:var(--font-heading)]">
+                    {t("reader.progress", { done, total: p.segmentCount })}
+                  </span>
+                </div>
                 <h2 className="mt-3 text-lg font-extrabold tracking-[-0.02em] text-dark transition-colors group-hover:text-primary font-[family-name:var(--font-heading)]">
                   {pickDual(p.title, locale)}
                 </h2>

@@ -164,6 +164,9 @@ model User {
   // Tools 落地清單勾選狀態 { itemKey: true }
   checklistState Json @default("{}")
 
+  // Playbook 段落已讀狀態 { "<slug>:<segmentKey>": true }（供已讀/未讀 filter）
+  playbookReads Json @default("{}")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -175,6 +178,9 @@ model User {
   contacts     Contact[]
   deals        Deal[]
   meetingNotes MeetingNote[]
+
+  // 雙週知識問答作答歷史（每期一筆）
+  playbookQuizAttempts PlaybookQuizAttempt[]
 
   @@index([email])
 }
@@ -386,4 +392,25 @@ model RateCounter {
   updatedAt   DateTime @updatedAt
 
   @@index([windowStart]) // 供日後清理過期列
+}
+
+// ============================================
+// 雙週知識問答（Playbook Q&A）作答歷史
+// 題目從 playbook 段落題庫即時挑選（不入 DB）；此表只存「每會員每期作答結果」，供成績/歷史/防重複作答。
+// periodIndex = 以會員註冊日為錨算出的第幾個雙週（見 src/lib/playbook/quiz.ts）。
+// ============================================
+
+/// 每會員每個雙週一筆作答紀錄
+model PlaybookQuizAttempt {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodIndex Int // 第幾個雙週（錨=註冊日）
+  answers     Json // [{ questionId, choice }]
+  score       Int
+  total       Int
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, periodIndex]) // 每期一筆
+  @@index([userId])
 }

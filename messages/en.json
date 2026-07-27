@@ -471,6 +471,7 @@
       "profile": "Company profile",
       "companies": "Taiwan companies",
       "playbooks": "Playbooks",
+      "quiz": "Fortnightly Q&A",
       "crm": "CRM",
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
@@ -674,6 +675,30 @@
         "sales-channel": "Sales channel",
         "operations": "Operations",
         "general": "General"
+      },
+      "reader": {
+        "progress": "Read {done}/{total}",
+        "filter": {
+          "all": "All",
+          "unread": "Unread",
+          "read": "Read"
+        },
+        "markRead": "Mark as read",
+        "read": "Read",
+        "emptyFilter": "No segments match this filter."
+      },
+      "quiz": {
+        "title": "Fortnightly Q&A",
+        "subtitle": "A fresh set of questions every two weeks, drawn from the playbooks.",
+        "empty": "No questions available yet — check back once playbooks are published.",
+        "countHint": "{count} questions this round.",
+        "score": "Your score: {score}/{total}",
+        "done": "You've completed this round. Next set in {days} days.",
+        "correct": "Correct",
+        "wrong": "Incorrect",
+        "submit": "Submit answers",
+        "submitting": "Submitting…",
+        "error": "Something went wrong. Please try again."
       }
     },
     "comingSoon": {
