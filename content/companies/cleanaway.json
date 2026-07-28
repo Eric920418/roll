@@ -14,7 +14,7 @@
   "summaryEn": "Taiwan's largest hazardous industrial-waste treatment company, whose moat is a near-unobtainable regulatory permit and scarce landfill capacity — an asset that depletes as it earns. Very high margins and 16 straight years of dividends, now transforming from burying waste toward a circular ecosystem of remediation, incineration and recycled materials.",
   "factsHash": null,
   "updatedAt": "2026-07-28",
-  "model": "editorial (truth-audited: FinMind + press/company; waste-treatment framing — permit moat, ~50% gross margins and the 16-year dividend record credited, and the circular-economy transformation explained, while TWO data traps are corrected in full: the Oct-2025 1-for-10 split that makes raw databases show a fake '2025Q4 EPS -9.18' and a fake dividend cut, and the BOT construction-revenue recognition that inflated 2026 monthly revenue ~200%; landfill depletion, lumpy project revenue, negative BOT-driven cash flow and equity-diluted ROE stated plainly; distinguished from Australia's Cleanaway; sector/foundedYear/listedYear fixed)",
+  "model": "editorial (truth-audited: FinMind + press/company; waste-treatment framing — permit moat, ~50% gross margins and the 16-year dividend record credited, and the circular-economy transformation explained, while TWO data traps are corrected in full: the Oct-2025 1-for-10 split that makes raw databases show a fake '2025Q4 EPS -9.18' and a fake dividend cut, and the BOT construction-revenue recognition that inflated 2026 monthly revenue ~200%; landfill depletion, lumpy project revenue, negative BOT-driven cash flow and equity-diluted ROE stated plainly; distinguished from Australia's Cleanaway; sector/foundedYear/listedYear fixed) [data-fix: the 2025Q4 EPS row of −9.18 has been removed. It is an artifact of deriving quarterly EPS by subtraction across the October 2025 one-for-ten share split — pre-split Q1–Q3 figures were subtracted from a post-split full-year figure. It contradicted the same quarter's positive net income of NT$277m and rising equity. The distortion is explained in the narrative; the false value no longer appears in the metrics. 2026Q1's NT$0.21 is correct on the post-split basis and is retained.]",
   "metrics": [
     {
       "period": "2021-12",
@@ -1253,13 +1253,6 @@
       "metricKey": "netIncome",
       "value": 276780000.0,
       "unit": "TWD",
-      "source": "FinMind:TaiwanStockFinancialStatements"
-    },
-    {
-      "period": "2025Q4",
-      "metricKey": "eps",
-      "value": -9.18,
-      "unit": "TWD_per_share",
       "source": "FinMind:TaiwanStockFinancialStatements"
     },
     {
