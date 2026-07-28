@@ -490,6 +490,9 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 1519 | `fortune-electric` | Fortune Electric 華城電機 | Heavy Electrical Equipment（AI 電網瓶頸；Stargate 變壓器單、在手 300 億到 2028；P/B 27.9× 且月營收轉負） |
 | 5904 | `poya` | Poya 寶雅國際（TPEx 上櫃） | Beauty & Lifestyle Retail（美妝生活雜貨約 9 成市佔；45% 毛利／46% ROE；FinMind P/E 196× 為錯誤，實為 ~20×） |
 | 2002 | `china-steel` | China Steel 中國鋼鐵 | Steel（132 萬股東的國民股；FY2025 轉虧 EPS −0.29、股利 3.1→0.15；中國產能過剩） |
+| 6669 | `wiwynn` | Wiwynn 緯穎科技 | Cloud & AI Server ODM（全球前三大 AI 伺服器 ODM／CSP-only；EPS 81→275；但毛利僅 7.5%、OCF −162 億） |
+| 6214 | `systex` | Systex 精誠資訊 | IT Services（最大系統整合；AI 剛需帶動 Q1 獲利 +164%、6 月營收 +77%；營益率僅 4.9%） |
+| 2646 | `starlux` | STARLUX 星宇航空 | Airlines（2020 開航即遇疫情；營收 +40%、機隊拚 43 架；獲利仍微薄、P/E 240× 為近零獲利假象） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
