@@ -5,16 +5,16 @@
   "nameEn": "Alchip Technologies",
   "nameZh": "世芯-KY",
   "logoUrl": null,
-  "sector": "Semiconductors",
-  "foundedYear": null,
-  "listedYear": null,
+  "sector": "ASIC Design Services",
+  "foundedYear": 2003,
+  "listedYear": 2014,
   "headquarters": "Taipei, Taiwan",
   "websiteUrl": "https://www.alchip.com/",
   "status": "active",
-  "summaryEn": null,
+  "summaryEn": "The turnkey design house that takes hyperscalers' custom AI chips from specification to mass production — the layer between a fabless designer and a foundry. Revenue has halved on tape-out deferrals while gross margin doubled past 50%, a mix illusion that will reverse when 3nm production ramps.",
   "factsHash": null,
   "updatedAt": "2026-07-28",
-  "model": null,
+  "model": "editorial (truth-audited: FinMind + press/company; ASIC-design-service framing — the AI/hyperscaler franchise, advanced-node record and fortress balance sheet credited, but the central point made explicit: the 50% gross margin is a MIX ARTEFACT of collapsed low-margin turnkey revenue, not a structural gain, and will fall back when 3nm mass production ramps; decline cause verified as tape-out deferrals / product-cycle transition (an export-control hypothesis was NOT verified and is excluded); customer concentration, lumpy revenue and a ~50x multiple stated plainly; sector/foundedYear/listedYear fixed)",
   "metrics": [
     {
       "period": "2021-12",
@@ -3531,7 +3531,68 @@
       "source": "FinMind:TaiwanStockPrice"
     }
   ],
-  "sections": [],
+  "sections": [
+    {
+      "order": 0,
+      "slug": "overview",
+      "headingEn": "Overview",
+      "bodyMarkdown": "Alchip Technologies (世芯-KY, TWSE: 3661) occupies a layer of the semiconductor supply chain that this collection has not yet covered: **ASIC design services**. It is neither a fabless chip designer like MediaTek nor a foundry like TSMC — it is the **turnkey house in between**, taking a customer's custom chip from specification through front-end and physical back-end design, design-for-test, tape-out, advanced packaging and finally **mass-production management**. Founded in **2003** and **listed in Taiwan in 2014** (as a Cayman-registered \"KY\" company), it specialises in **TSMC's most advanced nodes — 7nm and below** — and has shipped **over 200 million chips** into mass production. Today **AI and HPC account for roughly 95% of its revenue**, and its principal customers are **hyperscale cloud service providers** building their own AI accelerators.\n\nIts recent numbers look contradictory until you understand the business model — and most commentary gets this backwards. **Revenue has collapsed**: monthly sales fell by between 32% and 77% year-on-year for eight straight months before turning positive (+15.4%) in June 2026. Yet **gross margin has exploded, from 18.8% in early 2024 to 50.2% in 2026Q1**, with operating margin rising from 11.6% to 32.7%. Profits, remarkably, barely moved: annual EPS ran **NT$25.69 (FY2022) → 45.44 → 81.25 (FY2024 peak) → 69.19 (FY2025)**, and 2026Q1's NT$17.55 was only 3% below the prior year.\n\nThe explanation is **mix, not strength**. Design-service revenue splits into **high-margin NRE** (the engineering fees for designing the chip) and **low-margin turnkey production** (buying wafers and packaging from TSMC and passing them through at a thin markup). When production volume falls away — here because of **tape-out deferrals and a product-cycle transition, not a demand collapse** — revenue halves while the remaining mix tilts violently toward NRE, mechanically lifting the margin. **The 50% gross margin is therefore a symptom of the problem, not proof of a better business**: when the **3nm AI chip for a major North American cloud customer** enters mass production, revenue will surge and the gross margin will fall back toward the 20s. The honest read: **a genuinely strategic AI franchise with a fortress balance sheet, in a transition trough, whose headline margin flatters it — priced at ~50× earnings on the assumption the next production cycle arrives on schedule.**"
+    },
+    {
+      "order": 1,
+      "slug": "founding-story",
+      "headingEn": "Founding Story",
+      "bodyMarkdown": "Alchip was founded in **2003** to serve a need created by the rising cost of advanced chip design: companies that wanted their **own custom silicon** but did not want to build a full chip-design organisation. Its answer was the **turnkey ASIC model** — the customer brings the architecture and specification, Alchip supplies everything else: **front-end SoC design, physical back-end implementation, design-for-test, verification, tape-out at the foundry, packaging, testing and mass-production management**. The customer gets a finished chip delivered; Alchip earns engineering fees for the design work and a margin on the production it manages.\n\nThe company's strategic bet was **the leading edge**. Rather than compete on mature nodes, it built expertise in TSMC's most advanced processes — **7nm and below, now 3nm and 2nm** — where physical design is hardest, tools are most expensive, and few houses can execute. That capability was proven at scale: **more than 200 million chips** designed by Alchip have reached mass production.\n\nThat positioning became extraordinarily valuable when **AI arrived**. As hyperscale cloud providers began designing their **own AI accelerators** rather than buying only merchant GPUs, they needed exactly what Alchip sells: a partner that could turn an internal architecture into a manufacturable leading-edge chip. **AI and HPC grew to about 95% of revenue**, and earnings compounded ferociously — EPS more than tripled from NT$25.69 in FY2022 to NT$81.25 in FY2024. The current chapter is the other side of that model: because revenue is tied to **specific projects reaching specific milestones**, a wave of **tape-out deferrals and a generational product transition** has produced a violent revenue trough while the company waits for its next chips to enter volume production."
+    },
+    {
+      "order": 2,
+      "slug": "timeline",
+      "headingEn": "Timeline",
+      "bodyMarkdown": "- **2003** — Alchip founded, headquartered in Taipei, offering **turnkey ASIC design services**.\n- **2000s–2010s** — Builds leading-edge physical-design capability on **TSMC advanced nodes**; accumulates a record of **200m+ chips in mass production**.\n- **2014** — **Lists on the Taiwan Stock Exchange (3661)** as a Cayman-registered \"KY\" company.\n- **2020–2022** — AI/HPC becomes the dominant business as hyperscalers design custom accelerators; EPS reaches **NT$25.69 (FY2022)**; dividend NT$13.06.\n- **2023** — **EPS NT$45.44**; dividend NT$22.42.\n- **2024** — **Peak year: EPS NT$81.25**; dividend **NT$36.48**; AI/HPC ~95% of revenue.\n- **2025** — Product-cycle transition: revenue **NT$30.93bn**, net profit **NT$5.6bn**, **EPS NT$69.18 (−15%)**; gross margin improves to **26.4%** with Q4 above 40%.\n- **2026Q1** — Revenue **US$132m (−58.5% YoY)** on **tape-out deferrals**; **gross margin breaks 50%**; EPS NT$17.55. Recovery drivers: **3nm AI chip for a major North American cloud customer entering mass production**, and **2nm design NRE** beginning to be recognised."
+    },
+    {
+      "order": 3,
+      "slug": "financing",
+      "headingEn": "Capital & Financing History",
+      "bodyMarkdown": "Alchip's balance sheet is a fortress; its income statement is a cycle. Reading them together is what matters.\n\n- **A cash-rich, low-debt balance sheet.** **NT$29.1bn of cash** against **NT$43.2bn of equity** and a **27% debt ratio** on NT$59.2bn of assets. For a business whose main costs are engineers, EDA tools and foundry prepayments, that is enormous financial flexibility — it can fund multi-year design programmes and absorb a revenue trough without strain.\n- **Earnings that compounded, then paused.** Annual EPS: **NT$25.69 (FY2022) → 45.44 (FY2023) → 81.25 (FY2024) → 69.19 (FY2025)**, with 2026Q1 at NT$17.55. FY2025 delivered **revenue of NT$30.93bn and net profit of NT$5.6bn**.\n- **A margin that must be read as mix.** Gross margin rose from **18.8% (2024Q1) to 50.2% (2026Q1)** — but this reflects **low-margin turnkey production revenue disappearing**, not pricing power. FY2025's full-year gross margin was **26.4%**; the 50% figure is a trough-quarter composition, and it will compress as volume production returns.\n- **Cash that drags returns.** **ROE is only ~12.9%** despite a **34% net margin**, because the equity base is inflated by a large cash pile earning modest interest. That same cash explains why **net margin (34.09%) slightly exceeds operating margin (32.66%)** — interest income sits below the operating line.\n- **A rising but small dividend.** Cash dividends (FinMind, by fiscal year) climbed from **NT$1.01 (2010)** to **NT$11.35 (2021), 13.06 (2022), 22.42 (2023) and 36.48 (2024)** — real growth, but at NT$3,115 a share the **yield is only ~1.0%**.\n- **A demanding valuation.** **P/E ~50.7×** and **P/B ~6.5×** on trough earnings.\n\nThe financing reality: **financially unassailable, operationally mid-cycle** — the company can comfortably wait for its next production wave; the question is what investors are paying for that wait."
+    },
+    {
+      "order": 4,
+      "slug": "thesis",
+      "headingEn": "Investment Thesis",
+      "bodyMarkdown": "**Stance: a strategically positioned AI design partner with a fortress balance sheet, sitting in a project-driven trough whose headline margin flatters it — priced at ~50× earnings on the next production cycle arriving as promised.**\n\nThe bull case:\n\n1. **A privileged position in custom AI silicon.** Hyperscalers designing their own accelerators need a partner who can execute **leading-edge physical design and mass-production management** — a capability proven across **200m+ chips** and now extending to **3nm and 2nm**. AI/HPC is ~95% of revenue.\n2. **Visible recovery drivers.** A **3nm AI chip for a major North American cloud customer entering mass production**, plus **2nm design NRE** starting to be recognised — both of which convert the current design work into future volume revenue. June 2026 revenue already turned positive (+15.4% YoY).\n3. **Financial strength.** **NT$29bn of cash**, a 27% debt ratio, and profits that held up (EPS −3% year-on-year in 2026Q1) even as revenue fell 58% — evidence that the design business itself remains highly profitable.\n\nThe counter-arguments are substantial:\n\n- **The margin is an illusion, and it will reverse.** The 50% gross margin exists **because** low-margin production revenue vanished. When 3nm volume ramps, revenue will jump and **gross margin will fall back toward the 20s** — anyone modelling recovered revenue at current margins will be badly wrong.\n- **Extreme concentration and lumpiness.** A handful of hyperscale customers, ~95% AI/HPC exposure, and revenue that swings on **individual tape-outs and project milestones** — hence eight consecutive months of 30–77% declines.\n- **Dependence on others' roadmaps.** Its fortunes rest on customers' chip programmes staying on schedule and on **TSMC advanced-node capacity and pricing**.\n- **A ~50× multiple on trough earnings** leaves no room for another deferral.\n\nA **cycle-timing** thesis: the franchise is real and the balance sheet removes existential risk — but you are paying a premium price for a ramp that must actually happen."
+    },
+    {
+      "order": 5,
+      "slug": "business-model",
+      "headingEn": "Business Model",
+      "bodyMarkdown": "Alchip earns money in two very different ways, and the balance between them explains almost everything about its financials:\n\n- **NRE — non-recurring engineering (high margin).** Fees for the **design work itself**: architecture support, front-end SoC design, **physical back-end implementation** on advanced nodes, design-for-test, verification and tape-out preparation. This is skilled-labour revenue — expensive engineers and EDA licences — and it carries **high gross margins**. It is also **front-loaded**: a chip generates NRE years before it generates volume.\n- **Turnkey production (low margin, high dollars).** Once a chip is designed, Alchip **manages its manufacture** — procuring wafers from TSMC, arranging advanced packaging and test, and delivering finished chips. Alchip books the **full production value as revenue** but earns only a **thin markup**, because most of the money passes through to the foundry and packaging houses.\n\nThat structure creates the pattern visible in the data. In a **volume year**, turnkey revenue dominates: revenue is huge and the blended gross margin is low (**18.8% in early 2024**). In a **transition year**, production of the previous generation winds down before the next ramps, so **revenue collapses while the remaining mix is mostly NRE** — and the gross margin appears to double (**50.2% in 2026Q1**). Neither figure describes a change in competitive strength; both describe **where the customer's chips are in their life cycle**.\n\nThe levers, therefore, are **design wins (which set revenue three-plus years out), tape-out timing, and the ramp schedule of customers' volume production** — plus access to **TSMC's leading-edge capacity**. The strength is that Alchip is embedded in customers' most strategic silicon programmes; the vulnerability is that it controls **neither the architecture nor the launch date**, so its revenue is inherently lumpy and its reported margin is a mix artefact rather than a signal."
+    },
+    {
+      "order": 6,
+      "slug": "industry",
+      "headingEn": "Industry & Competition",
+      "bodyMarkdown": "ASIC design services is a **small, specialised, and strategically important layer** of the semiconductor industry — and one where Taiwan is unusually strong.\n\n- **Why the layer exists.** Designing a leading-edge chip now costs hundreds of millions of dollars and requires scarce physical-design expertise. Companies that want **custom silicon** — hyperscalers, networking and HPC firms — frequently lack a full internal chip organisation, so they outsource everything below the architecture to a **turnkey design house**.\n- **Why it is booming.** The AI build-out has made **custom accelerators** strategically vital: hyperscalers want chips tuned to their own workloads and independence from merchant GPU pricing. That demand flows directly to design-service houses and to TSMC behind them.\n- **The competitive set.** Alchip's closest Taiwanese peer is **GUC (創意電子)**, TSMC-affiliated; internationally it competes with the custom-silicon arms of **Broadcom and Marvell**, which are far larger and often win the biggest hyperscaler programmes. Competition is for **design wins**, decided years before revenue appears, on the basis of advanced-node execution, track record and trust.\n- **The structural dependency.** Everyone in this layer ultimately depends on **TSMC's leading-edge capacity** and on customers' roadmaps. The layer captures a modest slice of the value chain — the chip designer keeps the architecture value, TSMC keeps the manufacturing value — which is precisely why turnkey production revenue carries such thin margins.\n\nAlchip's position is **genuinely strong but not dominant**: a proven leading-edge executor with a deep record, competing against much larger US rivals for a limited number of very large programmes. The industry truth is that **design-service revenue is a lagging echo of design wins made years earlier** — which makes the business strategically attractive, highly cyclical at the project level, and fundamentally dependent on customers whose plans it cannot control."
+    },
+    {
+      "order": 7,
+      "slug": "swot",
+      "headingEn": "SWOT",
+      "bodyMarkdown": "**Strengths**\n- Proven **leading-edge execution** (7nm and below; now 3nm/2nm) with **200m+ chips in mass production**.\n- Embedded in **hyperscalers' custom AI silicon** programmes; AI/HPC ~95% of revenue.\n- **Fortress balance sheet**: NT$29.1bn cash, 27% debt ratio — able to fund multi-year programmes through a trough.\n\n**Weaknesses**\n- **Extremely lumpy revenue** tied to individual tape-outs and ramp schedules (eight months of 32–77% YoY declines).\n- **Headline gross margin is a mix artefact** (50% at trough vs 26.4% for FY2025) and will compress as volume returns.\n- **ROE only ~12.9%** despite a 34% net margin, dragged by the large cash pile; ~1% dividend yield.\n\n**Opportunities**\n- **3nm AI chip for a major North American cloud customer** entering mass production; **2nm NRE** beginning.\n- Continued hyperscaler shift toward custom accelerators; advanced packaging content growth.\n- Design wins today converting into volume revenue in future years.\n\n**Threats**\n- **Customer concentration** and dependence on customers' roadmaps and launch timing.\n- **Competition** from GUC and the far larger custom-silicon arms of Broadcom and Marvell.\n- **TSMC capacity/pricing** dependence; a **~50× multiple** that leaves no room for further deferrals."
+    },
+    {
+      "order": 8,
+      "slug": "risks",
+      "headingEn": "Key Risks",
+      "bodyMarkdown": "- **Project lumpiness (the defining risk).** Revenue depends on **specific chips reaching specific milestones**. Tape-out deferrals and a product-cycle transition drove monthly revenue down **32–77% year-on-year for eight straight months** — with no change in the company's competitive standing. The same mechanism can recur at any time.\n- **The margin illusion.** The current **50% gross margin will fall back toward the 20s** as low-margin turnkey production returns. Investors who extrapolate trough-quarter margins onto recovered revenue will materially overestimate future profits.\n- **Customer concentration.** A handful of **hyperscale cloud customers** and ~95% AI/HPC exposure mean the loss, delay or in-sourcing of a single programme is highly material.\n- **No control over the roadmap.** Alchip supplies execution, not architecture; **launch timing, volumes and generational transitions are decided by customers**.\n- **Foundry dependence.** Leading-edge capacity, allocation and pricing at **TSMC** directly determine what Alchip can deliver and at what cost.\n- **Competition for design wins.** **GUC**, plus **Broadcom** and **Marvell**, compete for the same small number of very large custom-silicon programmes, and wins are decided years before revenue appears.\n- **Valuation.** At **~50× earnings and ~6.5× book on trough profits**, the price already assumes the 3nm ramp and 2nm pipeline arrive on schedule."
+    },
+    {
+      "order": 9,
+      "slug": "outlook",
+      "headingEn": "Strategic Outlook",
+      "bodyMarkdown": "Alchip's outlook is a question of **timing, not viability**: the design work is being done and paid for; what matters is when it converts into volume. The axes to watch:\n\n- **The 3nm mass-production ramp.** The single most important driver — the **AI chip for a major North American cloud customer** entering volume production. This is what turns today's high-margin, low-dollar NRE into tomorrow's high-dollar turnkey revenue, and it is the basis for a return to growth.\n- **Expect the margin to fall as revenue rises.** The healthiest possible outcome is **revenue surging while gross margin drops back toward the 20s** — counterintuitive, but exactly what a successful ramp looks like in this model. Judging the company on gross margin alone would invert the signal.\n- **2nm NRE and the design-win pipeline.** Recognition of **2nm design revenue** is the leading indicator of the *next* cycle; design wins secured now determine revenue three or more years out.\n- **Concentration and diversification.** Whether Alchip broadens beyond a small set of hyperscale programmes enough to smooth the project cycle.\n\nBottom line: Alchip is the **turnkey house that turns hyperscalers' custom AI chip designs into manufacturable silicon** — a strategically privileged, technically proven position with **NT$29bn of cash** behind it. Its current figures are widely misread: **revenue halved because of tape-out deferrals and a product-cycle transition, and the resulting 50% gross margin reflects that collapse in low-margin production revenue rather than any improvement in the business**. Judge it on **the 3nm ramp, the 2nm pipeline and design wins** — and expect the margin to *fall* if things go right, at a ~50× multiple that gives the recovery little room to slip."
+    }
+  ],
   "sources": [
     {
       "label": "FinMind — Taiwan Stock Open Data",
@@ -3547,6 +3608,21 @@
       "label": "Company website",
       "url": "https://www.alchip.com/",
       "kind": "api"
+    },
+    {
+      "label": "Wikipedia / 公司資料 — Alchip 世芯-KY (2003 成立、2014 上市、ASIC turnkey 設計服務、7nm 以下先進製程、逾 2 億顆量產)",
+      "url": "https://en.wikipedia.org/wiki/Alchip",
+      "kind": "reference"
+    },
+    {
+      "label": "經濟日報 — 世芯財報：2025 獲利 56 億元、EPS 69.18 元，第 4 季毛利率衝逾四成",
+      "url": "https://money.udn.com/money/story/5607/9363922",
+      "kind": "news"
+    },
+    {
+      "label": "口袋學堂 — 世芯-KY(3661)做什麼的？Q1 毛利破 5 成、N3 放量 (NRE 需求強勁、3nm 量產)",
+      "url": "https://www.pocket.tw/school/report/SCHOOL/6426/",
+      "kind": "news"
     }
   ]
 }

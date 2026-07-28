@@ -482,6 +482,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 9917 | `taiwan-secom` | Taiwan Secom 中興保全科技 | Security & Smart Services（台灣首家保全／契約經常性收入；21% ROE、5.6% 高息；轉型智慧城市） |
 | 6409 | `voltronic` | Voltronic 旭隼科技 | UPS & Solar Inverters（新興市場離網電力隱形冠軍；30% ROE／千金股；銀銅匯率紅海關稅多重擠壓） |
 | 8422 | `cleanaway` | Cleanaway 可寧衛 | Waste Management & Environmental（有害廢棄物龍頭／許可證護城河；1拆10 與 BOT 認列兩大數據陷阱已釐清） |
+| 3661 | `alchip` | Alchip 世芯-KY | ASIC Design Services（雲端巨頭 AI 晶片 turnkey；營收腰斬但毛利破 50%＝組合假象，非變強） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
