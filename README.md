@@ -484,6 +484,9 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 8422 | `cleanaway` | Cleanaway 可寧衛 | Waste Management & Environmental（有害廢棄物龍頭／許可證護城河；1拆10 與 BOT 認列兩大數據陷阱已釐清） |
 | 3661 | `alchip` | Alchip 世芯-KY | ASIC Design Services（雲端巨頭 AI 晶片 turnkey；營收腰斬但毛利破 50%＝組合假象，非變強） |
 | 2891 | `ctbc-financial` | CTBC Financial 中國信託金融控股 | Financials（銀行引擎金控；FY2025 淨利 806 億／ROE 16.9% 業界之冠；2.25× 淨值溢價） |
+| 2633 | `thsrc` | Taiwan High Speed Rail 台灣高鐵 | Rail Transport（特許獨占至 2068；營益率 43% 但淨利率 15%＝利息吃掉；BOT 失敗→國有民營） |
+| 6488 | `globalwafers` | GlobalWafers 環球晶圓（TPEx 上櫃） | Silicon Wafers（全球前三大矽晶圓；EPS 自峰 −66%、股利 25→7.7；CHIPS 補助＋美光 10 年約） |
+| 3529 | `ememory` | eMemory 力旺電子 | Semiconductor IP（純 IP 授權；毛利 100%＝模式產物，營益率 60% 才是真；ROE 46%／P/B 41×） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
