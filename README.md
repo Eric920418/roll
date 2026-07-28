@@ -335,7 +335,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | --- | --- |
 | `/[locale]/dashboard` | **NOVA 總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：黑白銀「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（引導/測驗/訂閱三狀態）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝NOVA AI 顧問（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
 | `/[locale]/dashboard/profile` | **公司檔案**（2026-07）：唯讀展示會員 `OnboardingProfile`（公司/需求兩區，slug 經 `Auth.options.*` 轉 label），附「編輯」→ `/dashboard/account`；未填顯示引導卡。 |
-| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 91 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
+| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 94 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
 | `/[locale]/dashboard/playbooks`（+`[slug]`） | **知識手冊 Playbooks（2026-07）**：ROLL ON 募資／成長方法論指南，登入即可看。一份＝一個 `content/playbooks/<slug>.json`（`pnpm ingest:playbook` 把 PDF 經 Claude 轉雙語 JSON）。**每個紅色標題＝一個 segment**；詳情頁 `PlaybookReader` 分段渲染 + 每段「標為已讀」+「全部／未讀／已讀」filter（狀態存 `User.playbookReads`），列表頁顯示各份已讀進度。**雙用**：同內容餵 Nova AI（`get_playbook`）。 |
 | `/[locale]/dashboard/quiz` | **本期問答 Fortnightly Q&A（2026-07）**：每兩週一批選擇題，題庫來自 playbook 各段（ingest 時每段產 2 題）。以會員註冊日為錨**即時算第幾個雙週**（`src/lib/playbook/quiz.ts`，無 cron），全部題庫循環出題；`PlaybookQuizClient` 作答 → server 端重算分數＋對錯＋解析，每期一筆存 `PlaybookQuizAttempt`。**不寄 email、不排程**、**不**綁 onboarding。 |
 | `/[locale]/dashboard/crm\|pipeline\|notes` | **真 CRUD（2026-07，Pro 方案限定）**：各對應新 Prisma 表（`Contact` / `Deal` / `MeetingNote`，`userId` scope + `onDelete: Cascade`）。`requirePlan("pro")`→null 顯示付費牆（`PlanPaywall`），否則查該會員資料傳給 client 元件（`CrmManager` / `PipelineBoard` / `NotesManager`），新增/編輯/刪除後 `router.refresh()`。Pipeline 為 stage 分欄看板（MVP 用下拉改階段，不做拖拉）。Deal 可選連 CRM `Contact`（`SetNull`）。 |
@@ -514,6 +514,9 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 9958 | `century-iron-steel` | Century Iron & Steel 世紀鋼 | Offshore Wind Foundations（台北港製 90 公尺／2,000 噸水下基礎；在手訂單逾 500 億至 2029；專案認列使單季 EPS 2.66↔0.40 劇烈跳動） |
 | 1504 | `teco` | TECO 東元電機 | Electric Motors & Power（1956 老牌馬達廠轉攻 AI 資料中心電力；電力事業群 +30%、董座稱訂單翻倍——但 EPS 連三年下滑且本益比 28×） |
 | 4904 | `fareastone` | FarEasTone 遠傳電信 | Telecommunications（2023/12 併亞太電信，FY2025 營收獲利 EPS 三創新高；但用戶反減 18 萬、仍居第三 30.4%，配發率近 100%、P/B 3.99×） |
+| 1215 | `charoen-pokphand-taiwan` | CP Taiwan 卜蜂企業 | Poultry & Animal Feed（飼料→養殖→屠宰→品牌食品垂直整合／ROE 24.9%；FY2025 EPS 10.40 創高，2026Q1 營收 +7.1% 但淨利 −47.1%） |
+| 2027 | `ta-chen` | Ta Chen 大成鋼 | Metals Distribution US（逾九成營收在美、全美最大鋁捲板通路；美國 25% 鋼鋁關稅推升毛利 19.3%→27.3%，但那是價格效果非本業改善） |
+| 6005 | `capital-securities` | Capital Securities 群益金鼎證券 | Securities Brokerage（非金控純券商／本集合循環性最強：FY2022 全年 EPS 0.39 vs 2026Q1 單季 1.34；殖利率欄位查證錯誤已剔除） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
