@@ -335,7 +335,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | --- | --- |
 | `/[locale]/dashboard` | **NOVA 總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：黑白銀「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（引導/測驗/訂閱三狀態）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝NOVA AI 顧問（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
 | `/[locale]/dashboard/profile` | **公司檔案**（2026-07）：唯讀展示會員 `OnboardingProfile`（公司/需求兩區，slug 經 `Auth.options.*` 轉 label），附「編輯」→ `/dashboard/account`；未填顯示引導卡。 |
-| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 97 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
+| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 100 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
 | `/[locale]/dashboard/playbooks`（+`[slug]`） | **知識手冊 Playbooks（2026-07）**：ROLL ON 募資／成長方法論指南，登入即可看。一份＝一個 `content/playbooks/<slug>.json`（`pnpm ingest:playbook` 把 PDF 經 Claude 轉雙語 JSON）。**每個紅色標題＝一個 segment**；詳情頁 `PlaybookReader` 分段渲染 + 每段「標為已讀」+「全部／未讀／已讀」filter（狀態存 `User.playbookReads`），列表頁顯示各份已讀進度。**雙用**：同內容餵 Nova AI（`get_playbook`）。 |
 | `/[locale]/dashboard/quiz` | **本期問答 Fortnightly Q&A（2026-07）**：每兩週一批選擇題，題庫來自 playbook 各段（ingest 時每段產 2 題）。以會員註冊日為錨**即時算第幾個雙週**（`src/lib/playbook/quiz.ts`，無 cron），全部題庫循環出題；`PlaybookQuizClient` 作答 → server 端重算分數＋對錯＋解析，每期一筆存 `PlaybookQuizAttempt`。**不寄 email、不排程**、**不**綁 onboarding。 |
 | `/[locale]/dashboard/crm\|pipeline\|notes` | **真 CRUD（2026-07，Pro 方案限定）**：各對應新 Prisma 表（`Contact` / `Deal` / `MeetingNote`，`userId` scope + `onDelete: Cascade`）。`requirePlan("pro")`→null 顯示付費牆（`PlanPaywall`），否則查該會員資料傳給 client 元件（`CrmManager` / `PipelineBoard` / `NotesManager`），新增/編輯/刪除後 `router.refresh()`。Pipeline 為 stage 分欄看板（MVP 用下拉改階段，不做拖拉）。Deal 可選連 CRM `Contact`（`SetNull`）。 |
@@ -520,6 +520,9 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 4137 | `chlitina` | Chlitina 麗豐-KY | Beauty Franchise（克麗緹娜／中國最大美容連鎖加盟，毛利 80%；配息 10 元 = 盈餘 7 元＋資本公積 3 元；店數自約 5,033 家縮至 4,096 家） |
 | 6605 | `depo-auto-lamp` | Depo 帝寶工業 | Automotive Lighting AM（全球最大售後車燈廠／毛利 33.5%；賓士設計專利案二審敗訴約 1,812 萬、最高法院已發回更審；股價僅約 1.05× 淨值） |
 | 1904 | `cheng-loong` | Cheng Loong 正隆 | Containerboard & Packaging（工業用紙龍頭／再生紙原料；營益率自十年低點回升，2026Q1 單季賺贏去年全年七成五且為本業貢獻；P/B 0.80） |
+| 3023 | `sinbon` | Sinbon 信邦電子 | Connectors & Cable Assemblies（客製化線束佔 76.95%／五大終端市場分散；ROE 19.3%、股利十年自 2.75 元增至 10 元；綠能與通訊兩塊正在衰退） |
+| 1503 | `shihlin-electric` | Shihlin Electric 士林電機 | Heavy Electrical & Green Energy（重電佔營收 66%；台電 94 億標案入列＋與三菱電機合作切入美國 AIDC；ROE 僅 9.4% 卻 28× 本益比，且創高季營業現金流為負） |
+| 3045 | `taiwan-mobile` | Taiwan Mobile 台灣大哥大 | Telecommunications & E-Commerce（2023/12 併台灣之星／5G 3.5GHz 100MHz 最大頻寬；ROE 16.6% 優於遠傳，但毛利 21.6% 是併入 momo 所致，不可直接與同業比） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
