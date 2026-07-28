@@ -487,6 +487,9 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2633 | `thsrc` | Taiwan High Speed Rail 台灣高鐵 | Rail Transport（特許獨占至 2068；營益率 43% 但淨利率 15%＝利息吃掉；BOT 失敗→國有民營） |
 | 6488 | `globalwafers` | GlobalWafers 環球晶圓（TPEx 上櫃） | Silicon Wafers（全球前三大矽晶圓；EPS 自峰 −66%、股利 25→7.7；CHIPS 補助＋美光 10 年約） |
 | 3529 | `ememory` | eMemory 力旺電子 | Semiconductor IP（純 IP 授權；毛利 100%＝模式產物，營益率 60% 才是真；ROE 46%／P/B 41×） |
+| 1519 | `fortune-electric` | Fortune Electric 華城電機 | Heavy Electrical Equipment（AI 電網瓶頸；Stargate 變壓器單、在手 300 億到 2028；P/B 27.9× 且月營收轉負） |
+| 5904 | `poya` | Poya 寶雅國際（TPEx 上櫃） | Beauty & Lifestyle Retail（美妝生活雜貨約 9 成市佔；45% 毛利／46% ROE；FinMind P/E 196× 為錯誤，實為 ~20×） |
+| 2002 | `china-steel` | China Steel 中國鋼鐵 | Steel（132 萬股東的國民股；FY2025 轉虧 EPS −0.29、股利 3.1→0.15；中國產能過剩） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
