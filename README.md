@@ -335,7 +335,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | --- | --- |
 | `/[locale]/dashboard` | **NOVA 總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：黑白銀「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（引導/測驗/訂閱三狀態）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝NOVA AI 顧問（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
 | `/[locale]/dashboard/profile` | **公司檔案**（2026-07）：唯讀展示會員 `OnboardingProfile`（公司/需求兩區，slug 經 `Auth.options.*` 轉 label），附「編輯」→ `/dashboard/account`；未填顯示引導卡。 |
-| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 51 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
+| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 76 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
 | `/[locale]/dashboard/playbooks`（+`[slug]`） | **知識手冊 Playbooks（2026-07）**：ROLL ON 募資／成長方法論指南，登入即可看。一份＝一個 `content/playbooks/<slug>.json`（`pnpm ingest:playbook` 把 PDF 經 Claude 轉雙語 JSON）。**每個紅色標題＝一個 segment**；詳情頁 `PlaybookReader` 分段渲染 + 每段「標為已讀」+「全部／未讀／已讀」filter（狀態存 `User.playbookReads`），列表頁顯示各份已讀進度。**雙用**：同內容餵 Nova AI（`get_playbook`）。 |
 | `/[locale]/dashboard/quiz` | **本期問答 Fortnightly Q&A（2026-07）**：每兩週一批選擇題，題庫來自 playbook 各段（ingest 時每段產 2 題）。以會員註冊日為錨**即時算第幾個雙週**（`src/lib/playbook/quiz.ts`，無 cron），全部題庫循環出題；`PlaybookQuizClient` 作答 → server 端重算分數＋對錯＋解析，每期一筆存 `PlaybookQuizAttempt`。**不寄 email、不排程**、**不**綁 onboarding。 |
 | `/[locale]/dashboard/crm\|pipeline\|notes` | **真 CRUD（2026-07，Pro 方案限定）**：各對應新 Prisma 表（`Contact` / `Deal` / `MeetingNote`，`userId` scope + `onDelete: Cascade`）。`requirePlan("pro")`→null 顯示付費牆（`PlanPaywall`），否則查該會員資料傳給 client 元件（`CrmManager` / `PipelineBoard` / `NotesManager`），新增/編輯/刪除後 `router.refresh()`。Pipeline 為 stage 分欄看板（MVP 用下拉改階段，不做拖拉）。Deal 可選連 CRM `Contact`（`SetNull`）。 |
@@ -496,6 +496,9 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 2059 | `king-slide` | King Slide 川湖科技 | Precision Mechanical Components（伺服器滑軌全球約 3 成／毛利 77.7%；6 月營收 +220%；P/B 25× 且 2025Q2 有未解一次性） |
 | 8299 | `phison` | Phison 群聯電子（TPEx 上櫃） | NAND Flash Controllers（NAND 控制晶片＋模組；2026Q1 單季 EPS 68.8 超越全年；庫存 722 億是雙面刃） |
 | 2723 | `gourmet-master` | Gourmet Master 美食-KY（85°C） | Restaurants & Bakery（中國關 180 店、認列逾 10 億減損轉虧；美國雙位數成長、台灣連 4 季正成長） |
+| 2383 | `emc` | Elite Material 台光電 | Copper-Clad Laminates（高速 CCL 全球市佔第一／M7 以上逾 6 成；月營收 +120%，但毛利平穩＝純量增，P/B 33×） |
+| 2449 | `kyec` | King Yuan Electronics 京元電子 | Semiconductor Testing（純測試代工龍頭；毛利 33.5%→39.7%；出清中國子公司獲利 38.3 億＝FY2025 EPS 含 3.13 一次性） |
+| 6592 | `hotai-finance` | Hotai Finance 和潤企業 | Auto Finance（和泰集團車貸；中古車放款壞帳致 EPS 7.04→4.53，主動砍量 30-40%；P/B 1.17×／5.5% 息） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
