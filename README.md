@@ -493,6 +493,9 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 | 6669 | `wiwynn` | Wiwynn 緯穎科技 | Cloud & AI Server ODM（全球前三大 AI 伺服器 ODM／CSP-only；EPS 81→275；但毛利僅 7.5%、OCF −162 億） |
 | 6214 | `systex` | Systex 精誠資訊 | IT Services（最大系統整合；AI 剛需帶動 Q1 獲利 +164%、6 月營收 +77%；營益率僅 4.9%） |
 | 2646 | `starlux` | STARLUX 星宇航空 | Airlines（2020 開航即遇疫情；營收 +40%、機隊拚 43 架；獲利仍微薄、P/E 240× 為近零獲利假象） |
+| 2059 | `king-slide` | King Slide 川湖科技 | Precision Mechanical Components（伺服器滑軌全球約 3 成／毛利 77.7%；6 月營收 +220%；P/B 25× 且 2025Q2 有未解一次性） |
+| 8299 | `phison` | Phison 群聯電子（TPEx 上櫃） | NAND Flash Controllers（NAND 控制晶片＋模組；2026Q1 單季 EPS 68.8 超越全年；庫存 722 億是雙面刃） |
+| 2723 | `gourmet-master` | Gourmet Master 美食-KY（85°C） | Restaurants & Bakery（中國關 180 店、認列逾 10 億減損轉虧；美國雙位數成長、台灣連 4 季正成長） |
 
 新增一家：ingest 端加 seed → `pipeline.py <ticker> --no-generate` → 查證 → 撰寫 10 段寫回 JSON → `pnpm build` → push `main`。
 
