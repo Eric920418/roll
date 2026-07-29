@@ -36,8 +36,7 @@ const topCompanies = [
     name: "Industrial and Commercial Bank of China",
     valuation: "$251.3B",
   },
-  { rank: 6, name: "SOLO automatic", valuation: "$25M", isClient: true },
-  { rank: 7, name: "Medix LLC", valuation: "$4.1M", isClient: true },
+  { rank: 6, name: "Medix LLC", valuation: "$4.1M", isClient: true },
 ];
 
 const epicenterPillars = [
