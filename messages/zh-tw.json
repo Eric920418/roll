@@ -789,6 +789,12 @@
       "tasksTitle": "落地任務",
       "progress": "已完成 {done} / {total}",
       "due": "建議 {date} 前完成",
+      "addTask": "新增任務",
+      "newTaskPlaceholder": "要做什麼？例如：預約會計師談稅務架構",
+      "newTaskHint": "日期可留空；留空的任務不會出現在逾期提醒中。",
+      "dueDate": "目標日期",
+      "noDueDate": "未設期限",
+      "customGroup": "我的任務",
       "statusLabels": {
         "overdue": "逾期",
         "dueSoon": "本週",

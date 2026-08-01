@@ -62,13 +62,23 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export type TaskStatus = "done" | "overdue" | "dueSoon" | "upcoming";
 
 export type AgendaTask = {
-  key: string; // checklist item key（勾選狀態沿用 User.checklistState）
+  key: string; // 系統任務＝checklist item key；自訂任務＝LandingTask.id
+  id: string | null; // 自訂任務的 DB id；系統任務為 null
+  source: "system" | "custom";
   need: string;
   groupTitle: string;
   text: string;
   done: boolean;
-  dueAt: string; // ISO 字串（傳給 client 格式化）
+  dueAt: string | null; // ISO 字串；自訂任務可不設期限 → null
   status: TaskStatus;
+};
+
+/** 自訂任務（LandingTask）傳入計算層的最小形狀 */
+export type CustomTaskRow = {
+  id: string;
+  title: string;
+  dueAt: Date | null;
+  done: boolean;
 };
 
 export type AgendaTasks = {
@@ -79,44 +89,69 @@ export type AgendaTasks = {
   total: number;
 };
 
+/** 依期限與當下時間判定狀態。due 為 null（自訂任務未設期限）→ 不催、視為 upcoming。 */
+function statusFor(done: boolean, due: Date | null, now: Date): TaskStatus {
+  if (done) return "done";
+  if (!due) return "upcoming";
+  const soonThreshold = now.getTime() + DUE_SOON_DAYS * DAY_MS;
+  if (due.getTime() < now.getTime()) return "overdue";
+  if (due.getTime() <= soonThreshold) return "dueSoon";
+  return "upcoming";
+}
+
 /**
- * 把 buildChecklist 的項目算出建議期限與狀態。
+ * 把 buildChecklist 的系統任務（推算期限）與會員自訂任務合併成單一清單。
  * anchor＝落地起點（會員註冊日）；now＝當下。未完成依 dueAt 升序（逾期在前），已完成置底。
+ * custom＝LandingTask 列；customGroupTitle 為其在清單上顯示的群組標籤（由呼叫端傳入已翻譯字串）。
  */
 export function computeTasks(
   groups: ChecklistGroupView[],
   checklistState: Record<string, boolean>,
   anchor: Date,
   now: Date,
+  custom: CustomTaskRow[] = [],
+  customGroupTitle = "",
 ): AgendaTasks {
-  const soonThreshold = now.getTime() + DUE_SOON_DAYS * DAY_MS;
-
-  const tasks: AgendaTask[] = groups.flatMap((g) => {
+  const systemTasks: AgendaTask[] = groups.flatMap((g) => {
     const days = SUGGESTED_DAYS[g.need] ?? DEFAULT_DAYS;
     const due = new Date(anchor.getTime() + days * DAY_MS);
     return g.items.map((it) => {
       const done = Boolean(checklistState[it.key]);
-      let status: TaskStatus;
-      if (done) status = "done";
-      else if (due.getTime() < now.getTime()) status = "overdue";
-      else if (due.getTime() <= soonThreshold) status = "dueSoon";
-      else status = "upcoming";
       return {
         key: it.key,
+        id: null,
+        source: "system" as const,
         need: g.need,
         groupTitle: g.title,
         text: it.text,
         done,
         dueAt: due.toISOString(),
-        status,
+        status: statusFor(done, due, now),
       };
     });
   });
 
-  // 未完成優先，未完成內依 dueAt 升序；已完成置底
+  const customTasks: AgendaTask[] = custom.map((c) => ({
+    key: c.id,
+    id: c.id,
+    source: "custom" as const,
+    need: "custom",
+    groupTitle: customGroupTitle,
+    text: c.title,
+    done: c.done,
+    dueAt: c.dueAt ? c.dueAt.toISOString() : null,
+    status: statusFor(c.done, c.dueAt, now),
+  }));
+
+  const tasks = [...systemTasks, ...customTasks];
+
+  // 未完成優先，未完成內依 dueAt 升序；無期限的排在同組最後；已完成置底
   const rank: Record<TaskStatus, number> = { overdue: 0, dueSoon: 1, upcoming: 2, done: 3 };
   tasks.sort((a, b) => {
     if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
+    if (a.dueAt === b.dueAt) return 0;
+    if (!a.dueAt) return 1;
+    if (!b.dueAt) return -1;
     return a.dueAt.localeCompare(b.dueAt);
   });
 

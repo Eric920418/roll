@@ -789,6 +789,12 @@
       "tasksTitle": "Landing tasks",
       "progress": "{done} of {total} done",
       "due": "Target by {date}",
+      "addTask": "Add task",
+      "newTaskPlaceholder": "What needs doing? e.g. Book an accountant to review tax structure",
+      "newTaskHint": "The date is optional — tasks without one never show up as overdue.",
+      "dueDate": "Target date",
+      "noDueDate": "No target date",
+      "customGroup": "My tasks",
       "statusLabels": {
         "overdue": "Overdue",
         "dueSoon": "This week",

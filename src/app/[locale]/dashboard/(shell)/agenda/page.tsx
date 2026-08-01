@@ -40,15 +40,29 @@ export default async function AgendaPage({ params }: Props) {
   const groups = buildChecklist(needs, l);
 
   // 落地起點錨 = 註冊日；系統依此推算各任務建議完成日
-  const user = await prisma.user.findUnique({
-    where: { id: account.id },
-    select: { createdAt: true },
-  });
+  const [user, customTasks] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: account.id },
+      select: { createdAt: true },
+    }),
+    prisma.landingTask.findMany({
+      where: { userId: account.id },
+      select: { id: true, title: true, dueAt: true, done: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
   const anchor = user?.createdAt ?? new Date();
 
   const focus = computeFocus(account, l);
   const milestones = computeMilestones(account, l);
-  const agenda = computeTasks(groups, account.checklistState, anchor, new Date());
+  const agenda = computeTasks(
+    groups,
+    account.checklistState,
+    anchor,
+    new Date(),
+    customTasks,
+    t("customGroup"),
+  );
 
   return (
     <div className="font-[family-name:var(--font-body)]">
@@ -57,23 +71,30 @@ export default async function AgendaPage({ params }: Props) {
       </h1>
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
-      {groups.length === 0 ? (
-        // 尚未填 needs → 無法生成任務，引導去帳號頁
-        <div className="mt-7 rounded-2xl border border-dark/10 bg-white p-7">
-          <h2 className="text-xl font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">
-            {t("emptyTitle")}
-          </h2>
-          <p className="mt-2 text-sm text-dark/60">{t("emptyBody")}</p>
-          <Link
-            href={pathForLocale("/dashboard/account", l)}
-            className="mt-5 inline-block rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
-          >
-            {t("emptyCta")}
-          </Link>
-        </div>
-      ) : (
-        <AgendaBoard focus={focus} milestones={milestones} agenda={agenda} />
-      )}
+      {/*
+        任務清單為空時的引導卡（尚未填 needs → 系統無法生成任務）。
+        以 slot 傳進 client 元件，讓「新增任務」按鈕在這種情況下依然可用 —
+        否則沒填需求的會員會卡在死路：看不到清單，也就加不了自己的任務。
+      */}
+      <AgendaBoard
+        focus={focus}
+        milestones={milestones}
+        agenda={agenda}
+        emptyState={
+          <div className="rounded-2xl border border-dashed border-dark/15 bg-white p-7">
+            <h2 className="text-xl font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">
+              {t("emptyTitle")}
+            </h2>
+            <p className="mt-2 text-sm text-dark/60">{t("emptyBody")}</p>
+            <Link
+              href={pathForLocale("/dashboard/account", l)}
+              className="mt-5 inline-block rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
+            >
+              {t("emptyCta")}
+            </Link>
+          </div>
+        }
+      />
     </div>
   );
 }

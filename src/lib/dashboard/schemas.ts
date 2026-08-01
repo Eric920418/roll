@@ -73,6 +73,18 @@ export const noteUpdateSchema = z.object({
   meetingAt: optStr,
 });
 
+// ── 落地待辦自訂任務 ──
+export const landingTaskCreateSchema = z.object({
+  title: z.string().trim().min(1, "必填").max(200, "最多 200 字"),
+  dueAt: optStr, // "YYYY-MM-DD" 或空；route 端轉 Date|null
+});
+
+export const landingTaskUpdateSchema = z.object({
+  title: z.string().trim().min(1, "必填").max(200, "最多 200 字").optional(),
+  dueAt: optStr,
+  done: z.boolean().optional(),
+});
+
 // 空字串 → null（存 DB）；undefined 維持 undefined（PATCH 不動此欄）
 export function nullifyEmpty(v: string | undefined): string | null | undefined {
   if (v === undefined) return undefined;
@@ -83,6 +95,23 @@ export function nullifyEmpty(v: string | undefined): string | null | undefined {
 export function parseDate(v: string | undefined): Date | null | undefined {
   if (v === undefined) return undefined;
   if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * <input type="date"> 的 "YYYY-MM-DD" → 該日 23:59:59.999Z。
+ * 直接 new Date("YYYY-MM-DD") 會取 UTC 00:00，在 UTC+8 會提早近一天判定逾期，故存日終。
+ */
+export function parseDueDate(v: string | undefined): Date | null | undefined {
+  if (v === undefined) return undefined;
+  if (!v) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim());
+  if (m) {
+    return new Date(
+      Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999),
+    );
+  }
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 }

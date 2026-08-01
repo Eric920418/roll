@@ -182,6 +182,9 @@ model User {
   // 雙週知識問答作答歷史（每期一筆）
   playbookQuizAttempts PlaybookQuizAttempt[]
 
+  // 落地待辦頁的自訂任務（系統模板任務之外，會員自己加的）
+  landingTasks LandingTask[]
+
   @@index([email])
 }
 
@@ -360,6 +363,26 @@ model Deal {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+/// 落地待辦頁的自訂任務
+/// 系統任務來自 buildChecklist 模板（無 DB 列，勾選狀態存 User.checklistState）；
+/// 此表只放會員自己新增的任務，兩者在 computeTasks() 合併成同一份清單。
+/// dueAt 可空 → 由 app 端決定無期限任務的狀態與排序（見 src/lib/dashboard/agenda.ts）。
+model LandingTask {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title String
+  dueAt DateTime? // 使用者自訂的目標日期，可空
+  done  Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, done])
 }
 
 /// 會議記錄
