@@ -39,19 +39,13 @@ export default async function AgendaPage({ params }: Props) {
   const needs = account.profile?.needs ?? [];
   const groups = buildChecklist(needs, l);
 
-  // 落地起點錨 = 註冊日；系統依此推算各任務建議完成日
-  const [user, customTasks] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: account.id },
-      select: { createdAt: true },
-    }),
-    prisma.landingTask.findMany({
-      where: { userId: account.id },
-      select: { id: true, title: true, dueAt: true, done: true },
-      orderBy: { createdAt: "asc" },
-    }),
-  ]);
-  const anchor = user?.createdAt ?? new Date();
+  // 落地起點錨 = 註冊日（account DTO 已帶，不必再查一次 User）
+  const anchor = account.createdAt;
+  const customTasks = await prisma.landingTask.findMany({
+    where: { userId: account.id },
+    select: { id: true, title: true, dueAt: true, done: true },
+    orderBy: { createdAt: "asc" },
+  });
 
   const focus = computeFocus(account, l);
   const milestones = computeMilestones(account, l);

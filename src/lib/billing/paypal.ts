@@ -1,12 +1,14 @@
 import "server-only";
+import { getPaypalEnvironment } from "@/lib/billing/config";
 
 // PayPal 訂閱整合 — 直接打 REST API（不依賴 SDK，行為可預測、零新依賴）。
-// 所有錯誤都帶完整 PayPal 回應字串，交由呼叫端 failFromError 完整顯示前端（符合專案規範）。
+// 上游回應保留在伺服器例外供 log 診斷，API 的既有錯誤邊界負責遮蔽 5xx 細節。
 
-const PAYPAL_BASE =
-  process.env.PAYPAL_ENV === "live"
+function paypalBase(): string {
+  return getPaypalEnvironment() === "live"
     ? "https://api-m.paypal.com"
     : "https://api-m.sandbox.paypal.com";
+}
 
 function getCreds(): { clientId: string; secret: string } | null {
   const clientId = process.env.PAYPAL_CLIENT_ID;
@@ -17,6 +19,7 @@ function getCreds(): { clientId: string; secret: string } | null {
 
 /** PayPal 是否已備妥憑證（缺則前端應顯示「金流尚未設定」而非 crash） */
 export function isPaypalConfigured(): boolean {
+  getPaypalEnvironment();
   return getCreds() !== null;
 }
 
@@ -26,7 +29,7 @@ export function isPaypalConfigured(): boolean {
  */
 export function paypalManagePaymentUrl(): string {
   const host =
-    process.env.PAYPAL_ENV === "live"
+    getPaypalEnvironment() === "live"
       ? "https://www.paypal.com"
       : "https://www.sandbox.paypal.com";
   return `${host}/myaccount/autopay/`;
@@ -42,7 +45,7 @@ async function getAccessToken(): Promise<string> {
   const auth = Buffer.from(`${creds.clientId}:${creds.secret}`).toString(
     "base64",
   );
-  const res = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
+  const res = await fetch(`${paypalBase()}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: `Basic ${auth}`,
@@ -66,7 +69,7 @@ async function paypalFetch(
 ): Promise<Response> {
   const token = await getAccessToken();
   const { jsonBody, headers, ...rest } = init;
-  return fetch(`${PAYPAL_BASE}${path}`, {
+  return fetch(`${paypalBase()}${path}`, {
     ...rest,
     cache: "no-store",
     headers: {

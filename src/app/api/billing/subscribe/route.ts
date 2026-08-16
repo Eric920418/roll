@@ -9,6 +9,7 @@ import {
   type PlanKey,
 } from "@/lib/billing/plans";
 import { createSubscription, isPaypalConfigured } from "@/lib/billing/paypal";
+import { resolveBillingAppOrigin } from "@/lib/billing/config";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+    const appUrl = resolveBillingAppOrigin(req.url);
     const returnUrl = `${appUrl}${pathForLocale("/dashboard/billing/return", locale)}`;
     const cancelUrl = `${appUrl}${pathForLocale("/dashboard/billing", locale)}?cancelled=1`;
 

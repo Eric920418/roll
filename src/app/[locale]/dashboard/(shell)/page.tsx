@@ -1,7 +1,11 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
-import { computeFocus } from "@/lib/dashboard/agenda";
+import {
+  computeFocus,
+  computeMilestones,
+  computeTasks,
+} from "@/lib/dashboard/agenda";
 import { pathForLocale } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 import { pick } from "@/lib/quiz/locale";
@@ -42,7 +46,7 @@ export default async function DashboardOverview({ params }: Props) {
   const isPaying = effectivePlan !== "free";
 
   // ── 並行取真實資料 ──
-  const [videos, events, submission] = await Promise.all([
+  const [videos, events, submission, customTasks] = await Promise.all([
     getVideos(),
     getEvents(),
     account.quizCompleted
@@ -52,6 +56,10 @@ export default async function DashboardOverview({ params }: Props) {
           include: { founder: true },
         })
       : Promise.resolve(null),
+    prisma.landingTask.findMany({
+      where: { userId: account.id },
+      select: { id: true, title: true, dueAt: true, done: true },
+    }),
   ]);
 
   const companiesCount = countCompanies();
@@ -65,6 +73,21 @@ export default async function DashboardOverview({ params }: Props) {
 
   // ── 今日重點狀態（與 Agenda 頁共用 computeFocus，避免兩處判斷不一致）──
   const focus = computeFocus(account, l);
+
+  // ── 落地待辦的逾期 / 本週到期（與 Agenda 頁同一套 computeTasks，數字保證一致）──
+  // 每日提醒要能反映「Action plan 有 N 項逾期」，否則會員在總覽看不到已經落後。
+  const agenda = computeTasks(
+    groups,
+    account.checklistState,
+    account.createdAt,
+    new Date(),
+    customTasks,
+  );
+
+  // 提醒卡的目的地：複用里程碑既有的 href 判斷，不在元件裡另寫一套路由邏輯
+  const milestones = computeMilestones(account, l);
+  const hrefOf = (key: string) =>
+    milestones.find((m) => m.key === key)?.href ?? pathForLocale("/dashboard", l);
 
   // ── 創辦人配對（真實：作答分數與創辦人三維向量的距離 → 相似度）──
   let match: FounderMatch | null = null;
@@ -129,9 +152,15 @@ export default async function DashboardOverview({ params }: Props) {
             locale={l}
             onboardingDone={account.completed}
             onboardingStep={account.onboardingStep}
+            onboardingHref={hrefOf("onboarding")}
             quizDone={account.quizCompleted}
+            quizHref={hrefOf("quiz")}
             subscriptionLabel={planName}
             isPaying={isPaying}
+            billingHref={pathForLocale("/dashboard/billing", l)}
+            agendaOverdue={agenda.overdueCount}
+            agendaDueSoon={agenda.dueSoonCount}
+            agendaHref={pathForLocale("/dashboard/agenda", l)}
           />
           <MetricsRow
             locale={l}

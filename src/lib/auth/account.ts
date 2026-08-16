@@ -31,6 +31,8 @@ export interface Account {
   currentPeriodEnd: Date | null;
   /** plan/status 最後異動時間 — SUSPENDED 寬限期的起算點（見 gate.ts） */
   planUpdatedAt: Date | null;
+  /** 註冊日 = 落地起點 anchor，落地待辦據此推算各任務建議完成日（見 dashboard/agenda.ts） */
+  createdAt: Date;
   profile: {
     companyName: string | null;
     industry: string | null;
@@ -78,6 +80,7 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     paypalSubscriptionId: user.paypalSubscriptionId,
     currentPeriodEnd: user.currentPeriodEnd,
     planUpdatedAt: user.planUpdatedAt,
+    createdAt: user.createdAt,
     profile: user.profile
       ? {
           companyName: user.profile.companyName,

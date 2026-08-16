@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "test": "tsx --test tests/*.test.ts",
     "lint": "eslint",
     "optimize:images": "node scripts/optimize-images.mjs",
     "ingest:playbook": "node scripts/ingest-playbook.mjs",

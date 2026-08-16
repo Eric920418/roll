@@ -7,6 +7,7 @@ import { fail, unauthorized, failFromError } from "@/lib/api";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { runGroundedChat } from "@/lib/ai/run";
+import { publicCopilotFailureMessage } from "@/lib/ai/public-error";
 import { getLatestQuizResult } from "@/lib/quiz/result";
 
 // 會員 AI Copilot 串流端點。
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 缺 key 等設定問題 → 串流開始前回真正的錯誤（顯示於前端）
+    // 缺 key 等設定問題 → 串流開始前由共用 5xx 邊界記錄完整例外、回通用訊息。
     let client: Anthropic;
     try {
       client = new Anthropic();
@@ -94,9 +95,13 @@ export async function POST(req: NextRequest) {
             maxTokens: 4000,
           });
         } catch (err) {
-          // 串流已 committed 200 → 錯誤以文字寫入（前端顯示全文，符合專案規範）
-          const msg = err instanceof Error ? err.message : String(err);
-          controller.enqueue(encoder.encode(`\n\n⚠️ ${msg}`));
+          // 串流已 committed 200，後端保留完整證據，前端只收到穩定產品文案。
+          console.error("[copilot] upstream stream failed", err);
+          controller.enqueue(
+            encoder.encode(
+              `\n\n${publicCopilotFailureMessage(parsed.data.locale, err)}`,
+            ),
+          );
         } finally {
           controller.close();
         }

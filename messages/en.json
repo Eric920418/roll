@@ -469,14 +469,14 @@
     "nav": {
       "overview": "Overview",
       "profile": "Company profile",
-      "companies": "Taiwan companies",
+      "companies": "Taiwan Top 100s",
       "playbooks": "Playbooks",
-      "quiz": "Fortnightly Q&A",
+      "quiz": "Founder Quiz",
       "crm": "CRM",
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
       "agenda": "Action plan",
-      "tools": "Tools",
+      "tools": "Milestone",
       "account": "Account",
       "billing": "Billing"
     },
@@ -546,7 +546,7 @@
       "EXPIRED": "Expired"
     },
     "tools": {
-      "title": "Tools",
+      "title": "Milestone",
       "subtitle": "Self-serve tools to plan and track your Taiwan / Asia market entry.",
       "lockedTitle": "Unlock with Pro",
       "lockedBody": "This tool is available on the Pro plan and above. Upgrade to get access.",
@@ -579,7 +579,7 @@
         "sectionTitle": "Key metrics",
         "companies": "Companies tracked",
         "companiesHint": "Taiwan-listed intel",
-        "videos": "Tutorial videos",
+        "videos": "Business tutorials",
         "videosHint": "ROLL ON channel",
         "checklist": "Checklist progress",
         "checklistHint": "{done} of {total} done",
@@ -593,7 +593,11 @@
         "subscription": "Subscription",
         "done": "Completed",
         "todo": "Not yet",
-        "noSub": "Free plan"
+        "noSub": "Free plan",
+        "agenda": "Action plan",
+        "overdue": "{count} overdue",
+        "dueSoon": "{count} due this week",
+        "onTrack": "On track"
       },
       "match": {
         "eyebrow": "Company matching",
@@ -607,9 +611,9 @@
         "vision": "Vision clarity"
       },
       "video": {
-        "eyebrow": "ROLL ON tutorials",
-        "title": "Learn with ROLL ON",
-        "empty": "Tutorial videos are coming soon.",
+        "eyebrow": "Business tutorials",
+        "title": "Business tutorials",
+        "empty": "Business tutorials are coming soon.",
         "watch": "Watch"
       },
       "opportunities": {
@@ -626,8 +630,8 @@
         "title": "NOVA",
         "subtitle": "Your AI business advisor for Taiwan & Asia expansion.",
         "quiz": "Find my founder match",
-        "companies": "Explore Taiwan companies",
-        "tools": "Open market-entry tools",
+        "companies": "Explore Taiwan Top 100s",
+        "tools": "Open my milestones",
         "profile": "Update company profile",
         "contact": "Talk to our team",
         "placeholder": "Ask anything…",
@@ -654,7 +658,7 @@
       "notProvided": "Not provided"
     },
     "companies": {
-      "title": "Taiwan companies",
+      "title": "Taiwan Top 100s",
       "subtitle": "Deep intelligence on Taiwan-listed companies — financials, history, and outlook.",
       "count": "{count} companies",
       "searchPlaceholder": "Search by name, ticker, or sector…",
@@ -688,7 +692,7 @@
         "emptyFilter": "No segments match this filter."
       },
       "quiz": {
-        "title": "Fortnightly Q&A",
+        "title": "Founder Quiz",
         "subtitle": "A fresh set of questions every two weeks, drawn from the playbooks.",
         "empty": "No questions available yet — check back once playbooks are published.",
         "countHint": "{count} questions this round.",

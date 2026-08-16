@@ -23,6 +23,7 @@
 ```bash
 pnpm install
 pnpm dev        # http://localhost:3000
+pnpm test       # Node test runner + tsx 回歸測試
 pnpm build      # 生產建置（含 prisma generate）
 pnpm lint       # ESLint
 
@@ -67,16 +68,16 @@ GOOGLE_CLIENT_ID="...apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="..."
 GOOGLE_REDIRECT_URI="http://localhost:3000/api/auth/google/callback"  # 上線改成 https://<網域>/api/auth/google/callback
 
-# 訂閱金流（PayPal）— 缺少時前端訂閱顯示「金流尚未設定」而非崩潰（isPaypalConfigured 把關）
-PAYPAL_ENV="sandbox"              # sandbox | live
+# 訂閱金流（PayPal）— 只接受精確的 sandbox / live；Vercel Production 強制 live
+PAYPAL_ENV=sandbox
 PAYPAL_CLIENT_ID="..."           # PayPal Developer Dashboard 建立 app 取得
 PAYPAL_CLIENT_SECRET="..."
-PAYPAL_WEBHOOK_ID="..."           # 註冊 webhook（{網域}/api/billing/webhook）後取得，供簽章驗證
+PAYPAL_WEBHOOK_ID="..."           # 註冊 webhook（www 正式網域）後取得，供簽章驗證
 PAYPAL_PLAN_ID_PRO="P-..."        # 由 scripts/paypal-setup.mjs 產生
 PAYPAL_PLAN_ID_BUSINESS="P-..."
 NEXT_PUBLIC_APP_URL="http://localhost:3000"  # 組 PayPal return/cancel URL；上線填正式網域（不要結尾斜線）
 
-# 會員 AI Copilot（Pro 方案）— 缺少時 /api/copilot 開始串流前回錯誤全文（不崩潰）
+# 會員 AI Copilot（Pro 方案）— 上游錯誤完整記錄於 server log，串流不依錯誤內容、只回傳雙語通用訊息
 ANTHROPIC_API_KEY="sk-ant-..."   # Claude API 金鑰（platform.claude.com）
 ANTHROPIC_MODEL="claude-sonnet-5" # 可選，預設 claude-sonnet-5；成本敏感可改 claude-haiku-4-5
 ```
@@ -84,7 +85,8 @@ ANTHROPIC_MODEL="claude-sonnet-5" # 可選，預設 claude-sonnet-5；成本敏�
 > `.env*` 已 `.gitignore`。產生密碼 hash：
 > `node -e "console.log(require('bcryptjs').hashSync('你的密碼',12))"`
 > ⚠️ **bcrypt hash 內的每個 `$` 在 `.env.local` 必須跳脫為 `\$`**，否則 Next 的 env 載入器（dotenv-expand）會把 `$2b`、`$12` 當成變數展開而破壞 hash，導致登入永遠失敗。
-> ⚠️ **shell 已匯出的環境變數會壓過 `.env.local`**：Next.js（與 `node --env-file` / `process.loadEnvFile`）遵循「不覆蓋 process.env 既有值」原則。若你的終端機 profile（或 Claude Code CLI）已 export `ANTHROPIC_API_KEY`，本機 `pnpm dev` 會用那把、忽略 `.env.local` 的值，導致 AI 用到錯的 key。本機要驗 copilot 時用 `env -u ANTHROPIC_API_KEY pnpm dev` 起服務。正式站（Vercel）無此問題 —— runtime 只注入專案設定的環境變數。
+> ⚠️ **shell 已匯出的環境變數會壓過 `.env.local`**：Next.js（與 `node --env-file` / `process.loadEnvFile`）遵循「不覆蓋 process.env 既有值」原則。若你的終端機 profile（或 Claude Code CLI）已 export `ANTHROPIC_API_KEY`，本機 `pnpm dev` 會用那把、忽略 `.env.local` 的值，導致 AI 用到錯的 key。本機要驗 copilot 時用 `env -u ANTHROPIC_API_KEY pnpm dev` 起服務。使用 `vercel env run` 複驗時也要先 unset 同名 shell env；部署前必須用唯讀 Anthropic models API 實際驗證 Production key，而不是只確認變數「存在」。
+> ⚠️ **Vercel Environment Variables UI 只填值本身**：`PAYPAL_ENV` 填 `live`，不可貼入引號、行尾註解或整行 `.env` 範例。Production 遇到非精確值或 `sandbox` 會 fail-closed，不會再靜默切回 sandbox。
 > 預設帳號 `admin@roll-grp.com` / 密碼 `rollon-admin-2026`（上線前務必更換）。
 
 ### 效能 / 圖片工具
@@ -333,27 +335,27 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 | 路徑 | 說明 |
 | --- | --- |
-| `/[locale]/dashboard` | **NOVA 總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：黑白銀「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（引導/測驗/訂閱三狀態）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝NOVA AI 顧問（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
+| `/[locale]/dashboard` | **NOVA 總覽（widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：黑白銀「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（**2026-08 改版**：引導/測驗/**落地待辦**/訂閱四張卡，**每張皆為 `Link` 可點**跳對應頁——href 複用 `computeMilestones()` 既有判斷，不在元件內重寫路由；落地待辦卡以同一套 `computeTasks()` 算逾期/本週到期，逾期時紅點＋紅字，數字與 Action plan 頁保證一致）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝NOVA AI 顧問（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
 | `/[locale]/dashboard/profile` | **公司檔案**（2026-07）：唯讀展示會員 `OnboardingProfile`（公司/需求兩區，slug 經 `Auth.options.*` 轉 label），附「編輯」→ `/dashboard/account`；未填顯示引導卡。 |
-| `/[locale]/dashboard/companies` | **台灣企業智庫**（2026-07）：`getCompanyList()`（`content/companies/*.json`，現 103 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
+| `/[locale]/dashboard/companies` | **Taiwan Top 100s 台灣百大企業**（2026-07；2026-08 由「台灣企業」更名）：`getCompanyList()`（`content/companies/*.json`，現 103 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
 | `/[locale]/dashboard/playbooks`（+`[slug]`） | **知識手冊 Playbooks（2026-07）**：ROLL ON 募資／成長方法論指南，登入即可看。一份＝一個 `content/playbooks/<slug>.json`（`pnpm ingest:playbook` 把 PDF 經 Claude 轉雙語 JSON）。**每個紅色標題＝一個 segment**；詳情頁 `PlaybookReader` 分段渲染 + 每段「標為已讀」+「全部／未讀／已讀」filter（狀態存 `User.playbookReads`），列表頁顯示各份已讀進度。**雙用**：同內容餵 Nova AI（`get_playbook`）。 |
-| `/[locale]/dashboard/quiz` | **本期問答 Fortnightly Q&A（2026-07）**：每兩週一批選擇題，題庫來自 playbook 各段（ingest 時每段產 2 題）。以會員註冊日為錨**即時算第幾個雙週**（`src/lib/playbook/quiz.ts`，無 cron），全部題庫循環出題；`PlaybookQuizClient` 作答 → server 端重算分數＋對錯＋解析，每期一筆存 `PlaybookQuizAttempt`。**不寄 email、不排程**、**不**綁 onboarding。 |
+| `/[locale]/dashboard/quiz` | **Founder Quiz 創辦人測驗（2026-07；2026-08 由「本期問答 Fortnightly Q&A」更名——⚠️ 與 Overview 每日提醒中指向 `/quiz`（創辦人決策風格測驗）的同名卡片撞名，待釐清）**：每兩週一批選擇題，題庫來自 playbook 各段（ingest 時每段產 2 題）。以會員註冊日為錨**即時算第幾個雙週**（`src/lib/playbook/quiz.ts`，無 cron），全部題庫循環出題；`PlaybookQuizClient` 作答 → server 端重算分數＋對錯＋解析，每期一筆存 `PlaybookQuizAttempt`。**不寄 email、不排程**、**不**綁 onboarding。 |
 | `/[locale]/dashboard/crm\|pipeline\|notes` | **真 CRUD（2026-07，Pro 方案限定）**：各對應新 Prisma 表（`Contact` / `Deal` / `MeetingNote`，`userId` scope + `onDelete: Cascade`）。`requirePlan("pro")`→null 顯示付費牆（`PlanPaywall`），否則查該會員資料傳給 client 元件（`CrmManager` / `PipelineBoard` / `NotesManager`），新增/編輯/刪除後 `router.refresh()`。Pipeline 為 stage 分欄看板（MVP 用下拉改階段，不做拖拉）。Deal 可選連 CRM `Contact`（`SetNull`）。 |
 | `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）+ 變更/設定密碼 + 刪除帳號（危險區，需輸入確認字）。 |
 | `/[locale]/dashboard/billing` | 訂閱：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。**扣款失敗（SUSPENDED）且仍在 1 天寬限期內**時，最上方顯示琥珀色警告：降級時刻（含時間，非只有日期）+ 「前往 PayPal 更新付款方式」外連（`paypalManagePaymentUrl()` 依 `PAYPAL_ENV` 切 sandbox/live 網域）。寬限期已過則不再顯示（gate 已降級為 free，改由方案卡片引導重新訂閱）。取消按鈕對 **ACTIVE 與 SUSPENDED** 都顯示 — SUSPENDED 客戶若決定不救也該能自行終止，不必寫信求客服。 |
 | `/[locale]/dashboard/billing/return` | PayPal 核准後返回頁，呼叫 confirm 即時對帳。 |
-| `/[locale]/dashboard/tools` | **進入市場落地清單**（真工具）：`requirePlan("pro")`；依 `OnboardingProfile.needs` 由 `src/lib/tools/checklist.ts` 生成分組可勾選清單，勾選存 `User.checklistState`；未填 needs 顯示引導（引導去 `/dashboard/account` 填 needs，onboarding 已不收此題）、方案不足顯示升級牆。 |
+| `/[locale]/dashboard/tools` | **Milestone 里程碑**（2026-08 由「工具 Tools」更名）——進入市場落地清單（真工具）：`requirePlan("pro")`；依 `OnboardingProfile.needs` 由 `src/lib/tools/checklist.ts` 生成分組可勾選清單，勾選存 `User.checklistState`；未填 needs 顯示引導（引導去 `/dashboard/account` 填 needs，onboarding 已不收此題）、方案不足顯示升級牆。 |
 | `/[locale]/dashboard/agenda` | **落地待辦**（`requirePlan("pro")`）：下一步（複用 `home.priority` 文案）＋ 三里程碑進度 ＋ 依期限排序的單一任務清單。計算層 `src/lib/dashboard/agenda.ts`（純函式）合併兩種來源：**系統任務**＝`buildChecklist(needs)` 模板，期限由「註冊日 anchor + `SUGGESTED_DAYS[need]`」推算、勾選存 `User.checklistState`（走 `/api/tools/checklist`，key 白名單）；**自訂任務（2026-08）**＝任務區塊右上「＋」新增，存 `LandingTask` 表（`userId` scope + `onDelete: Cascade`），期限可留空、可勾選可刪除，走 `/api/agenda-tasks`(`POST`)、`/api/agenda-tasks/[id]`(`PATCH`/`DELETE`)，每人上限 200 筆。無期限任務一律視為 `upcoming`（不進逾期/本週提醒），排序時置於同組最後。`<input type="date">` 的 `YYYY-MM-DD` 由 `parseDueDate()` 存成該日 `23:59:59.999Z`，避免 UTC+8 提早近一日誤判逾期。未填 needs 時仍渲染 `AgendaBoard`（引導卡以 slot 從 server 傳入當空狀態），否則會員看得到頁面卻無入口新增自己的任務。 |
 | `/api/account/profile` | PATCH 更新 profile（自守衛 `getUserSession`）。 |
 | `/api/account/password` | POST 變更/設定密碼（有密碼者需驗舊密碼；Google-only 免舊密碼直接設定）。 |
 | `/api/account/delete` | POST 刪帳號（best-effort 取消 PayPal 訂閱 → `prisma.user.delete` cascade → 清 `user_session`）。 |
 | `/api/tools/checklist` | PATCH 更新落地清單勾選（`requirePlan("pro")` 守衛，merge 進 `User.checklistState`）。 |
 | `/api/{crm\|pipeline\|notes}` + `/[id]` | **會員 CRUD（2026-07）**：POST 建立 / PATCH 更新 / DELETE 刪除。自守衛 `getUserSession`（401）+ `requirePlan("pro")`（403），每筆以 `session.uid` scope（`updateMany`/`deleteMany` count 檢查，或 findFirst 驗擁有權），zod 驗證於 `src/lib/dashboard/schemas.ts`。**不重用** admin generic CRUD（那是 admin-only 且無 userId 過濾）。 |
-| `/api/copilot` | **AI Copilot 串流（2026-07）**：POST，`getUserSession`+`requirePlan("pro")`+**每會員每日 50 則 rate limit** 守衛後以 `@anthropic-ai/sdk` `messages.stream` 逐字回傳（`ReadableStream`, `text/plain`）。model 取 `ANTHROPIC_MODEL`（預設 `claude-sonnet-5`），system prompt 帶會員 `profile` 公司資訊、依 locale 回覆。守衛失敗回真狀態碼（含超限 429）；串流開始後的錯誤以文字寫入（前端顯示全文）。成本護欄＝Pro-gate + 輸入長度/則數上限 + rate limit（DB-based，見 `src/lib/rate-limit.ts` / `RateCounter` 表）。需 `ANTHROPIC_API_KEY`（見環境變數）。 |
+| `/api/copilot` | **AI Copilot 串流（2026-07）**：POST，`getUserSession`+`requirePlan("pro")`+**每會員每日 50 則 rate limit** 守衛後以 `@anthropic-ai/sdk` `messages.stream` 逐字回傳（`ReadableStream`, `text/plain`）。model 取 `ANTHROPIC_MODEL`（預設 `claude-sonnet-5`），system prompt 帶會員 `profile` 公司資訊、依 locale 回覆。守衛失敗回真狀態碼（含超限 429）；串流開始後的 Anthropic 例外完整寫入 server log，對話只顯示「顧問暫時無法連線，請稍後再試。」或英文對應句，不外洩 401/403、JSON 或 request id。成本護欄＝Pro-gate + 輸入長度/則數上限 + rate limit（DB-based，見 `src/lib/rate-limit.ts` / `RateCounter` 表）。需 `ANTHROPIC_API_KEY`（見環境變數）。 |
 | `/api/billing/subscribe\|confirm\|cancel` | 建立 / 確認 / 取消訂閱（自守衛）。subscribe 會擋「已有 ACTIVE/APPROVED 訂閱者重複訂閱」（回 409 `alreadySubscribed`），避免重複扣款。 |
 | `/api/billing/webhook` | PayPal webhook：不查 session、改以簽章驗證；冪等 + 對帳。觸發對帳的事件用 **prefix 比對**（`BILLING.SUBSCRIPTION.*` + `PAYMENT.SALE.COMPLETED`）而非逐一列舉 — 白名單漏一個（如客戶更新付款方式後的 `BILLING.SUBSCRIPTION.RE-ACTIVATED`，官方名稱帶連字號）就等於漏對帳、客戶付了錢權限卻回不來；`reconcile` 冪等且以 PayPal 為權威，多對帳無害、漏對帳才有害。 |
 
-UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn` / `DashboardCompanyList` / `PlanPaywall` / `CrmManager` / `PipelineBoard` / `NotesManager` / `AgendaBoard`），總覽 widget 在 `src/components/dashboard/home/`（`PriorityBanner` / `MetricsRow` / `AlertsRow` / `FounderMatchCard` / `TutorialVideoCard` / `TopOpportunitiesRail` / `UpcomingEventsRail`，皆 server component；`CopilotPanel` 為 client 串流對話）。CRUD 驗證 schema 在 `src/lib/dashboard/schemas.ts`（zod）。`DashboardSidebar` 的 `NAV` 陣列 + `NavKey` 集中管理側欄（新增頁面在此擴充；`soon:true` 顯示「即將」小標，目前無啟用者）。shell 內容欄寬 `max-w-6xl` 供雙欄總覽。輕量公司清單 getter（`getCompanyList` / `countCompanies` / `getCompanyCards`）在 `src/lib/company/content.ts`。i18n 在 `messages/*.json` 的 `Dashboard`（含 `home`/`profile`/`companies`/`comingSoon` 及 2026-07 新增 `gate`/`actions`/`crm`/`pipeline`/`notes` 與 `home.copilot.*` 對話鍵）/ `Billing` namespace，en 與 zh-tw 鍵完全平行。新依賴 `@anthropic-ai/sdk`；新資料表 `Contact`/`Deal`/`MeetingNote`/`RateCounter`（rate limit 計數）/`PlaybookQuizAttempt`（雙週問答作答歷史）/`LandingTask`（2026-08，落地待辦自訂任務）＋ `User.playbookReads` 欄需跑 `pnpm db:push`（加法式）。安全強化（2026-07）：login/signup/改密碼皆套 DB-based rate limit（`src/lib/rate-limit.ts`，無 KV 故用 Neon 原子 UPSERT）+ login 等時比對消除帳號枚舉時序側信道；bcrypt cost 提到 12（`src/lib/auth/password.ts`）；JWT 驗證鎖 `HS256`；`api.ts` 對非預期 500 遮蔽內部細節（業務 4xx 仍全顯，符合「錯誤全顯前端」）；金流取消寬限期修正（`reconcile` 不再用 null 覆寫 `User.currentPeriodEnd`）。**知識手冊 Playbooks（2026-07）**：`content/playbooks/*.json`（loader `src/lib/playbook/content.ts`）為**分段結構**（`segments[]`，一個紅標＝一段，每段附 2 題選擇題題庫）。ingest（`scripts/ingest-playbook.mjs`）流程：PDF → Claude 扁平 `body_en/zh`（紅標＝`##`）→ **本地在 `^##` 切段** → 第二次呼叫產每段題庫（皆串流累加 `input_json_delta` 避 SDK 重組 bug）。**雙用**：會員頁 `/dashboard/playbooks`（`PlaybookReader` 分段 + 已讀 filter，狀態存 `User.playbookReads`）＋ Nova AI（`knowledge.ts` `buildPlaybookIndex`/`renderPlaybookForAI`、`tools.ts` `get_playbook`、`policy.ts` 視為權威方法論）。**雙週問答** `/dashboard/quiz`（`src/lib/playbook/quiz.ts`：註冊日為錨即時算雙週、全題庫循環選題、server 重算分數；`PlaybookQuizAttempt` 存歷史；元件 `PlaybookReader`/`PlaybookQuizClient`）。每日新增＝丟 PDF 再跑一次 ingest，零改程式。
+UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn` / `DashboardCompanyList` / `PlanPaywall` / `CrmManager` / `PipelineBoard` / `NotesManager` / `AgendaBoard`；`getCurrentAccount()` 的 DTO 2026-08 起帶 `createdAt`＝落地起點 anchor，Agenda 頁因此省去一次 `User` 查詢），總覽 widget 在 `src/components/dashboard/home/`（`PriorityBanner` / `MetricsRow` / `AlertsRow` / `FounderMatchCard` / `TutorialVideoCard` / `TopOpportunitiesRail` / `UpcomingEventsRail`，皆 server component；`CopilotPanel` 為 client 串流對話）。CRUD 驗證 schema 在 `src/lib/dashboard/schemas.ts`（zod）。`DashboardSidebar` 的 `NAV` 陣列 + `NavKey` 集中管理側欄（新增頁面在此擴充；`soon:true` 顯示「即將」小標，目前無啟用者）。shell 內容欄寬 `max-w-6xl` 供雙欄總覽。輕量公司清單 getter（`getCompanyList` / `countCompanies` / `getCompanyCards`）在 `src/lib/company/content.ts`。i18n 在 `messages/*.json` 的 `Dashboard`（含 `home`/`profile`/`companies`/`comingSoon` 及 2026-07 新增 `gate`/`actions`/`crm`/`pipeline`/`notes` 與 `home.copilot.*` 對話鍵）/ `Billing` namespace，en 與 zh-tw 鍵完全平行。新依賴 `@anthropic-ai/sdk`；新資料表 `Contact`/`Deal`/`MeetingNote`/`RateCounter`（rate limit 計數）/`PlaybookQuizAttempt`（雙週問答作答歷史）/`LandingTask`（2026-08，落地待辦自訂任務）＋ `User.playbookReads` 欄需跑 `pnpm db:push`（加法式）。安全強化（2026-07）：login/signup/改密碼皆套 DB-based rate limit（`src/lib/rate-limit.ts`，無 KV 故用 Neon 原子 UPSERT）+ login 等時比對消除帳號枚舉時序側信道；bcrypt cost 提到 12（`src/lib/auth/password.ts`）；JWT 驗證鎖 `HS256`；`api.ts` 對非預期 500 遮蔽內部細節（業務 4xx 仍全顯，符合「錯誤全顯前端」）；金流取消寬限期修正（`reconcile` 不再用 null 覆寫 `User.currentPeriodEnd`）。**知識手冊 Playbooks（2026-07）**：`content/playbooks/*.json`（loader `src/lib/playbook/content.ts`）為**分段結構**（`segments[]`，一個紅標＝一段，每段附 2 題選擇題題庫）。ingest（`scripts/ingest-playbook.mjs`）流程：PDF → Claude 扁平 `body_en/zh`（紅標＝`##`）→ **本地在 `^##` 切段** → 第二次呼叫產每段題庫（皆串流累加 `input_json_delta` 避 SDK 重組 bug）。**雙用**：會員頁 `/dashboard/playbooks`（`PlaybookReader` 分段 + 已讀 filter，狀態存 `User.playbookReads`）＋ Nova AI（`knowledge.ts` `buildPlaybookIndex`/`renderPlaybookForAI`、`tools.ts` `get_playbook`、`policy.ts` 視為權威方法論）。**雙週問答** `/dashboard/quiz`（`src/lib/playbook/quiz.ts`：註冊日為錨即時算雙週、全題庫循環選題、server 重算分數；`PlaybookQuizAttempt` 存歷史；元件 `PlaybookReader`/`PlaybookQuizClient`）。每日新增＝丟 PDF 再跑一次 ingest，零改程式。
 
 **入口接通**：登入 / onboarding / 測驗完成後由 `destinationFor`（`src/lib/auth/onboarding.ts`，`completed → /dashboard`）導向後台；全站 Navbar 有「會員中心」入口（靜態連結 → `/dashboard`，未登入由 proxy 導 `/login`）。
 
@@ -369,10 +371,10 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 
 ### PayPal 訂閱流程
 
-1. **一次性設定**：`node --env-file=.env.local scripts/paypal-setup.mjs` 建立 Product + Pro/Business 月費 Plan（TWD），把印出的 `PAYPAL_PLAN_ID_*` 填回 `.env.local`。
+1. **一次性設定**：明確設定 `PAYPAL_ENV=sandbox|live` 後，`node --env-file=.env.local scripts/paypal-setup.mjs` 建立該環境專屬的 Product + Pro/Business 月費 Plan（TWD），把印出的 `PAYPAL_PLAN_ID_*` 填回 `.env.local`。sandbox 與 live 的 credentials、plans、webhook 不可混用。
 2. **訂閱**：billing 頁 → `POST /api/billing/subscribe` 建立 PayPal 訂閱 → 前端 redirect 到核准頁 → 返回 `billing/return` → `POST /api/billing/confirm` 即時對帳。
 3. **對帳權威來源**：`/api/billing/webhook`（驗章 → `WebhookEvent` 審計 → `reconcileById` 以 PayPal 為準更新 `User` + `Subscription`）。`reconcile` 為 idempotent，故 webhook 失敗回 500 讓 PayPal 重送是安全的。
-4. PayPal 直打 REST（`src/lib/billing/paypal.ts`，**無 SDK 依賴**）；env 未設妥時 `isPaypalConfigured()` 回 false，前端顯示「金流尚未設定」而非崩潰。
+4. PayPal 直打 REST（`src/lib/billing/paypal.ts`，**無 SDK 依賴**）；缺 credentials 時 `isPaypalConfigured()` 回 false；錯誤 `PAYPAL_ENV` 或 Production sandbox 則直接拒絕，不建立任何遠端訂閱。Production return/cancel origin 即使從 request fallback 推導，也只接受 `https://www.rollgrp.com`。
 
 > **schema 演進零資料遺失**：計費欄位 / 表全為 nullable 或有 default 的純疊加；用 `prisma db push`，**禁止 `--accept-data-loss`**（若 push 要求該旗標代表改成破壞性了，需退回改正）。
 >
@@ -380,18 +382,19 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 
 ### Production 上線（Vercel）
 
-正式站 canonical = **`https://www.rollgrp.com`**（apex `rollgrp.com` 會 307 導向 www）。⚠️ **webhook 與 `NEXT_PUBLIC_APP_URL` 一律用 `www`**——否則 PayPal 的 webhook POST 打到 apex 會被 307 擋下、不送達。
+正式站 canonical = **`https://www.rollgrp.com`**（apex `rollgrp.com` 會 307 導向 www）。⚠️ **webhook 與 `NEXT_PUBLIC_APP_URL` 一律用 `www`**，避免 PayPal POST 經過重新導向。Vercel Functions 固定 `sin1`，與 Neon `ap-southeast-1` 同區；region 設定見 `vercel.json`。
 
-`.env.local` 不進版控，故 PayPal 設定要另外設進 Vercel production：
+Production 直接使用 PayPal Live；帳號持有人須在 Vercel UI 安全輸入 secrets，不經聊天、shell history 或 Git：
 
-1. sandbox 憑證填 `.env.local` → `node --env-file=.env.local scripts/paypal-setup.mjs` 拿 `PAYPAL_PLAN_ID_*`。
-2. 建 webhook：`node --env-file=.env.local scripts/paypal-create-webhook.mjs https://www.rollgrp.com/api/billing/webhook` → 取得 `PAYPAL_WEBHOOK_ID`（冪等：URL 已存在會查回現有 id）。
-3. 設 Vercel production env（7 個）：`PAYPAL_ENV`、`PAYPAL_CLIENT_ID`、`PAYPAL_CLIENT_SECRET`、`PAYPAL_PLAN_ID_PRO`、`PAYPAL_PLAN_ID_BUSINESS`、`PAYPAL_WEBHOOK_ID`、`NEXT_PUBLIC_APP_URL=https://www.rollgrp.com`。
-   模式：`vercel env rm NAME production --yes; printf '%s' "值" | vercel env add NAME production`。
-4. `vercel deploy --prod --yes` 重新部署（`NEXT_PUBLIC_APP_URL` 為 build-time，必須先設好）。
-5. 煙霧測試：對 `www.rollgrp.com` 建測試帳號 → `POST /api/billing/subscribe` 應回 200 + PayPal approveUrl。
+1. 以 Live Client ID / Secret 執行 `node --env-file=.env.local scripts/paypal-setup.mjs`，建立 Live Pro（TWD 590）與 Business（TWD 890）plans；不得沿用 sandbox plan id。
+2. 執行 `node --env-file=.env.local scripts/paypal-create-webhook.mjs` 建立 `https://www.rollgrp.com/api/billing/webhook`。腳本預設訂閱 `BILLING.SUBSCRIPTION.CREATED`、Activated／Updated／Cancelled／Suspended／Expired／Payment Failed 與 `PAYMENT.SALE.COMPLETED`；同 URL 已存在時會保留額外事件並以 PATCH 補齊缺少事件，不會只取回 ID 後假裝完成。
+3. Vercel Production 設定：`PAYPAL_ENV=live`、Live `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` / `PAYPAL_PLAN_ID_PRO` / `PAYPAL_PLAN_ID_BUSINESS` / `PAYPAL_WEBHOOK_ID`、`NEXT_PUBLIC_APP_URL=https://www.rollgrp.com`，以及已由 models API 驗證有效的 `ANTHROPIC_API_KEY`。值不可帶引號或註解。
+4. 部署前以唯讀 API 驗證 Anthropic 可列出 `ANTHROPIC_MODEL`、PayPal OAuth 成功、兩個 plans 都是 `ACTIVE`，且 webhook URL／事件正確；再依序執行 `pnpm test`、`pnpm lint`、`pnpm build`。
+5. 從乾淨隔離 worktree 執行 Production deploy，避免把其他未提交修改一起上線；`NEXT_PUBLIC_APP_URL` 是 build-time 設定，必須先完成環境更新。
+6. 以內部測試帳號完成一筆真實 TWD 590 Pro 訂閱：返回 www confirm 成功、`WebhookEvent` 新增、Subscription/User 為 `ACTIVE`/`pro` 且到期日在未來，NOVA 可實際回覆。驗收後立即取消；不自動退款，保留已付期間權限。
+7. 驗收時檢查 webhook response 的 `x-vercel-id` 含 `sin1`，並監看 Vercel server log。使用者只會看到通用錯誤，完整上游錯誤只留後端。
 
-**sandbox → live 切換**：PayPal 開 Live app → 換 `PAYPAL_ENV=live` + live `CLIENT_ID/SECRET` → 重跑 `paypal-setup.mjs`（live plan id）與 `paypal-create-webhook.mjs`（live webhook）→ 更新 Vercel env → redeploy。切換前把舊 sandbox secret 在 PayPal 後台 reset。
+既有 orphan `APPROVAL_PENDING` 不刪除、不覆寫；它保留作為跨 PayPal app 設定漂移的審計證據。webhook 腳本重跑也只補事件、不改任何訂閱資料。任何 schema 操作都禁止 `--accept-data-loss`。
 
 ## 內容頁（SEO / GEO 主引擎）
 
@@ -763,17 +766,10 @@ pnpm optimize:images   # 已加進 package.json scripts
 
 ## 部署
 
-Vercel，Region `hkg1`（香港，最近台灣的節點），設定在 `vercel.json`。
+Vercel Functions 使用 Region `sin1`（新加坡），與 Neon `ap-southeast-1` 同區，設定在 `vercel.json`。函式靠近主要資料來源可降低每次資料庫往返延遲；參考 [Vercel region 文件](https://vercel.com/docs/functions/configuring-functions/region)。
 
 ```bash
+pnpm test
+pnpm lint
 pnpm build
 ```
-
-### 建議：考慮改 region
-
-`vercel.json` 目前設 `hkg1`，但核心客群是日韓美歐外商決策者。建議評估改成：
-- `hnd1`（東京）— 服務日韓客群最佳
-- `iad1`（美東）— 服務美歐客群最佳
-- 或保留 `hkg1` 並補 multi-region edge runtime（成本高）
-
-決定由使用者拍板；本次工作未變更 region。

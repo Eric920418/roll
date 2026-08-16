@@ -6,8 +6,20 @@
 // 用 PayPal-Request-Id 做冪等：重跑會回傳同一筆資源（PayPal 保留期內），不會狂建重複。
 // 注意：TWD 為零小數幣別，金額不帶小數（590 / 890）。
 
+const paypalEnv = process.env.PAYPAL_ENV;
+if (paypalEnv !== "sandbox" && paypalEnv !== "live") {
+  console.error(
+    "✗ PAYPAL_ENV 必須精確設定為 sandbox 或 live，不可包含引號、空白或註解。",
+  );
+  process.exit(1);
+}
+if (process.env.VERCEL_ENV === "production" && paypalEnv !== "live") {
+  console.error("✗ Vercel Production 的 PAYPAL_ENV 必須設定為 live。");
+  process.exit(1);
+}
+
 const BASE =
-  process.env.PAYPAL_ENV === "live"
+  paypalEnv === "live"
     ? "https://api-m.paypal.com"
     : "https://api-m.sandbox.paypal.com";
 
@@ -79,7 +91,7 @@ function monthlyPlan(productId, name, value) {
 }
 
 async function main() {
-  console.log(`→ 環境：${process.env.PAYPAL_ENV === "live" ? "LIVE" : "SANDBOX"} (${BASE})`);
+  console.log(`→ 環境：${paypalEnv === "live" ? "LIVE" : "SANDBOX"} (${BASE})`);
   const token = await getToken();
 
   const product = await api(

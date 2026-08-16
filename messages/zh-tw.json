@@ -469,14 +469,14 @@
     "nav": {
       "overview": "總覽",
       "profile": "公司檔案",
-      "companies": "台灣企業",
+      "companies": "台灣百大企業",
       "playbooks": "知識手冊",
-      "quiz": "本期問答",
+      "quiz": "創辦人測驗",
       "crm": "CRM 客戶",
       "pipeline": "銷售管道",
       "notes": "會議記錄",
       "agenda": "落地待辦",
-      "tools": "工具",
+      "tools": "里程碑",
       "account": "帳號",
       "billing": "訂閱帳單"
     },
@@ -546,7 +546,7 @@
       "EXPIRED": "已到期"
     },
     "tools": {
-      "title": "工具",
+      "title": "里程碑",
       "subtitle": "自助工具，協助你規劃與追蹤進入台灣 / 亞洲市場的進度。",
       "lockedTitle": "升級 Pro 解鎖",
       "lockedBody": "此工具需 Pro 以上方案才能使用。升級即可解鎖。",
@@ -572,14 +572,14 @@
         "upgradeBody": "升級 Pro，開啟你的個人化台灣落地查核清單。",
         "upgradeCta": "查看方案",
         "readyTitle": "目前一切就緒",
-        "readyBody": "探索台灣企業情報，並持續推進你的查核清單。",
+        "readyBody": "探索台灣百大企業情報，並持續推進你的查核清單。",
         "readyCta": "瀏覽企業"
       },
       "metrics": {
         "sectionTitle": "關鍵指標",
         "companies": "追蹤企業",
         "companiesHint": "台灣上市情報",
-        "videos": "教學影片",
+        "videos": "商業教學",
         "videosHint": "ROLL ON 頻道",
         "checklist": "清單進度",
         "checklistHint": "已完成 {done} / {total}",
@@ -593,7 +593,11 @@
         "subscription": "訂閱",
         "done": "已完成",
         "todo": "尚未完成",
-        "noSub": "免費方案"
+        "noSub": "免費方案",
+        "agenda": "落地待辦",
+        "overdue": "{count} 項逾期",
+        "dueSoon": "{count} 項本週到期",
+        "onTrack": "進度正常"
       },
       "match": {
         "eyebrow": "企業配對",
@@ -607,9 +611,9 @@
         "vision": "願景清晰度"
       },
       "video": {
-        "eyebrow": "ROLL ON 教學",
-        "title": "跟著 ROLL ON 學",
-        "empty": "教學影片即將推出。",
+        "eyebrow": "商業教學",
+        "title": "商業教學影片",
+        "empty": "商業教學影片即將上架。",
         "watch": "觀看"
       },
       "opportunities": {
@@ -626,8 +630,8 @@
         "title": "NOVA",
         "subtitle": "你的 AI 商業顧問，助你拓展台灣與亞洲。",
         "quiz": "找我的創辦人配對",
-        "companies": "探索台灣企業",
-        "tools": "開啟進入市場工具",
+        "companies": "探索台灣百大企業",
+        "tools": "開啟我的里程碑",
         "profile": "更新公司檔案",
         "contact": "與我們的團隊聊聊",
         "placeholder": "有什麼想問的…",
@@ -654,7 +658,7 @@
       "notProvided": "未提供"
     },
     "companies": {
-      "title": "台灣企業",
+      "title": "台灣百大企業",
       "subtitle": "台灣上市公司的深度情報 — 財務、沿革與展望。",
       "count": "{count} 家企業",
       "searchPlaceholder": "以名稱、代號或產業搜尋…",
@@ -688,7 +692,7 @@
         "emptyFilter": "此篩選沒有段落。"
       },
       "quiz": {
-        "title": "本期問答",
+        "title": "創辦人測驗",
         "subtitle": "每兩週一批新題目，取材自知識手冊。",
         "empty": "目前沒有題目 —— 手冊上架後再回來看看。",
         "countHint": "本期共 {count} 題。",
