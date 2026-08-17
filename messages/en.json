@@ -467,18 +467,18 @@
       "enterprise": "Enterprise"
     },
     "nav": {
-      "overview": "Overview",
-      "profile": "Company profile",
-      "companies": "Taiwan Top 100s",
-      "playbooks": "Playbooks",
-      "quiz": "Founder Quiz",
+      "overview": "DASHBOARD",
+      "profile": "PROFILE & ACCOUNT SETTING",
+      "companies": "TAIWAN TOP 100",
+      "playbooks": "FUNDRAISING",
+      "quiz": "FOUNDER QUIZ",
       "crm": "CRM",
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
-      "agenda": "Action plan",
-      "tools": "Milestone",
+      "agenda": "ACTION PLAN",
+      "tools": "MILESTONES",
       "account": "Account",
-      "billing": "Billing"
+      "billing": "BILLING"
     },
     "overview": {
       "title": "Welcome back",
@@ -546,7 +546,7 @@
       "EXPIRED": "Expired"
     },
     "tools": {
-      "title": "Milestone",
+      "title": "MILESTONES",
       "subtitle": "Self-serve tools to plan and track your Taiwan / Asia market entry.",
       "lockedTitle": "Unlock with Pro",
       "lockedBody": "This tool is available on the Pro plan and above. Upgrade to get access.",
@@ -594,7 +594,7 @@
         "done": "Completed",
         "todo": "Not yet",
         "noSub": "Free plan",
-        "agenda": "Action plan",
+        "agenda": "ACTION PLAN",
         "overdue": "{count} overdue",
         "dueSoon": "{count} due this week",
         "onTrack": "On track"
@@ -649,7 +649,7 @@
       }
     },
     "profile": {
-      "title": "Company profile",
+      "title": "PROFILE & ACCOUNT SETTING",
       "subtitle": "The company details we use across your dashboard.",
       "edit": "Edit details",
       "emptyTitle": "No company profile yet",
@@ -658,7 +658,7 @@
       "notProvided": "Not provided"
     },
     "companies": {
-      "title": "Taiwan Top 100s",
+      "title": "TAIWAN TOP 100",
       "subtitle": "Deep intelligence on Taiwan-listed companies — financials, history, and outlook.",
       "count": "{count} companies",
       "searchPlaceholder": "Search by name, ticker, or sector…",
@@ -666,7 +666,7 @@
       "view": "View"
     },
     "playbooks": {
-      "title": "Playbooks",
+      "title": "FUNDRAISING",
       "subtitle": "ROLL ON's frameworks and guides for fundraising, market entry, and growth across Taiwan and Asia.",
       "empty": "No playbooks yet. New guides are added regularly.",
       "back": "All playbooks",
@@ -692,7 +692,7 @@
         "emptyFilter": "No segments match this filter."
       },
       "quiz": {
-        "title": "Founder Quiz",
+        "title": "FOUNDER QUIZ",
         "subtitle": "A fresh set of questions every two weeks, drawn from the playbooks.",
         "empty": "No questions available yet — check back once playbooks are published.",
         "countHint": "{count} questions this round.",
@@ -779,7 +779,7 @@
       "count": "{count} notes"
     },
     "agenda": {
-      "title": "Action plan",
+      "title": "ACTION PLAN",
       "subtitle": "Your Taiwan landing next steps, scheduled by your progress.",
       "reminder": "{overdue} overdue · {soon} due this week",
       "allClear": "You're on track — nothing overdue.",
@@ -811,7 +811,7 @@
     }
   },
   "Billing": {
-    "title": "Billing & subscription",
+    "title": "BILLING",
     "subtitle": "Manage your plan and payments.",
     "currentPlan": "Current plan",
     "status": "Status",
