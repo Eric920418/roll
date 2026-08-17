@@ -33,6 +33,14 @@ export const PLAN_CONFIG: Record<PlanKey, PlanConfig> = {
   enterprise: { selfServe: false },
 };
 
+/**
+ * 帳務頁必須顯示與實際 PayPal plan 相同的價格，不能被 CMS 翻譯覆寫成舊幣別／舊金額。
+ */
+export function monthlyPriceLabel(plan: PlanKey): string | null {
+  const amount = PLAN_CONFIG[plan].monthlyTwd;
+  return amount == null ? null : `NT$${amount.toLocaleString("en-US")}`;
+}
+
 /** 型別守衛：把任意字串收斂成合法 PlanKey，非法值一律視為 free */
 export function toPlanKey(value: string | null | undefined): PlanKey {
   return (PLAN_KEYS as readonly string[]).includes(value ?? "")

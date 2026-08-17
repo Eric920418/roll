@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
+import { monthlyPriceLabel } from "@/lib/billing/plans";
 import type { Locale } from "@/i18n/routing";
 
 // 自助付費方案（free 不需購買；enterprise 走 contact sales）
@@ -156,11 +157,11 @@ export default function BillingPanel({
                 }`}
               >
                 <p className="text-lg font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">
-                  {tPricing(`${plan}.name`)}
+                  {tPlans(plan)}
                 </p>
                 <p className="mt-1 text-sm text-dark/70">
                   <span className="text-xl font-bold text-dark">
-                    {tPricing(`${plan}.price`)}
+                    {monthlyPriceLabel(plan)}
                   </span>{" "}
                   {tPricing(`${plan}.unit`)}
                 </p>

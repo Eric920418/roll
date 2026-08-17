@@ -361,7 +361,7 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 
 ### 方案與 gating
 
-- 方案邏輯單一事實來源：`src/lib/billing/plans.ts`（`PLAN_KEYS` / `PLAN_RANK` / `PLAN_CONFIG`，PayPal plan id 走 env 名）。價格顯示只信 i18n、邏輯只信此檔。
+- 方案邏輯單一事實來源：`src/lib/billing/plans.ts`（`PLAN_KEYS` / `PLAN_RANK` / `PLAN_CONFIG`，PayPal plan id 走 env 名）。帳務頁的付費方案名稱走 `Dashboard.plans`，金額由 `PLAN_CONFIG.monthlyTwd` 產生，避免 CMS 舊翻譯顯示的幣別／價格與 PayPal 實扣不一致；行銷頁文案仍可走 i18n/CMS。
 - gating：`src/lib/billing/gate.ts` 的 `getEffectivePlan` / `getUserPlan` / `requirePlan`。**兩種寬限期，起算點刻意不同**：
   - **ACTIVE / CANCELLED** → 需 `currentPeriodEnd > now`。已取消者付到本期末才降級；即使 PayPal 漏送 CANCELLED，到期也會自動降級。
   - **SUSPENDED（扣款失敗）** → 走 `SUSPENDED_GRACE_MS`（**1 天**），以 `planUpdatedAt` 起算，**刻意不看 `currentPeriodEnd`**。因為扣款失敗的時間點正是本期到期日，SUSPENDED 時 `currentPeriodEnd` 必然已過期，且 PayPal 轉 SUSPENDED 前會先重試扣款數天 — 若用 `currentPeriodEnd` 當起點，寬限期會在 SUSPENDED 事件送達前就過完＝完全沒有寬限。設計意圖：最常見的扣款失敗原因是信用卡到期，給 1 天讓客戶更新付款方式，避免長期客戶在收到通知前就先失去存取。UI 用 `suspendedGraceEndsAt` / `suspendedGraceActive`（時間比較收在 gate 內，server component render body 直接呼叫 `Date.now()` 會違反 `react-hooks/purity`）。
