@@ -478,7 +478,8 @@
       "agenda": "落地待辦",
       "tools": "里程碑",
       "account": "帳號",
-      "billing": "訂閱帳單"
+      "billing": "訂閱帳單",
+      "feedback": "問題回報"
     },
     "overview": {
       "title": "歡迎回來",
@@ -808,6 +809,37 @@
       "emptyTitle": "先告訴我們你的需求",
       "emptyBody": "到「帳號」頁填寫你的落地需求，我們就會在這裡生成你的行動計畫。",
       "emptyCta": "前往帳號頁"
+    },
+    "feedback": {
+      "title": "問題回報",
+      "subtitle": "發現 bug 或有建議都可以告訴我們，每一則我們都會看。",
+      "formTitle": "新增回報",
+      "type": "回報類型",
+      "types": {
+        "bug": "功能出問題",
+        "suggestion": "功能建議",
+        "other": "其他"
+      },
+      "reportTitle": "問題摘要",
+      "reportTitlePlaceholder": "例：編輯商機後資料就消失了",
+      "body": "詳細描述",
+      "bodyPlaceholder": "你預期會發生什麼、實際發生了什麼？附上重現步驟對我們幫助很大。",
+      "pageUrl": "發生在哪個頁面？（選填）",
+      "pageUrlPlaceholder": "例：/dashboard/pipeline",
+      "submit": "送出回報",
+      "submitting": "送出中…",
+      "sent": "已收到，感謝回報！我們會盡快處理。",
+      "limitHint": "每日最多 {count} 則。",
+      "historyTitle": "我的回報",
+      "count": "{count} 則回報",
+      "empty": "尚無回報紀錄。",
+      "adminReply": "ROLL ON. 回覆",
+      "statuses": {
+        "open": "已收到",
+        "in_progress": "處理中",
+        "resolved": "已解決",
+        "wontfix": "已評估，暫不處理"
+      }
     }
   },
   "Billing": {

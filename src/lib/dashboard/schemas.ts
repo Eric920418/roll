@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FEEDBACK_TYPES, FEEDBACK_STATUSES } from "@/lib/dashboard/feedback";
 
 // 會員後台 CRM / Pipeline / Notes 的請求驗證（zod v4）。
 // create = 建立必填；update = 全部可選（PATCH 只帶要改的欄位）。
@@ -115,3 +116,23 @@ export function parseDueDate(v: string | undefined): Date | null | undefined {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 }
+
+// ── 問題回報（會員送出 / 管理員處理）──
+// body 給一個下限：一句「壞掉了」無法重現，強制多打幾個字換取可處理的回報。
+export const feedbackCreateSchema = z.object({
+  type: z.enum(FEEDBACK_TYPES),
+  title: z.string().trim().min(1, "必填").max(120, "最多 120 字"),
+  body: z
+    .string()
+    .trim()
+    .min(10, "請至少描述 10 個字，方便我們重現問題")
+    .max(4000, "最多 4000 字"),
+  pageUrl: z.string().trim().max(500, "最多 500 字").optional(),
+  locale: optStr,
+});
+
+// 管理端 PATCH：只動狀態與回覆，會員填的內容一律唯讀（保留原始回報事證）
+export const feedbackAdminUpdateSchema = z.object({
+  status: z.enum(FEEDBACK_STATUSES).optional(),
+  adminReply: z.string().trim().max(4000, "最多 4000 字").optional(),
+});

@@ -185,6 +185,9 @@ model User {
   // 落地待辦頁的自訂任務（系統模板任務之外，會員自己加的）
   landingTasks LandingTask[]
 
+  // 問題回報（產品 bug / 建議）
+  feedbackReports FeedbackReport[]
+
   @@index([email])
 }
 
@@ -436,4 +439,37 @@ model PlaybookQuizAttempt {
 
   @@unique([userId, periodIndex]) // 每期一筆
   @@index([userId])
+}
+
+// ============================================
+// 問題回報（會員後台送出 → 管理員後台處理）
+// 刻意「不」做方案 gating：bug/建議是我們想要更多、不是更少的訊號，
+// 免費會員一樣能回報；濫用護欄改用 rate limit（見 src/lib/dashboard/feedback.ts）。
+// ============================================
+
+/// 會員回報的產品問題或建議
+model FeedbackReport {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type  String // bug / suggestion / other（app 端驗證，見 FEEDBACK_TYPES）
+  title String
+  body  String
+
+  // --- 重現用診斷資訊（會員填/前端自動帶；userAgent 由 server 從 header 取，不信 client）---
+  pageUrl   String? // 回報當下所在頁面
+  locale    String? // 回報時的語系
+  userAgent String?
+
+  // --- 處理狀態（管理員後台維護）---
+  status     String    @default("open") // open / in_progress / resolved / wontfix
+  adminReply String? // 管理員回覆 —— 會員在自己的回報清單看得到
+  resolvedAt DateTime? // 首次進入終局狀態（resolved/wontfix）的時間
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }

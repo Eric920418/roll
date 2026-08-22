@@ -467,18 +467,19 @@
       "enterprise": "Enterprise"
     },
     "nav": {
-      "overview": "DASHBOARD",
-      "profile": "PROFILE & ACCOUNT SETTING",
-      "companies": "TAIWAN TOP 100",
-      "playbooks": "FUNDRAISING",
-      "quiz": "FOUNDER QUIZ",
+      "overview": "Dashboard",
+      "profile": "Profile & account setting",
+      "companies": "Taiwan Top 100",
+      "playbooks": "Fundraising",
+      "quiz": "Founder quiz",
       "crm": "CRM",
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
-      "agenda": "ACTION PLAN",
-      "tools": "MILESTONES",
+      "agenda": "Action plan",
+      "tools": "Milestones",
       "account": "Account",
-      "billing": "BILLING"
+      "billing": "Billing",
+      "feedback": "Report an issue"
     },
     "overview": {
       "title": "Welcome back",
@@ -808,6 +809,37 @@
       "emptyTitle": "Tell us your needs first",
       "emptyBody": "Fill in your landing requirements in Account, and we'll build your action plan here.",
       "emptyCta": "Go to Account"
+    },
+    "feedback": {
+      "title": "Report an issue",
+      "subtitle": "Found a bug or have an idea? Tell us here — we read every report.",
+      "formTitle": "New report",
+      "type": "What is this about?",
+      "types": {
+        "bug": "Something is broken",
+        "suggestion": "Idea or feature request",
+        "other": "Something else"
+      },
+      "reportTitle": "Summary",
+      "reportTitlePlaceholder": "e.g. Deals disappear after I edit them",
+      "body": "Details",
+      "bodyPlaceholder": "What did you expect to happen, and what happened instead? Steps to reproduce help us a lot.",
+      "pageUrl": "Where did it happen? (optional)",
+      "pageUrlPlaceholder": "e.g. /dashboard/pipeline",
+      "submit": "Send report",
+      "submitting": "Sending…",
+      "sent": "Thanks — your report is with our team.",
+      "limitHint": "Up to {count} reports per day.",
+      "historyTitle": "Your reports",
+      "count": "{count} reports",
+      "empty": "No reports yet.",
+      "adminReply": "Reply from ROLL ON.",
+      "statuses": {
+        "open": "Received",
+        "in_progress": "In progress",
+        "resolved": "Resolved",
+        "wontfix": "Reviewed — not planned"
+      }
     }
   },
   "Billing": {

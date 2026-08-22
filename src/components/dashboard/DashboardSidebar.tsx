@@ -21,7 +21,8 @@ type NavKey =
   | "agenda"
   | "tools"
   | "account"
-  | "billing";
+  | "billing"
+  | "feedback";
 
 // 各 nav 項對應的 path（未加 locale 前綴）。新增頁面時在此擴充即可。
 // soon: 尚未上線的占位頁，側欄標「即將」小標，點進去是 coming-soon 頁。
@@ -38,6 +39,7 @@ const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "tools", path: "/dashboard/tools" },
   { key: "account", path: "/dashboard/account" },
   { key: "billing", path: "/dashboard/billing" },
+  { key: "feedback", path: "/dashboard/feedback" },
 ];
 
 export default function DashboardSidebar({
@@ -101,7 +103,7 @@ export default function DashboardSidebar({
             <Link
               key={key}
               href={pathForLocale(path, locale)}
-              className={`relative flex shrink-0 items-center justify-between gap-2 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors font-[family-name:var(--font-heading)] ${
+              className={`relative flex shrink-0 items-center justify-between gap-2 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold uppercase tracking-[0.05em] transition-colors font-[family-name:var(--font-heading)] ${
                 active
                   ? "text-white"
                   : "text-dark/70 hover:bg-dark/[0.04]"
@@ -147,7 +149,7 @@ export default function DashboardSidebar({
           type="button"
           onClick={handleLogout}
           disabled={loggingOut}
-          className="rounded-xl border border-dark/15 px-4 py-2.5 text-sm font-semibold text-dark/70 transition-colors hover:bg-dark/[0.03] disabled:opacity-60 font-[family-name:var(--font-heading)]"
+          className="rounded-xl border border-dark/15 px-4 py-2.5 text-sm font-semibold uppercase tracking-[0.05em] text-dark/70 transition-colors hover:bg-dark/[0.03] disabled:opacity-60 font-[family-name:var(--font-heading)]"
         >
           {t("logout")}
         </button>
