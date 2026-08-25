@@ -26,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const data = {
       ...(d.name !== undefined && { name: d.name }),
       ...(d.company !== undefined && { company: nullifyEmpty(d.company) }),
+      ...(d.category !== undefined && { category: nullifyEmpty(d.category) }),
       ...(d.email !== undefined && { email: nullifyEmpty(d.email) }),
       ...(d.phone !== undefined && { phone: nullifyEmpty(d.phone) }),
       ...(d.status !== undefined && { status: d.status }),

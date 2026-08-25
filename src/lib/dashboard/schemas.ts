@@ -19,6 +19,7 @@ export const CONTACT_STATUSES = ["lead", "active", "closed"] as const;
 export const contactCreateSchema = z.object({
   name: z.string().trim().min(1, "必填"),
   company: optStr,
+  category: optStr,
   email: optStr,
   phone: optStr,
   status: z.enum(CONTACT_STATUSES).optional(),
@@ -28,6 +29,7 @@ export const contactCreateSchema = z.object({
 export const contactUpdateSchema = z.object({
   name: z.string().trim().min(1, "必填").optional(),
   company: optStr,
+  category: optStr,
   email: optStr,
   phone: optStr,
   status: z.enum(CONTACT_STATUSES).optional(),

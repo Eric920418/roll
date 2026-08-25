@@ -23,6 +23,7 @@ export default async function CrmPage({ params }: Props) {
           id: true,
           name: true,
           company: true,
+          category: true,
           email: true,
           phone: true,
           status: true,

@@ -13,7 +13,6 @@ type NavKey =
   | "overview"
   | "profile"
   | "companies"
-  | "playbooks"
   | "quiz"
   | "crm"
   | "pipeline"
@@ -30,7 +29,6 @@ const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "overview", path: "/dashboard" },
   { key: "profile", path: "/dashboard/profile" },
   { key: "companies", path: "/dashboard/companies" },
-  { key: "playbooks", path: "/dashboard/playbooks" },
   { key: "quiz", path: "/dashboard/quiz" },
   { key: "crm", path: "/dashboard/crm" },
   { key: "pipeline", path: "/dashboard/pipeline" },
@@ -90,7 +88,7 @@ export default function DashboardSidebar({
         </Link>
         <Link
           href={pathForLocale("/", locale)}
-          className="mt-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-dark/40 transition-colors hover:text-dark/70"
+          className="mt-2 block text-[10px] font-semibold tracking-[0.22em] text-dark/40 transition-colors hover:text-dark/70"
         >
           {t("brand")}
         </Link>
@@ -103,7 +101,7 @@ export default function DashboardSidebar({
             <Link
               key={key}
               href={pathForLocale(path, locale)}
-              className={`relative flex shrink-0 items-center justify-between gap-2 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold uppercase tracking-[0.05em] transition-colors font-[family-name:var(--font-heading)] ${
+              className={`relative flex shrink-0 items-center justify-between gap-2 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold tracking-[0.05em] transition-colors font-[family-name:var(--font-heading)] ${
                 active
                   ? "text-white"
                   : "text-dark/70 hover:bg-dark/[0.04]"
@@ -124,7 +122,7 @@ export default function DashboardSidebar({
               <span className="relative z-10">{t(`nav.${key}`)}</span>
               {soon && (
                 <span
-                  className={`relative z-10 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                  className={`relative z-10 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${
                     active ? "bg-white/20 text-white" : "bg-accent/20 text-accent"
                   }`}
                 >
@@ -141,7 +139,7 @@ export default function DashboardSidebar({
           <span className="truncate text-sm text-dark/60" title={userLabel}>
             {userLabel}
           </span>
-          <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary font-[family-name:var(--font-heading)]">
+          <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold tracking-wide text-primary font-[family-name:var(--font-heading)]">
             {planLabel}
           </span>
         </div>
@@ -149,7 +147,7 @@ export default function DashboardSidebar({
           type="button"
           onClick={handleLogout}
           disabled={loggingOut}
-          className="rounded-xl border border-dark/15 px-4 py-2.5 text-sm font-semibold uppercase tracking-[0.05em] text-dark/70 transition-colors hover:bg-dark/[0.03] disabled:opacity-60 font-[family-name:var(--font-heading)]"
+          className="rounded-xl border border-dark/15 px-4 py-2.5 text-sm font-semibold tracking-[0.05em] text-dark/70 transition-colors hover:bg-dark/[0.03] disabled:opacity-60 font-[family-name:var(--font-heading)]"
         >
           {t("logout")}
         </button>

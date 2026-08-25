@@ -8,6 +8,7 @@ export type ContactRow = {
   id: string;
   name: string;
   company: string | null;
+  category: string | null;
   email: string | null;
   phone: string | null;
   status: string;
@@ -21,7 +22,15 @@ const fieldClass =
 const labelClass =
   "text-xs font-semibold text-dark/70 font-[family-name:var(--font-heading)]";
 
-const empty = { name: "", company: "", email: "", phone: "", status: "lead", notes: "" };
+const empty = {
+  name: "",
+  company: "",
+  category: "",
+  email: "",
+  phone: "",
+  status: "lead",
+  notes: "",
+};
 
 // CRM 聯絡人管理：清單資料由 server 傳入（props），mutation 後 router.refresh() 重取。
 // 一個表單兼新增/編輯（editingId 切換）。錯誤全文顯示於紅框。
@@ -47,6 +56,7 @@ export default function CrmManager({ contacts }: { contacts: ContactRow[] }) {
     setForm({
       name: c.name,
       company: c.company ?? "",
+      category: c.category ?? "",
       email: c.email ?? "",
       phone: c.phone ?? "",
       status: c.status,
@@ -122,6 +132,15 @@ export default function CrmManager({ contacts }: { contacts: ContactRow[] }) {
               onChange={(e) => setForm({ ...form, company: e.target.value })}
             />
           </label>
+          <label className="flex flex-col gap-1">
+            <span className={labelClass}>{t("category")}</span>
+            <input
+              className={fieldClass}
+              value={form.category}
+              placeholder={t("categoryPlaceholder")}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            />
+          </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1">
               <span className={labelClass}>{t("email")}</span>
@@ -165,11 +184,14 @@ export default function CrmManager({ contacts }: { contacts: ContactRow[] }) {
           </label>
         </div>
 
-        {error && (
-          <p className="mt-3 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+        {error ? (
+          <p
+            role="alert"
+            className="mt-3 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600"
+          >
             {error}
           </p>
-        )}
+        ) : null}
 
         <div className="mt-4 flex gap-2">
           <button
@@ -216,6 +238,11 @@ export default function CrmManager({ contacts }: { contacts: ContactRow[] }) {
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-primary">
                         {t(`statusLabels.${c.status}`)}
                       </span>
+                      {c.category ? (
+                        <span className="rounded-full bg-dark/[0.06] px-2 py-0.5 text-[11px] font-semibold text-dark/65">
+                          {c.category}
+                        </span>
+                      ) : null}
                     </div>
                     {c.company && (
                       <p className="text-sm text-dark/60">{c.company}</p>

@@ -330,15 +330,16 @@ model WebhookEvent {
 
 /// CRM 聯絡人（會員自己的客戶/夥伴清單）
 model Contact {
-  id      String @id @default(cuid())
-  userId  String
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name    String
-  company String?
-  email   String?
-  phone   String?
-  status  String  @default("lead") // lead / active / closed（app 端驗證）
-  notes   String?
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  company  String?
+  category String? // 聯絡人所屬的專案／分類（會員自訂文字）
+  email    String?
+  phone    String?
+  status   String  @default("lead") // lead / active / closed（app 端驗證）
+  notes    String?
 
   deals Deal[] // 反向關聯：連到此聯絡人的商機（刪聯絡人時商機的 contactId 設 null）
 

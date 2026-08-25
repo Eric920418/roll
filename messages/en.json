@@ -468,10 +468,9 @@
     },
     "nav": {
       "overview": "Dashboard",
-      "profile": "Profile & account setting",
-      "companies": "Taiwan Top 100",
-      "playbooks": "Fundraising",
-      "quiz": "Founder quiz",
+      "profile": "Profile",
+      "companies": "Taiwan top 100",
+      "quiz": "Fundraising quiz",
       "crm": "CRM",
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
@@ -547,7 +546,7 @@
       "EXPIRED": "Expired"
     },
     "tools": {
-      "title": "MILESTONES",
+      "title": "Milestones",
       "subtitle": "Self-serve tools to plan and track your Taiwan / Asia market entry.",
       "lockedTitle": "Unlock with Pro",
       "lockedBody": "This tool is available on the Pro plan and above. Upgrade to get access.",
@@ -595,7 +594,7 @@
         "done": "Completed",
         "todo": "Not yet",
         "noSub": "Free plan",
-        "agenda": "ACTION PLAN",
+        "agenda": "Action plan",
         "overdue": "{count} overdue",
         "dueSoon": "{count} due this week",
         "onTrack": "On track"
@@ -650,7 +649,7 @@
       }
     },
     "profile": {
-      "title": "PROFILE & ACCOUNT SETTING",
+      "title": "Profile",
       "subtitle": "The company details we use across your dashboard.",
       "edit": "Edit details",
       "emptyTitle": "No company profile yet",
@@ -659,7 +658,7 @@
       "notProvided": "Not provided"
     },
     "companies": {
-      "title": "TAIWAN TOP 100",
+      "title": "Taiwan top 100",
       "subtitle": "Deep intelligence on Taiwan-listed companies — financials, history, and outlook.",
       "count": "{count} companies",
       "searchPlaceholder": "Search by name, ticker, or sector…",
@@ -667,7 +666,7 @@
       "view": "View"
     },
     "playbooks": {
-      "title": "FUNDRAISING",
+      "title": "Fundraising",
       "subtitle": "ROLL ON's frameworks and guides for fundraising, market entry, and growth across Taiwan and Asia.",
       "empty": "No playbooks yet. New guides are added regularly.",
       "back": "All playbooks",
@@ -693,7 +692,7 @@
         "emptyFilter": "No segments match this filter."
       },
       "quiz": {
-        "title": "FOUNDER QUIZ",
+        "title": "Fundraising quiz",
         "subtitle": "A fresh set of questions every two weeks, drawn from the playbooks.",
         "empty": "No questions available yet — check back once playbooks are published.",
         "countHint": "{count} questions this round.",
@@ -737,6 +736,8 @@
       "add": "Add contact",
       "name": "Name",
       "company": "Company",
+      "category": "Project",
+      "categoryPlaceholder": "e.g. Unicron Tutor",
       "email": "Email",
       "phone": "Phone",
       "status": "Status",
@@ -780,7 +781,7 @@
       "count": "{count} notes"
     },
     "agenda": {
-      "title": "ACTION PLAN",
+      "title": "Action plan",
       "subtitle": "Your Taiwan landing next steps, scheduled by your progress.",
       "reminder": "{overdue} overdue · {soon} due this week",
       "allClear": "You're on track — nothing overdue.",

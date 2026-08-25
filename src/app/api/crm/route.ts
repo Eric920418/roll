@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
         userId: session.uid,
         name: d.name,
         company: d.company || null,
+        category: d.category || null,
         email: d.email || null,
         phone: d.phone || null,
         status: d.status ?? "lead",

@@ -470,8 +470,7 @@
       "overview": "總覽",
       "profile": "公司檔案",
       "companies": "台灣百大企業",
-      "playbooks": "知識手冊",
-      "quiz": "創辦人測驗",
+      "quiz": "募資測驗",
       "crm": "CRM 客戶",
       "pipeline": "銷售管道",
       "notes": "會議記錄",
@@ -693,7 +692,7 @@
         "emptyFilter": "此篩選沒有段落。"
       },
       "quiz": {
-        "title": "創辦人測驗",
+        "title": "募資測驗",
         "subtitle": "每兩週一批新題目，取材自知識手冊。",
         "empty": "目前沒有題目 —— 手冊上架後再回來看看。",
         "countHint": "本期共 {count} 題。",
@@ -737,6 +736,8 @@
       "add": "新增聯絡人",
       "name": "姓名",
       "company": "公司",
+      "category": "專案",
+      "categoryPlaceholder": "例如：Unicron Tutor",
       "email": "Email",
       "phone": "電話",
       "status": "狀態",
