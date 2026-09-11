@@ -99,7 +99,7 @@ ANTHROPIC_MODEL="claude-sonnet-5" # 可選，預設 claude-sonnet-5；成本敏�
 > `.env*` 已 `.gitignore`。產生密碼 hash：
 > `node -e "console.log(require('bcryptjs').hashSync('你的密碼',12))"`
 > ⚠️ **bcrypt hash 內的每個 `$` 在 `.env.local` 必須跳脫為 `\$`**，否則 Next 的 env 載入器（dotenv-expand）會把 `$2b`、`$12` 當成變數展開而破壞 hash，導致登入永遠失敗。
-> ⚠️ **shell 已匯出的環境變數會壓過 `.env.local`**：Next.js（與 `node --env-file` / `process.loadEnvFile`）遵循「不覆蓋 process.env 既有值」原則。若你的終端機 profile（或 Claude Code CLI）已 export `ANTHROPIC_API_KEY`，本機 `pnpm dev` 會用那把、忽略 `.env.local` 的值，導致 AI 用到錯的 key。本機要驗 copilot 時用 `env -u ANTHROPIC_API_KEY pnpm dev` 起服務。使用 `vercel env run` 複驗時也要先 unset 同名 shell env；部署前必須用唯讀 Anthropic models API 實際驗證 Production key，而不是只確認變數「存在」。
+> ⚠️ **shell 已匯出的環境變數會壓過 `.env.local`**：Next.js（與 `node --env-file` / `process.loadEnvFile`）遵循「不覆蓋 process.env 既有值」原則。若你的終端機 profile（或 Claude Code CLI）已 export `ANTHROPIC_API_KEY`，本機 `pnpm dev` 會用那把、忽略 `.env.local` 的值，導致 AI 用到錯的 key。本機要驗 copilot 時用 `env -u ANTHROPIC_API_KEY pnpm dev` 起服務。**Vercel CLI 50.37.3 的 `vercel env run` 會讓本機 `.env*` 與 shell env 覆蓋下載的 Production 值，僅 unset shell 不足以隔離。** 正式複驗須在不含 `.env*`、只放同專案 `.vercel/project.json` 的暫存目錄執行，並移除 shell 同名值。**Sensitive 變數無法下載，CLI 取得空值不代表部署缺少或持有無效金鑰**；呼叫供應商前先確認實際取得非空憑證，否則只能記為未驗證，不能把 401 判定為正式金鑰失效。
 > ⚠️ **Vercel Environment Variables UI 只填值本身**：`PAYPAL_ENV` 填 `live`，不可貼入引號、行尾註解或整行 `.env` 範例。Production 遇到非精確值或 `sandbox` 會 fail-closed，不會再靜默切回 sandbox。
 > 預設帳號 `admin@roll-grp.com` / 密碼 `rollon-admin-2026`（上線前務必更換）。
 
@@ -429,6 +429,26 @@ Production 直接使用 PayPal Live；帳號持有人須在 Vercel UI 安全輸�
 7. 驗收時檢查 webhook response 的 `x-vercel-id` 含 `sin1`，並監看 Vercel server log。使用者只會看到通用錯誤，完整上游錯誤只留後端。
 
 既有 orphan `APPROVAL_PENDING` 不刪除、不覆寫；它保留作為跨 PayPal app 設定漂移的審計證據。webhook 腳本重跑也只補事件、不改任何訂閱資料。任何 schema 操作都禁止 `--accept-data-loss`。
+
+### 2026-09-11 正式版檢查與更新
+
+檢查對象：`www.rollgrp.com` → deployment `dpl_A1ZcsaAK4P493mLfkxmJQTPVwke3`，Git commit `11946921ef435c650b919a606e3435129403b94e`，狀態 Ready。首次檢查後，經使用者授權已套用純新增 DB 結構，並建立、連接獨立 Private Blob。未修改會員或既有訂閱，未寄信、建立測試帳號或實際扣款；原有 Anthropic／PayPal Sensitive 金鑰保持不變。
+
+| 優先序 | 已確認問題 | 影響與必要處理 |
+| --- | --- | --- |
+| 已完成 | 正式 DB 已同步 | 已新增 `InvestorKpiPoint`、`InvestorPortal.hiddenFields`、`InvestorKpi.hidden/unit`、`InvestorMilestone.hidden`、`InvestorUpdate.hidden` 及相關索引／外鍵；使用隔離正式連線執行 `prisma db push`，未使用資料遺失旗標，更新後 diff 為 `No difference detected`。 |
+| 待正式 runtime 驗證 | 更正 Anthropic 金鑰檢查 | 前次 CLI 呼叫 `/v1/models` 的 401 是因 Sensitive 金鑰下載為空值，**不是正式金鑰失效的證據**。本機專案金鑰可取得模型清單，但不能據此推論正式金鑰狀態；未替換正式金鑰，也未做付費生成測試。PayPal Sensitive 憑證亦不可用 CLI 下載值驗證。 |
+| P1 | Production 缺四個 USD PayPal Plan ID | 缺 `PAYPAL_PLAN_ID_PRO_MONTHLY_USD`、`PAYPAL_PLAN_ID_PRO_YEARLY_USD`、`PAYPAL_PLAN_ID_BUSINESS_MONTHLY_USD`、`PAYPAL_PLAN_ID_BUSINESS_YEARLY_USD`；依 checkout 程式，新 Pro／Business 月／年訂閱會回 503。舊 `PAYPAL_PLAN_ID_PRO/BUSINESS` 不會作為新結帳的 fallback。需建立或核對四個 Live plans，補環境設定並重新部署。 |
+| P1 | Production 缺 `RESEND_API_KEY`／`RESEND_FROM_EMAIL` | Investor 邀請無法寄送；需設定已驗證寄件網域與金鑰，再重新部署。未實際寄信。 |
+| 已完成 | Investor Private Blob | 已建立 `roll-investor-business-plans`（`store_TDpORmqOaIHYsR0y`，`sin1`，Private），僅連接本專案 Production，自訂 prefix `INVESTOR_BLOB` 產生 `INVESTOR_BLOB_READ_WRITE_TOKEN`；保留原公開圖片 store 與 token。已重新部署使設定生效。 |
+
+更新前正式 DB → `prisma/schema.prisma` 的完整 diff 只有上述新增欄位、新表、兩個索引及外鍵，沒有 DROP、rename、重建或資料回填；Action Plan／AI allowance／trial 等較早變更已無 schema 差異。正式 DB 更新前仍須重新 diff，確認期間沒有其他變更；只針對確認的正式連線操作，禁止 `--accept-data-loss`，不需重跑 seed。`pnpm build` 的 `prisma generate` **只產生 client，不會更新 DB**，因此 Vercel Ready 並不能證明 schema 已同步。
+
+驗證：`pnpm test` 34/34 通過、`pnpm lint` 0 errors／2 個既有 warnings、`pnpm build` 通過（另有既有 NFT tracing warning）。正式首頁、英／中產品頁、登入頁 HTTP 200；未登入 Investor／Dashboard 正常導向登入，受保護 API 回 401。正式 `PAYPAL_ENV=live` 與 `NEXT_PUBLIC_APP_URL=https://www.rollgrp.com` 正確。未完成登入後互動、付款、邀請、PDF 與 AI 生成端到端驗收，不能以公開頁面 200 推論這些功能正常。
+
+更新驗收：同一 commit 已重新部署為 `dpl_3AoVKRcT4dkQQ5tu2KXg2PfjQvpn`（`https://roll-75p0q0pkc-erics-projects-57e51613.vercel.app`），Ready 並已接上 `www.rollgrp.com`。正式 Prisma 可讀取 Portal 與 KPI points 等關聯；獨立 Private Blob token 可正常執行唯讀 list。部署後首頁、英／中產品頁 HTTP 200；Dashboard 未登入導向登入；PDF 上傳 token 入口對未登入請求回 401，已通過原先會阻擋的私密儲存設定檢查。未實際上傳會員文件。
+
+仍待補齊：四個 PayPal Live Plan ID、Resend 金鑰及已驗證寄件地址；已請使用者透過 Vercel Production 安全設定，不在聊天貼憑證。這些設定完成後需再次部署並使用已授權測試帳號驗收。往後發布需把 schema 差異與必要環境變數檢查納入上線條件，Sensitive 值則在實際部署環境驗證。
 
 ## 內容頁（SEO / GEO 主引擎）
 
