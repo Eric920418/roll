@@ -161,8 +161,16 @@ model User {
   currentPeriodEnd     DateTime? // 本期到期 / 下次扣款時間，用於寬限期判斷
   planUpdatedAt        DateTime? // 最後一次方案異動時間
 
+  // --- 管理員限時試用（不得再用假的 PayPal ACTIVE 模擬）---
+  trialPlan     String?
+  trialStartsAt DateTime?
+  trialEndsAt   DateTime?
+
   // Tools 落地清單勾選狀態 { itemKey: true }
   checklistState Json @default("{}")
+
+  // Milestones 使用者自訂：群組名稱覆寫與自訂項目；既有 checklistState 保持原用途
+  milestoneConfig Json @default("{}")
 
   // Playbook 段落已讀狀態 { "<slug>:<segmentKey>": true }（供已讀/未讀 filter）
   playbookReads Json @default("{}")
@@ -170,9 +178,15 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile         OnboardingProfile?
-  quizSubmissions QuizSubmission[]
-  subscriptions   Subscription[]
+  profile           OnboardingProfile?
+  quizSubmissions   QuizSubmission[]
+  subscriptions     Subscription[]
+  aiAllowance       AiAllowance?
+  aiUsages          AiUsage[]
+  aiCreditPurchases AiCreditPurchase[]
+
+  investorPortal              InvestorPortal?      @relation("InvestorPortalOwner")
+  acceptedInvestorInvitations InvestorInvitation[] @relation("InvestorInvitationUser")
 
   // 會員後台工具（CRM / 銷售管道 / 會議記錄）— 皆 1:many、刪帳號連帶清除
   contacts     Contact[]
@@ -184,6 +198,9 @@ model User {
 
   // 落地待辦頁的自訂任務（系統模板任務之外，會員自己加的）
   landingTasks LandingTask[]
+
+  // NOVA 產生的版本化 Action Plan；與舊 LandingTask/checklistState 完全獨立
+  actionPlans ActionPlan[]
 
   // 問題回報（產品 bug / 建議）
   feedbackReports FeedbackReport[]
@@ -297,19 +314,77 @@ model Subscription {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  paypalSubscriptionId String  @unique // I-XXXXXXXX
-  paypalPlanId         String // PayPal Billing Plan id（P-XXXX）
-  plan                 String // 冗餘存方案 key（free/pro/business/enterprise），方便查詢
-  status               String // APPROVAL_PENDING/ACTIVE/SUSPENDED/CANCELLED/EXPIRED
-  currentPeriodEnd     DateTime?
-  startedAt            DateTime?
-  cancelledAt          DateTime?
+  paypalSubscriptionId   String         @unique // I-XXXXXXXX
+  checkoutRequestId      String?        @unique
+  paypalPlanId           String // PayPal Billing Plan id（P-XXXX）
+  plan                   String // 冗餘存方案 key（free/pro/business/enterprise），方便查詢
+  status                 String // APPROVAL_PENDING/ACTIVE/SUSPENDED/CANCELLED/EXPIRED
+  currentPeriodEnd       DateTime?
+  startedAt              DateTime?
+  cancelledAt            DateTime?
+  billingInterval        String? // month / year；舊 TWD 資料保持 null
+  currency               String? // USD / TWD；舊資料保持 null
+  amountMinor            Int? // 最小貨幣單位，例如 USD 49.00 = 4900
+  replacesSubscriptionId String?
+  replacesSubscription   Subscription?  @relation("SubscriptionReplacement", fields: [replacesSubscriptionId], references: [id], onDelete: SetNull)
+  replacedBy             Subscription[] @relation("SubscriptionReplacement")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
+  @@index([replacesSubscriptionId])
+}
+
+/// 目前 NOVA 月額度與永久加購餘額。週期按有效訂閱／trial 的開始日計算。
+model AiAllowance {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cycleStart       DateTime?
+  cycleEnd         DateTime?
+  includedUsed     Int       @default(0)
+  includedReserved Int       @default(0)
+  bonusBalance     Int       @default(0)
+  updatedAt        DateTime  @updatedAt
+}
+
+/// NOVA 一次回答的 reservation／成功／失敗紀錄，用來避免多分頁超用。
+model AiUsage {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  source      String // included / bonus
+  status      String    @default("pending") // pending / succeeded / failed
+  cycleStart  DateTime?
+  expiresAt   DateTime
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, status])
+  @@index([expiresAt])
+}
+
+/// USD 5 / 10 次的 PayPal Orders v2 購買紀錄。
+model AiCreditPurchase {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  paypalOrderId   String    @unique
+  requestId       String    @unique
+  paypalCaptureId String?   @unique
+  status          String    @default("CREATED") // CREATED / COMPLETED / FAILED
+  amountMinor     Int       @default(500)
+  currency        String    @default("USD")
+  credits         Int       @default(10)
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, status])
 }
 
 /// Webhook 事件去重（PayPal 會重送 + 可能亂序；event id 直接當主鍵天然冪等）
@@ -387,6 +462,191 @@ model LandingTask {
 
   @@index([userId])
   @@index([userId, done])
+}
+
+/// NOVA Action Plan 的版本容器。
+/// activeKey 啟用時固定等於 userId，nullable unique 保證每位使用者至多一份 active plan。
+model ActionPlan {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  locale               String
+  companyStage         String
+  stageReason          String
+  stageConfidence      Int
+  bottleneckGroup      String
+  bottleneckCode       String
+  bottleneckReason     String
+  bottleneckConfidence Int
+  requestId            String
+  activeKey            String?   @unique
+  archivedAt           DateTime?
+
+  actions   ActionItem[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([userId, requestId])
+  @@index([userId, createdAt])
+}
+
+/// Action 的完整八維資料。priority score、rank、blocked 皆由 server 即時計算，不持久化。
+model ActionItem {
+  id           String     @id @default(cuid())
+  actionPlanId String
+  actionPlan   ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+  clientKey    String
+  title        String
+
+  impact               String
+  urgencyType          String
+  urgencyDays          Int?
+  dependencyLevel      Int     @default(0)
+  dependencyNotes      String?
+  difficulty           Int
+  actionTimeMinHours   Int
+  actionTimeMaxHours   Int
+  // 2026-08 起以分鐘為 Action time 的權威值；nullable 讓既有 hours 資料零遺失相容。
+  actionTimeMinMinutes Int?
+  actionTimeMaxMinutes Int?
+
+  companyStage            String
+  stageFit                Int
+  stageFitReason          String
+  stageFitConfidence      Int?
+  bottleneckGroup         String
+  bottleneckCode          String
+  bottleneckFit           Int
+  bottleneckFitReason     String
+  bottleneckFitConfidence Int?
+
+  outcomeCategory    String
+  expectedOutcome    String
+  outcomeTimeMinDays Int
+  outcomeTimeMaxDays Int
+
+  done                      Boolean  @default(false)
+  source                    String   @default("nova")
+  stageFitEditedByUser      Boolean  @default(false)
+  bottleneckFitEditedByUser Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  dependencies ActionDependency[] @relation("ActionDependencies")
+  requiredBy   ActionDependency[] @relation("ActionDependents")
+
+  @@unique([actionPlanId, clientKey])
+  @@index([actionPlanId, done])
+}
+
+/// 同一 Action Plan 內的有向依賴：action 必須等待 dependsOn。
+model ActionDependency {
+  actionId    String
+  dependsOnId String
+  action      ActionItem @relation("ActionDependencies", fields: [actionId], references: [id], onDelete: Cascade)
+  dependsOn   ActionItem @relation("ActionDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+
+  @@id([actionId, dependsOnId])
+  @@index([dependsOnId])
+}
+
+// ============================================
+// Business / Enterprise Investor Portal
+// 一家公司一份共用分享設定；所有區塊預設關閉。
+// ============================================
+
+model InvestorPortal {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation("InvestorPortalOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  shareProfile      Boolean @default(false)
+  shareStrategy     Boolean @default(false)
+  shareActionPlan   Boolean @default(false)
+  shareKpis         Boolean @default(false)
+  shareMilestones   Boolean @default(false)
+  shareUpdates      Boolean @default(false)
+  shareBusinessPlan Boolean @default(false)
+
+  businessPlanPath       String?
+  businessPlanFilename   String?
+  businessPlanMime       String?
+  businessPlanSize       Int?
+  businessPlanUploadedAt DateTime?
+
+  kpis        InvestorKpi[]
+  milestones  InvestorMilestone[]
+  updates     InvestorUpdate[]
+  invitations InvestorInvitation[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model InvestorKpi {
+  id        String         @id @default(cuid())
+  portalId  String
+  portal    InvestorPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
+  label     String
+  value     String
+  period    String?
+  order     Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([portalId, order])
+}
+
+model InvestorMilestone {
+  id         String         @id @default(cuid())
+  portalId   String
+  portal     InvestorPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
+  title      String
+  status     String         @default("planned") // planned / in_progress / done
+  targetDate DateTime?
+  notes      String?
+  order      Int            @default(0)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([portalId, order])
+}
+
+model InvestorUpdate {
+  id          String         @id @default(cuid())
+  portalId    String
+  portal      InvestorPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
+  title       String
+  body        String
+  publishedAt DateTime       @default(now())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([portalId, publishedAt])
+}
+
+model InvestorInvitation {
+  id       String         @id @default(cuid())
+  portalId String
+  portal   InvestorPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
+
+  invitedEmail     String
+  activeKey        String?   @unique
+  tokenHash        String?   @unique
+  status           String    @default("pending") // pending / accepted / revoked / expired
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  revokedAt        DateTime?
+  lastSentAt       DateTime?
+  acceptedByUserId String?
+  acceptedByUser   User?     @relation("InvestorInvitationUser", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([portalId, status])
+  @@index([acceptedByUserId])
+  @@index([invitedEmail])
 }
 
 /// 會議記錄

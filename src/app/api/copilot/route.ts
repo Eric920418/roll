@@ -4,22 +4,20 @@ import { z } from "zod";
 import { getUserSession } from "@/lib/auth/guard";
 import { requirePlan } from "@/lib/billing/gate";
 import { fail, unauthorized, failFromError } from "@/lib/api";
-import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
+import { completeAiUsage, reserveAiUsage } from "@/lib/ai/allowance";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { runGroundedChat } from "@/lib/ai/run";
 import { publicCopilotFailureMessage } from "@/lib/ai/public-error";
 import { getLatestQuizResult } from "@/lib/quiz/result";
+import { getActiveActionPlan } from "@/lib/action-plan/service";
 
 // 會員 AI Copilot 串流端點。
-// - 守衛：session（401）+ Pro 方案（403，控成本）+ 每會員每日配額（429）—— 皆在串流開始前，故能回真正的狀態碼。
+// - 守衛：session（401）+ Pro 方案（403）+ 每訂閱月 150 次／加購額度（429）。
 // - 一旦開始串流即 committed 200，之後的錯誤只能以文字寫入串流（顯示於前端）。
 // - 受治理：system prompt / 找資料（工具查檔）/ 個人化皆由 src/lib/ai 統一處理，見該目錄。
 
 const MAX_MESSAGES = 30;
 const MAX_CHARS = 4000;
-// 成本護欄：每會員每日對話則數上限（DB-based rate limit）。集中常數，易調整。
-const COPILOT_DAILY_LIMIT = 50;
-
 const bodySchema = z.object({
   messages: z
     .array(
@@ -41,20 +39,6 @@ export async function POST(req: NextRequest) {
     const account = await requirePlan("pro");
     if (!account) return fail("此功能需 Pro 以上方案", 403);
 
-    // 每會員每日配額（成本護欄）—— 串流開始前，可回真正的 429。
-    const rl = await checkRateLimit(
-      `copilot:${session.uid}`,
-      COPILOT_DAILY_LIMIT,
-      DAY_MS,
-    );
-    if (!rl.ok) {
-      const mins = Math.max(1, Math.ceil(rl.retryAfterMs / 60000));
-      return fail(
-        `已達本日 AI 對話上限（每日 ${COPILOT_DAILY_LIMIT} 則）。約 ${mins} 分鐘後重試。`,
-        429,
-      );
-    }
-
     const parsed = bodySchema.safeParse(await req.json());
     if (!parsed.success) {
       return fail(
@@ -66,25 +50,44 @@ export async function POST(req: NextRequest) {
     }
 
     // 缺 key 等設定問題 → 串流開始前由共用 5xx 邊界記錄完整例外、回通用訊息。
-    let client: Anthropic;
-    try {
-      client = new Anthropic();
-    } catch (err) {
-      return failFromError(err);
-    }
+    const client = new Anthropic();
 
     // NOVA 診斷先用已知資料：會員 profile + 最新一次 quiz 決策風格。
-    const quiz = await getLatestQuizResult(session.uid);
+    const [quiz, actionPlan] = await Promise.all([
+      getLatestQuizResult(session.uid),
+      getActiveActionPlan(session.uid),
+    ]);
+    const actionPlanContext = actionPlan
+      ? [
+          `Confirmed company stage: ${actionPlan.diagnosis.companyStage} (${actionPlan.diagnosis.stageReason})`,
+          `Confirmed bottleneck: ${actionPlan.diagnosis.bottleneckGroup} · ${actionPlan.diagnosis.bottleneckCode} (${actionPlan.diagnosis.bottleneckReason})`,
+          ...actionPlan.nextMoves.map((action) =>
+            `#${action.rank} ${action.title} — priority ${action.priorityScore}; outcome: ${action.expectedOutcome.text}`,
+          ),
+        ].join("\n")
+      : undefined;
     const system = buildSystemPrompt({
       mode: "copilot",
       locale: parsed.data.locale,
       memberProfile: account.profile,
       quiz,
+      actionPlanContext,
     });
+
+    // 只有所有本機驗證與 context 準備完成後才暫占額度；後續唯一可能失敗的工作
+    // 是 Anthropic 串流，finally 會立即確認或釋放 reservation。
+    const usageId = await reserveAiUsage(account);
+    if (!usageId) {
+      return fail(
+        "本月 150 次 NOVA 額度與加購次數皆已用完。請前往 Billing 加購 10 次後再試。",
+        429,
+      );
+    }
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
       async start(controller) {
+        let succeeded = false;
         try {
           await runGroundedChat({
             client,
@@ -94,6 +97,7 @@ export async function POST(req: NextRequest) {
             // NOVA 的六段顧問結構較長，放寬輸出上限。
             maxTokens: 4000,
           });
+          succeeded = true;
         } catch (err) {
           // 串流已 committed 200，後端保留完整證據，前端只收到穩定產品文案。
           console.error("[copilot] upstream stream failed", err);
@@ -103,6 +107,11 @@ export async function POST(req: NextRequest) {
             ),
           );
         } finally {
+          try {
+            await completeAiUsage(usageId, succeeded);
+          } catch (usageError) {
+            console.error("[copilot] allowance completion failed", usageError);
+          }
           controller.close();
         }
       },

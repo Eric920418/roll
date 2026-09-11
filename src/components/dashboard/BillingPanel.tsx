@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
-import { monthlyPriceLabel } from "@/lib/billing/plans";
+import {
+  billingVariantFor,
+  monthlyEquivalentLabel,
+  priceLabel,
+  type BillingInterval,
+} from "@/lib/billing/plans";
 import type { Locale } from "@/i18n/routing";
 
 // 自助付費方案（free 不需購買；enterprise 走 contact sales）
@@ -26,6 +31,9 @@ export default function BillingPanel({
   renewsLabel,
   hasActiveSub,
   suspendedNotice,
+  usage,
+  trialLabel,
+  currentInterval,
 }: {
   locale: Locale;
   currentPlan: string;
@@ -34,6 +42,15 @@ export default function BillingPanel({
   hasActiveSub: boolean;
   /** 扣款失敗且仍在寬限期內時提供；deadline 為已格式化的降級時刻 */
   suspendedNotice?: { deadline: string; manageUrl: string };
+  usage?: {
+    included: number;
+    used: number;
+    remaining: number;
+    bonusRemaining: number;
+    resetsAt: string;
+  };
+  trialLabel?: string;
+  currentInterval?: BillingInterval;
 }) {
   const t = useTranslations("Billing");
   const tPlans = useTranslations("Dashboard.plans");
@@ -43,6 +60,7 @@ export default function BillingPanel({
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [interval, setInterval] = useState<BillingInterval>("month");
 
   function resolveErr(code: string | undefined, fallback: string): string {
     return code && BILLING_ERROR_CODES.includes(code) ? tErr(code) : fallback;
@@ -50,12 +68,18 @@ export default function BillingPanel({
 
   async function subscribe(plan: string) {
     setError("");
-    setBusy(plan);
+    const busyKey = `${plan}:${interval}`;
+    setBusy(busyKey);
     try {
       const res = await fetch("/api/billing/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, locale }),
+        body: JSON.stringify({
+          plan,
+          interval,
+          locale,
+          requestId: crypto.randomUUID(),
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(resolveErr(json.code, json.error));
@@ -119,6 +143,7 @@ export default function BillingPanel({
               {statusLabel}
               {renewsLabel ? ` · ${renewsLabel}` : ""}
             </p>
+            {trialLabel && <p className="mt-1 text-sm text-primary">{trialLabel}</p>}
           </div>
           {hasActiveSub && (
             <button
@@ -133,20 +158,92 @@ export default function BillingPanel({
         </div>
       </div>
 
+      {usage && (
+        <div className="rounded-2xl border border-dark/10 bg-white p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-dark/40 font-[family-name:var(--font-heading)]">
+                {t("aiUsageTitle")}
+              </p>
+              <p className="mt-2 text-2xl font-extrabold text-dark font-[family-name:var(--font-heading)]">
+                {t("aiUsageRemaining", { count: usage.remaining })}
+              </p>
+              <p className="mt-1 text-sm text-dark/60">
+                {t("aiUsageDetail", {
+                  used: usage.used,
+                  included: usage.included,
+                  bonus: usage.bonusRemaining,
+                  date: new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", {
+                    dateStyle: "medium",
+                  }).format(new Date(usage.resetsAt)),
+                })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setError("");
+                setBusy("credits");
+                try {
+                  const res = await fetch("/api/billing/credits/orders", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      locale,
+                      requestId: crypto.randomUUID(),
+                    }),
+                  });
+                  const json = await res.json();
+                  if (!res.ok) throw new Error(json.error);
+                  window.location.href = json.data.approveUrl;
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Error");
+                  setBusy(null);
+                }
+              }}
+              disabled={busy !== null}
+              className="min-h-11 rounded-xl bg-dark px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-dark/85 disabled:opacity-60"
+            >
+              {busy === "credits" ? t("processing") : t("buyCredits")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && (
-        <p className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p role="alert" className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </p>
       )}
 
       {/* 方案選擇 */}
       <div>
-        <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
-          {t("choosePlan")}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
+            {t("choosePlan")}
+          </h2>
+          <div className="inline-flex rounded-xl border border-dark/10 bg-white p-1" aria-label={t("billingInterval")}>
+            {(["month", "year"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setInterval(value)}
+                aria-pressed={interval === value}
+                className={`min-h-11 rounded-lg px-4 text-sm font-semibold ${
+                  interval === value ? "bg-dark text-white" : "text-dark/60"
+                }`}
+              >
+                {t(value)}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {PAID_PLANS.map((plan) => {
-            const isCurrent = plan === currentPlan;
+            const isCurrent =
+              hasActiveSub && plan === currentPlan && interval === currentInterval;
+            const variant = billingVariantFor(plan, interval);
+            if (!variant) return null;
             return (
               <div
                 key={plan}
@@ -161,10 +258,24 @@ export default function BillingPanel({
                 </p>
                 <p className="mt-1 text-sm text-dark/70">
                   <span className="text-xl font-bold text-dark">
-                    {monthlyPriceLabel(plan)}
+                    {interval === "month"
+                      ? priceLabel(plan, "month")
+                      : monthlyEquivalentLabel(plan)}
                   </span>{" "}
-                  {tPricing(`${plan}.unit`)}
+                  {t("perMonth")}
                 </p>
+                {interval === "year" && (
+                  <p className="mt-2 text-xs leading-5 text-dark/55">
+                    {t("annualCharge", {
+                      total: priceLabel(plan, "year")!,
+                    })}
+                  </p>
+                )}
+                {plan === "business" && (
+                  <p className="mt-3 text-sm font-semibold text-primary">
+                    {t("investorPortalIncluded")}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => subscribe(plan)}
@@ -177,7 +288,7 @@ export default function BillingPanel({
                 >
                   {isCurrent
                     ? tPlans(currentPlan)
-                    : busy === plan
+                    : busy === `${plan}:${interval}`
                       ? t("processing")
                       : t("subscribe")}
                 </button>

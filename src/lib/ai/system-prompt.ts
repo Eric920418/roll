@@ -85,6 +85,15 @@ function quizContextBlock(quiz: QuizContext | null): string {
   ].join("\n");
 }
 
+function actionPlanContextBlock(context: string | undefined): string {
+  if (!context) return "";
+  return [
+    "## Active Action Plan (authoritative for questions about priorities and next steps)",
+    context,
+    "Do not invent a conflicting priority order. Explain that rank is recalculated by the server when actions or dependencies change.",
+  ].join("\n");
+}
+
 /** copilot 的行為契約：NOVA 互動式商業顧問方法。 */
 function copilotBehavior(): string {
   return [
@@ -162,6 +171,7 @@ export function buildSystemPrompt(opts: {
   locale?: string;
   memberProfile?: Account["profile"];
   quiz?: QuizContext | null;
+  actionPlanContext?: string;
   lead?: { name: string; message: string };
 }): Anthropic.TextBlockParam[] {
   const behavior =
@@ -177,6 +187,7 @@ export function buildSystemPrompt(opts: {
           languageRule(opts.locale),
           memberContext(opts.memberProfile ?? null),
           quizContextBlock(opts.quiz ?? null),
+          actionPlanContextBlock(opts.actionPlanContext),
         ];
   const dynamic = dynamicParts.filter((s) => s !== "").join("\n\n");
 

@@ -1,19 +1,20 @@
 import Image from "next/image";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import { getVideos, getSetting } from "@/lib/cms/content";
 import { pick } from "@/lib/cms/i18n";
 import type { Locale } from "@/i18n/routing";
+import { pathForLocale } from "@/lib/routes";
 
 export default async function GoldenTicket() {
   const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("GoldenTicket");
   const [videos, gt] = await Promise.all([getVideos(), getSetting("goldenTicket")]);
 
   const channelTitle = (gt.channelTitle as string) || "GOLDEN TICKET";
   const subscribeUrl =
     (gt.subscribeUrl as string) || "https://www.youtube.com/@GOLDENTICKET-rollon";
   const avatar = (gt.avatar as string) || "/rollon-avatar.png";
-  const clubImage = (gt.clubImage as string) || "/asia-founders-club.png";
 
   return (
     <section className="bg-primary min-h-[70vh] flex items-center justify-center py-12 md:py-16">
@@ -44,7 +45,7 @@ export default async function GoldenTicket() {
                 rel="noopener noreferrer"
                 className="self-start bg-black text-white text-sm font-medium px-4 py-1.5 rounded-full hover:bg-neutral-800 transition-colors"
               >
-                訂閱
+                {t("subscribe")}
               </a>
 
               {/* Video thumbnails row */}
@@ -81,7 +82,7 @@ export default async function GoldenTicket() {
                           </span>
                         </div>
                         <p className="text-white/60 text-[10px]">
-                          觀看次數：{video.views}
+                          {t("views", { count: video.views })}
                         </p>
                       </div>
                     </a>
@@ -92,14 +93,15 @@ export default async function GoldenTicket() {
           </ScrollReveal>
 
           <ScrollReveal direction="right" className="flex-1 flex justify-center">
-            <Image
-              src={clubImage}
-              alt="Asia Founders Club"
-              width={800}
-              height={800}
-              sizes="(max-width: 768px) 256px, 320px"
-              className="w-64 md:w-80 h-auto object-contain"
-            />
+            <div className="w-full max-w-md rounded-3xl border border-white/20 bg-white/[0.06] p-7 text-white">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">{t("ecosystemEyebrow")}</p>
+              <h3 className="mt-3 text-2xl font-bold font-[family-name:var(--font-heading)]">{t("ecosystemTitle")}</h3>
+              <p className="mt-3 text-sm leading-6 text-white/60">{t("ecosystemBody")}</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a href="#events" className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-primary">{t("events")}</a>
+                <a href={`${pathForLocale("/", locale)}#contact`} className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{t("contact")}</a>
+              </div>
+            </div>
           </ScrollReveal>
         </div>
       </div>

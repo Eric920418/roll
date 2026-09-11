@@ -1,7 +1,7 @@
 {
   "Metadata": {
     "title": "Taiwan & Asia Expansion Partner for Foreign Companies | ROLL ON.",
-    "description": "ROLL ON. is the Taipei-based market entry & expansion partner helping foreign companies enter Taiwan and scale across Asia — fundraising, company setup, legal compliance, marketing, distribution, and investor access.",
+    "description": "ROLL ON. combines NOVA software, strategic guidance, go-to-market execution, market access, and a founder ecosystem to help companies enter Taiwan and scale across Asia.",
     "h1": "ROLL ON. — Taiwan & Asia Expansion Partner for Foreign Companies"
   },
   "Nav": {
@@ -101,7 +101,14 @@
     "title": "R Clients."
   },
   "GoldenTicket": {
-    "title": "Golden Ticket."
+    "title": "Golden Ticket.",
+    "subscribe": "Subscribe",
+    "views": "Views: {count}",
+    "ecosystemEyebrow": "Founder ecosystem",
+    "ecosystemTitle": "Real channels, available now.",
+    "ecosystemBody": "Learn through the Golden Ticket podcast, meet founders at current events, or contact ROLL ON. directly. No fictional community layer.",
+    "events": "View events",
+    "contact": "Contact us"
   },
   "About": {
     "line1": "Breaking through regulatory and cultural barriers,",
@@ -197,7 +204,7 @@
   },
   "Product": {
     "metaTitle": "NOVA | Your Taiwan & Asia Market-Entry Platform",
-    "metaDescription": "NOVA by ROLL ON turns market-entry complexity into clear action with a tailored dashboard, compliance checklists, and expert matching for Taiwan and Asia.",
+    "metaDescription": "NOVA combines software, strategic guidance, go-to-market execution, market access, and a real founder ecosystem to turn Taiwan and Asia expansion into clear action.",
     "nav": {
       "byline": "by ROLL ON",
       "login": "Login",
@@ -208,7 +215,21 @@
       "byline": "by ROLL ON",
       "tagline": "Thinking about expanding in Taiwan?",
       "ctaPrimary": "Get Started",
-      "ctaNote": "90 days, expand with confidence"
+      "ctaNote": "A shared goal: your first Asia order within six months*"
+    },
+    "positioning": {
+      "title": "One operating system for moving from strategy to market traction.",
+      "intro": "NOVA connects the software and human support founders need to diagnose bottlenecks, choose the next move, execute go-to-market work, and reach the right market relationships.",
+      "software": { "title": "Software", "body": "A live dashboard, AI guidance, Action Plan, CRM, and measurable milestones." },
+      "guidance": { "title": "Strategic guidance", "body": "Stage-aware recommendations that explain what matters now and why." },
+      "execution": { "title": "Go-to-market execution", "body": "Concrete next actions for validation, sales, fundraising, and expansion." },
+      "access": { "title": "Market access", "body": "Practical pathways to Taiwan and Asia customers, partners, and investors." },
+      "ecosystem": { "title": "Founder ecosystem", "body": "Use the podcast, current events, and direct contact channels that exist today." },
+      "goalTitle": "Shared execution goal: the first Asia order within six months.",
+      "goalBody": "This is a working target, not a sales guarantee. Results depend on product readiness, market conditions, customer demand, and the member's execution.",
+      "podcast": "Podcast",
+      "events": "Events",
+      "contact": "Contact"
     },
     "features": {
       "fundraising": {
@@ -239,12 +260,17 @@
       "s3": {
         "num": "03",
         "title": "Match with local partners",
-        "desc": "Connect with our advisors and Asia Founders Club partners to accelerate your landing."
+        "desc": "Use ROLL ON.'s current podcast, events, and direct contact channels to support market execution."
       }
     },
     "pricing": {
       "title": "Choose your plan",
       "badge": "Popular",
+      "billingInterval": "Billing interval",
+      "month": "Monthly",
+      "year": "Yearly",
+      "perMonth": "/ month",
+      "annualCharge": "{total} charged once per year",
       "free": {
         "name": "Free",
         "price": "NT$0",
@@ -256,20 +282,20 @@
       },
       "pro": {
         "name": "Pro",
-        "price": "NT$590",
+        "price": "$49",
         "unit": "/ month",
-        "f1": "Step-by-step landing roadmap",
-        "f2": "Custom dashboard & milestone tracking",
-        "f3": "Community access",
+        "f1": "150 NOVA answers every month",
+        "f2": "Action Plan and milestone tracking",
+        "f3": "Go-to-market guidance",
         "cta": "Get started"
       },
       "business": {
         "name": "Business",
-        "price": "NT$890",
+        "price": "$149",
         "unit": "/ month",
         "f1": "Everything in Pro",
-        "f2": "Priority expert matching",
-        "f3": "Dedicated advisor & quarterly reviews",
+        "f2": "Private Investor Portal",
+        "f3": "Investor updates and business plan sharing",
         "cta": "Get started"
       },
       "enterprise": {
@@ -277,7 +303,7 @@
         "price": "Custom",
         "unit": "",
         "f1": "Everything in Business",
-        "f2": "Full Asia Founders Club access",
+        "f2": "Custom market access support",
         "f3": "Tailored market-entry program",
         "cta": "Contact sales"
       }
@@ -478,6 +504,7 @@
       "tools": "Milestones",
       "account": "Account",
       "billing": "Billing",
+      "investors": "Investor portal",
       "feedback": "Report an issue"
     },
     "overview": {
@@ -552,6 +579,27 @@
       "lockedBody": "This tool is available on the Pro plan and above. Upgrade to get access.",
       "upgrade": "Upgrade plan",
       "progress": "Progress",
+      "addMilestone": "Add milestone",
+      "addToGroup": "Add to {group}",
+      "group": "Group",
+      "groupName": "Group name",
+      "milestone": "Milestone",
+      "newMilestonePlaceholder": "What needs to be achieved?",
+      "renameGroup": "Rename",
+      "restoreDefaults": "Restore defaults",
+      "restoreConfirm": "Restore the default milestones for “{group}”? Your edits to the preset items will be discarded.",
+      "editMilestone": "Edit milestone",
+      "deleteMilestone": "Delete milestone",
+      "deleteConfirm": "Delete “{title}”?",
+      "add": "Add",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "saveFailed": "The milestone could not be saved. Please try again.",
+      "cadence": {
+        "weekly": "Weekly",
+        "monthly": "Monthly"
+      },
       "emptyTitle": "Tell us your needs first",
       "emptyBody": "Fill in your landing requirements in Account, and we'll generate a personalized market-entry checklist here.",
       "emptyCta": "Go to Account"
@@ -570,11 +618,76 @@
         "quizCta": "Start the quiz",
         "upgradeTitle": "Unlock your market-entry tools",
         "upgradeBody": "Upgrade to Pro to open your personalized Taiwan landing checklist.",
-        "upgradeCta": "See plans",
-        "readyTitle": "You're all set for now",
-        "readyBody": "Explore Taiwan company intelligence and keep your checklist moving.",
-        "readyCta": "Browse companies"
+      "upgradeCta": "See plans",
+      "buildTitle": "Turn your diagnosis into an action plan",
+      "buildBody": "Let NOVA identify your current stage and bottleneck, then rank the moves that matter now.",
+      "buildCta": "Build action plan",
+      "actionCta": "Open action plan",
+      "blockedTitle": "Resolve your required dependencies",
+      "blockedBody": "{count} actions are waiting on required work before they can enter your Next 3.",
+      "blockedCta": "Resolve dependencies",
+      "completeBody": "Every action in your current plan is complete. Review the result or generate the next version.",
+      "completeCta": "Review action plan",
+      "readyTitle": "You're all set for now",
+      "readyBody": "Explore Taiwan company intelligence and keep your checklist moving.",
+      "readyCta": "Browse companies"
+    },
+    "actionSummary": {
+      "statusEyebrow": "Your company now",
+      "confidence": "{value}% confidence",
+      "stage": {
+        "label": "Company stage",
+        "empty": "Not diagnosed",
+        "emptyPaidDetail": "Build an Action Plan so NOVA can identify your current stage.",
+        "emptyFreeDetail": "Upgrade to Pro to unlock NOVA's company-stage diagnosis.",
+        "next": "Next: {stage}",
+        "final": "Final defined stage"
       },
+      "bottleneck": {
+        "label": "Current bottleneck",
+        "empty": "No diagnosis",
+        "emptyDetail": "NOVA has not identified the constraint holding back your next stage yet."
+      },
+      "subscription": {
+        "label": "Subscription",
+        "manage": "Manage billing",
+        "upgrade": "Upgrade to Pro",
+        "noSubscription": "No active subscription"
+      },
+      "next": {
+        "eyebrow": "Action plan",
+        "title": "Next 3 moves",
+        "viewAll": "View complete action plan",
+        "ready": "Ready",
+        "actionTime": "Action time",
+        "score": "Priority score",
+        "completeEyebrow": "Plan completed",
+        "blockedEyebrow": "Dependencies required",
+        "completeTitle": "All current actions are complete",
+        "blockedTitle": "No action is ready yet",
+        "completeBody": "Review the completed plan or ask NOVA to generate the next version.",
+        "blockedBody": "{count} actions are blocked by required dependencies. Complete or edit those dependencies to refresh the ranking.",
+        "openPlan": "Open action plan",
+        "emptyEyebrow": "No active plan",
+        "emptyTitle": "Diagnose your next moves with NOVA",
+        "emptyBody": "NOVA asks up to three focused questions, confirms your stage and bottleneck, then generates a server-ranked plan.",
+        "upgrade": "Upgrade to Pro",
+        "fewerBlocked": "Only the available moves are shown. {count} blocked actions cannot enter the Next 3 yet.",
+        "fewerAvailable": "Only {count} executable moves remain in this plan."
+      },
+      "progress": {
+        "eyebrow": "Action completion",
+        "title": "Your progress",
+        "product": "Product",
+        "sales": "Sales",
+        "fundraising": "Fundraising",
+        "expansion": "Expansion",
+        "aria": "{group} action completion",
+        "emptyAria": "No {group} actions in the current plan",
+        "count": "{done} of {total} done",
+        "noActions": "No applicable actions"
+      }
+    },
       "metrics": {
         "sectionTitle": "Key metrics",
         "companies": "Companies tracked",
@@ -640,6 +753,7 @@
         "error": "Something went wrong. Please try again.",
         "locked": "NOVA is available on the Pro plan. Upgrade to chat.",
         "emptyHint": "Ask about fundraising, your business stage, Taiwan market entry, or your next step.",
+        "actionPlanHint": "Turn this conversation into a ranked, editable plan.",
         "clear": "Clear",
         "upsell": {
           "title": "NOVA is a Pro feature",
@@ -782,7 +896,10 @@
     },
     "agenda": {
       "title": "Action plan",
-      "subtitle": "Your Taiwan landing next steps, scheduled by your progress.",
+      "subtitle": "Your ranked next moves, evidence, dependencies, and measurable outcomes.",
+      "legacyEyebrow": "Previous workflow",
+      "legacyTitle": "Legacy landing tasks",
+      "legacyBody": "Your original checklist and custom tasks are preserved here and are not changed by NOVA.",
       "reminder": "{overdue} overdue · {soon} due this week",
       "allClear": "You're on track — nothing overdue.",
       "nextTitle": "Your next move",
@@ -810,6 +927,107 @@
       "emptyTitle": "Tell us your needs first",
       "emptyBody": "Fill in your landing requirements in Account, and we'll build your action plan here.",
       "emptyCta": "Go to Account"
+    },
+    "actionPlan": {
+      "confidence": "{value}% confidence",
+      "score": "Priority score",
+      "add": "Add action",
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save action",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "undo": "Mark not done",
+      "completeAction": "Mark done",
+      "resolved": "Resolved",
+      "unresolved": "Unresolved",
+      "blockedBy": "Blocked by",
+      "search": "Search actions or outcomes…",
+      "noResults": "No actions match this view.",
+      "deleteConfirm": "Delete “{title}”?",
+      "empty": {
+        "title": "Build a plan that can defend its priorities",
+        "body": "NOVA will diagnose your current stage and bottleneck, ask up to three focused questions, then generate 24 actions. The server—not the AI—calculates every rank."
+      },
+      "diagnosis": {
+        "eyebrow": "Confirmed diagnosis",
+        "stage": "Company stage evidence",
+        "bottleneck": "Current bottleneck evidence"
+      },
+      "next": {
+        "eyebrow": "Server-ranked priorities",
+        "title": "Next 3 moves",
+        "rule": "Score → urgency → impact → shorter action time",
+        "unavailable": "No executable action is available for this slot.",
+        "blockedNote": "Some required dependencies are not finished:"
+      },
+      "complete": {
+        "eyebrow": "All dimensions, fully editable",
+        "title": "Complete action plan ({count})"
+      },
+      "filter": {
+        "label": "Filter actions",
+        "ready": "Ready",
+        "blocked": "Blocked",
+        "done": "Done",
+        "all": "All"
+      },
+      "fields": {
+        "actionName": "Action name",
+        "impact": "Impact",
+        "urgency": "Urgency",
+        "urgencyDays": "Scheduled in days",
+        "dependency": "Dependency",
+        "dependencyNotes": "Dependency notes",
+        "dependsOn": "Depends on actions",
+        "difficulty": "Difficulty",
+      "actionTimeMin": "Action time min. (minutes)",
+      "actionTimeMax": "Action time max. (minutes)",
+        "companyStage": "Company stage",
+        "stageFit": "Stage fit (1–5)",
+        "stageFitReason": "Stage fit reason",
+        "bottleneckGroup": "Bottleneck group",
+        "bottleneck": "Current bottleneck",
+        "bottleneckFit": "Bottleneck fit (1–5)",
+        "bottleneckFitReason": "Bottleneck fit reason",
+        "expectedOutcome": "Expected outcome",
+        "outcomeCategory": "Outcome category",
+        "outcomeTimeMin": "Outcome time min. (days)",
+        "outcomeTimeMax": "Outcome time max. (days)",
+        "estimatedTime": "Estimated time"
+      },
+      "urgency": { "immediate": "Immediate", "urgent": "Urgent", "scheduled": "Scheduled" },
+      "dependency": { "0": "None", "1": "Helpful", "2": "Significant", "3": "Required" },
+      "difficulty": { "1": "Very easy", "2": "Easy", "3": "Moderate", "4": "Hard", "5": "Very hard" },
+      "outcome": { "revenue": "Revenue", "customers": "Customers", "product": "Product / service", "fundraising": "Fundraising", "expansion": "Expansion", "custom": "Custom" },
+      "editor": {
+        "addTitle": "Add action",
+        "editTitle": "Edit action",
+        "fitHint": "Editing either fit score requires a reason. AI confidence will be cleared and the item will be marked as user-adjusted."
+      },
+      "builder": {
+        "build": "Build action plan",
+        "regenerate": "Regenerate with NOVA",
+        "title": "Build your action plan",
+        "intro": "NOVA uses your company profile, founder quiz, and this conversation. It asks one question at a time, up to three.",
+        "close": "Close",
+        "diagnosing": "NOVA is diagnosing your company…",
+        "questionCount": "Focused question {count} of 3",
+        "answerLabel": "Your answer",
+        "continue": "Continue diagnosis",
+        "stage": "Company stage",
+        "bottleneckGroup": "Bottleneck group",
+        "bottleneck": "Current bottleneck",
+        "stageEvidence": "Why this stage",
+        "bottleneckEvidence": "Why this bottleneck",
+        "confidence": "{value}% confidence",
+        "confirmHint": "Nothing is saved until you confirm. Regenerating creates a new version and preserves the old version in the database.",
+        "confirm": "Confirm and generate 24 actions",
+        "generating": "Generating and validating 24 actions…",
+        "userAdjusted": "Adjusted by the user during diagnosis confirmation.",
+        "genericError": "NOVA could not complete the Action Plan. Please try again."
+      },
+      "errors": { "save": "Could not save the action.", "delete": "Could not delete the action." }
     },
     "feedback": {
       "title": "Report an issue",
@@ -843,6 +1061,88 @@
       }
     }
   },
+  "InvestorView": {
+    "inviteTitle": "Investor portal invitation",
+    "inviteBody": "Sign in or create an account with the exact email address that received this invitation. The one-time link expires after seven days.",
+    "login": "Sign in",
+    "signup": "Create account",
+    "accept": "Accept invitation",
+    "accepting": "Accepting…",
+    "portfolioTitle": "Your investor portals",
+    "portfolioBody": "Companies that have granted you read-only access appear here.",
+    "openPortal": "Open portal",
+    "empty": "You do not have any active investor portal access.",
+    "eyebrow": "Investor portal",
+    "profile": "Company profile",
+    "strategy": "Company stage and bottleneck",
+    "actionPlan": "Action plan · Next 3",
+    "kpis": "KPIs",
+    "milestones": "Milestones",
+    "updates": "Updates",
+    "businessPlan": "Business plan",
+    "industry": "Industry",
+    "companySize": "Company size",
+    "country": "Country",
+    "targetMarkets": "Target markets",
+    "openPdf": "Open private PDF"
+  },
+  "InvestorPortal": {
+    "title": "Investor portal",
+    "subtitle": "Share one controlled, read-only company view with your invited investors.",
+    "upgradeTitle": "Investor portal is included with Business",
+    "upgradeBody": "Upgrade to Business to invite investors and privately share selected company data and your business plan.",
+    "upgradeCta": "View Business plan",
+    "sharingTitle": "Shared information",
+    "sharingBody": "Everything is off by default. These settings apply to every active investor.",
+    "shares": {
+      "shareProfile": "Company profile",
+      "shareStrategy": "Company stage and bottleneck",
+      "shareActionPlan": "Action plan progress and Next 3",
+      "shareKpis": "KPIs",
+      "shareMilestones": "Milestones",
+      "shareUpdates": "Updates",
+      "shareBusinessPlan": "Business plan PDF"
+    },
+    "saveSharing": "Save sharing settings",
+    "saving": "Saving…",
+    "businessPlan": "Business plan",
+    "pdfHint": "PDF only, maximum 10 MB. The file stays private and is served only after access is checked.",
+    "selectPdf": "Please select a PDF file.",
+    "invalidPdf": "Choose a valid PDF file no larger than 10 MB.",
+    "uploadPdf": "Upload PDF",
+    "uploading": "Uploading…",
+    "viewPdf": "View PDF",
+    "kpis": "KPIs",
+    "milestones": "Milestones",
+    "updates": "Updates",
+    "invitations": "Investor invitations",
+    "label": "Label",
+    "value": "Value",
+    "period": "Period",
+    "titleField": "Title",
+    "status": "Status",
+    "targetDate": "Target date",
+    "notes": "Notes",
+    "content": "Update content",
+    "planned": "Planned",
+    "inProgress": "In progress",
+    "done": "Done",
+    "add": "Add",
+    "save": "Save",
+    "delete": "Delete",
+    "publish": "Publish",
+    "email": "Investor email",
+    "sendInvite": "Send invitation",
+    "sending": "Sending…",
+    "prepareResend": "Resend",
+    "revoke": "Revoke",
+    "inviteStatus": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "revoked": "Revoked",
+      "expired": "Expired"
+    }
+  },
   "Billing": {
     "title": "BILLING",
     "subtitle": "Manage your plan and payments.",
@@ -856,6 +1156,19 @@
     "cancelConfirm": "Cancel your subscription? You'll keep access until the end of the current period.",
     "contactSales": "Contact sales",
     "processing": "Processing…",
+    "billingInterval": "Billing interval",
+    "month": "Monthly",
+    "year": "Yearly",
+    "annualCharge": "{total} charged once per year",
+    "investorPortalIncluded": "Includes the private Investor Portal",
+    "trialUntil": "Trial access until {date}",
+    "aiUsageTitle": "NOVA usage",
+    "aiUsageRemaining": "{count} answers remaining",
+    "aiUsageDetail": "{used} of {included} included answers used · {bonus} bonus remaining · resets {date}",
+    "buyCredits": "Buy 10 answers · USD 5",
+    "creditPurchaseSuccess": "Payment completed. 10 NOVA answers were added to your account.",
+    "creditOrderMissing": "The PayPal return did not include an order ID. No credits were added. Please return to Billing and try again.",
+    "backToBilling": "Back to billing",
     "returnPending": "Your subscription is being confirmed. This page will update shortly.",
     "returnSuccess": "Subscription active. Welcome aboard!",
     "perMonth": "/ month",

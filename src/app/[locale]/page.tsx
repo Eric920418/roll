@@ -8,6 +8,7 @@ import Events from "@/components/sections/Events";
 import Clients from "@/components/sections/Clients";
 import GoldenTicket from "@/components/sections/GoldenTicket";
 import InsightsTeaser from "@/components/sections/InsightsTeaser";
+import NovaValuePillars from "@/components/sections/NovaValuePillars";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import JsonLd from "@/components/content/JsonLd";
@@ -77,6 +78,7 @@ export default async function HomePage({ params }: Props) {
       <Navbar />
       <RollMap />
       <TaiwanMap />
+      <NovaValuePillars />
       <Services />
       <Work />
       <Events />

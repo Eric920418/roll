@@ -41,6 +41,7 @@ export async function checkRateLimit(
   key: string,
   limit: number,
   windowMs: number,
+  failOpen = true,
 ): Promise<RateLimitResult> {
   try {
     const rows = await prisma.$queryRaw<{ count: number; windowStart: Date }[]>`
@@ -71,7 +72,12 @@ export async function checkRateLimit(
     }
     return { ok: true, limit, remaining: Math.max(0, limit - count), retryAfterMs: 0 };
   } catch (err) {
-    console.error("[rate-limit] check failed, failing open:", err);
-    return { ok: true, limit, remaining: limit, retryAfterMs: 0 };
+    console.error(`[rate-limit] check failed, failing ${failOpen ? "open" : "closed"}:`, err);
+    return {
+      ok: failOpen,
+      limit,
+      remaining: failOpen ? limit : 0,
+      retryAfterMs: failOpen ? 0 : windowMs,
+    };
   }
 }

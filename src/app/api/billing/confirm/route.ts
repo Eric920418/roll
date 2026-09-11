@@ -2,7 +2,8 @@ import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
-import { reconcileById } from "@/lib/billing/reconcile";
+import { reconcileById, reconcileFromPaypal } from "@/lib/billing/reconcile";
+import { cancelSubscription, getSubscription } from "@/lib/billing/paypal";
 
 // 使用者於 PayPal 核准後返回 /dashboard/billing/return，由該頁呼叫此端點即時對帳。
 // （webhook 之後會再次以權威事件確認；confirm 只是讓使用者馬上看到結果。）
@@ -24,7 +25,24 @@ export async function POST(req: NextRequest) {
       return fail("找不到對應的訂閱", 404);
     }
 
-    const status = await reconcileById(subscriptionId);
+    const remote = await getSubscription(subscriptionId);
+    await reconcileFromPaypal(remote);
+
+    if (
+      local.replacesSubscriptionId &&
+      (remote.status === "APPROVED" || remote.status === "ACTIVE")
+    ) {
+      const old = await prisma.subscription.findUnique({
+        where: { id: local.replacesSubscriptionId },
+      });
+      if (old && old.status !== "CANCELLED" && old.status !== "EXPIRED") {
+        await cancelSubscription(old.paypalSubscriptionId, "Approved migration to NOVA USD plan");
+        await reconcileById(old.paypalSubscriptionId);
+      }
+      if (remote.status === "ACTIVE") await reconcileFromPaypal(remote);
+    }
+
+    const status = remote.status;
     return ok({ status });
   } catch (error) {
     return failFromError(error);

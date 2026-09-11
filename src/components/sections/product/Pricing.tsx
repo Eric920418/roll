@@ -1,9 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, useReducedMotion, type Variants } from "motion/react";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
+import {
+  monthlyEquivalentLabel,
+  priceLabel,
+  type BillingInterval,
+} from "@/lib/billing/plans";
 
 const container: Variants = {
   hidden: {},
@@ -53,6 +59,7 @@ export default function Pricing() {
   const t = useTranslations("Product.pricing");
   const locale = useLocale() as Locale;
   const reduceMotion = useReducedMotion();
+  const [interval, setInterval] = useState<BillingInterval>("month");
 
   // 公開行銷頁：訪客尚未登入，無法直接觸發 PayPal。
   // 付費方案 → 導向註冊開始漏斗（完成 onboarding 後於 /dashboard/billing 訂閱）；Enterprise → 洽詢。
@@ -72,12 +79,30 @@ export default function Pricing() {
           {t("title")}
         </motion.h2>
 
+        <div className="mt-8 flex justify-center">
+          <div className="inline-flex rounded-full border border-dark/10 bg-white p-1" aria-label={t("billingInterval")}>
+            {(["month", "year"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setInterval(value)}
+                aria-pressed={interval === value}
+                className={`min-h-11 rounded-full px-5 text-sm font-semibold ${
+                  interval === value ? "bg-dark text-white" : "text-dark/60"
+                }`}
+              >
+                {t(value)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <motion.div
           initial={reduceMotion ? false : "hidden"}
           whileInView="visible"
           viewport={{ once: true, margin: "-10%" }}
           variants={container}
-          className="mt-14 md:mt-24 grid md:grid-cols-3 gap-5 md:gap-6 items-stretch"
+          className="mt-10 md:mt-16 grid md:grid-cols-3 gap-5 md:gap-6 items-stretch"
         >
           {PLANS.map(({ key, featured }, index) => (
             <motion.div
@@ -125,18 +150,29 @@ export default function Pricing() {
 
               <div className="mt-4 flex items-end gap-2">
                 <span className="text-4xl lg:text-5xl font-extrabold tracking-[-0.04em] leading-none whitespace-nowrap font-[family-name:var(--font-heading)]">
-                  {t(`${key}.price`)}
+                  {key === "enterprise"
+                    ? t(`${key}.price`)
+                    : interval === "month"
+                      ? priceLabel(key, "month")
+                      : monthlyEquivalentLabel(key)}
                 </span>
-                {t(`${key}.unit`) && (
+                {key !== "enterprise" && (
                   <span
                     className={`pb-1 text-sm font-[family-name:var(--font-body)] ${
                       featured ? "text-white/70" : "text-dark/50"
                     }`}
                   >
-                    {t(`${key}.unit`)}
+                    {t("perMonth")}
                   </span>
                 )}
               </div>
+              {key !== "enterprise" && interval === "year" && (
+                <p className={`mt-3 text-xs ${featured ? "text-white/70" : "text-dark/50"}`}>
+                  {t("annualCharge", {
+                    total: priceLabel(key, "year")!,
+                  })}
+                </p>
+              )}
 
               <ul className="mt-8 flex flex-col gap-4">
                 {FEATS.map((f) => (

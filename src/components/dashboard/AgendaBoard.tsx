@@ -11,6 +11,8 @@ import type {
   AgendaTasks,
   TaskStatus,
 } from "@/lib/dashboard/agenda";
+import type { ActionPlanDto } from "@/lib/action-plan/service";
+import ActionPlanManager from "@/components/dashboard/ActionPlanManager";
 
 type Props = {
   focus: { state: FocusState; href: string };
@@ -18,6 +20,7 @@ type Props = {
   agenda: AgendaTasks;
   /** 任務清單為空時顯示的引導卡（由 server 傳入） */
   emptyState?: ReactNode;
+  actionPlan: ActionPlanDto | null;
 };
 
 const STATUS_STYLE: Record<TaskStatus, string> = {
@@ -36,6 +39,7 @@ export default function AgendaBoard({
   milestones,
   agenda,
   emptyState,
+  actionPlan,
 }: Props) {
   const t = useTranslations("Dashboard.agenda");
   const tP = useTranslations("Dashboard.home.priority");
@@ -132,7 +136,20 @@ export default function AgendaBoard({
   const hasReminders = agenda.overdueCount + agenda.dueSoonCount > 0;
 
   return (
-    <div className="mt-7 flex flex-col gap-6">
+    <div className="mt-7 flex flex-col gap-8">
+      <ActionPlanManager initialPlan={actionPlan} />
+
+      <section className="rounded-[1.75rem] border border-dark/10 bg-dark/[0.025] p-4 sm:p-6">
+        <div className="mb-5">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-dark/40 font-[family-name:var(--font-heading)]">
+            {t("legacyEyebrow")}
+          </p>
+          <h2 className="mt-1 text-xl font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">
+            {t("legacyTitle")}
+          </h2>
+          <p className="mt-1 text-sm text-dark/55">{t("legacyBody")}</p>
+        </div>
+        <div className="flex flex-col gap-6">
       {/* 提醒橫幅 */}
       <div
         className={`rounded-2xl border p-4 text-sm font-semibold font-[family-name:var(--font-heading)] ${
@@ -364,6 +381,8 @@ export default function AgendaBoard({
             </li>
           ))}
         </ul>
+      </section>
+        </div>
       </section>
     </div>
   );

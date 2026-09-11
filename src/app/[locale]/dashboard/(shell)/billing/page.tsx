@@ -7,6 +7,8 @@ import {
   suspendedGraceEndsAt,
 } from "@/lib/billing/gate";
 import { paypalManagePaymentUrl } from "@/lib/billing/paypal";
+import { getAiUsageSummary } from "@/lib/ai/allowance";
+import { prisma } from "@/lib/prisma";
 import type { Locale } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -64,6 +66,26 @@ export default async function BillingPage({ params }: Props) {
     !!account.paypalSubscriptionId &&
     (status === "ACTIVE" || status === "SUSPENDED");
 
+  const usage =
+    effectivePlan === "free" ? undefined : (await getAiUsageSummary(account)) ?? undefined;
+  const now = new Date();
+  const trialLabel =
+    account.trialPlan &&
+    account.trialStartsAt &&
+    account.trialEndsAt &&
+    account.trialStartsAt <= now &&
+    account.trialEndsAt > now
+      ? t("trialUntil", { date: dateFmt.format(account.trialEndsAt) })
+      : undefined;
+  const paidSubscription = account.paypalSubscriptionId
+    ? await prisma.subscription.findUnique({
+        where: { paypalSubscriptionId: account.paypalSubscriptionId },
+        select: { billingInterval: true },
+      })
+    : null;
+  const currentInterval =
+    paidSubscription?.billingInterval === "year" ? "year" : "month";
+
   return (
     <div className="font-[family-name:var(--font-body)]">
       <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
@@ -78,6 +100,9 @@ export default async function BillingPage({ params }: Props) {
         renewsLabel={renewsLabel}
         hasActiveSub={hasActiveSub}
         suspendedNotice={suspendedNotice}
+        usage={usage}
+        trialLabel={trialLabel}
+        currentInterval={currentInterval}
       />
     </div>
   );

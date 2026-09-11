@@ -21,6 +21,7 @@ type NavKey =
   | "tools"
   | "account"
   | "billing"
+  | "investors"
   | "feedback";
 
 // 各 nav 項對應的 path（未加 locale 前綴）。新增頁面時在此擴充即可。
@@ -37,6 +38,7 @@ const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "tools", path: "/dashboard/tools" },
   { key: "account", path: "/dashboard/account" },
   { key: "billing", path: "/dashboard/billing" },
+  { key: "investors", path: "/dashboard/investors" },
   { key: "feedback", path: "/dashboard/feedback" },
 ];
 

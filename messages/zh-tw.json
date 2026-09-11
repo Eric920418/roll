@@ -1,7 +1,7 @@
 {
   "Metadata": {
     "title": "外商進入台灣與亞洲市場的拓展夥伴｜ROLL ON.",
-    "description": "ROLL ON. 協助外商進入台灣與亞洲市場：募資、公司設立、法規合規、精準行銷、通路開發、投資人對接。台北辦公室，服務全亞洲。",
+    "description": "ROLL ON. 結合 NOVA 軟體、策略指引、市場執行、資源對接與創辦人生態系，協助企業進入台灣並拓展亞洲市場。",
     "h1": "ROLL ON. — 外商進入台灣與亞洲市場的拓展夥伴"
   },
   "Nav": {
@@ -101,7 +101,14 @@
     "title": "R Clients."
   },
   "GoldenTicket": {
-    "title": "Golden Ticket."
+    "title": "Golden Ticket.",
+    "subscribe": "訂閱",
+    "views": "觀看次數：{count}",
+    "ecosystemEyebrow": "Founder ecosystem",
+    "ecosystemTitle": "目前就能使用的真實管道。",
+    "ecosystemBody": "透過 Golden Ticket Podcast 學習、參加目前活動認識創辦人，或直接聯絡 ROLL ON.。不虛構尚未存在的社群功能。",
+    "events": "查看活動",
+    "contact": "聯絡我們"
   },
   "About": {
     "line1": "打破法規與文化的隔閡，",
@@ -197,7 +204,7 @@
   },
   "Product": {
     "metaTitle": "NOVA｜你的台灣與亞洲市場進入平台",
-    "metaDescription": "NOVA by ROLL ON 把繁瑣的市場進入流程化為清晰行動，提供專屬 Dashboard、合規 Checklist 與專業服務媒合，協助企業更快落地台灣與亞洲。",
+    "metaDescription": "NOVA 結合軟體、策略指引、市場執行、資源對接與真實存在的創辦人生態系，將台灣與亞洲拓展轉化為清楚行動。",
     "nav": {
       "byline": "by ROLL ON",
       "login": "登入",
@@ -208,7 +215,21 @@
       "byline": "by ROLL ON",
       "tagline": "正在考慮進入台灣市場嗎？",
       "ctaPrimary": "立即開始",
-      "ctaNote": "90 天，帶著信心拓展"
+      "ctaNote": "共同目標：六個月內取得亞洲第一張訂單*"
+    },
+    "positioning": {
+      "title": "從策略走到市場成果，只用一套營運系統。",
+      "intro": "NOVA 把創辦人需要的軟體與真人支援串在一起，協助診斷瓶頸、選出下一步、執行市場進入工作，並接觸正確的市場關係。",
+      "software": { "title": "Software", "body": "即時 Dashboard、AI 指引、Action Plan、CRM 與可衡量的里程碑。" },
+      "guidance": { "title": "Strategic guidance", "body": "依公司階段提出建議，說清楚現在最重要的是什麼，以及原因。" },
+      "execution": { "title": "Go-to-market execution", "body": "針對驗證、銷售、募資與擴張提供可立即執行的下一步。" },
+      "access": { "title": "Market access", "body": "建立接觸台灣與亞洲客戶、夥伴及投資人的實際路徑。" },
+      "ecosystem": { "title": "Founder ecosystem", "body": "只串接目前真實存在的 Podcast、活動與直接聯絡管道。" },
+      "goalTitle": "共同執行目標：六個月內取得亞洲第一張訂單。",
+      "goalBody": "這是共同工作目標，不是成交保證。結果取決於產品準備度、市場條件、客戶需求與會員的執行。",
+      "podcast": "Podcast",
+      "events": "活動",
+      "contact": "聯絡我們"
     },
     "features": {
       "fundraising": {
@@ -239,12 +260,17 @@
       "s3": {
         "num": "03",
         "title": "媒合在地合作夥伴",
-        "desc": "與我們的顧問及 Asia Founders Club 夥伴對接，加速你的落地。"
+        "desc": "使用 ROLL ON. 現有的 Podcast、活動與直接聯絡管道，推進市場執行。"
       }
     },
     "pricing": {
       "title": "選擇方案",
       "badge": "推薦",
+      "billingInterval": "付款週期",
+      "month": "月繳",
+      "year": "年繳",
+      "perMonth": "／月",
+      "annualCharge": "每年一次收取 {total}",
       "free": {
         "name": "免費",
         "price": "NT$0",
@@ -256,20 +282,20 @@
       },
       "pro": {
         "name": "Pro",
-        "price": "NT$590",
+        "price": "US$49",
         "unit": "/ 月",
-        "f1": "一步步的落地進度藍圖",
-        "f2": "客製化 Dashboard 與 Milestone 管理",
-        "f3": "社群資源存取",
+        "f1": "每月 150 次 NOVA 回答",
+        "f2": "Action Plan 與 Milestone 管理",
+        "f3": "市場進入策略指引",
         "cta": "立即開始"
       },
       "business": {
         "name": "Business",
-        "price": "NT$890",
+        "price": "US$149",
         "unit": "/ 月",
         "f1": "包含 Pro 全部功能",
-        "f2": "優先服務媒合",
-        "f3": "專屬顧問與季度策略會議",
+        "f2": "私密 Investor Portal",
+        "f3": "投資人更新與 Business Plan 分享",
         "cta": "立即開始"
       },
       "enterprise": {
@@ -277,7 +303,7 @@
         "price": "客製",
         "unit": "",
         "f1": "包含 Business 全部功能",
-        "f2": "Asia Founders Club 完整權限",
+        "f2": "客製化市場資源媒合",
         "f3": "量身打造的市場進入方案",
         "cta": "聯絡我們"
       }
@@ -478,6 +504,7 @@
       "tools": "里程碑",
       "account": "帳號",
       "billing": "訂閱帳單",
+      "investors": "投資人專區",
       "feedback": "問題回報"
     },
     "overview": {
@@ -552,6 +579,27 @@
       "lockedBody": "此工具需 Pro 以上方案才能使用。升級即可解鎖。",
       "upgrade": "升級方案",
       "progress": "完成進度",
+      "addMilestone": "新增里程碑",
+      "addToGroup": "新增到「{group}」",
+      "group": "群組",
+      "groupName": "群組名稱",
+      "milestone": "里程碑",
+      "newMilestonePlaceholder": "這次要完成什麼？",
+      "renameGroup": "修改名稱",
+      "restoreDefaults": "還原預設",
+      "restoreConfirm": "確定還原「{group}」的預設里程碑？你對預設項目所做的修改與刪除會被捨棄。",
+      "editMilestone": "編輯里程碑",
+      "deleteMilestone": "刪除里程碑",
+      "deleteConfirm": "確定刪除「{title}」？",
+      "add": "新增",
+      "save": "儲存",
+      "saving": "儲存中…",
+      "cancel": "取消",
+      "saveFailed": "里程碑無法儲存，請再試一次。",
+      "cadence": {
+        "weekly": "每週",
+        "monthly": "每月"
+      },
       "emptyTitle": "先告訴我們你的需求",
       "emptyBody": "到「帳號」頁填寫你的落地需求，我們就會在這裡生成個人化的進入市場查核清單。",
       "emptyCta": "前往帳號頁"
@@ -570,11 +618,76 @@
         "quizCta": "開始測驗",
         "upgradeTitle": "解鎖你的進入市場工具",
         "upgradeBody": "升級 Pro，開啟你的個人化台灣落地查核清單。",
-        "upgradeCta": "查看方案",
-        "readyTitle": "目前一切就緒",
-        "readyBody": "探索台灣百大企業情報，並持續推進你的查核清單。",
-        "readyCta": "瀏覽企業"
+      "upgradeCta": "查看方案",
+      "buildTitle": "把診斷轉成可執行的 Action Plan",
+      "buildBody": "讓 NOVA 判斷公司階段與當前瓶頸，再排出現在最重要的行動。",
+      "buildCta": "建立 Action Plan",
+      "actionCta": "開啟 Action Plan",
+      "blockedTitle": "先解除必要依賴",
+      "blockedBody": "有 {count} 個 Actions 正等待必要工作完成，暫時無法進入 Next 3。",
+      "blockedCta": "解除依賴",
+      "completeBody": "目前計畫中的 Actions 已全部完成，可檢視成果或生成下一版計畫。",
+      "completeCta": "檢視 Action Plan",
+      "readyTitle": "目前一切就緒",
+      "readyBody": "探索台灣百大企業情報，並持續推進你的查核清單。",
+      "readyCta": "瀏覽企業"
+    },
+    "actionSummary": {
+      "statusEyebrow": "公司目前狀態",
+      "confidence": "信心值 {value}%",
+      "stage": {
+        "label": "公司階段",
+        "empty": "尚未診斷",
+        "emptyPaidDetail": "建立 Action Plan，讓 NOVA 判斷你目前的公司階段。",
+        "emptyFreeDetail": "升級 Pro，解鎖 NOVA 公司階段診斷。",
+        "next": "下一階段：{stage}",
+        "final": "已達目前定義的最後階段"
       },
+      "bottleneck": {
+        "label": "目前瓶頸",
+        "empty": "尚無診斷",
+        "emptyDetail": "NOVA 尚未判斷阻礙公司進入下一階段的主要限制。"
+      },
+      "subscription": {
+        "label": "訂閱方案",
+        "manage": "管理帳務",
+        "upgrade": "升級 Pro",
+        "noSubscription": "目前沒有有效訂閱"
+      },
+      "next": {
+        "eyebrow": "Action Plan",
+        "title": "Next 3 moves",
+        "viewAll": "查看完整 Action Plan",
+        "ready": "可執行",
+        "actionTime": "執行時間",
+        "score": "優先分數",
+        "completeEyebrow": "計畫已完成",
+        "blockedEyebrow": "需要先完成依賴",
+        "completeTitle": "目前 Actions 已全部完成",
+        "blockedTitle": "目前沒有可執行的 Action",
+        "completeBody": "查看已完成的計畫，或請 NOVA 生成下一個版本。",
+        "blockedBody": "有 {count} 個 Actions 受到必要依賴阻擋。完成或編輯依賴後，系統會重新排序。",
+        "openPlan": "開啟 Action Plan",
+        "emptyEyebrow": "尚無有效計畫",
+        "emptyTitle": "讓 NOVA 診斷你的下一步",
+        "emptyBody": "NOVA 最多逐題追問三題，確認公司階段與瓶頸後，生成由伺服器排序的 Action Plan。",
+        "upgrade": "升級 Pro",
+        "fewerBlocked": "目前只顯示可執行項目；另有 {count} 個受阻擋 Actions 尚不能進入 Next 3。",
+        "fewerAvailable": "此計畫目前只剩 {count} 個可執行 Actions。"
+      },
+      "progress": {
+        "eyebrow": "Action 完成率",
+        "title": "你的進度",
+        "product": "產品",
+        "sales": "銷售",
+        "fundraising": "募資",
+        "expansion": "市場拓展",
+        "aria": "{group} Action 完成率",
+        "emptyAria": "目前計畫沒有{group}類 Actions",
+        "count": "已完成 {done} / {total}",
+        "noActions": "沒有適用的 Actions"
+      }
+    },
       "metrics": {
         "sectionTitle": "關鍵指標",
         "companies": "追蹤企業",
@@ -640,6 +753,7 @@
         "error": "發生錯誤，請再試一次。",
         "locked": "NOVA 為 Pro 方案功能，升級即可對話。",
         "emptyHint": "問問募資、你的商業階段、台灣市場進入，或你的下一步。",
+        "actionPlanHint": "把這段對話轉成可排序、可編輯的行動計畫。",
         "clear": "清除",
         "upsell": {
           "title": "NOVA 為 Pro 方案功能",
@@ -781,8 +895,11 @@
       "count": "{count} 筆記錄"
     },
     "agenda": {
-      "title": "落地待辦",
-      "subtitle": "系統依你的進度，排出台灣落地的下一步。",
+      "title": "行動計畫",
+      "subtitle": "依據證據、依賴與預期成果排序你的下一步。",
+      "legacyEyebrow": "原有流程",
+      "legacyTitle": "舊版落地待辦",
+      "legacyBody": "原有 checklist 與自訂任務完整保留，NOVA 不會修改這些資料。",
       "reminder": "{overdue} 項逾期・{soon} 項本週到期",
       "allClear": "進度良好，沒有逾期項目。",
       "nextTitle": "你的下一步",
@@ -810,6 +927,107 @@
       "emptyTitle": "先告訴我們你的需求",
       "emptyBody": "到「帳號」頁填寫你的落地需求，我們就會在這裡生成你的行動計畫。",
       "emptyCta": "前往帳號頁"
+    },
+    "actionPlan": {
+      "confidence": "信心值 {value}%",
+      "score": "優先分數",
+      "add": "新增 Action",
+      "edit": "編輯",
+      "delete": "刪除",
+      "save": "儲存 Action",
+      "saving": "儲存中…",
+      "cancel": "取消",
+      "undo": "標示為未完成",
+      "completeAction": "標示為完成",
+      "resolved": "已解除",
+      "unresolved": "尚未解除",
+      "blockedBy": "受以下項目阻擋",
+      "search": "搜尋 Action 或預期成果…",
+      "noResults": "此檢視沒有符合的 Action。",
+      "deleteConfirm": "確定刪除「{title}」？",
+      "empty": {
+        "title": "建立一份能解釋優先順序的計畫",
+        "body": "NOVA 會診斷目前公司階段與瓶頸，最多逐題追問三題，再生成 24 個 Actions。所有排名都由伺服器計算，不由 AI 指定。"
+      },
+      "diagnosis": {
+        "eyebrow": "已確認的診斷",
+        "stage": "公司階段依據",
+        "bottleneck": "目前瓶頸依據"
+      },
+      "next": {
+        "eyebrow": "伺服器排序結果",
+        "title": "Next 3 moves",
+        "rule": "分數 → 緊急度 → 影響力 → 較短執行時間",
+        "unavailable": "目前沒有可執行的 Action 可放入此順位。",
+        "blockedNote": "以下必要依賴尚未完成："
+      },
+      "complete": {
+        "eyebrow": "八個維度，可完整編輯",
+        "title": "完整 Action plan（{count}）"
+      },
+      "filter": {
+        "label": "篩選 Actions",
+        "ready": "可執行",
+        "blocked": "受阻擋",
+        "done": "已完成",
+        "all": "全部"
+      },
+      "fields": {
+        "actionName": "Action 名稱",
+        "impact": "影響力",
+        "urgency": "緊急度",
+        "urgencyDays": "排定天數",
+        "dependency": "依賴程度",
+        "dependencyNotes": "依賴說明",
+        "dependsOn": "依賴哪些 Actions",
+        "difficulty": "難度",
+      "actionTimeMin": "執行時間最少（分鐘）",
+      "actionTimeMax": "執行時間最多（分鐘）",
+        "companyStage": "公司階段",
+        "stageFit": "階段符合度（1–5）",
+        "stageFitReason": "階段符合原因",
+        "bottleneckGroup": "瓶頸群組",
+        "bottleneck": "目前瓶頸",
+        "bottleneckFit": "瓶頸符合度（1–5）",
+        "bottleneckFitReason": "瓶頸符合原因",
+        "expectedOutcome": "預期成果",
+        "outcomeCategory": "成果類型",
+        "outcomeTimeMin": "成果時間最少（天）",
+        "outcomeTimeMax": "成果時間最多（天）",
+        "estimatedTime": "預估時間"
+      },
+      "urgency": { "immediate": "立即", "urgent": "緊急", "scheduled": "排定" },
+      "dependency": { "0": "無", "1": "有幫助", "2": "重要", "3": "必要" },
+      "difficulty": { "1": "非常容易", "2": "容易", "3": "中等", "4": "困難", "5": "非常困難" },
+      "outcome": { "revenue": "營收", "customers": "客戶", "product": "產品／服務", "fundraising": "募資", "expansion": "市場拓展", "custom": "自訂" },
+      "editor": {
+        "addTitle": "新增 Action",
+        "editTitle": "編輯 Action",
+        "fitHint": "修改任一 Fit 分數時必須提供理由；AI 信心值會清空，並標記為使用者調整。"
+      },
+      "builder": {
+        "build": "建立 Action plan",
+        "regenerate": "請 NOVA 重新生成",
+        "title": "建立你的 Action Plan",
+        "intro": "NOVA 會使用公司資料、創辦人測驗與目前對話，每次只問一題，最多三題。",
+        "close": "關閉",
+        "diagnosing": "NOVA 正在診斷公司狀況…",
+        "questionCount": "聚焦問題 {count} / 3",
+        "answerLabel": "你的回答",
+        "continue": "繼續診斷",
+        "stage": "公司階段",
+        "bottleneckGroup": "瓶頸群組",
+        "bottleneck": "目前瓶頸",
+        "stageEvidence": "階段判斷理由",
+        "bottleneckEvidence": "瓶頸判斷理由",
+        "confidence": "信心值 {value}%",
+        "confirmHint": "按下確認前不會寫入資料。重新生成會建立新版本，舊版本仍保留在資料庫。",
+        "confirm": "確認並生成 24 個 Actions",
+        "generating": "正在生成並驗證 24 個 Actions…",
+        "userAdjusted": "使用者在確認診斷時手動調整。",
+        "genericError": "NOVA 無法完成 Action Plan，請再試一次。"
+      },
+      "errors": { "save": "無法儲存 Action。", "delete": "無法刪除 Action。" }
     },
     "feedback": {
       "title": "問題回報",
@@ -843,6 +1061,88 @@
       }
     }
   },
+  "InvestorView": {
+    "inviteTitle": "Investor Portal 邀請",
+    "inviteBody": "請使用收到邀請的相同 Email 登入或註冊。這是一組一次性連結，將在七天後失效。",
+    "login": "登入",
+    "signup": "建立帳號",
+    "accept": "接受邀請",
+    "accepting": "接受中…",
+    "portfolioTitle": "你的投資人專區",
+    "portfolioBody": "已授權你唯讀瀏覽的公司會顯示在這裡。",
+    "openPortal": "開啟專區",
+    "empty": "目前沒有有效的 Investor Portal 權限。",
+    "eyebrow": "投資人專區",
+    "profile": "公司檔案",
+    "strategy": "公司階段與當前瓶頸",
+    "actionPlan": "Action Plan · Next 3",
+    "kpis": "KPI",
+    "milestones": "里程碑",
+    "updates": "公司更新",
+    "businessPlan": "Business Plan",
+    "industry": "產業",
+    "companySize": "公司規模",
+    "country": "國家",
+    "targetMarkets": "目標市場",
+    "openPdf": "開啟私密 PDF"
+  },
+  "InvestorPortal": {
+    "title": "投資人專區",
+    "subtitle": "將你選擇的公司資訊，以同一份受控唯讀頁面分享給受邀投資人。",
+    "upgradeTitle": "Investor Portal 包含在 Business 方案",
+    "upgradeBody": "升級 Business 後即可邀請投資人，並私密分享指定的公司資料與 Business Plan。",
+    "upgradeCta": "查看 Business 方案",
+    "sharingTitle": "分享內容",
+    "sharingBody": "所有項目預設關閉，此設定會套用到全部有效投資人。",
+    "shares": {
+      "shareProfile": "公司檔案",
+      "shareStrategy": "公司階段與當前瓶頸",
+      "shareActionPlan": "Action Plan 進度與 Next 3",
+      "shareKpis": "KPI",
+      "shareMilestones": "里程碑",
+      "shareUpdates": "公司更新",
+      "shareBusinessPlan": "Business Plan PDF"
+    },
+    "saveSharing": "儲存分享設定",
+    "saving": "儲存中…",
+    "businessPlan": "Business Plan",
+    "pdfHint": "只接受 PDF，最大 10 MB。檔案保持私密，且每次下載前都會重新驗證權限。",
+    "selectPdf": "請選擇 PDF 檔案。",
+    "invalidPdf": "請選擇 10 MB 以內的有效 PDF 檔案。",
+    "uploadPdf": "上傳 PDF",
+    "uploading": "上傳中…",
+    "viewPdf": "查看 PDF",
+    "kpis": "KPI",
+    "milestones": "里程碑",
+    "updates": "公司更新",
+    "invitations": "投資人邀請",
+    "label": "名稱",
+    "value": "數值",
+    "period": "期間",
+    "titleField": "標題",
+    "status": "狀態",
+    "targetDate": "目標日期",
+    "notes": "備註",
+    "content": "更新內容",
+    "planned": "規劃中",
+    "inProgress": "進行中",
+    "done": "已完成",
+    "add": "新增",
+    "save": "儲存",
+    "delete": "刪除",
+    "publish": "發布",
+    "email": "投資人 Email",
+    "sendInvite": "寄送邀請",
+    "sending": "寄送中…",
+    "prepareResend": "重新寄送",
+    "revoke": "撤銷",
+    "inviteStatus": {
+      "pending": "等待接受",
+      "accepted": "已接受",
+      "revoked": "已撤銷",
+      "expired": "已過期"
+    }
+  },
   "Billing": {
     "title": "訂閱與帳單",
     "subtitle": "管理你的方案與付款。",
@@ -856,6 +1156,19 @@
     "cancelConfirm": "確定取消訂閱？你在本期結束前仍可使用。",
     "contactSales": "聯絡業務",
     "processing": "處理中…",
+    "billingInterval": "付款週期",
+    "month": "月繳",
+    "year": "年繳",
+    "annualCharge": "每年一次收取 {total}",
+    "investorPortalIncluded": "包含私密 Investor Portal",
+    "trialUntil": "試用權限至 {date}",
+    "aiUsageTitle": "NOVA 使用額度",
+    "aiUsageRemaining": "剩餘 {count} 次回答",
+    "aiUsageDetail": "已使用 {used}／{included} 次基本額度 · 加購剩餘 {bonus} 次 · {date} 重置",
+    "buyCredits": "加購 10 次 · USD 5",
+    "creditPurchaseSuccess": "付款完成，已加入 10 次 NOVA 回答額度。",
+    "creditOrderMissing": "PayPal 回傳資料缺少訂單編號，系統沒有增加額度。請回到帳單頁重新操作。",
+    "backToBilling": "返回帳單頁",
     "returnPending": "訂閱確認中，此頁稍後會自動更新。",
     "returnSuccess": "訂閱已生效，歡迎加入！",
     "perMonth": "/ 月",

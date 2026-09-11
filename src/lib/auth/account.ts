@@ -22,6 +22,8 @@ export interface Account {
   hasPassword: boolean;
   /** Tools 落地清單勾選狀態 { itemKey: true } */
   checklistState: Record<string, boolean>;
+  /** Milestones 群組改名與使用者新增項目 */
+  milestoneConfig: unknown;
   /** Playbook 段落已讀狀態 { "<slug>:<segmentKey>": true } */
   playbookReads: Record<string, boolean>;
   /** 帳上儲存的方案（未套寬限期）；要判權限請用 gate.ts 的 getEffectivePlan */
@@ -31,6 +33,9 @@ export interface Account {
   currentPeriodEnd: Date | null;
   /** plan/status 最後異動時間 — SUSPENDED 寬限期的起算點（見 gate.ts） */
   planUpdatedAt: Date | null;
+  trialPlan: PlanKey | null;
+  trialStartsAt: Date | null;
+  trialEndsAt: Date | null;
   /** 註冊日 = 落地起點 anchor，落地待辦據此推算各任務建議完成日（見 dashboard/agenda.ts） */
   createdAt: Date;
   profile: {
@@ -73,6 +78,7 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     hasPassword: Boolean(user.passwordHash),
     checklistState:
       (user.checklistState as Record<string, boolean> | null) ?? {},
+    milestoneConfig: user.milestoneConfig,
     playbookReads:
       (user.playbookReads as Record<string, boolean> | null) ?? {},
     plan: toPlanKey(user.plan),
@@ -80,6 +86,9 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     paypalSubscriptionId: user.paypalSubscriptionId,
     currentPeriodEnd: user.currentPeriodEnd,
     planUpdatedAt: user.planUpdatedAt,
+    trialPlan: user.trialPlan ? toPlanKey(user.trialPlan) : null,
+    trialStartsAt: user.trialStartsAt,
+    trialEndsAt: user.trialEndsAt,
     createdAt: user.createdAt,
     profile: user.profile
       ? {

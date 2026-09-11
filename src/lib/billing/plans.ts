@@ -1,11 +1,12 @@
-// 方案定義 — 程式邏輯的單一事實來源（gating 規則、PayPal plan id 對應、階級排序）。
-// 注意分工：價格「顯示文案」只信 i18n（messages/*.json 的 Product.pricing），
-//           價格「邏輯/驗證」只信本檔，避免雙重事實來源。
+// 方案與實際收款金額的單一事實來源。公開定價、Billing UI、PayPal 建立與 webhook
+// 全部從這裡取值，避免畫面與真正扣款金額分離。
 
 export const PLAN_KEYS = ["free", "pro", "business", "enterprise"] as const;
 export type PlanKey = (typeof PLAN_KEYS)[number];
 
-/** 階級高低，gating 用 >= 比較 */
+export const BILLING_INTERVALS = ["month", "year"] as const;
+export type BillingInterval = (typeof BILLING_INTERVALS)[number];
+
 export const PLAN_RANK: Record<PlanKey, number> = {
   free: 0,
   pro: 1,
@@ -13,61 +14,157 @@ export const PLAN_RANK: Record<PlanKey, number> = {
   enterprise: 3,
 };
 
+export type BillingVariant = {
+  interval: BillingInterval;
+  amountMinor: number;
+  currency: "USD";
+  paypalPlanIdEnv: string;
+};
+
 export interface PlanConfig {
-  /** 對應的 env 變數名（PayPal Billing Plan id 不寫死進 repo；free/enterprise 無） */
-  paypalPlanIdEnv?: string;
-  /** 月費（TWD），僅自助付費方案有；free/enterprise 無 */
-  monthlyTwd?: number;
-  /** 是否可線上自助訂閱（enterprise 走 contact sales） */
   selfServe: boolean;
+  variants?: Record<BillingInterval, BillingVariant>;
+  /** 舊 TWD plan 僅供歷史 webhook／遷移辨識，絕不再用於新 checkout。 */
+  legacyPaypalPlanIdEnv?: string;
 }
 
 export const PLAN_CONFIG: Record<PlanKey, PlanConfig> = {
-  free: { selfServe: true },
-  pro: { paypalPlanIdEnv: "PAYPAL_PLAN_ID_PRO", monthlyTwd: 590, selfServe: true },
-  business: {
-    paypalPlanIdEnv: "PAYPAL_PLAN_ID_BUSINESS",
-    monthlyTwd: 890,
+  free: { selfServe: false },
+  pro: {
     selfServe: true,
+    legacyPaypalPlanIdEnv: "PAYPAL_PLAN_ID_PRO",
+    variants: {
+      month: {
+        interval: "month",
+        amountMinor: 4_900,
+        currency: "USD",
+        paypalPlanIdEnv: "PAYPAL_PLAN_ID_PRO_MONTHLY_USD",
+      },
+      year: {
+        interval: "year",
+        amountMinor: 46_800,
+        currency: "USD",
+        paypalPlanIdEnv: "PAYPAL_PLAN_ID_PRO_YEARLY_USD",
+      },
+    },
+  },
+  business: {
+    selfServe: true,
+    legacyPaypalPlanIdEnv: "PAYPAL_PLAN_ID_BUSINESS",
+    variants: {
+      month: {
+        interval: "month",
+        amountMinor: 14_900,
+        currency: "USD",
+        paypalPlanIdEnv: "PAYPAL_PLAN_ID_BUSINESS_MONTHLY_USD",
+      },
+      year: {
+        interval: "year",
+        amountMinor: 166_800,
+        currency: "USD",
+        paypalPlanIdEnv: "PAYPAL_PLAN_ID_BUSINESS_YEARLY_USD",
+      },
+    },
   },
   enterprise: { selfServe: false },
 };
 
-/**
- * 帳務頁必須顯示與實際 PayPal plan 相同的價格，不能被 CMS 翻譯覆寫成舊幣別／舊金額。
- */
-export function monthlyPriceLabel(plan: PlanKey): string | null {
-  const amount = PLAN_CONFIG[plan].monthlyTwd;
-  return amount == null ? null : `NT$${amount.toLocaleString("en-US")}`;
-}
-
-/** 型別守衛：把任意字串收斂成合法 PlanKey，非法值一律視為 free */
 export function toPlanKey(value: string | null | undefined): PlanKey {
   return (PLAN_KEYS as readonly string[]).includes(value ?? "")
     ? (value as PlanKey)
     : "free";
 }
 
-/** userPlan 是否至少達到 min 階級 */
+export function toBillingInterval(
+  value: string | null | undefined,
+): BillingInterval | null {
+  return (BILLING_INTERVALS as readonly string[]).includes(value ?? "")
+    ? (value as BillingInterval)
+    : null;
+}
+
 export function planAtLeast(userPlan: PlanKey, min: PlanKey): boolean {
   return PLAN_RANK[userPlan] >= PLAN_RANK[min];
 }
 
-/**
- * 取某方案對應的 PayPal Billing Plan id（從 env 讀）。
- * 找不到（free/enterprise 或 env 未設）回 null。
- */
-export function paypalPlanIdFor(plan: PlanKey): string | null {
-  const envName = PLAN_CONFIG[plan].paypalPlanIdEnv;
-  if (!envName) return null;
-  return process.env[envName] ?? null;
+export function billingVariantFor(
+  plan: PlanKey,
+  interval: BillingInterval,
+): BillingVariant | null {
+  return PLAN_CONFIG[plan].variants?.[interval] ?? null;
 }
 
-/** 由 PayPal plan id 反查方案 key（webhook 對帳用）；找不到回 null */
-export function planFromPaypalPlanId(paypalPlanId: string): PlanKey | null {
-  for (const key of PLAN_KEYS) {
-    const envName = PLAN_CONFIG[key].paypalPlanIdEnv;
-    if (envName && process.env[envName] === paypalPlanId) return key;
+export function priceLabel(plan: PlanKey, interval: BillingInterval): string | null {
+  const variant = billingVariantFor(plan, interval);
+  if (!variant) return null;
+  return `USD ${(variant.amountMinor / 100).toLocaleString("en-US")}`;
+}
+
+export function monthlyEquivalentLabel(plan: PlanKey): string | null {
+  const annual = billingVariantFor(plan, "year");
+  if (!annual) return null;
+  return `USD ${(annual.amountMinor / 100 / 12).toLocaleString("en-US")}`;
+}
+
+/** 保留舊呼叫端名稱；目前正式月費一律為 USD。 */
+export function monthlyPriceLabel(plan: PlanKey): string | null {
+  return priceLabel(plan, "month");
+}
+
+export function paypalPlanIdFor(
+  plan: PlanKey,
+  interval: BillingInterval = "month",
+): string | null {
+  const envName = billingVariantFor(plan, interval)?.paypalPlanIdEnv;
+  return envName ? process.env[envName] ?? null : null;
+}
+
+export function paypalPlanEnvFor(
+  plan: PlanKey,
+  interval: BillingInterval,
+): string | null {
+  return billingVariantFor(plan, interval)?.paypalPlanIdEnv ?? null;
+}
+
+export type PaypalPlanMatch = {
+  plan: PlanKey;
+  interval: BillingInterval | null;
+  currency: "USD" | "TWD";
+  amountMinor: number | null;
+  legacy: boolean;
+};
+
+export function billingFromPaypalPlanId(paypalPlanId: string): PaypalPlanMatch | null {
+  for (const plan of ["pro", "business"] as const) {
+    const config = PLAN_CONFIG[plan];
+    for (const interval of BILLING_INTERVALS) {
+      const variant = config.variants?.[interval];
+      if (variant && process.env[variant.paypalPlanIdEnv] === paypalPlanId) {
+        return {
+          plan,
+          interval,
+          currency: variant.currency,
+          amountMinor: variant.amountMinor,
+          legacy: false,
+        };
+      }
+    }
+    if (
+      config.legacyPaypalPlanIdEnv &&
+      process.env[config.legacyPaypalPlanIdEnv] === paypalPlanId
+    ) {
+      return {
+        plan,
+        interval: "month",
+        currency: "TWD",
+        amountMinor: null,
+        legacy: true,
+      };
+    }
   }
   return null;
+}
+
+export function planFromPaypalPlanId(paypalPlanId: string): PlanKey | null {
+  return billingFromPaypalPlanId(paypalPlanId)?.plan ?? null;
 }

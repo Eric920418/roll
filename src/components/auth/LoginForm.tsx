@@ -10,6 +10,7 @@ import AuthInput from "./AuthInput";
 import AuthButton from "./AuthButton";
 import GoogleButton from "./GoogleButton";
 import { resolveAuthError } from "./error-codes";
+import { safeInvestorInvitePath } from "@/lib/auth/return-path";
 
 export default function LoginForm() {
   const t = useTranslations("Auth.login");
@@ -22,15 +23,19 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const signupHref = pathForLocale("/signup", locale);
   const homeHref = pathForLocale("/", locale);
-  // Google 登入後返回首頁；callback 會依用戶狀態自行校正導向
-  const next = homeHref;
+  const [next, setNext] = useState(homeHref);
+  const signupHref = `${pathForLocale("/signup", locale)}?next=${encodeURIComponent(next)}`;
 
   useEffect(() => {
     const e = new URLSearchParams(window.location.search).get("error");
     if (e) setError(e);
-  }, []);
+    const requested = safeInvestorInvitePath(
+      new URLSearchParams(window.location.search).get("next"),
+      locale,
+    );
+    if (requested) setNext(requested);
+  }, [locale]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,13 +55,13 @@ export default function LoginForm() {
           ),
         );
       }
-      const dest = destinationFor(
-        {
-          completed: Boolean(json.data?.completed),
-          onboardingStep: Number(json.data?.onboardingStep ?? 2),
-        },
-        locale,
-      );
+      const dest = safeInvestorInvitePath(next, locale) ?? destinationFor(
+          {
+            completed: Boolean(json.data?.completed),
+            onboardingStep: Number(json.data?.onboardingStep ?? 2),
+          },
+          locale,
+        );
       router.push(dest);
       router.refresh();
     } catch (err) {
@@ -95,7 +100,7 @@ export default function LoginForm() {
           autoComplete="current-password"
         />
         {error && (
-          <p className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <p role="alert" className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
           </p>
         )}

@@ -42,12 +42,15 @@ pnpm db:studio  # Prisma Studio 檢視資料
 pnpm db:super
 # 預設 super@rollgrp.com / RollOn2026!Super，可覆蓋：
 SUPER_EMAIL=you@x.com SUPER_PASSWORD='你的密碼' pnpm db:super
-SUPER_PLAN=enterprise pnpm db:super   # 永不過期版（不需訂閱期）
+SUPER_PLAN=business SUPER_TRIAL_DAYS=30 pnpm db:super
+SUPER_PLAN=enterprise pnpm db:super   # 站方管理的 Enterprise
 ```
 
-腳本 `scripts/create-super-user.ts` 以 `upsert` 建號（可重複執行，會重設密碼與方案），設定 `plan=pro`＋`subscriptionStatus=ACTIVE`＋`currentPeriodEnd=2099`（滿足 `getEffectivePlan` 寬限期判定，否則 pro 會被降級為 free），並 `completed=true`／`onboardingStep=4` 讓登入後直達 `/dashboard`。**注意**：pro 靠遠期到期日維持；若要真正永久不過期用 `SUPER_PLAN=enterprise`（`src/lib/billing/gate.ts` 對 enterprise 無條件信任）。
+腳本 `scripts/create-super-user.ts` 以 `upsert` 建號並重設密碼；Pro／Business 只建立 1–365 天的正式 trial（預設 30 天），不再偽造 PayPal `ACTIVE` 或 2099 到期日，重跑也不覆寫既有 PayPal 付款歷史。`SUPER_PLAN=enterprise` 才是站方人工管理權限。帳號同時設為完成 onboarding／quiz，登入後直達 Dashboard。
 
 ### 環境變數
+
+Vercel CLI 部署由 `.vercelignore` 明確排除所有 `.env*`；正式憑證只設定在 Vercel Environment Variables，不隨原始碼上傳。
 
 `.env`（Prisma CLI 與 runtime 共用）：
 
@@ -62,6 +65,7 @@ AUTH_SECRET="..."                # jose 簽章密鑰（openssl rand -base64 32�
 ADMIN_EMAIL="admin@roll-grp.com"
 ADMIN_PASSWORD_HASH="\$2b\$..."  # bcrypt hash，$ 必須跳脫為 \$（見下方）
 BLOB_READ_WRITE_TOKEN="..."      # Vercel 連結 Blob store 後複製
+INVESTOR_BLOB_READ_WRITE_TOKEN="..." # Investor Business Plan 專用的獨立 Private Blob store；不得與公開 store 相同
 
 # 公開用戶 Google 登入（缺少時 Email 註冊/登入仍可用，Google 按鈕會在前端顯示設定錯誤）
 GOOGLE_CLIENT_ID="...apps.googleusercontent.com"
@@ -73,9 +77,19 @@ PAYPAL_ENV=sandbox
 PAYPAL_CLIENT_ID="..."           # PayPal Developer Dashboard 建立 app 取得
 PAYPAL_CLIENT_SECRET="..."
 PAYPAL_WEBHOOK_ID="..."           # 註冊 webhook（www 正式網域）後取得，供簽章驗證
-PAYPAL_PLAN_ID_PRO="P-..."        # 由 scripts/paypal-setup.mjs 產生
-PAYPAL_PLAN_ID_BUSINESS="P-..."
+PAYPAL_PRODUCT_ID="PROD-..."      # NOVA 共用 Product；setup 腳本會建立或重用同名 Product
+PAYPAL_PLAN_ID_PRO_MONTHLY_USD="P-..."
+PAYPAL_PLAN_ID_PRO_YEARLY_USD="P-..."
+PAYPAL_PLAN_ID_BUSINESS_MONTHLY_USD="P-..."
+PAYPAL_PLAN_ID_BUSINESS_YEARLY_USD="P-..."
+PAYPAL_PLAN_ID_PRO="P-..."        # 舊 TWD plan：只供歷史對帳，不再 checkout
+PAYPAL_PLAN_ID_BUSINESS="P-..."   # 舊 TWD plan：只供歷史對帳
+BILLING_REQUIRE_EXPLICIT_ENTITLEMENT=false # 兩個舊人工帳號設好 trial 後，Production 才切 true
 NEXT_PUBLIC_APP_URL="http://localhost:3000"  # 組 PayPal return/cancel URL；上線填正式網域（不要結尾斜線）
+
+# Investor Portal 邀請信（原生 fetch 呼叫 Resend，不新增套件）
+RESEND_API_KEY="re_..."
+RESEND_FROM_EMAIL="NOVA <investor@your-verified-domain.example>"
 
 # 會員 AI Copilot（Pro 方案）— 上游錯誤完整記錄於 server log，串流不依錯誤內容、只回傳雙語通用訊息
 ANTHROPIC_API_KEY="sk-ant-..."   # Claude API 金鑰（platform.claude.com）
@@ -159,6 +173,7 @@ public/
 1. **Navbar** — 固定導航；漢堡選單保留 `About`、`ESG`、`Product` 三個獨立頁面入口（首頁回跳由左上 Logo 提供，避免重複）
 2. **RollMap** — 滾動三頁：品牌 Hero → 全球 vs 台灣外商數量對比 → Forbes Global 2000 排名（含 ROLL ON 客戶）
    - 包含 `sr-only` SSR 純文字版本供 LLM / 螢幕閱讀器讀取（視覺化數據雙軌化）
+   - 手機版 Hero 使用 `svh` 與受高度約束的 `contain` Logo 容器，並保留固定導覽列空間；短螢幕與 Safari 動態工具列不會再把直式 ROLL ON Logo 裁切，桌機仍維持原始最大寬度
 3. **TaiwanMap** — 台灣地圖縮放 → 全球 + 6 座橋樑城市；5 行品牌宣言
 4. **Services** — 服務卡片（**CMS 管理**），每張連到 `/services/[slug]` + Investor Access CTA
 5. **Work** — 案例章節（**CMS 管理**）：`Medix LLC` 可展開/收合；server wrapper 抓資料 → `WorkClient` 渲染 motion
@@ -172,12 +187,12 @@ public/
 
 ## 產品著陸頁 `/product`（由 `src/app/[locale]/product/page.tsx` 組合）
 
-**NOVA by ROLL ON**（自助式 SaaS：Free / Pro / Business 訂閱 + 專屬 Dashboard）的獨立行銷著陸頁。NOVA 採獨立黑白銀品牌系統：Black `#000000`、White `#FAFAFA`、Silver `#BCBDC6`，Motion 維持 `[0.22,1,0.36,1]` 進場；色票以 `.nova-theme[data-brand="nova"]` 局部覆寫，不影響 ROLL ON 官網的暗紅／暖金 token。
+**NOVA by ROLL ON**（Pro / Business / Enterprise + 專屬 Dashboard）的獨立行銷著陸頁。公開定價不主推 Free；Free 是未訂閱狀態且不能使用 Action Plan。NOVA 採獨立黑白銀品牌系統：Black `#000000`、White `#FAFAFA`、Silver `#BCBDC6`，Motion 維持 `[0.22,1,0.36,1]` 進場；色票以 `.nova-theme[data-brand="nova"]` 局部覆寫，不影響 ROLL ON 官網的暗紅／暖金 token。
 
 1. **ProductNav** — 著陸頁專屬頂部列（非全站漢堡）：NOVA 平面黑 logo → `/product`，`by ROLL ON` → 企業官網，右側 `Login` / `Sign Up` + 語言切換；捲動加玻璃背景
-2. **ProductHero** — 使用設計方提供的金屬 NOVA logo + 副標（"Thinking about expanding in Taiwan?"）+ `Get Started`（→ `#pricing`）+ 右側 3 張問題式卡片（何時募資 / 是否在地聘僱 / 在地 CEO 如何決策）
+2. **ProductHero / NovaValuePillars** — 金屬 NOVA logo 與五項一致定位：Software、Strategic guidance、Go-to-market execution、Market access、Founder ecosystem。首頁也共用同一區塊；「六個月內取得亞洲第一張訂單」明示為共同執行目標，不是成交保證。Founder ecosystem 與 dashboard investor checklist 只連現有 Podcast、活動與聯絡入口，不虛構聊天室、Club、社群或 placement。
 3. **HowItWorks** — 「如何開始」三步驟（01 註冊 → 02 客製化 Dashboard → 03 媒合夥伴）
-4. **Pricing** — 「選擇方案」四卡（Free NT$0 / Pro NT$590 / Business NT$890〔推薦，中間突出〕/ Enterprise 洽詢）。CTA：付費方案 → 註冊（`/signup`，開始漏斗）；Enterprise → `#contact`
+4. **Pricing** — 月／年切換的三張公開方案卡：Pro USD 49/月或 USD 468/年一次收取；Business USD 149/月或 USD 1,668/年一次收取並含 Investor Portal；Enterprise 只顯示聯絡報價，不公開內部參考價。沒有虛構原價或限時優惠。
 5. **ProductCTA** — 底部黑色 NOVA CTA（`免費開始使用` → `#contact`）
 6. **Footer** — 共用 Footer 的 `brand="nova"` 變體：NOVA 白 logo + `by ROLL ON`，保留既有聯絡表單與 ROLL ON 聯絡／版權資訊
 
@@ -221,7 +236,7 @@ public/
 | `/admin/settings` | 頁尾聯絡資訊、社群連結、Golden Ticket 頻道 |
 | `/admin/messages` | 聯絡表單收件匣（標記已讀 / 刪除） |
 | `/admin/feedback` | **會員問題回報收件匣（2026-08）** — 列出 `FeedbackReport` 全部回報，含回報者 email／姓名／**方案**（付費會員的功能故障與免費帳號的體驗建議優先級不同，故一併撈 `User`）、分類（Bug／建議／其他）、重現資訊摺疊區（頁面 URL／語系／User-Agent）。可改處理狀態（待處理／處理中／已解決／不處理）、寫**會員看得到的回覆**、刪除。上方為狀態篩選 chip（預設「待處理」，各附筆數）。 |
-| `/admin/users` | **註冊帳戶（庫戶）唯讀檢視** — 列出 `User` 表所有公開平台註冊用戶，含 **email 個資**、姓名、註冊方式（Google/Email）、email 驗證狀態、訂閱方案、onboarding/測驗狀態、註冊時間；支援 email/姓名搜尋。**個資注意**：依目前設定 email **直接顯示完整明碼**（未遮罩、無存取稽核），故此頁僅在後台 admin session 登入後可見（`proxy.ts` + layout 雙重把關）；Server 端以 Prisma `select` 取欄位、**刻意不撈 `passwordHash`**。刻意**唯讀不提供刪除**（刪 `User` 會 cascade 連帶清除訂閱與測驗紀錄）。若日後需通過個資稽核，可升級為「server 端遮罩 + reveal API 留存取紀錄」。 |
+| `/admin/users` | **註冊帳戶與限時試用管理** — 列出會員、完整 email、登入方式、付款快取與 onboarding 狀態；可設定／延長／撤銷 Pro 或 Business trial，並明確標出沒有 PayPal subscription id 的舊假 ACTIVE。仍不提供刪除會員或直接修改 PayPal 付款狀態。此頁含明碼個資，只能由 admin session 存取，Server select 不讀 `passwordHash`。 |
 
 ### 雙語內容模型
 
@@ -299,10 +314,12 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 ### 資料模型（`prisma/schema.prisma`）
 
-- `User`：`email`(unique)、`passwordHash`(Google 用戶為 null)、`googleId`(unique)、姓名/頭像、`onboardingStep`(1/2/3/4)、`completed`；**計費快取**：`plan`(預設 `free`)、`subscriptionStatus`、`paypalSubscriptionId`(unique)、`currentPeriodEnd`、`planUpdatedAt`。
+- `User`：`email`(unique)、`passwordHash`(Google 用戶為 null)、`googleId`(unique)、姓名/頭像、`onboardingStep`(1/2/3/4)、`completed`；**計費快取**：`plan`、`subscriptionStatus`、`paypalSubscriptionId`、`currentPeriodEnd`、`planUpdatedAt`；**人工試用**：`trialPlan`、`trialStartsAt`、`trialEndsAt`。有效權限取真實 PayPal entitlement 與未到期 trial 的較高方案。
 - `OnboardingProfile`(1:1)：Step 2 公司/產業/規模/網站/母國；Step 3 `timeline`（語意已改為**公司成立年限**，slug `lt1y/1-3y/3-5y/gt5y`）、`budgetRange`（前端顯示為 **Seed money**，沿用 US$ 級距）、`needs[]`（服務需求）、`notes`、`targetMarkets[]`。
   - **表單欄位調整（2026-06）**：onboarding Step 3 只收「成立年限 / Seed money / 備註」；`targetMarkets` 已自所有表單移除、`needs` 僅保留在後台帳號頁（`/dashboard/account`，供 Tools 個人化）。兩欄仍存在於 DB schema、API 停止覆寫 → **既有資料零遺失、無 migration**。
-- `Subscription`：PayPal 訂閱歷史（`paypalSubscriptionId` unique、`paypalPlanId`、`plan`、`status`、`currentPeriodEnd` 等），對帳/審計用。
+- `Subscription`：PayPal 訂閱歷史（含 `checkoutRequestId`、月／年、幣別、實收最小貨幣單位與 replacement relation），對帳/審計用；舊 TWD 欄位保留且不回填假資料。
+- `AiAllowance` / `AiUsage` / `AiCreditPurchase`：每月 150 次 NOVA、併發 reservation、永久加購餘額與 PayPal Orders/capture 冪等紀錄。Action Plan diagnose/generate 不計入 150 次。
+- `InvestorPortal` / `InvestorKpi` / `InvestorMilestone` / `InvestorUpdate` / `InvestorInvitation`：Business/Enterprise 公司共用分享設定、唯讀投資人內容、一次性邀請與 Private Blob PDF metadata；所有分享開關預設關閉。
 - `WebhookEvent`：PayPal webhook 事件審計（event id 當主鍵，天然去重）。
 
 ### Google OAuth 設定（前置）
@@ -336,53 +353,60 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 | 路徑 | 說明 |
 | --- | --- |
-| `/[locale]/dashboard` | **NOVA 總覽（英文側欄名稱：DASHBOARD；widget 儀表板，2026-07 改版，參考 `IMG_1172` 版面）**：黑白銀「今日重點」橫幅（依帳號狀態算下一步：onboarding→補資料／未測驗→做 quiz／free→升級／已就緒→逛企業）、每日管理提醒（**2026-08 改版**：引導/測驗/**落地待辦**/訂閱四張卡，**每張皆為 `Link` 可點**跳對應頁——href 複用 `computeMilestones()` 既有判斷，不在元件內重寫路由；落地待辦卡以同一套 `computeTasks()` 算逾期/本週到期，逾期時紅點＋紅字，數字與 ACTION PLAN 頁保證一致）、關鍵指標 4 格（**皆真實**：企業數 `countCompanies()` / 影片數 `getVideos().length` / 落地清單完成率 / 活動數 `getEvents().length`）、創辦人配對卡（取最新 `QuizSubmission` + 三維向量歐氏距離換算相似度%）、ROLL ON 教學影片卡（`Video` model 第一支）；右欄＝NOVA AI 顧問（`CopilotPanel`，真 Claude API 串流對話 + 快捷）、重點機會（精選台灣公司 `getCompanyCards`）、近期活動。**指標/配對皆真實**（無 `IMG_1172` 的 $2.45M pipeline / 投資人數假數據）。 |
+| `/[locale]/dashboard` | **NOVA 決策總覽（2026-08）**：首屏固定依序顯示 Today’s priority、Company stage／Current bottleneck／Subscription、伺服器排名的 Next 3 moves 與 Product／Sales／Fundraising／Expansion 四類完成率，再顯示創辦人配對與最新影片。Priority 的 precedence 為：非 Pro 升級 → active plan 第 1 Action → Required 依賴阻擋 → 全部完成；沒有 active plan 才回到 onboarding → quiz → Build Action Plan。四類進度只由 active Action 的 `outcomeCategory` 與 `done` 即時計算，`custom` 排除、無適用 Action 顯示 `—`，不產生假百分比。Free 會員看診斷空狀態與升級入口，不洩漏降級前保留的 Pro plan 內容。原每日 Alerts row 移除；關鍵指標、NOVA AI 顧問、重點機會與近期活動保留並下移。所有卡片維持 NOVA 品牌設計、雙語與 44px 操作區。 |
 | `/[locale]/dashboard/profile` | **Profile / 公司檔案**（2026-07；英文介面於 2026-08 簡化名稱）：唯讀展示會員 `OnboardingProfile`（公司/需求兩區，slug 經 `Auth.options.*` 轉 label），附「編輯」→ `/dashboard/account`；未填顯示引導卡。 |
 | `/[locale]/dashboard/companies` | **Taiwan top 100 / 台灣百大企業**（2026-07；英文介面於 2026-08 統一更名）：`getCompanyList()`（`content/companies/*.json`，現 103 家）→ `DashboardCompanyList`（前台品牌紅版，含搜尋），每張卡連 `/company/[slug]`。公開目錄列表頁 `/company` 已移除，此後台頁為公司清單的唯一入口。 |
 | `/[locale]/dashboard/playbooks`（+`[slug]`） | **Fundraising / 知識手冊（2026-07；2026-08 從側欄移除但保留頁面與教材）**：ROLL ON 募資／成長方法論指南，登入即可看。一份＝一個 `content/playbooks/<slug>.json`（`pnpm ingest:playbook` 把 PDF 經 Claude 轉雙語 JSON）。**每個紅色標題＝一個 segment**；詳情頁 `PlaybookReader` 分段渲染 + 每段「標為已讀」+「全部／未讀／已讀」filter（狀態存 `User.playbookReads`），列表頁顯示各份已讀進度。**雙用**：同內容餵 Nova AI（`get_playbook`）並供 Fundraising quiz 出題。 |
 | `/[locale]/dashboard/quiz` | **Fundraising quiz / 募資測驗**（2026-07；2026-08 由 Founder quiz 更名，與 `/quiz` 的創辦人決策風格測驗明確區隔）：每兩週一批選擇題，題庫來自 playbook 各段（ingest 時每段產 2 題）。以會員註冊日為錨**即時算第幾個雙週**（`src/lib/playbook/quiz.ts`，無 cron），全部題庫循環出題；`PlaybookQuizClient` 作答 → server 端重算分數＋對錯＋解析，每期一筆存 `PlaybookQuizAttempt`。**不寄 email、不排程**、**不**綁 onboarding。 |
 | `/[locale]/dashboard/crm\|pipeline\|notes` | **真 CRUD（2026-07，Pro 方案限定）**：各對應新 Prisma 表（`Contact` / `Deal` / `MeetingNote`，`userId` scope + `onDelete: Cascade`）。`requirePlan("pro")`→null 顯示付費牆（`PlanPaywall`），否則查該會員資料傳給 client 元件（`CrmManager` / `PipelineBoard` / `NotesManager`），新增/編輯/刪除後 `router.refresh()`。CRM `Contact.category` 是底層欄位，UI 顯示為可選的自由文字 `Project`，新增與編輯皆會保存，清單以專案標籤顯示，舊資料維持相容。Pipeline 為 stage 分欄看板（MVP 用下拉改階段，不做拖拉）。Deal 可選連 CRM `Contact`（`SetNull`）。 |
 | `/[locale]/dashboard/account` | 帳號 / 個人資料：顯示 + 編輯 `OnboardingProfile`（**不**推進 onboardingStep）+ 變更/設定密碼 + 刪除帳號（危險區，需輸入確認字）。 |
-| `/[locale]/dashboard/billing` | **BILLING**：目前方案 / 狀態 / 到期、訂閱 Pro/Business、取消、Enterprise 洽詢。**扣款失敗（SUSPENDED）且仍在 1 天寬限期內**時，最上方顯示琥珀色警告：降級時刻（含時間，非只有日期）+ 「前往 PayPal 更新付款方式」外連（`paypalManagePaymentUrl()` 依 `PAYPAL_ENV` 切 sandbox/live 網域）。寬限期已過則不再顯示（gate 已降級為 free，改由方案卡片引導重新訂閱）。取消按鈕對 **ACTIVE 與 SUSPENDED** 都顯示 — SUSPENDED 客戶若決定不救也該能自行終止，不必寫信求客服。 |
+| `/[locale]/dashboard/billing` | **BILLING**：目前付費／trial 狀態、Pro / Business 月年繳、Enterprise 洽詢、每月 150 次 NOVA 額度／重置日與 USD 5 加購 10 次。年繳同時顯示等效月費及實際一次收取總額。SUSPENDED 在 1 天寬限期內顯示更新 PayPal 付款方式；取消後仍保留到已付款週期結束，不自動退款。 |
 | `/[locale]/dashboard/billing/return` | PayPal 核准後返回頁，呼叫 confirm 即時對帳。 |
-| `/[locale]/dashboard/tools` | **MILESTONES / 里程碑**（2026-08 由「工具 Tools」更名）——進入市場落地清單（真工具）：`requirePlan("pro")`；依 `OnboardingProfile.needs` 由 `src/lib/tools/checklist.ts` 生成分組可勾選清單，勾選存 `User.checklistState`；未填 needs 顯示引導（引導去 `/dashboard/account` 填 needs，onboarding 已不收此題）、方案不足顯示升級牆。 |
-| `/[locale]/dashboard/agenda` | **ACTION PLAN / 落地待辦**（`requirePlan("pro")`）：下一步（複用 `home.priority` 文案）＋ 三里程碑進度 ＋ 依期限排序的單一任務清單。計算層 `src/lib/dashboard/agenda.ts`（純函式）合併兩種來源：**系統任務**＝`buildChecklist(needs)` 模板，期限由「註冊日 anchor + `SUGGESTED_DAYS[need]`」推算、勾選存 `User.checklistState`（走 `/api/tools/checklist`，key 白名單）；**自訂任務（2026-08）**＝任務區塊右上「＋」新增，存 `LandingTask` 表（`userId` scope + `onDelete: Cascade`），期限可留空、可勾選可刪除，走 `/api/agenda-tasks`(`POST`)、`/api/agenda-tasks/[id]`(`PATCH`/`DELETE`)，每人上限 200 筆。無期限任務一律視為 `upcoming`（不進逾期/本週提醒），排序時置於同組最後。`<input type="date">` 的 `YYYY-MM-DD` 由 `parseDueDate()` 存成該日 `23:59:59.999Z`，避免 UTC+8 提早近一日誤判逾期。未填 needs 時仍渲染 `AgendaBoard`（引導卡以 slot 從 server 傳入當空狀態），否則會員看得到頁面卻無入口新增自己的任務。 |
+| `/[locale]/dashboard/investors` | **Business / Enterprise Investor Portal**：全公司單一分享設定；Profile、stage/bottleneck、Action Plan、KPI、Milestone、Update、Business Plan 全部預設關閉。KPI/Milestone/Update 完整 CRUD；PDF 由瀏覽器直傳，限 10 MB 且同時驗 MIME、副檔名、`%PDF-` 檔頭，驗證失敗會刪除該 Private Blob。Email 邀請 7 天、token 只存 hash、同 Email 登入後才能接受；撤銷或降級立即失效，資料保留。Pro 顯示升級入口。 |
+| `/[locale]/investor`、`/investor/[portalId]`、`/investor/invite/[token]` | 投資人獨立唯讀入口；同一 User 可同時是創辦人與多家公司的投資人。邀請登入／註冊會安全返回原邀請；跨公司或已撤銷權限回 404。PDF 每次下載重新驗 owner 或 accepted membership，回 `private, no-store` + `nosniff`，不暴露 Blob URL。 |
+| `/[locale]/dashboard/tools` | **MILESTONES / 里程碑**（Pro+）——依 `OnboardingProfile.needs` 顯示既有進入市場清單，並固定加入「每週 / Weekly」與「每月 / Monthly」群組。頁面可新增自訂里程碑，**系統預設項目與自訂項目一律可編輯文字與刪除**，所有群組（含 Market entry）皆可改名；系統清單完成狀態繼續存 `User.checklistState`，群組改名、自訂項目與系統項目覆寫另存 `User.milestoneConfig` JSON，兩者互不覆寫。系統項目採覆寫層而非改寫模板：改名寫入 `systemTitles`、刪除只記 key 到 `hiddenSystemKeys`（軟刪），因此 item key 永遠穩定、勾選狀態不會變孤兒，群組標題旁的「還原預設 / Restore defaults」可一鍵還原該群組所有預設項目（只在該群組有覆寫時出現）。系統 item key 一律用 `ALL_CHECKLIST_KEYS` 白名單驗證。沒有 needs 仍可使用每週／每月群組；方案不足顯示升級牆。所有操作區至少 44px，進度條含 ARIA 數值，API 錯誤在前端完整換行顯示。 |
+| `/[locale]/dashboard/agenda` | **NOVA ACTION PLAN（Pro+，2026-08）**：首頁 NOVA 的 `Build action plan` 或本頁 `Regenerate with NOVA` 啟動診斷；每次只問一題、最多三題，使用者可先確認／修改 7 階段與「群組＋具體問題」瓶頸，確認後才生成預設 24 個候選 Actions。每項含 Impact、Urgency、Dependency、Difficulty+Action time、Company stage+Stage fit、Bottleneck+Bottleneck fit、Expected outcome+Estimated time 八維資料。Action time 以 15 分鐘精度輸入、AI 生成與排序；`ActionItem.actionTimeMinMinutes/MaxMinutes` 為 nullable 新欄位，舊資料回退到 hours × 60，新寫入同時以 floor／ceil 保存舊 hours 欄位相容。`src/lib/action-plan/ranking.ts` 依 `Impact × Urgency × Stage fit × Bottleneck fit ÷ Difficulty` 即時計分（不存 score/rank/blocked），排除完成與 Required 未解除依賴後，依分數→緊急度→影響力→較短分鐘數→建立時間得出 Next 3。完整清單可搜尋、篩 Ready/Blocked/Done、新增、編輯、完成與刪除；修改哪一個 Fit 都必填理由、只清空該 Fit 的 AI confidence，並以獨立 flag 標示該欄為使用者調整；被其他 Action 依賴者禁止刪除並回 409。重新生成以 transaction 封存舊版、建立新版，任何失敗都回滾。原 `LandingTask`、`User.checklistState` 與既有期限計算完全不遷移、不覆寫，移至頁面下方 **Legacy landing tasks** 獨立保留。 |
 | `/[locale]/dashboard/feedback` | **REPORT AN ISSUE / 問題回報（2026-08）**：會員回報產品 bug 或提建議，並看得到自己每則回報的處理狀態與我們的回覆。**刻意不套 `requirePlan`**——其他會員工具是 Pro 限定，但 bug／建議是我們想要更多、不是更少的訊號，把免費會員擋在付費牆後面等於自斷回饋來源；濫用護欄改由 rate limit 承擔（見下方 API）。左欄表單（分類／摘要／描述／選填「發生在哪個頁面」），右欄自己的回報清單（狀態徽章 + 管理員回覆區塊）。送出後**不開放會員自行修改／刪除**：回報是重現問題的事證，且管理員可能已據此回覆，事後被改寫會讓後台處理紀錄失去意義——要補充就再送一則。元件 `FeedbackManager`。**狀態語氣刻意兩套**：後台 `wontfix` 標「不處理」（分流用、要短），會員端同一狀態顯示「已評估，暫不處理 / Reviewed — not planned」——資訊不隱藏（會員不會傻等），但不用「不予處理」這種對願意花時間回報的人偏冷的字眼；徽章配色也走中性灰而非紅色。 |
 | `/api/account/profile` | PATCH 更新 profile（自守衛 `getUserSession`）。 |
 | `/api/account/password` | POST 變更/設定密碼（有密碼者需驗舊密碼；Google-only 免舊密碼直接設定）。 |
-| `/api/account/delete` | POST 刪帳號（best-effort 取消 PayPal 訂閱 → `prisma.user.delete` cascade → 清 `user_session`）。 |
+| `/api/account/delete` | POST 刪帳號（best-effort 取消 PayPal；若有私密 Business Plan，Blob 必須先成功刪除，否則整個刪帳失敗；之後 DB cascade + 清 session）。 |
 | `/api/tools/checklist` | PATCH 更新落地清單勾選（`requirePlan("pro")` 守衛，merge 進 `User.checklistState`）。 |
+| `/api/tools/milestones` | PATCH 執行 Milestones 群組改名、自訂項目的新增／編輯／完成／刪除，以及系統預設項目的改名（`updateSystemItem`）、軟刪（`deleteSystemItem`）與整組還原（`restoreSystemItems`）；`requirePlan("pro")`、Zod 白名單、每戶最多 100 筆，自動以登入 userId scope 寫入 `User.milestoneConfig`。 |
 | `/api/{crm\|pipeline\|notes}` + `/[id]` | **會員 CRUD（2026-07）**：POST 建立 / PATCH 更新 / DELETE 刪除。自守衛 `getUserSession`（401）+ `requirePlan("pro")`（403），每筆以 `session.uid` scope（`updateMany`/`deleteMany` count 檢查，或 findFirst 驗擁有權），zod 驗證於 `src/lib/dashboard/schemas.ts`。**不重用** admin generic CRUD（那是 admin-only 且無 userId 過濾）。 |
 | `/api/feedback` | **問題回報送出（2026-08）**：POST，僅 `getUserSession` 守衛（**無 `requirePlan`**）＋ **每會員每日 10 則 rate limit**（`feedback:<userId>`，取代付費牆的成本／濫用護欄）。zod 驗證（描述至少 10 字——一句「壞掉了」無法重現）；`userAgent` 由 server 從 header 取並截斷 500 字，**不信 client 傳入**。 |
 | `/api/admin/feedback/[id]` | **後台處理回報（2026-08）**：PATCH 改 `status` / 寫 `adminReply`（會員看得到）、DELETE 刪除。會員填寫的內容一律唯讀（保留原始事證）。`resolvedAt` 於**首次進入終局狀態**（`resolved`/`wontfix`）時蓋章，被重新打開就清掉，讓處理時長永遠對應目前這一輪。 |
-| `/api/copilot` | **AI Copilot 串流（2026-07）**：POST，`getUserSession`+`requirePlan("pro")`+**每會員每日 50 則 rate limit** 守衛後以 `@anthropic-ai/sdk` `messages.stream` 逐字回傳（`ReadableStream`, `text/plain`）。model 取 `ANTHROPIC_MODEL`（預設 `claude-sonnet-5`），system prompt 帶會員 `profile` 公司資訊、依 locale 回覆。守衛失敗回真狀態碼（含超限 429）；串流開始後的 Anthropic 例外完整寫入 server log，對話只顯示「顧問暫時無法連線，請稍後再試。」或英文對應句，不外洩 401/403、JSON 或 request id。成本護欄＝Pro-gate + 輸入長度/則數上限 + rate limit（DB-based，見 `src/lib/rate-limit.ts` / `RateCounter` 表）。需 `ANTHROPIC_API_KEY`（見環境變數）。 |
-| `/api/billing/subscribe\|confirm\|cancel` | 建立 / 確認 / 取消訂閱（自守衛）。subscribe 會擋「已有 ACTIVE/APPROVED 訂閱者重複訂閱」（回 409 `alreadySubscribed`），避免重複扣款。 |
-| `/api/billing/webhook` | PayPal webhook：不查 session、改以簽章驗證；冪等 + 對帳。觸發對帳的事件用 **prefix 比對**（`BILLING.SUBSCRIPTION.*` + `PAYMENT.SALE.COMPLETED`）而非逐一列舉 — 白名單漏一個（如客戶更新付款方式後的 `BILLING.SUBSCRIPTION.RE-ACTIVATED`，官方名稱帶連字號）就等於漏對帳、客戶付了錢權限卻回不來；`reconcile` 冪等且以 PayPal 為權威，多對帳無害、漏對帳才有害。 |
+| `/api/copilot` | **AI Copilot 串流**：Pro / Business / Enterprise 與有效 trial 每個 entitlement 月含 150 次成功回答，按訂閱／trial 開始日每月重置（年繳仍按月）。DB reservation 防多分頁超發；只有 Anthropic 串流完整成功才確認消耗，失敗立即釋放。基本額度用完再使用永久 bonus；全部用完回 429 並引導 Billing。 |
+| `/api/action-plans/*` | **結構化 NOVA Action Plan API（2026-08）**：`diagnose` 每會員每日 10 次，讀取最多 30 則當前 client 對話且不持久化對話；`generate` 每日 3 次、`requestId` 冪等，Anthropic strict tool schema 生成 20–100 項（預設 24），route 最長執行時間為 300 秒。生成採每批最多 2 項逐批累積，後批會收到既有 key/title 並只能依賴先前或同批較早的 Action；每批使用動態 `action1…actionN` 必填欄位，而非 strict schema 無法限制長度的陣列，因此供應商不能再只回 1～2 項。兩項上限依 Anthropic 官方「schema 過於複雜時拆成多次請求」原則與正式 grammar 探針決定；Action tool 使用單層欄位，已確認的 stage／bottleneck 由伺服器注入，避免重複的巢狀 schema 與大型 enum 超過內部 grammar 限制，DTO、Zod 與 DB 仍保留全部八維資料。這同時避開不支援 `minItems` 的限制並天然阻止跨批循環。AI 輸出層以 `0`／空字串表示 nullable 值並在 Zod 信任邊界還原，避免 union 欄位超過供應商 16 個上限。數值範圍寫入欄位說明並由原有 Zod 契約再次驗證，避免 `minimum`／`maximum`／`minItems`／`maxItems`／過量 `anyOf` 回 400；回歸測試會阻止這些關鍵字重新進入 tool schema。AI 的 Immediate／Urgent `urgencyDays` 會標準化為 `null`；Scheduled 缺天數仍由 Zod 拒絕。每次完整生成至多允許一次無效批次 repair；湊滿指定數量後再由 Zod 驗證 enum/時間/Fit/clientKey/同計畫依賴與循環，仍失敗零寫入。`actions` POST 與 `actions/[id]` PATCH/DELETE 完整 userId+active plan scope，每計畫上限 100。Builder 先讀取原始 response text 再解析 JSON，Vercel timeout 等非 JSON 回應會完整顯示 HTTP status 與原文，不再退化成瀏覽器的 pattern 例外。所有路由沿用 session、Pro gate、`{data}`/`{error}`；4xx 業務錯誤完整回傳，非預期 500 僅回安全錯誤碼並保留 server log。Active plan 的診斷與 Next 3 同步加入後續 `/api/copilot` system context。 |
+| `/api/billing/subscribe\|confirm\|cancel` | `plan + interval + requestId` 建立／變更／確認／取消 USD 訂閱。同 Product USD 方案走 PayPal revise 並要求會員重新同意；舊 TWD 轉換用舊週期結束日作 future start，新方案核准後才取消舊方案。 |
+| `/api/billing/credits/*`、`/api/ai-usage` | PayPal Orders v2 建立/capture USD 5 額度包；order id、requestId、capture id unique，return 與 webhook 重送只入帳一次。`GET /api/ai-usage` 回 included/used/remaining/bonus/reset。 |
+| `/api/investor-portal/*`、`/api/investor/invitations/accept` | Business owner-scoped CRUD、私密 PDF、Resend 邀請／撤銷與投資人接受。CRUD 跨公司回 404；每天每公司 20 封、同 Email 5 次；寄信錯誤完整顯示可重試，憑證與內部堆疊不下送。 |
+| `/api/admin/users/[id]/trial` | admin session 才能建立、延長或撤銷 Pro / Business 限時試用；後台明確標出沒有 PayPal subscription id 的舊假 ACTIVE。 |
+| `/api/billing/webhook` | PayPal 簽章驗證、事件審計與訂閱對帳；另處理 `PAYMENT.CAPTURE.COMPLETED` 額度入帳。重送安全，非預期錯誤只回安全 code、完整細節留 server log。 |
 
-UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileForm` / `AccountSecurityForm` / `AccountDangerZone` / `ChecklistTool` / `BillingPanel` / `BillingReturn` / `DashboardCompanyList` / `PlanPaywall` / `CrmManager` / `PipelineBoard` / `NotesManager` / `AgendaBoard` / `FeedbackManager`；`getCurrentAccount()` 的 DTO 2026-08 起帶 `createdAt`＝落地起點 anchor，Agenda 頁因此省去一次 `User` 查詢），總覽 widget 在 `src/components/dashboard/home/`（`PriorityBanner` / `MetricsRow` / `AlertsRow` / `FounderMatchCard` / `TutorialVideoCard` / `TopOpportunitiesRail` / `UpcomingEventsRail`，皆 server component；`CopilotPanel` 為 client 串流對話）。CRUD 驗證 schema 在 `src/lib/dashboard/schemas.ts`（zod）。`DashboardSidebar` 的 `NAV` 陣列 + `NavKey` 集中管理側欄（2026-08 起英文側欄使用 sentence case，`Fundraising` 教材入口隱藏、改由 `Fundraising quiz` 承接學習；新增頁面在此擴充；`soon:true` 顯示「即將」小標，目前無啟用者）。shell 內容欄寬 `max-w-6xl` 供雙欄總覽。輕量公司清單 getter（`getCompanyList` / `countCompanies` / `getCompanyCards`）在 `src/lib/company/content.ts`。i18n 在 `messages/*.json` 的 `Dashboard`（含 `home`/`profile`/`companies`/`comingSoon` 及 2026-07 新增 `gate`/`actions`/`crm`/`pipeline`/`notes` 與 `home.copilot.*` 對話鍵、2026-08 新增 `feedback`）/ `Billing` namespace，en 與 zh-tw 鍵完全平行。新依賴 `@anthropic-ai/sdk`；新資料表 `Contact`/`Deal`/`MeetingNote`/`RateCounter`（rate limit 計數）/`PlaybookQuizAttempt`（雙週問答作答歷史）/`LandingTask`（2026-08，落地待辦自訂任務）/`FeedbackReport`（2026-08，會員問題回報）＋ `User.playbookReads` 與 `Contact.category` 欄需跑 `pnpm db:push`（皆為加法式，不使用 `--accept-data-loss`）。問題回報的分類／狀態／限流配額集中在 `src/lib/dashboard/feedback.ts`（會員端、API zod enum、管理端共用同一份常數；**該檔刻意不 import 任何 `server-only` 模組**，因為回報表單的分類選單是 client component）。安全強化（2026-07）：login/signup/改密碼皆套 DB-based rate limit（`src/lib/rate-limit.ts`，無 KV 故用 Neon 原子 UPSERT）+ login 等時比對消除帳號枚舉時序側信道；bcrypt cost 提到 12（`src/lib/auth/password.ts`）；JWT 驗證鎖 `HS256`；`api.ts` 對非預期 500 遮蔽內部細節（業務 4xx 仍全顯，符合「錯誤全顯前端」）；金流取消寬限期修正（`reconcile` 不再用 null 覆寫 `User.currentPeriodEnd`）。**知識手冊 Playbooks（2026-07）**：`content/playbooks/*.json`（loader `src/lib/playbook/content.ts`）為**分段結構**（`segments[]`，一個紅標＝一段，每段附 2 題選擇題題庫）。ingest（`scripts/ingest-playbook.mjs`）流程：PDF → Claude 扁平 `body_en/zh`（紅標＝`##`）→ **本地在 `^##` 切段** → 第二次呼叫產每段題庫（皆串流累加 `input_json_delta` 避 SDK 重組 bug）。**雙用**：會員頁 `/dashboard/playbooks`（`PlaybookReader` 分段 + 已讀 filter，狀態存 `User.playbookReads`）＋ Nova AI（`knowledge.ts` `buildPlaybookIndex`/`renderPlaybookForAI`、`tools.ts` `get_playbook`、`policy.ts` 視為權威方法論）。**雙週問答** `/dashboard/quiz`（`src/lib/playbook/quiz.ts`：註冊日為錨即時算雙週、全題庫循環選題、server 重算分數；`PlaybookQuizAttempt` 存歷史；元件 `PlaybookReader`/`PlaybookQuizClient`）。每日新增＝丟 PDF 再跑一次 ingest，零改程式。
+UI 元件在 `src/components/dashboard/`（含 `ActionPlanBuilder`、`ActionPlanManager`、Dashboard `ActionPlanOverview` 與保留 legacy 區的 `AgendaBoard`）。Action Plan 的分類、Zod 契約、排名、Dashboard priority/progress 純函式、分鐘格式、AI strict tools 與 persistence service 集中在 `src/lib/action-plan/`；`tests/action-plan.test.ts` 覆蓋權重、公式、分鐘相容與格式、Dashboard precedence/progress、完成排除、Required gate、依賴解除、循環與 20/24/100 邊界。i18n 的 `Dashboard.actionPlan` 與 `Dashboard.home.actionSummary` 在 en/zh-tw 保持平行。新資料表 `ActionPlan` / `ActionItem` / `ActionDependency` 與分鐘欄位皆為純新增，`ActionPlan.activeKey` nullable unique 保證每位會員最多一份 active plan，`[userId, requestId]` 保證生成冪等；舊 `LandingTask` / `checklistState` 不回填。連同既有新資料表與欄位一律使用 `pnpm db:push`，禁止 `--accept-data-loss`。其餘 Dashboard 元件、CRM、Billing、Playbook、Feedback 與安全架構維持既有契約。
 
 **入口接通**：登入 / onboarding / 測驗完成後由 `destinationFor`（`src/lib/auth/onboarding.ts`，`completed → /dashboard`）導向後台；全站 Navbar 有「會員中心」入口（靜態連結 → `/dashboard`，未登入由 proxy 導 `/login`）。
 
 ### 方案與 gating
 
-- 方案邏輯單一事實來源：`src/lib/billing/plans.ts`（`PLAN_KEYS` / `PLAN_RANK` / `PLAN_CONFIG`，PayPal plan id 走 env 名）。帳務頁的付費方案名稱走 `Dashboard.plans`，金額由 `PLAN_CONFIG.monthlyTwd` 產生，避免 CMS 舊翻譯顯示的幣別／價格與 PayPal 實扣不一致；行銷頁文案仍可走 i18n/CMS。
+- 方案與真實收款單一事實來源：`src/lib/billing/plans.ts`。Pro = USD 49/月、USD 468/年；Business = USD 149/月、USD 1,668/年；Enterprise 只聯絡報價。公開 Pricing 與 Billing 都由相同 amountMinor 產生，不顯示虛構原價。Free 是未訂閱狀態，不能使用 Action Plan。
 - gating：`src/lib/billing/gate.ts` 的 `getEffectivePlan` / `getUserPlan` / `requirePlan`。**兩種寬限期，起算點刻意不同**：
   - **ACTIVE / CANCELLED** → 需 `currentPeriodEnd > now`。已取消者付到本期末才降級；即使 PayPal 漏送 CANCELLED，到期也會自動降級。
   - **SUSPENDED（扣款失敗）** → 走 `SUSPENDED_GRACE_MS`（**1 天**），以 `planUpdatedAt` 起算，**刻意不看 `currentPeriodEnd`**。因為扣款失敗的時間點正是本期到期日，SUSPENDED 時 `currentPeriodEnd` 必然已過期，且 PayPal 轉 SUSPENDED 前會先重試扣款數天 — 若用 `currentPeriodEnd` 當起點，寬限期會在 SUSPENDED 事件送達前就過完＝完全沒有寬限。設計意圖：最常見的扣款失敗原因是信用卡到期，給 1 天讓客戶更新付款方式，避免長期客戶在收到通知前就先失去存取。UI 用 `suspendedGraceEndsAt` / `suspendedGraceActive`（時間比較收在 gate 內，server component render body 直接呼叫 `Date.now()` 會違反 `react-hooks/purity`）。
   - **前提**：`reconcile` 只在 plan/status **真的變化**時才更新 `planUpdatedAt`。若每次對帳都無條件刷新，PayPal 的重送／重複投遞會不斷延長寬限期，讓扣款失敗的帳號無限期保有付費存取。
-  - EXPIRED 為終局狀態，不授予存取；`enterprise` 由站方手動設定、無條件信任。
-- DAL：`src/lib/auth/account.ts` 的 `getCurrentAccount()`（React `cache()` 包裝、回安全 DTO，不含 passwordHash；含 `hasPassword` 布林、`checklistState`，以及 `planUpdatedAt`——SUSPENDED 寬限期的起算點，gate 需要它才能算寬限期）。
+  - `BILLING_REQUIRE_EXPLICIT_ENTITLEMENT=true` 後，Pro／Business 必須有 PayPal subscription id 或未到期 trial；舊 `plan=pro + ACTIVE` 假資料不再授權。切換前需先在 `/admin/users` 逐戶設定 trial。有效付費與 trial 同時存在時取較高方案；`enterprise` 由站方人工管理。
+- DAL：`src/lib/auth/account.ts` 的 `getCurrentAccount()`（React `cache()` 包裝、回安全 DTO，不含 passwordHash；含 `hasPassword` 布林、`checklistState`、`milestoneConfig`，以及 `planUpdatedAt`——SUSPENDED 寬限期的起算點，gate 需要它才能算寬限期）。
 
 ### PayPal 訂閱流程
 
-1. **一次性設定**：明確設定 `PAYPAL_ENV=sandbox|live` 後，`node --env-file=.env.local scripts/paypal-setup.mjs` 建立該環境專屬的 Product + Pro/Business 月費 Plan（TWD），把印出的 `PAYPAL_PLAN_ID_*` 填回 `.env.local`。sandbox 與 live 的 credentials、plans、webhook 不可混用。
-2. **訂閱**：billing 頁 → `POST /api/billing/subscribe` 建立 PayPal 訂閱 → 前端 redirect 到核准頁 → 返回 `billing/return` → `POST /api/billing/confirm` 即時對帳。
+1. **一次性設定**：`node --env-file=.env.local scripts/paypal-setup.mjs` 預設只 dry-run；加 `--apply` 才在同一 NOVA Product 建立缺少的四個 USD plans。腳本會按既有 env id / Product 內同名 plan 重用，遇到 id 漂移直接停止，不重複建立。舊 TWD plan id 保留歷史對帳，停止新 checkout。
+2. **訂閱**：Billing 月／年切換 → `POST /api/billing/subscribe` → PayPal 核准 → return confirm。USD 互換走 revise，未重新同意時舊方案照常；舊 TWD 若存在則 future-start，新 USD 核准成功後才取消舊訂閱。
 3. **對帳權威來源**：`/api/billing/webhook`（驗章 → `WebhookEvent` 審計 → `reconcileById` 以 PayPal 為準更新 `User` + `Subscription`）。`reconcile` 為 idempotent，故 webhook 失敗回 500 讓 PayPal 重送是安全的。
-4. PayPal 直打 REST（`src/lib/billing/paypal.ts`，**無 SDK 依賴**）；缺 credentials 時 `isPaypalConfigured()` 回 false；錯誤 `PAYPAL_ENV` 或 Production sandbox 則直接拒絕，不建立任何遠端訂閱。Production return/cancel origin 即使從 request fallback 推導，也只接受 `https://www.rollgrp.com`。
+4. PayPal 直打 REST（無 SDK／新套件）；subscription checkout 與 USD 5 credit order 都有 idempotency key。`scripts/paypal-reconcile.mjs` 預設唯讀輸出差異，只有 `--apply` 才補建缺少的 Subscription 稽核紀錄，永不刪除或降級 User。
 
 > **schema 演進零資料遺失**：計費欄位 / 表全為 nullable 或有 default 的純疊加；用 `prisma db push`，**禁止 `--accept-data-loss`**（若 push 要求該旗標代表改成破壞性了，需退回改正）。
 >
-> **台灣電子發票（待辦，法遵需求）**：對台灣客戶收費須開立電子發票（綠界 ECPay / ezPay 發票 API），掛在 webhook `PAYMENT.SALE.COMPLETED` 後開立，另需 `Invoice` model 與買受人 / 統編 / 載具欄位。列為後續階段，不阻塞前面金流上線。
+> **台灣電子發票（上線阻擋條件）**：本 Epic 不做自動開票；新 USD 正式收款公開前，必須指定人工電子發票責任人與處理流程。PayPal 收據不能當成台灣電子發票。
 
 ### Production 上線（Vercel）
 
@@ -390,12 +414,12 @@ UI 元件在 `src/components/dashboard/`（`DashboardSidebar` / `AccountProfileF
 
 Production 直接使用 PayPal Live；帳號持有人須在 Vercel UI 安全輸入 secrets，不經聊天、shell history 或 Git：
 
-1. 以 Live Client ID / Secret 執行 `node --env-file=.env.local scripts/paypal-setup.mjs`，建立 Live Pro（TWD 590）與 Business（TWD 890）plans；不得沿用 sandbox plan id。
-2. 執行 `node --env-file=.env.local scripts/paypal-create-webhook.mjs` 建立 `https://www.rollgrp.com/api/billing/webhook`。腳本預設訂閱 `BILLING.SUBSCRIPTION.CREATED`、Activated／Updated／Cancelled／Suspended／Expired／Payment Failed 與 `PAYMENT.SALE.COMPLETED`；同 URL 已存在時會保留額外事件並以 PATCH 補齊缺少事件，不會只取回 ID 後假裝完成。
-3. Vercel Production 設定：`PAYPAL_ENV=live`、Live `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` / `PAYPAL_PLAN_ID_PRO` / `PAYPAL_PLAN_ID_BUSINESS` / `PAYPAL_WEBHOOK_ID`、`NEXT_PUBLIC_APP_URL=https://www.rollgrp.com`，以及已由 models API 驗證有效的 `ANTHROPIC_API_KEY`。值不可帶引號或註解。
-4. 部署前以唯讀 API 驗證 Anthropic 可列出 `ANTHROPIC_MODEL`、PayPal OAuth 成功、兩個 plans 都是 `ACTIVE`，且 webhook URL／事件正確；再依序執行 `pnpm test`、`pnpm lint`、`pnpm build`。
+1. 先以 additive Prisma diff 確認沒有 drop／rename／重建，再執行 `pnpm db:push`；禁止 `--accept-data-loss`。部署 trial 後台，為舊人工 Pro 帳號設定真實期限，最後才把 `BILLING_REQUIRE_EXPLICIT_ENTITLEMENT` 切為 `true`。
+2. Sandbox 以 `scripts/paypal-setup.mjs --apply` 建四個 USD plans，測月／年、revise、future-start 與 USD 5 capture；webhook 必須包含訂閱事件、`PAYMENT.SALE.COMPLETED` 與 `PAYMENT.CAPTURE.COMPLETED`。
+3. 設定獨立 Private Blob token、Resend key/from，完成寄件網域 SPF／DKIM；不得沿用公開圖片 Blob store。
+4. Live 建四個 plans，更新 Vercel Production env，並以唯讀 API 驗證 Anthropic、PayPal OAuth、四個 plan ACTIVE、webhook 事件與 Resend／Blob 設定；再跑 `pnpm test`、`pnpm lint`、`pnpm build`。
 5. 從乾淨隔離 worktree 執行 Production deploy，避免把其他未提交修改一起上線；`NEXT_PUBLIC_APP_URL` 是 build-time 設定，必須先完成環境更新。
-6. 以內部測試帳號完成一筆真實 TWD 590 Pro 訂閱：返回 www confirm 成功、`WebhookEvent` 新增、Subscription/User 為 `ACTIVE`/`pro` 且到期日在未來，NOVA 可實際回覆。驗收後立即取消；不自動退款，保留已付期間權限。
+6. 只用已授權正式測試帳號完成 USD 訂閱、150 次週期、額度加購、Investor 邀請／撤銷／私密 PDF；不得自行建立、升級或刪除其他會員。驗收取消不自動退款，保留已付期間權限。
 7. 驗收時檢查 webhook response 的 `x-vercel-id` 含 `sin1`，並監看 Vercel server log。使用者只會看到通用錯誤，完整上游錯誤只留後端。
 
 既有 orphan `APPROVAL_PENDING` 不刪除、不覆寫；它保留作為跨 PayPal app 設定漂移的審計證據。webhook 腳本重跑也只補事件、不改任何訂閱資料。任何 schema 操作都禁止 `--accept-data-loss`。

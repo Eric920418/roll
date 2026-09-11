@@ -256,7 +256,7 @@ export default function RollMap() {
     <section
       ref={sectionRef}
       aria-labelledby="rollmap-sr-heading"
-      className="relative min-h-screen bg-white flex items-center justify-center overflow-hidden"
+      className="relative min-h-svh md:min-h-screen bg-white flex items-center justify-center overflow-hidden"
     >
       {/* SSR text version — visually hidden but present in DOM for LLMs & screen readers */}
       <div className="sr-only">
@@ -335,21 +335,21 @@ export default function RollMap() {
           </span>
         </a>
         {/* Left: Hero content */}
-        <div className="flex-1 flex items-center bg-primary relative overflow-hidden">
-          <div className="px-8 md:px-12 lg:px-16 xl:px-24 w-full">
+        <div className="relative flex min-h-0 flex-1 items-center overflow-hidden bg-primary pt-14 md:pt-0">
+          <div className="relative z-10 w-full px-8 md:px-12 lg:px-16 xl:px-24">
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="relative w-full max-w-[560px]"
+              className="relative h-[clamp(9.5rem,26svh,15rem)] w-full max-w-[560px] md:aspect-[700/547] md:h-auto"
             >
               <Image
                 src="/vertical.png"
                 alt="ROLL ON."
-                width={700}
-                height={547}
+                fill
+                sizes="(max-width: 767px) calc(100vw - 4rem), (max-width: 1279px) 50vw, 560px"
                 priority
-                className="w-full h-auto object-contain"
+                className="object-contain object-left"
               />
             </motion.div>
             <motion.p
@@ -370,7 +370,7 @@ export default function RollMap() {
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-          className="flex-1 flex flex-col items-center justify-center bg-white px-8 md:px-12 lg:px-16"
+          className="flex min-h-0 flex-1 flex-col items-center justify-center bg-white px-8 md:px-12 lg:px-16"
         >
           {/* Title: only ROAD/ROLL flips, MAP stays static */}
           <motion.div

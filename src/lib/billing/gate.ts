@@ -1,6 +1,22 @@
 import "server-only";
 import { getCurrentAccount, type Account } from "@/lib/auth/account";
-import { planAtLeast, type PlanKey } from "@/lib/billing/plans";
+import {
+  PLAN_RANK,
+  planAtLeast,
+  type PlanKey,
+} from "@/lib/billing/plans";
+
+export type BillingAccount = Pick<
+  Account,
+  | "plan"
+  | "subscriptionStatus"
+  | "paypalSubscriptionId"
+  | "currentPeriodEnd"
+  | "planUpdatedAt"
+  | "trialPlan"
+  | "trialStartsAt"
+  | "trialEndsAt"
+>;
 
 // 方案 gating。權限一律即時計算（不信 JWT 內的 plan），且套「寬限期」：
 // 付費方案只在「本期未過期」且狀態仍授予存取時有效，否則 effective plan 退回 free。
@@ -31,7 +47,7 @@ export const SUSPENDED_GRACE_MS = 24 * 60 * 60 * 1000; // 1 天
  * 依賴前提：`reconcile` 只在 plan/status 真的變化時才更新 `planUpdatedAt`，
  * 否則重複送達的 webhook 會不斷刷新起算點、把寬限期無限延長。
  */
-export function suspendedGraceEndsAt(account: Account | null): Date | null {
+export function suspendedGraceEndsAt(account: BillingAccount | null): Date | null {
   if (!account || account.subscriptionStatus !== "SUSPENDED") return null;
   if (account.planUpdatedAt == null) return null;
   return new Date(account.planUpdatedAt.getTime() + SUSPENDED_GRACE_MS);
@@ -42,9 +58,12 @@ export function suspendedGraceEndsAt(account: Account | null): Date | null {
  * 時間比較刻意收在此處：server component 的 render body 直接呼叫 Date.now()
  * 會違反 react-hooks/purity，且判斷邏輯只該有一份。
  */
-export function suspendedGraceActive(account: Account | null): boolean {
+export function suspendedGraceActive(
+  account: BillingAccount | null,
+  now = new Date(),
+): boolean {
   const endsAt = suspendedGraceEndsAt(account);
-  return endsAt != null && endsAt.getTime() > Date.now();
+  return endsAt != null && endsAt.getTime() > now.getTime();
 }
 
 /**
@@ -53,24 +72,54 @@ export function suspendedGraceActive(account: Account | null): boolean {
  * - enterprise → enterprise（由站方手動設定，不經 PayPal，直接信任）
  * - pro/business → ACTIVE/CANCELLED 需本期未過期；SUSPENDED 走 1 天寬限期；其餘退回 free
  */
-export function getEffectivePlan(account: Account | null): PlanKey {
-  if (!account) return "free";
+function activeTrialPlan(account: BillingAccount, now: Date): PlanKey {
+  if (
+    !account.trialPlan ||
+    account.trialPlan === "free" ||
+    account.trialPlan === "enterprise" ||
+    !account.trialStartsAt ||
+    !account.trialEndsAt ||
+    account.trialStartsAt.getTime() > now.getTime() ||
+    account.trialEndsAt.getTime() <= now.getTime()
+  ) {
+    return "free";
+  }
+  return account.trialPlan;
+}
+
+function paidPlan(account: BillingAccount, now: Date): PlanKey {
   if (account.plan === "free") return "free";
   if (account.plan === "enterprise") return "enterprise";
 
+  // 兩階段 rollout：先讓管理員把舊人工 ACTIVE 逐戶改成 trial，再於正式環境設為 true。
+  // 設定後 Pro／Business 必須有 PayPal subscription id，假的 ACTIVE 不再授權。
+  const explicitRequired = process.env.BILLING_REQUIRE_EXPLICIT_ENTITLEMENT === "true";
+  if (explicitRequired && !account.paypalSubscriptionId) return "free";
+
   const status = account.subscriptionStatus;
   if (status == null) return "free";
-
-  // 扣款失敗：不看 currentPeriodEnd（必已過期），改看寬限期是否仍在有效期內
   if (status === "SUSPENDED") {
-    return suspendedGraceActive(account) ? account.plan : "free";
+    return suspendedGraceActive(account, now) ? account.plan : "free";
   }
 
   const periodOk =
     account.currentPeriodEnd != null &&
-    account.currentPeriodEnd.getTime() > Date.now();
-
+    account.currentPeriodEnd.getTime() > now.getTime();
   return periodOk && ACCESS_STATUSES.has(status) ? account.plan : "free";
+}
+
+export function getEffectivePlan(
+  account: BillingAccount | null,
+  now = new Date(),
+): PlanKey {
+  if (!account) return "free";
+  const paid = paidPlan(account, now);
+  const trial = activeTrialPlan(account, now);
+  return PLAN_RANK[trial] > PLAN_RANK[paid] ? trial : paid;
+}
+
+export function hasActiveTrial(account: BillingAccount | null, now = new Date()): boolean {
+  return !!account && activeTrialPlan(account, now) !== "free";
 }
 
 /** 取目前登入會員的有效方案（未登入回 free） */

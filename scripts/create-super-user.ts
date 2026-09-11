@@ -15,10 +15,12 @@ try {
 // ── 可用環境變數覆蓋 ──
 //   SUPER_EMAIL     登入帳號（預設 super@rollgrp.com）
 //   SUPER_PASSWORD  登入密碼（預設 RollOn2026!Super，至少 8 碼）
-//   SUPER_PLAN      pro（預設）｜ enterprise（永不過期、不需訂閱期）
+//   SUPER_PLAN      pro（預設試用）｜business（試用）｜enterprise（站方管理）
+//   SUPER_TRIAL_DAYS  Pro/Business 試用天數（預設 30）
 const email = (process.env.SUPER_EMAIL ?? "super@rollgrp.com").trim().toLowerCase();
 const password = process.env.SUPER_PASSWORD ?? "RollOn2026!Super";
 const plan = (process.env.SUPER_PLAN ?? "pro").trim();
+const trialDays = Number(process.env.SUPER_TRIAL_DAYS ?? "30");
 
 async function main() {
   if (!process.env.DATABASE_URL) {
@@ -30,6 +32,9 @@ async function main() {
   if (!["pro", "business", "enterprise"].includes(plan)) {
     throw new Error(`SUPER_PLAN 需為 pro / business / enterprise，收到：${plan}`);
   }
+  if (!Number.isInteger(trialDays) || trialDays < 1 || trialDays > 365) {
+    throw new Error("SUPER_TRIAL_DAYS 必須是 1–365 的整數");
+  }
 
   // env 已就緒，才載入會在 import 時建立連線的 prisma
   const { prisma } = await import("../src/lib/prisma");
@@ -37,17 +42,16 @@ async function main() {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // enterprise 由站方直接信任、不看訂閱期；pro/business 需 ACTIVE + 未過期的 currentPeriodEnd
-    //（見 src/lib/billing/gate.ts 的 getEffectivePlan 寬限期邏輯）。
-    const paid = plan !== "enterprise";
-    const farFuture = new Date("2099-12-31T00:00:00Z");
+    // Pro / Business 一律用可到期 trial，不再偽造 PayPal ACTIVE；Enterprise 才由站方管理。
+    const trialStartsAt = new Date();
+    const trialEndsAt = new Date(trialStartsAt.getTime() + trialDays * 24 * 60 * 60 * 1000);
 
     // 完整通關狀態：completed=true → 登入後 destinationFor() 直接進 /dashboard
+    const access = plan === "enterprise"
+      ? { plan: "enterprise", trialPlan: null, trialStartsAt: null, trialEndsAt: null }
+      : { trialPlan: plan, trialStartsAt, trialEndsAt };
     const shared = {
-      plan,
-      subscriptionStatus: paid ? "ACTIVE" : null,
-      currentPeriodEnd: paid ? farFuture : null,
-      planUpdatedAt: new Date(),
+      ...access,
       completed: true,
       quizCompleted: true,
       onboardingStep: 4,
@@ -55,22 +59,23 @@ async function main() {
 
     const user = await prisma.user.upsert({
       where: { email },
-      // 重複執行也會把既有帳號拉回超級帳號狀態（含重設密碼）
+      // 重複執行只重設密碼／試用，不覆寫既有 PayPal 付款歷史與狀態。
       update: { passwordHash, ...shared },
       create: {
         email,
         passwordHash,
         firstName: "Super",
         lastName: "Admin",
+        plan: plan === "enterprise" ? "enterprise" : "free",
         ...shared,
       },
-      select: { id: true, email: true, plan: true, subscriptionStatus: true, currentPeriodEnd: true },
+      select: { id: true, email: true, plan: true, trialPlan: true, trialEndsAt: true },
     });
 
     console.log("✓ 超級帳號已就緒");
     console.log("  email   :", user.email);
     console.log("  password:", password);
-    console.log("  plan    :", user.plan, user.subscriptionStatus ? `(${user.subscriptionStatus} 至 ${user.currentPeriodEnd?.toISOString().slice(0, 10)})` : "");
+    console.log("  plan    :", user.trialPlan ? `${user.trialPlan} trial（至 ${user.trialEndsAt?.toISOString().slice(0, 10)}）` : user.plan);
     console.log("  登入網址 : https://www.rollgrp.com/login");
     console.log("  登入後直接進 : https://www.rollgrp.com/dashboard");
   } finally {

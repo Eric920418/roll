@@ -12,6 +12,7 @@ import { pathForLocale } from "@/lib/routes";
 import AgendaBoard from "@/components/dashboard/AgendaBoard";
 import PlanPaywall from "@/components/dashboard/PlanPaywall";
 import type { Locale } from "@/i18n/routing";
+import { getActiveActionPlan } from "@/lib/action-plan/service";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -41,11 +42,14 @@ export default async function AgendaPage({ params }: Props) {
 
   // 落地起點錨 = 註冊日（account DTO 已帶，不必再查一次 User）
   const anchor = account.createdAt;
-  const customTasks = await prisma.landingTask.findMany({
-    where: { userId: account.id },
-    select: { id: true, title: true, dueAt: true, done: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [customTasks, actionPlan] = await Promise.all([
+    prisma.landingTask.findMany({
+      where: { userId: account.id },
+      select: { id: true, title: true, dueAt: true, done: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    getActiveActionPlan(account.id),
+  ]);
 
   const focus = computeFocus(account, l);
   const milestones = computeMilestones(account, l);
@@ -74,6 +78,7 @@ export default async function AgendaPage({ params }: Props) {
         focus={focus}
         milestones={milestones}
         agenda={agenda}
+        actionPlan={actionPlan}
         emptyState={
           <div className="rounded-2xl border border-dashed border-dark/15 bg-white p-7">
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">

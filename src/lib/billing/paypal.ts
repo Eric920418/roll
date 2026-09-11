@@ -92,17 +92,37 @@ export interface PaypalSubscription {
   links?: { href: string; rel: string; method: string }[];
 }
 
+export interface PaypalOrder {
+  id: string;
+  status: string;
+  links?: { href: string; rel: string; method: string }[];
+  purchase_units?: Array<{
+    custom_id?: string;
+    payments?: {
+      captures?: Array<{
+        id: string;
+        status: string;
+        amount?: { currency_code?: string; value?: string };
+      }>;
+    };
+  }>;
+}
+
 /** 建立訂閱，回傳 PayPal 訂閱 id + 供使用者核准的 approve URL */
 export async function createSubscription(params: {
   planId: string;
   email: string;
   returnUrl: string;
   cancelUrl: string;
+  requestId: string;
+  startTime?: string;
 }): Promise<{ id: string; status: string; approveUrl: string }> {
   const res = await paypalFetch("/v1/billing/subscriptions", {
     method: "POST",
+    headers: { "PayPal-Request-Id": params.requestId },
     jsonBody: {
       plan_id: params.planId,
+      ...(params.startTime ? { start_time: params.startTime } : {}),
       subscriber: { email_address: params.email },
       application_context: {
         brand_name: "ROLL ON.",
@@ -123,6 +143,112 @@ export async function createSubscription(params: {
     throw new Error("PayPal 回應缺少 approve 連結，無法導向核准頁");
   }
   return { id: sub.id, status: sub.status, approveUrl };
+}
+
+/** 同一幣別／Product 內換方案；PayPal 會回 approve URL 要求會員重新同意。 */
+export async function reviseSubscription(params: {
+  subscriptionId: string;
+  planId: string;
+  returnUrl: string;
+  cancelUrl: string;
+  requestId: string;
+}): Promise<{ approveUrl: string }> {
+  const res = await paypalFetch(
+    `/v1/billing/subscriptions/${encodeURIComponent(params.subscriptionId)}/revise`,
+    {
+      method: "POST",
+      headers: { "PayPal-Request-Id": params.requestId },
+      jsonBody: {
+        plan_id: params.planId,
+        application_context: {
+          brand_name: "ROLL ON.",
+          locale: "en-US",
+          user_action: "SUBSCRIBE_NOW",
+          shipping_preference: "NO_SHIPPING",
+          return_url: params.returnUrl,
+          cancel_url: params.cancelUrl,
+        },
+      },
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`PayPal 變更訂閱失敗（${res.status}）：${await res.text()}`);
+  }
+  const json = (await res.json()) as PaypalSubscription;
+  const approveUrl = json.links?.find((link) => link.rel === "approve")?.href;
+  if (!approveUrl) throw new Error("PayPal 回應缺少方案變更核准連結。");
+  return { approveUrl };
+}
+
+/** 建立 USD 5 的 10 次 NOVA 額度訂單。 */
+export async function createCreditOrder(params: {
+  userId: string;
+  requestId: string;
+  returnUrl: string;
+  cancelUrl: string;
+}): Promise<{ id: string; status: string; approveUrl: string }> {
+  const res = await paypalFetch("/v2/checkout/orders", {
+    method: "POST",
+    headers: {
+      "PayPal-Request-Id": params.requestId,
+      Prefer: "return=representation",
+    },
+    jsonBody: {
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          custom_id: params.userId,
+          description: "NOVA AI usage pack — 10 answers",
+          amount: { currency_code: "USD", value: "5.00" },
+        },
+      ],
+      application_context: {
+        brand_name: "ROLL ON.",
+        user_action: "PAY_NOW",
+        shipping_preference: "NO_SHIPPING",
+        return_url: params.returnUrl,
+        cancel_url: params.cancelUrl,
+      },
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`PayPal 建立額度訂單失敗（${res.status}）：${await res.text()}`);
+  }
+  const order = (await res.json()) as PaypalOrder;
+  const approveUrl = order.links?.find((link) => link.rel === "approve")?.href;
+  if (!approveUrl) throw new Error("PayPal 回應缺少額度訂單核准連結。");
+  return { id: order.id, status: order.status, approveUrl };
+}
+
+export async function captureCreditOrder(
+  orderId: string,
+  requestId: string,
+): Promise<PaypalOrder> {
+  const res = await paypalFetch(
+    `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`,
+    {
+      method: "POST",
+      headers: {
+        "PayPal-Request-Id": requestId,
+        Prefer: "return=representation",
+      },
+      jsonBody: {},
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`PayPal 擷取額度付款失敗（${res.status}）：${await res.text()}`);
+  }
+  return (await res.json()) as PaypalOrder;
+}
+
+export async function getOrder(orderId: string): Promise<PaypalOrder> {
+  const res = await paypalFetch(`/v2/checkout/orders/${encodeURIComponent(orderId)}`, {
+    method: "GET",
+  });
+  if (!res.ok) {
+    throw new Error(`PayPal 查詢額度訂單失敗（${res.status}）：${await res.text()}`);
+  }
+  return (await res.json()) as PaypalOrder;
 }
 
 /** 取得訂閱最新狀態（對帳用） */

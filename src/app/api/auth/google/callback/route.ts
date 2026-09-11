@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/session";
 import { destinationFor } from "@/lib/auth/onboarding";
 import type { Locale } from "@/i18n/routing";
+import { safeInvestorInvitePath } from "@/lib/auth/return-path";
 
 const GOOGLE_STATE_COOKIE = "g_oauth";
 
@@ -25,10 +26,14 @@ export async function GET(req: NextRequest) {
   const next = saved?.next || "/";
   const prefix = localePrefixFromNext(next);
   const locale: Locale = prefix === "/zh-tw" ? "zh-tw" : "en";
+  const inviteNext = safeInvestorInvitePath(next, locale);
 
   const redirectError = (msg: string) =>
     NextResponse.redirect(
-      new URL(`${prefix}/signup?error=${encodeURIComponent(msg)}`, req.url),
+      new URL(
+        `${prefix}/signup?error=${encodeURIComponent(msg)}${inviteNext ? `&next=${encodeURIComponent(inviteNext)}` : ""}`,
+        req.url,
+      ),
     );
 
   try {
@@ -60,7 +65,7 @@ export async function GET(req: NextRequest) {
           new URL(
             `${prefix}/login?error=${encodeURIComponent(
               "此 Email 已有帳號，請改用密碼登入。",
-            )}`,
+            )}${inviteNext ? `&next=${encodeURIComponent(inviteNext)}` : ""}`,
             req.url,
           ),
         );
@@ -83,10 +88,12 @@ export async function GET(req: NextRequest) {
     }
 
     const token = await createUserSession(user.id, user.email);
-    const dest = destinationFor(
-      { completed: user.completed, onboardingStep: user.onboardingStep },
-      locale,
-    );
+    const dest =
+      inviteNext ??
+      destinationFor(
+        { completed: user.completed, onboardingStep: user.onboardingStep },
+        locale,
+      );
     const res = NextResponse.redirect(new URL(dest, req.url));
     res.cookies.set(USER_SESSION_COOKIE, token, {
       httpOnly: true,

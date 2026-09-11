@@ -1,11 +1,7 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
-import {
-  computeFocus,
-  computeMilestones,
-  computeTasks,
-} from "@/lib/dashboard/agenda";
+import { computeFocus } from "@/lib/dashboard/agenda";
 import { pathForLocale } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
 import { pick } from "@/lib/quiz/locale";
@@ -14,7 +10,7 @@ import { getVideos, getEvents } from "@/lib/cms/content";
 import { countCompanies, getCompanyCards } from "@/lib/company/content";
 import PriorityBanner from "@/components/dashboard/home/PriorityBanner";
 import MetricsRow from "@/components/dashboard/home/MetricsRow";
-import AlertsRow from "@/components/dashboard/home/AlertsRow";
+import ActionPlanOverview from "@/components/dashboard/home/ActionPlanOverview";
 import FounderMatchCard, {
   type FounderMatch,
 } from "@/components/dashboard/home/FounderMatchCard";
@@ -22,6 +18,8 @@ import TutorialVideoCard from "@/components/dashboard/home/TutorialVideoCard";
 import TopOpportunitiesRail from "@/components/dashboard/home/TopOpportunitiesRail";
 import UpcomingEventsRail from "@/components/dashboard/home/UpcomingEventsRail";
 import CopilotPanel from "@/components/dashboard/home/CopilotPanel";
+import { deriveDashboardPriority } from "@/lib/action-plan/dashboard";
+import { getActiveActionPlan } from "@/lib/action-plan/service";
 import type { Locale } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -31,6 +29,13 @@ const FEATURED_SLUGS = ["tsmc", "mediatek", "hon-hai", "delta-electronics"];
 
 // 三維向量最遠距離 = sqrt(3 * 100^2)，用來把歐氏距離換算成 0~100 相似度。
 const MAX_DISTANCE = Math.sqrt(3) * 100;
+const KNOWN_SUBSCRIPTION_STATUSES = new Set([
+  "ACTIVE",
+  "PAST_DUE",
+  "SUSPENDED",
+  "CANCELLED",
+  "EXPIRED",
+]);
 
 export default async function DashboardOverview({ params }: Props) {
   const { locale } = await params;
@@ -46,7 +51,7 @@ export default async function DashboardOverview({ params }: Props) {
   const isPaying = effectivePlan !== "free";
 
   // ── 並行取真實資料 ──
-  const [videos, events, submission, customTasks] = await Promise.all([
+  const [videos, events, submission, actionPlan] = await Promise.all([
     getVideos(),
     getEvents(),
     account.quizCompleted
@@ -56,10 +61,7 @@ export default async function DashboardOverview({ params }: Props) {
           include: { founder: true },
         })
       : Promise.resolve(null),
-    prisma.landingTask.findMany({
-      where: { userId: account.id },
-      select: { id: true, title: true, dueAt: true, done: true },
-    }),
+    getActiveActionPlan(account.id),
   ]);
 
   const companiesCount = countCompanies();
@@ -71,23 +73,29 @@ export default async function DashboardOverview({ params }: Props) {
   const checklistTotal = allKeys.length;
   const checklistDone = allKeys.filter((k) => account.checklistState[k]).length;
 
-  // ── 今日重點狀態（與 Agenda 頁共用 computeFocus，避免兩處判斷不一致）──
-  const focus = computeFocus(account, l);
+  // Active Action Plan 是 Pro+ 功能；降級後仍保留資料，但 Overview 不洩漏付費內容。
+  const visibleActionPlan = isPaying ? actionPlan : null;
+  const accountFocus = computeFocus(account, l);
+  const priority = deriveDashboardPriority({
+    isPaying,
+    onboardingDone: account.completed,
+    quizDone: account.quizCompleted,
+    plan: visibleActionPlan,
+  });
+  const agendaHref = pathForLocale("/dashboard/agenda", l);
+  const billingHref = pathForLocale("/dashboard/billing", l);
+  const priorityHref =
+    priority.kind === "upgrade"
+      ? billingHref
+      : priority.kind === "onboarding" || priority.kind === "quiz"
+        ? accountFocus.href
+        : agendaHref;
 
-  // ── 落地待辦的逾期 / 本週到期（與 Agenda 頁同一套 computeTasks，數字保證一致）──
-  // 每日提醒要能反映「Action plan 有 N 項逾期」，否則會員在總覽看不到已經落後。
-  const agenda = computeTasks(
-    groups,
-    account.checklistState,
-    account.createdAt,
-    new Date(),
-    customTasks,
-  );
-
-  // 提醒卡的目的地：複用里程碑既有的 href 判斷，不在元件裡另寫一套路由邏輯
-  const milestones = computeMilestones(account, l);
-  const hrefOf = (key: string) =>
-    milestones.find((m) => m.key === key)?.href ?? pathForLocale("/dashboard", l);
+  const subscriptionStatusLabel = account.subscriptionStatus
+    ? KNOWN_SUBSCRIPTION_STATUSES.has(account.subscriptionStatus)
+      ? t(`status.${account.subscriptionStatus}`)
+      : account.subscriptionStatus
+    : t("home.actionSummary.subscription.noSubscription");
 
   // ── 創辦人配對（真實：作答分數與創辦人三維向量的距離 → 相似度）──
   let match: FounderMatch | null = null;
@@ -144,48 +152,42 @@ export default async function DashboardOverview({ params }: Props) {
       </h1>
       <p className="mt-2 text-sm text-dark/60">{t("home.subtitle")}</p>
 
-      <div className="mt-7 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 主欄 */}
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          <PriorityBanner locale={l} state={focus.state} href={focus.href} />
-          <AlertsRow
+      <div className="mt-7 flex flex-col gap-6">
+        <PriorityBanner locale={l} priority={priority} href={priorityHref} />
+
+        <ActionPlanOverview
+          locale={l}
+          plan={visibleActionPlan}
+          isPaying={isPaying}
+          planName={planName}
+          subscriptionStatusLabel={subscriptionStatusLabel}
+          agendaHref={agendaHref}
+          billingHref={billingHref}
+        />
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <FounderMatchCard
             locale={l}
-            onboardingDone={account.completed}
-            onboardingStep={account.onboardingStep}
-            onboardingHref={hrefOf("onboarding")}
-            quizDone={account.quizCompleted}
-            quizHref={hrefOf("quiz")}
-            subscriptionLabel={planName}
-            isPaying={isPaying}
-            billingHref={pathForLocale("/dashboard/billing", l)}
-            agendaOverdue={agenda.overdueCount}
-            agendaDueSoon={agenda.dueSoonCount}
-            agendaHref={pathForLocale("/dashboard/agenda", l)}
+            match={match}
+            quizHref={pathForLocale("/quiz", l)}
           />
-          <MetricsRow
-            locale={l}
-            companies={companiesCount}
-            videos={videos.length}
-            checklistDone={checklistDone}
-            checklistTotal={checklistTotal}
-            events={events.length}
-          />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FounderMatchCard
-              locale={l}
-              match={match}
-              quizHref={pathForLocale("/quiz", l)}
-            />
-            <TutorialVideoCard locale={l} video={video} />
-          </div>
+          <TutorialVideoCard locale={l} video={video} />
         </div>
 
-        {/* 右欄 */}
-        <div className="flex flex-col gap-6">
+        <MetricsRow
+          locale={l}
+          companies={companiesCount}
+          videos={videos.length}
+          checklistDone={checklistDone}
+          checklistTotal={checklistTotal}
+          events={events.length}
+        />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <CopilotPanel quizDone={account.quizCompleted} canUse={isPaying} />
-          {featured.length > 0 && (
+          {featured.length > 0 ? (
             <TopOpportunitiesRail locale={l} companies={featured} />
-          )}
+          ) : null}
           <UpcomingEventsRail locale={l} events={eventViews} />
         </div>
       </div>

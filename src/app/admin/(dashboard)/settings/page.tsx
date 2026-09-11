@@ -36,7 +36,6 @@ export default async function SettingsPage() {
             { name: "channelTitle", label: "頻道標題", type: "text" },
             { name: "subscribeUrl", label: "訂閱連結（YouTube）", type: "text" },
             { name: "avatar", label: "頻道頭像", type: "image", folder: "golden-ticket" },
-            { name: "clubImage", label: "Asia Founders Club 圖片", type: "image", folder: "golden-ticket" },
           ]}
         />
       </div>

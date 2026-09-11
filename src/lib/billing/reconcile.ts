@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { planFromPaypalPlanId, type PlanKey } from "@/lib/billing/plans";
+import { billingFromPaypalPlanId, type PlanKey } from "@/lib/billing/plans";
 import {
   getSubscription,
   type PaypalSubscription,
@@ -17,9 +17,8 @@ export async function reconcileFromPaypal(
     where: { paypalSubscriptionId: paypalSub.id },
   });
 
-  const plan: PlanKey | null =
-    (local?.plan as PlanKey | undefined) ??
-    planFromPaypalPlanId(paypalSub.plan_id);
+  const match = billingFromPaypalPlanId(paypalSub.plan_id);
+  const plan: PlanKey | null = match?.plan ?? (local?.plan as PlanKey | undefined) ?? null;
 
   const status = paypalSub.status;
   const nextBilling = paypalSub.billing_info?.next_billing_time
@@ -38,6 +37,15 @@ export async function reconcileFromPaypal(
         currentPeriodEnd: nextBilling ?? local.currentPeriodEnd,
         startedAt: startedAt ?? local.startedAt,
         cancelledAt: isTerminal ? (local.cancelledAt ?? new Date()) : null,
+        ...(plan ? { plan } : {}),
+        ...(match
+          ? {
+              billingInterval: match.interval,
+              currency: match.currency,
+              amountMinor: match.amountMinor,
+              paypalPlanId: paypalSub.plan_id,
+            }
+          : {}),
       },
     });
   }
@@ -45,6 +53,10 @@ export async function reconcileFromPaypal(
   // 只有在能對應到 userId 時才更新 User
   const userId = local?.userId;
   if (!userId || !plan) return;
+
+  // 舊 TWD → 新 USD 的 future-start replacement 在 APPROVED 階段尚未開始服務。
+  // 此時只更新 Subscription 歷史，不得蓋掉仍有效的舊訂閱快取。
+  if (local.replacesSubscriptionId && status !== "ACTIVE") return;
 
   // EXPIRED（真正結束）才把 User.plan 歸零；其餘狀態保留方案、由 gate 的寬限期邏輯把關存取
   const storedPlan: PlanKey = status === "EXPIRED" ? "free" : plan;

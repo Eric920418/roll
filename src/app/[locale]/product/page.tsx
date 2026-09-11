@@ -6,6 +6,7 @@ import ProductHero from "@/components/sections/product/ProductHero";
 import HowItWorks from "@/components/sections/product/HowItWorks";
 import Pricing from "@/components/sections/product/Pricing";
 import ProductCTA from "@/components/sections/product/ProductCTA";
+import NovaValuePillars from "@/components/sections/NovaValuePillars";
 import { SITE_URL, absoluteUrl } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
@@ -56,6 +57,7 @@ export default async function ProductPage({ params }: Props) {
     <main className="nova-theme" data-brand="nova">
       <ProductNav />
       <ProductHero />
+      <NovaValuePillars />
       <HowItWorks />
       <Pricing />
       <ProductCTA />

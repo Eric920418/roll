@@ -10,6 +10,7 @@ import AuthInput from "./AuthInput";
 import AuthButton from "./AuthButton";
 import GoogleButton from "./GoogleButton";
 import { resolveAuthError } from "./error-codes";
+import { safeInvestorInvitePath } from "@/lib/auth/return-path";
 
 type Mode = "email" | "google";
 
@@ -28,15 +29,20 @@ export default function SignupForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const loginHref = pathForLocale("/login", locale);
-  const next = pathForLocale("/onboarding/company", locale);
+  const [next, setNext] = useState(pathForLocale("/onboarding/company", locale));
+  const loginHref = `${pathForLocale("/login", locale)}?next=${encodeURIComponent(next)}`;
   const googleHref = `/api/auth/google/authorize?next=${encodeURIComponent(next)}`;
 
   // OAuth callback 失敗會帶 ?error= 導回此頁，掛載時顯示
   useEffect(() => {
     const e = new URLSearchParams(window.location.search).get("error");
     if (e) setError(e);
-  }, []);
+    const requested = safeInvestorInvitePath(
+      new URLSearchParams(window.location.search).get("next"),
+      locale,
+    );
+    if (requested) setNext(requested);
+  }, [locale]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -149,7 +155,7 @@ export default function SignupForm() {
             autoComplete="new-password"
           />
           {error && (
-            <p className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <p role="alert" className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
             </p>
           )}
@@ -167,7 +173,7 @@ export default function SignupForm() {
             {t("googleNote")}
           </p>
           {error && (
-            <p className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <p role="alert" className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
             </p>
           )}

@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { useTranslations, useLocale } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
+import ActionPlanBuilder from "@/components/dashboard/ActionPlanBuilder";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -103,6 +104,10 @@ export default function CopilotPanel({
 
       {canUse ? (
         <>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-primary/15 bg-white/80 p-3">
+            <p className="text-xs leading-5 text-dark/60">{t("actionPlanHint")}</p>
+            <ActionPlanBuilder messages={messages} />
+          </div>
           {/* 對話 */}
           <div
             ref={scrollRef}
@@ -138,7 +143,7 @@ export default function CopilotPanel({
           </div>
 
           {error && (
-            <p className="mt-2 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+            <p role="alert" className="mt-2 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
               {error}
             </p>
           )}

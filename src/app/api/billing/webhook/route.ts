@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyWebhookSignature } from "@/lib/billing/paypal";
+import { getOrder, verifyWebhookSignature } from "@/lib/billing/paypal";
 import { reconcileById } from "@/lib/billing/reconcile";
+import { fulfillCreditOrder } from "@/lib/billing/credits";
 
 // PayPal webhook。proxy 對 /api/* 放行；此端點不查 session，改以簽章驗證授權。
 // 設計：驗章 → 記錄事件（審計）→ 對帳（idempotent）→ 200；對帳失敗回 500 讓 PayPal 重送。
@@ -12,6 +13,7 @@ import { reconcileById } from "@/lib/billing/reconcile";
 // 權限卻回不來。reconcile 以 PayPal 為權威來源且冪等，多對帳幾次無害、漏對帳才有害。
 const RELEVANT_PREFIX = "BILLING.SUBSCRIPTION.";
 const RELEVANT_EXACT = new Set(["PAYMENT.SALE.COMPLETED"]);
+const CREDIT_CAPTURE_EVENT = "PAYMENT.CAPTURE.COMPLETED";
 
 function needsReconcile(eventType: string): boolean {
   return eventType.startsWith(RELEVANT_PREFIX) || RELEVANT_EXACT.has(eventType);
@@ -20,7 +22,11 @@ function needsReconcile(eventType: string): boolean {
 type PaypalEvent = {
   id?: string;
   event_type?: string;
-  resource?: { id?: string; billing_agreement_id?: string };
+  resource?: {
+    id?: string;
+    billing_agreement_id?: string;
+    supplementary_data?: { related_ids?: { order_id?: string } };
+  };
 };
 
 /** 從事件取出訂閱 id（訂閱事件在 resource.id；扣款事件在 resource.billing_agreement_id） */
@@ -85,12 +91,26 @@ export async function POST(req: NextRequest) {
       await reconcileById(subId);
     }
 
+    // Orders webhook 與 return URL 可能同時抵達；fulfillCreditOrder 以 order/capture
+    // unique constraint 保證只加值一次。
+    if (eventType === CREDIT_CAPTURE_EVENT) {
+      const orderId =
+        event.resource?.supplementary_data?.related_ids?.order_id ?? null;
+      if (orderId) {
+        const purchase = await prisma.aiCreditPurchase.findUnique({
+          where: { paypalOrderId: orderId },
+          select: { id: true },
+        });
+        if (purchase) await fulfillCreditOrder(await getOrder(orderId));
+      }
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     // 對帳失敗：記 log 並回 500，讓 PayPal 重送（reconcile 為 idempotent，重送安全）
     console.error("[paypal webhook] processing error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : String(error) },
+      { error: "Webhook processing failed; PayPal should retry.", code: "webhook_processing_failed" },
       { status: 500 },
     );
   }
