@@ -1062,6 +1062,16 @@
     }
   },
   "InvestorView": {
+    "companyAge": "公司年資",
+    "seedFunding": "種子資金",
+    "needs": "服務需求",
+    "notes": "補充說明",
+    "nextMoves": "Next 3 moves",
+    "progress": "完成進度",
+    "allActions": "完整動作清單（{count}）",
+    "noActions": "目前沒有可顯示的 Action。",
+    "kpiTrend": "走勢",
+    "nothingShared": "這家公司目前尚未開放任何區塊給投資人檢視。",
     "inviteTitle": "Investor Portal 邀請",
     "inviteBody": "請使用收到邀請的相同 Email 登入或註冊。這是一組一次性連結，將在七天後失效。",
     "login": "登入",
@@ -1087,6 +1097,40 @@
     "openPdf": "開啟私密 PDF"
   },
   "InvestorPortal": {
+    "fieldVisibilityTitle": "進階：逐欄位隱藏",
+    "fieldVisibilityBody": "在已分享的區塊中，再挑掉不想讓投資人看到的個別欄位。勾選＝隱藏，被隱藏的欄位在投資人頁完全不會出現。",
+    "fieldVisibilityLocked": "逐欄位與逐筆隱藏為 Enterprise 方案功能。已設定的隱藏仍然生效，但需要 Enterprise 才能修改。",
+    "fieldVisibilityLockedCta": "了解 Enterprise 方案",
+    "fieldVisibilityActive": "以下欄位目前仍為隱藏狀態：",
+    "sectionOff": "此區塊尚未分享",
+    "hideFromInvestors": "不讓投資人看到這一筆",
+    "hiddenBadge": "已隱藏",
+    "unit": "單位",
+    "unitPlaceholder": "單位（選填）",
+    "kpiPoints": "歷史數值",
+    "addPoint": "新增期間",
+    "periodPlaceholder": "期間，例如 2025-Q1",
+    "numericValue": "數值",
+    "noPoints": "尚無歷史數值；投資人頁會顯示單一數字，不畫走勢圖。",
+    "fields": {
+      "profile": {
+        "industry": "產業",
+        "companySize": "公司規模",
+        "country": "國家",
+        "website": "官網",
+        "targetMarkets": "目標市場",
+        "companyAge": "公司年資",
+        "seedFunding": "種子資金",
+        "needs": "服務需求",
+        "notes": "補充說明"
+      },
+      "strategy": { "stage": "公司階段", "bottleneck": "當前瓶頸" },
+      "actionPlan": {
+        "nextMoves": "Next 3 moves",
+        "progress": "完成進度",
+        "allActions": "完整動作清單"
+      }
+    },
     "title": "投資人專區",
     "subtitle": "將你選擇的公司資訊，以同一份受控唯讀頁面分享給受邀投資人。",
     "upgradeTitle": "Investor Portal 包含在 Business 方案",

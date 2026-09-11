@@ -3,7 +3,13 @@ import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
 import { prisma } from "@/lib/prisma";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
-import { kpiSchema, milestoneSchema, updateSchema } from "@/lib/investor/validation";
+import { canEditFieldVisibility, ITEM_VISIBILITY_FORBIDDEN } from "@/lib/investor/fields";
+import {
+  itemVisibilitySchema,
+  kpiSchema,
+  milestoneSchema,
+  updateSchema,
+} from "@/lib/investor/validation";
 
 const schemas = { kpi: kpiSchema.partial(), milestone: milestoneSchema.partial(), update: updateSchema.partial() };
 
@@ -22,11 +28,29 @@ export async function PATCH(req: Request, context: { params: Promise<{ kind: str
     if (!access.account) return access.response;
     const { kind, id } = await context.params;
     if (!(kind in schemas)) return fail("找不到指定的 Investor Portal 項目。", 404);
-    const parsed = schemas[kind as keyof typeof schemas].safeParse(await req.json());
+
+    const body = await req.json();
+    const parsed = schemas[kind as keyof typeof schemas].safeParse(body);
     if (!parsed.success) return fail(parsed.error.issues.map((item) => item.message).join("\n"));
+
+    // hidden 與內容欄位分開處理：只有請求真的要改 hidden 時才檢查 Enterprise，
+    // Business 用戶照常編輯 KPI 標籤／里程碑內容。
+    let hidden: boolean | undefined;
+    if (body != null && typeof body === "object" && "hidden" in body) {
+      if (!canEditFieldVisibility(getEffectivePlan(access.account))) {
+        return fail(ITEM_VISIBILITY_FORBIDDEN, 403);
+      }
+      const visibility = itemVisibilitySchema.safeParse(body);
+      if (!visibility.success) {
+        return fail(visibility.error.issues.map((item) => item.message).join("\n"));
+      }
+      hidden = visibility.data.hidden;
+    }
+
     const where = { id, portal: { userId: access.account.id } };
     const data = {
       ...parsed.data,
+      ...(hidden !== undefined && { hidden }),
       ...("targetDate" in parsed.data
         ? { targetDate: parsed.data.targetDate ? new Date(parsed.data.targetDate) : null }
         : {}),

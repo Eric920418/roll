@@ -1062,6 +1062,16 @@
     }
   },
   "InvestorView": {
+    "companyAge": "Company age",
+    "seedFunding": "Seed funding",
+    "needs": "Service needs",
+    "notes": "Additional notes",
+    "nextMoves": "Next 3 moves",
+    "progress": "Progress",
+    "allActions": "Full action list ({count})",
+    "noActions": "No actions to display.",
+    "kpiTrend": "Trend",
+    "nothingShared": "This company has not opened any section to investors yet.",
     "inviteTitle": "Investor portal invitation",
     "inviteBody": "Sign in or create an account with the exact email address that received this invitation. The one-time link expires after seven days.",
     "login": "Sign in",
@@ -1087,6 +1097,40 @@
     "openPdf": "Open private PDF"
   },
   "InvestorPortal": {
+    "fieldVisibilityTitle": "Advanced: field-level hiding",
+    "fieldVisibilityBody": "Within the sections you already share, remove individual fields. Checked = hidden; hidden fields never appear on the investor page.",
+    "fieldVisibilityLocked": "Field-level and per-item hiding is an Enterprise feature. Existing hidden settings stay in effect, but Enterprise is required to change them.",
+    "fieldVisibilityLockedCta": "See the Enterprise plan",
+    "fieldVisibilityActive": "These fields are still hidden:",
+    "sectionOff": "section not shared",
+    "hideFromInvestors": "Hide this item from investors",
+    "hiddenBadge": "Hidden",
+    "unit": "Unit",
+    "unitPlaceholder": "Unit (optional)",
+    "kpiPoints": "History",
+    "addPoint": "Add period",
+    "periodPlaceholder": "Period, e.g. 2025-Q1",
+    "numericValue": "Value",
+    "noPoints": "No history yet \u2014 the investor page shows a single figure without a trend chart.",
+    "fields": {
+      "profile": {
+        "industry": "Industry",
+        "companySize": "Company size",
+        "country": "Country",
+        "website": "Website",
+        "targetMarkets": "Target markets",
+        "companyAge": "Company age",
+        "seedFunding": "Seed funding",
+        "needs": "Service needs",
+        "notes": "Additional notes"
+      },
+      "strategy": { "stage": "Company stage", "bottleneck": "Current bottleneck" },
+      "actionPlan": {
+        "nextMoves": "Next 3 moves",
+        "progress": "Progress",
+        "allActions": "Full action list"
+      }
+    },
     "title": "Investor portal",
     "subtitle": "Share one controlled, read-only company view with your invited investors.",
     "upgradeTitle": "Investor portal is included with Business",

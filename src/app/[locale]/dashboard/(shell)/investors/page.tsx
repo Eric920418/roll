@@ -5,6 +5,7 @@ import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
 import { pathForLocale } from "@/lib/routes";
 import { getOrCreateOwnerPortal, ownerPortalDto } from "@/lib/investor/portal";
+import { canEditFieldVisibility } from "@/lib/investor/fields";
 import InvestorPortalManager from "@/components/dashboard/InvestorPortalManager";
 import type { Locale } from "@/i18n/routing";
 
@@ -15,7 +16,8 @@ export default async function InvestorPortalPage({ params }: { params: Promise<{
   const t = await getTranslations({ locale, namespace: "InvestorPortal" });
   const account = await getCurrentAccount();
   if (!account) return null;
-  if (!planAtLeast(getEffectivePlan(account), "business")) {
+  const plan = getEffectivePlan(account);
+  if (!planAtLeast(plan, "business")) {
     return (
       <div>
         <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("title")}</h1>
@@ -30,5 +32,12 @@ export default async function InvestorPortalPage({ params }: { params: Promise<{
     );
   }
   const portal = ownerPortalDto(await getOrCreateOwnerPortal(account.id));
-  return <InvestorPortalManager locale={l} initialPortal={portal} />;
+  // 逐欄位／逐筆隱藏只有 Enterprise 能「改」；已設定的隱藏對任何方案都持續生效。
+  return (
+    <InvestorPortalManager
+      locale={l}
+      initialPortal={portal}
+      canHideFields={canEditFieldVisibility(plan)}
+    />
+  );
 }

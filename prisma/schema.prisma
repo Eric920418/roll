@@ -570,6 +570,14 @@ model InvestorPortal {
   shareUpdates      Boolean @default(false)
   shareBusinessPlan Boolean @default(false)
 
+  // Enterprise 專屬的逐欄位隱藏（deny-list，值域見 src/lib/investor/fields.ts）。
+  // 刻意存「被隱藏的 key」而非「可見的 key」：日後新增欄位時預設可見，
+  // 舊 portal 不會因為沒跟上新欄位而憑空少東西。
+  //
+  // 重要：這份設定的「套用」永遠無條件執行，只有「修改」需要 Enterprise。
+  // 否則 Enterprise 降級為 Business 的瞬間，刻意藏起來的資料會突然對投資人曝光。
+  hiddenFields String[]
+
   businessPlanPath       String?
   businessPlanFilename   String?
   businessPlanMime       String?
@@ -589,13 +597,36 @@ model InvestorKpi {
   portalId  String
   portal    InvestorPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
   label     String
+  // 當前值／標籤，自由文字（"USD 1.2M"、"38%"）。走勢圖另看 points。
   value     String
   period    String?
+  // 走勢圖的 Y 軸單位，沿用 content/companies 的 Metric.unit 慣例
+  unit      String?
+  // Enterprise 專屬：單筆隱藏。與 hiddenFields 同樣「無條件生效、僅修改需方案」。
+  hidden    Boolean        @default(false)
   order     Int            @default(0)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
+  points InvestorKpiPoint[]
+
   @@index([portalId, order])
+}
+
+// KPI 的時間序列數值。InvestorKpi.value(String) 保留為「當前值」，
+// points 為選配 —— 沒有 points 的既有 KPI 行為與過去完全一致，零遷移。
+model InvestorKpiPoint {
+  id        String      @id @default(cuid())
+  kpiId     String
+  kpi       InvestorKpi @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  period    String // "2025-Q1" / "2025-06"，自由文字，沿用 Company.Metric.period
+  value     Float
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([kpiId, period])
+  @@index([kpiId, order])
 }
 
 model InvestorMilestone {
@@ -606,6 +637,8 @@ model InvestorMilestone {
   status     String         @default("planned") // planned / in_progress / done
   targetDate DateTime?
   notes      String?
+  // Enterprise 專屬：單筆隱藏（無條件生效，僅修改需方案）
+  hidden     Boolean        @default(false)
   order      Int            @default(0)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
@@ -620,6 +653,8 @@ model InvestorUpdate {
   title       String
   body        String
   publishedAt DateTime       @default(now())
+  // Enterprise 專屬：單筆隱藏（無條件生效，僅修改需方案）
+  hidden      Boolean        @default(false)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
