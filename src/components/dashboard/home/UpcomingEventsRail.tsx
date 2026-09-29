@@ -19,21 +19,23 @@ export default async function UpcomingEventsRail({
   locale: Locale;
   events: EventView[];
 }) {
-  const t = await getTranslations({ locale, namespace: "Dashboard.home.events" });
+  const t = await getTranslations({ locale, namespace: "Dashboard.home.novaEvents" });
 
   return (
     <div className="nova-dashboard-card rounded-2xl border border-dark/10 bg-white p-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-bold text-dark font-[family-name:var(--font-heading)]">
           {t("title")}
         </p>
         <Link
           href={`${pathForLocale("/", locale)}#events`}
-          className="text-xs font-semibold text-primary hover:text-primary-dark font-[family-name:var(--font-heading)]"
+          className="shrink-0 text-xs font-semibold text-primary hover:text-primary-dark font-[family-name:var(--font-heading)]"
         >
           {t("viewAll")}
         </Link>
       </div>
+
+      <p className="mt-0.5 text-xs text-dark/45">{t("subtitle")}</p>
 
       {events.length === 0 ? (
         <p className="mt-4 text-sm text-dark/55">{t("empty")}</p>

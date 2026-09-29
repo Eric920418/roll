@@ -18,7 +18,7 @@ export default async function TutorialVideoCard({
   locale: Locale;
   video: VideoView | null;
 }) {
-  const t = await getTranslations({ locale, namespace: "Dashboard.home.video" });
+  const t = await getTranslations({ locale, namespace: "Dashboard.home.podcast" });
 
   if (!video) {
     return (
@@ -48,7 +48,7 @@ export default async function TutorialVideoCard({
           sizes="(max-width: 1024px) 100vw, 400px"
           className="object-cover transition-transform group-hover:scale-[1.03]"
         />
-        <span className="absolute left-4 top-4 rounded-full bg-black/55 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm font-[family-name:var(--font-heading)]">
+        <span className="absolute left-4 top-4 rounded-full bg-black/55 px-3 py-1 text-sm font-bold tracking-wide text-white backdrop-blur-sm font-[family-name:var(--font-heading)]">
           {t("eyebrow")}
         </span>
         {/* 播放鍵 */}

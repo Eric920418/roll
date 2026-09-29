@@ -4,16 +4,11 @@ import { getEffectivePlan } from "@/lib/billing/gate";
 import { computeFocus } from "@/lib/dashboard/agenda";
 import { pathForLocale } from "@/lib/routes";
 import { prisma } from "@/lib/prisma";
-import { pick } from "@/lib/quiz/locale";
-import { buildChecklist } from "@/lib/tools/checklist";
 import { getVideos, getEvents } from "@/lib/cms/content";
-import { countCompanies, getCompanyCards } from "@/lib/company/content";
+import { getCompanyCards } from "@/lib/company/content";
 import PriorityBanner from "@/components/dashboard/home/PriorityBanner";
-import MetricsRow from "@/components/dashboard/home/MetricsRow";
 import ActionPlanOverview from "@/components/dashboard/home/ActionPlanOverview";
-import FounderMatchCard, {
-  type FounderMatch,
-} from "@/components/dashboard/home/FounderMatchCard";
+import InvestorHubCard from "@/components/dashboard/home/InvestorHubCard";
 import TutorialVideoCard from "@/components/dashboard/home/TutorialVideoCard";
 import TopOpportunitiesRail from "@/components/dashboard/home/TopOpportunitiesRail";
 import UpcomingEventsRail from "@/components/dashboard/home/UpcomingEventsRail";
@@ -27,8 +22,8 @@ type Props = { params: Promise<{ locale: string }> };
 // Overview 精選「重點機會」用的台灣公司 slug（存在才顯示）。
 const FEATURED_SLUGS = ["tsmc", "mediatek", "hon-hai", "delta-electronics"];
 
-// 三維向量最遠距離 = sqrt(3 * 100^2)，用來把歐氏距離換算成 0~100 相似度。
-const MAX_DISTANCE = Math.sqrt(3) * 100;
+const HUB_WAITLIST_MESSAGE = "Waitlist: Investor DD & Global Founder Hub — free trial";
+
 const KNOWN_SUBSCRIPTION_STATUSES = new Set([
   "ACTIVE",
   "PAST_DUE",
@@ -51,27 +46,17 @@ export default async function DashboardOverview({ params }: Props) {
   const isPaying = effectivePlan !== "free";
 
   // ── 並行取真實資料 ──
-  const [videos, events, submission, actionPlan] = await Promise.all([
+  const [videos, events, actionPlan, waitlistEntry] = await Promise.all([
     getVideos(),
     getEvents(),
-    account.quizCompleted
-      ? prisma.quizSubmission.findFirst({
-          where: { userId: account.id },
-          orderBy: { createdAt: "desc" },
-          include: { founder: true },
-        })
-      : Promise.resolve(null),
     getActiveActionPlan(account.id),
+    prisma.contactMessage.findFirst({
+      where: { email: account.email, message: HUB_WAITLIST_MESSAGE },
+      select: { id: true },
+    }),
   ]);
 
-  const companiesCount = countCompanies();
   const featured = getCompanyCards(FEATURED_SLUGS);
-
-  // ── 清單進度（依 needs 生成的落地清單 + 勾選狀態）──
-  const groups = buildChecklist(account.profile?.needs ?? [], l);
-  const allKeys = groups.flatMap((g) => g.items.map((it) => it.key));
-  const checklistTotal = allKeys.length;
-  const checklistDone = allKeys.filter((k) => account.checklistState[k]).length;
 
   // Active Action Plan 是 Pro+ 功能；降級後仍保留資料，但 Overview 不洩漏付費內容。
   const visibleActionPlan = isPaying ? actionPlan : null;
@@ -96,35 +81,6 @@ export default async function DashboardOverview({ params }: Props) {
       ? t(`status.${account.subscriptionStatus}`)
       : account.subscriptionStatus
     : t("home.actionSummary.subscription.noSubscription");
-
-  // ── 創辦人配對（真實：作答分數與創辦人三維向量的距離 → 相似度）──
-  let match: FounderMatch | null = null;
-  if (submission?.founder) {
-    const f = submission.founder;
-    const s = (submission.scores ?? {}) as {
-      planningDepth?: number;
-      executionStrength?: number;
-      visionClarity?: number;
-    };
-    const dist = Math.sqrt(
-      (f.planningDepth - (s.planningDepth ?? 50)) ** 2 +
-        (f.executionStrength - (s.executionStrength ?? 50)) ** 2 +
-        (f.visionClarity - (s.visionClarity ?? 50)) ** 2,
-    );
-    const similarity = Math.max(0, Math.round(100 * (1 - dist / MAX_DISTANCE)));
-    match = {
-      name: pick(f.name, l),
-      role: pick(f.role, l),
-      blurb: pick(f.blurb, l),
-      similarity,
-      planningDepth: f.planningDepth,
-      executionStrength: f.executionStrength,
-      visionClarity: f.visionClarity,
-      companyHref: f.companySlug
-        ? pathForLocale(`/company/${f.companySlug}`, l)
-        : null,
-    };
-  }
 
   const video = videos[0]
     ? {
@@ -166,25 +122,17 @@ export default async function DashboardOverview({ params }: Props) {
         />
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <FounderMatchCard
-            locale={l}
-            match={match}
-            quizHref={pathForLocale("/quiz", l)}
+          <InvestorHubCard
+            name={([account.firstName, account.lastName].filter(Boolean).join(" ") || account.email).slice(0, 200)}
+            email={account.email}
+            message={HUB_WAITLIST_MESSAGE}
+            joined={Boolean(waitlistEntry)}
           />
           <TutorialVideoCard locale={l} video={video} />
         </div>
 
-        <MetricsRow
-          locale={l}
-          companies={companiesCount}
-          videos={videos.length}
-          checklistDone={checklistDone}
-          checklistTotal={checklistTotal}
-          events={events.length}
-        />
-
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <CopilotPanel quizDone={account.quizCompleted} canUse={isPaying} />
+          <CopilotPanel canUse={isPaying} />
           {featured.length > 0 ? (
             <TopOpportunitiesRail locale={l} companies={featured} />
           ) : null}

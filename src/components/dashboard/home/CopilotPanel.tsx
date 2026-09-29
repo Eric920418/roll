@@ -13,10 +13,8 @@ type Msg = { role: "user" | "assistant"; content: string };
 // 右欄「ROLL ON 助理」：真 AI 對話（串流）+ 快捷連結。取代靜態 CopilotShortcuts。
 // canUse=false（未達 Pro）→ 顯示 upsell 卡，不渲染輸入框（避免送出後才吃 403）。
 export default function CopilotPanel({
-  quizDone,
   canUse,
 }: {
-  quizDone: boolean;
   canUse: boolean;
 }) {
   const t = useTranslations("Dashboard.home.copilot");
@@ -29,8 +27,6 @@ export default function CopilotPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const shortcuts = [
-    { label: t("quiz"), href: pathForLocale(quizDone ? "/quiz/result" : "/quiz", locale) },
-    { label: t("companies"), href: pathForLocale("/dashboard/companies", locale) },
     { label: t("tools"), href: pathForLocale("/dashboard/tools", locale) },
     { label: t("profile"), href: pathForLocale("/dashboard/profile", locale) },
   ];
@@ -85,7 +81,7 @@ export default function CopilotPanel({
           </svg>
         </span>
         <p className="text-sm font-bold text-dark font-[family-name:var(--font-heading)]">
-          {t("title")}
+          {t("polarisTitle")}
         </p>
       </div>
 
