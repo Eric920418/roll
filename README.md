@@ -198,7 +198,7 @@ public/
 **NOVA by ROLL ON**（Pro / Business / Enterprise + 專屬 Dashboard）的獨立行銷著陸頁。公開定價不主推 Free；Free 是未訂閱狀態且不能使用 Action Plan。NOVA 採獨立黑白銀品牌系統：Black `#000000`、White `#FAFAFA`、Silver `#BCBDC6`，Motion 維持 `[0.22,1,0.36,1]` 進場；色票以 `.nova-theme[data-brand="nova"]` 局部覆寫，不影響 ROLL ON 官網的暗紅／暖金 token。
 
 1. **ProductNav** — 著陸頁專屬頂部列（非全站漢堡）：NOVA 平面黑 logo → `/product`，`by ROLL ON` → 企業官網，右側 `Login` / `Sign Up` + 語言切換；捲動加玻璃背景
-2. **ProductHero / NovaValuePillars** — 金屬 NOVA logo 與五項一致定位：Software、Strategic guidance、Go-to-market execution、Market access、Founder ecosystem。首頁也共用同一區塊；「六個月內取得亞洲第一張訂單」明示為共同執行目標，不是成交保證。Founder ecosystem 與 dashboard investor checklist 只連現有 Podcast、活動與聯絡入口，不虛構聊天室、Club、社群或 placement。
+2. **ProductHero / NovaValuePillars** — 金屬 NOVA logo 與四張定位卡片（software、guidance、execution、access，文案沿用翻譯與 CMS 設定）。2026-09-29 移除最右側 Founder ecosystem 卡片，桌機由五欄改為四欄平分原有寬度，每張約加寬 25%；平板兩欄、手機單欄。首頁與產品頁共用同一區塊，兩邊同步生效。下方 Podcast、活動與聯絡入口保留；「六個月內取得亞洲第一張訂單」明示為共同執行目標，不是成交保證。本次僅調整顯示，不修改資料庫。
 3. **HowItWorks** — 「如何開始」三步驟（01 註冊 → 02 客製化 Dashboard → 03 媒合夥伴）
 4. **Pricing** — 月／年切換的三張公開方案卡：Pro USD 49/月或 USD 468/年一次收取；Business USD 149/月或 USD 1,668/年一次收取並含 Investor Portal；Enterprise 只顯示聯絡報價，不公開內部參考價。沒有虛構原價或限時優惠。
 5. **ProductCTA** — 底部黑色 NOVA CTA（`免費開始使用` → `#contact`）

@@ -2,7 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
-const pillars = ["software", "guidance", "execution", "access", "ecosystem"] as const;
+const pillars = ["software", "guidance", "execution", "access"] as const;
 
 export default async function NovaValuePillars() {
   const locale = (await getLocale()) as Locale;
@@ -14,7 +14,7 @@ export default async function NovaValuePillars() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">NOVA by ROLL ON.</p>
         <h2 className="mt-3 max-w-4xl text-3xl font-extrabold tracking-[-0.04em] text-dark font-[family-name:var(--font-heading)] md:text-5xl">{t("title")}</h2>
         <p className="mt-5 max-w-3xl text-base leading-7 text-dark/60">{t("intro")}</p>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {pillars.map((pillar) => (
             <article key={pillar} className="rounded-2xl border border-dark/10 bg-cream p-5">
               <h3 className="font-bold text-dark font-[family-name:var(--font-heading)]">{t(`${pillar}.title`)}</h3>
