@@ -34,7 +34,7 @@ pnpm db:super   # 建立/重置後台超級帳號（pro，見下方「超級帳�
 pnpm db:studio  # Prisma Studio 檢視資料
 ```
 
-## 後台超級帳號（Super Account）
+## 客戶端超級帳號（Super Account）
 
 會員後台入口 `/login`，登入後進 `/dashboard`。要一個「本來就是 pro、直接進後台」的帳號時跑：
 
@@ -47,6 +47,14 @@ SUPER_PLAN=enterprise pnpm db:super   # 站方管理的 Enterprise
 ```
 
 腳本 `scripts/create-super-user.ts` 以 `upsert` 建號並重設密碼；Pro／Business 只建立 1–365 天的正式 trial（預設 30 天），不再偽造 PayPal `ACTIVE` 或 2099 到期日，重跑也不覆寫既有 PayPal 付款歷史。`SUPER_PLAN=enterprise` 才是站方人工管理權限。帳號同時設為完成 onboarding／quiz，登入後直達 Dashboard。
+
+2026-09-24：依使用者要求，正式站既有 `super@rollgrp.com` 客戶端超級帳號由 Pro 升為 Business；只更新該會員的 `plan` 與異動時間，保留密碼、會員資料、AI 使用紀錄及既有到期日（DB 原值 `2099-12-31 00:00:00`），未建立 PayPal 訂閱或扣款。此帳號沿用歷史人工 ACTIVE 授權且無 PayPal subscription ID；未來啟用 `BILLING_REQUIRE_EXPLICIT_ENTITLEMENT=true` 前須先遷移人工權限，否則會降回 Free。Business 包含每月 150 次 AI 額度；Investor 逐欄位／逐筆隱藏仍需 Enterprise。前台 `/login` 與 CMS 管理員 `/admin/login` 使用不同帳號系統。
+
+2026-09-29：經使用者確認，已將同一超級帳號重置為初次使用狀態。正式 DB 以單一 Serializable 交易，僅針對固定 user ID／Email 操作：清除公司資料、4 份 Action Plan（連帶 93 筆 action、126 筆 dependency）、31 位 CRM 聯絡人、8 筆商機、6 份筆記、1 筆創辦人測驗、2 筆知識問答、1 筆 AI 使用紀錄；清空 checklist／milestone／閱讀設定，設 `completed=false`、`quizCompleted=false`、`onboardingStep=2`，並將註冊起算日重設為當次時間，避免新填需求後沿用舊日期產生逾期提醒。AI 基本用量歸零，保留加購餘額、登入憑證、Business、原計費／試用欄位、付款紀錄與其他帳號。沒有更動程式、schema 或部署。
+
+重置前完整範圍備份保存在本機 `/Users/eric/.codex/backups/roll/super-reset-2026-09-29T04-18-01-721Z.json`（檔案權限 0600、不在 Git 內；含帳號與關聯資料，勿公開）。SHA-256：`d6dd4af77c5de65f97a63c48b906793a43a7f9eb2760a1a05598028de4072e87`。已先寫入、fsync 並讀回比對備份，再執行清除；交易內斷言確認內容清空及保留欄位／付款紀錄未變。恢復時須以這份備份限定該 user ID，先比對重置後新增內容，避免覆蓋新的正式資料。
+
+重置後驗收通過：原帳密登入 200、回傳未完成 onboarding／step 2；Chrome 實際導向 `/onboarding/company` 且公司欄位空白。正式 agenda 不再包含舊模板任務或測試 Action Plan，Business 仍顯示；AI 用量 API 回傳 used 0／remaining 150／bonusRemaining 0，原額度週期保留。驗收截圖存於同一備份目錄的 `super-reset-2026-09-29.png`。
 
 ### 環境變數
 
@@ -383,6 +391,8 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 | `/api/admin/users/[id]/trial` | admin session 才能建立、延長或撤銷 Pro / Business 限時試用；後台明確標出沒有 PayPal subscription id 的舊假 ACTIVE。 |
 | `/api/billing/webhook` | PayPal 簽章驗證、事件審計與訂閱對帳；另處理 `PAYMENT.CAPTURE.COMPLETED` 額度入帳。重送安全，非預期錯誤只回安全 code、完整細節留 server log。 |
 
+2026-09-29 Meeting notes 編輯版面：桌面採左側筆記摘要清單、右側約 2/3 寬的大編輯區；點標題或 Edit 載入全文，新增按鈕切換空白表單。內容框至少 18 行且可垂直拉高；手機版上下排列、清單限制高度。保留原有新增／更新／刪除 API 與完整錯誤顯示；切換筆記、新增或取消前會確認是否放棄未儲存內容，請求進行中停用編輯／切換，避免覆蓋草稿。不需修改資料庫。`pnpm exec tsx --test tests/notes-editor.test.ts` 驗證拒絕放棄時保留草稿、確認後切換及取消、重選同筆不覆蓋。新增／更新／錯誤保留草稿以本機模擬 API 操作驗收，390px 手機版無橫向溢出；35 項測試、型別檢查與正式建置通過。正式部署 `roll-k0ge1j78s-erics-projects-57e51613.vercel.app` 已生效至 `www.rollgrp.com`，登入實測左側 354px／右側 708px、0 筆記錄與 Business 權限維持。
+
 UI 元件在 `src/components/dashboard/`（含 `ActionPlanBuilder`、`ActionPlanManager`、Dashboard `ActionPlanOverview` 與保留 legacy 區的 `AgendaBoard`）。Action Plan 的分類、Zod 契約、排名、Dashboard priority/progress 純函式、分鐘格式、AI strict tools 與 persistence service 集中在 `src/lib/action-plan/`；`tests/action-plan.test.ts` 覆蓋權重、公式、分鐘相容與格式、Dashboard precedence/progress、完成排除、Required gate、依賴解除、循環與 20/24/100 邊界。i18n 的 `Dashboard.actionPlan` 與 `Dashboard.home.actionSummary` 在 en/zh-tw 保持平行。新資料表 `ActionPlan` / `ActionItem` / `ActionDependency` 與分鐘欄位皆為純新增，`ActionPlan.activeKey` nullable unique 保證每位會員最多一份 active plan，`[userId, requestId]` 保證生成冪等；舊 `LandingTask` / `checklistState` 不回填。連同既有新資料表與欄位一律使用 `pnpm db:push`，禁止 `--accept-data-loss`。其餘 Dashboard 元件、CRM、Billing、Playbook、Feedback 與安全架構維持既有契約。
 
 **入口接通**：登入 / onboarding / 測驗完成後由 `destinationFor`（`src/lib/auth/onboarding.ts`，`completed → /dashboard`）導向後台；全站 Navbar 有「會員中心」入口（靜態連結 → `/dashboard`，未登入由 proxy 導 `/login`）。
@@ -438,7 +448,7 @@ Production 直接使用 PayPal Live；帳號持有人須在 Vercel UI 安全輸�
 | --- | --- | --- |
 | 已完成 | 正式 DB 已同步 | 已新增 `InvestorKpiPoint`、`InvestorPortal.hiddenFields`、`InvestorKpi.hidden/unit`、`InvestorMilestone.hidden`、`InvestorUpdate.hidden` 及相關索引／外鍵；使用隔離正式連線執行 `prisma db push`，未使用資料遺失旗標，更新後 diff 為 `No difference detected`。 |
 | 待正式 runtime 驗證 | 更正 Anthropic 金鑰檢查 | 前次 CLI 呼叫 `/v1/models` 的 401 是因 Sensitive 金鑰下載為空值，**不是正式金鑰失效的證據**。本機專案金鑰可取得模型清單，但不能據此推論正式金鑰狀態；未替換正式金鑰，也未做付費生成測試。PayPal Sensitive 憑證亦不可用 CLI 下載值驗證。 |
-| P1 | Production 缺四個 USD PayPal Plan ID | 缺 `PAYPAL_PLAN_ID_PRO_MONTHLY_USD`、`PAYPAL_PLAN_ID_PRO_YEARLY_USD`、`PAYPAL_PLAN_ID_BUSINESS_MONTHLY_USD`、`PAYPAL_PLAN_ID_BUSINESS_YEARLY_USD`；依 checkout 程式，新 Pro／Business 月／年訂閱會回 503。舊 `PAYPAL_PLAN_ID_PRO/BUSINESS` 不會作為新結帳的 fallback。需建立或核對四個 Live plans，補環境設定並重新部署。 |
+| 已設定並部署（2026-09-14） | 四個 USD PayPal Plan ID | 已依使用者提供的方案名稱與 ID 設定 Production，對照見下表；隔離本機 env 後四個值均驗證一致。舊 `PAYPAL_PLAN_ID_PRO/BUSINESS` 與 Sensitive 憑證保持原樣。PayPal 實際金額、週期及付款流程仍待驗收。 |
 | P1 | Production 缺 `RESEND_API_KEY`／`RESEND_FROM_EMAIL` | Investor 邀請無法寄送；需設定已驗證寄件網域與金鑰，再重新部署。未實際寄信。 |
 | 已完成 | Investor Private Blob | 已建立 `roll-investor-business-plans`（`store_TDpORmqOaIHYsR0y`，`sin1`，Private），僅連接本專案 Production，自訂 prefix `INVESTOR_BLOB` 產生 `INVESTOR_BLOB_READ_WRITE_TOKEN`；保留原公開圖片 store 與 token。已重新部署使設定生效。 |
 
@@ -448,7 +458,33 @@ Production 直接使用 PayPal Live；帳號持有人須在 Vercel UI 安全輸�
 
 更新驗收：同一 commit 已重新部署為 `dpl_3AoVKRcT4dkQQ5tu2KXg2PfjQvpn`（`https://roll-75p0q0pkc-erics-projects-57e51613.vercel.app`），Ready 並已接上 `www.rollgrp.com`。正式 Prisma 可讀取 Portal 與 KPI points 等關聯；獨立 Private Blob token 可正常執行唯讀 list。部署後首頁、英／中產品頁 HTTP 200；Dashboard 未登入導向登入；PDF 上傳 token 入口對未登入請求回 401，已通過原先會阻擋的私密儲存設定檢查。未實際上傳會員文件。
 
-仍待補齊：四個 PayPal Live Plan ID、Resend 金鑰及已驗證寄件地址；已請使用者透過 Vercel Production 安全設定，不在聊天貼憑證。這些設定完成後需再次部署並使用已授權測試帳號驗收。往後發布需把 schema 差異與必要環境變數檢查納入上線條件，Sensitive 值則在實際部署環境驗證。
+2026-09-14 PayPal Production 設定（ID 由使用者提供；金額是網站預期值，尚未從 PayPal 後台獨立核實）：
+
+| 使用者方案名稱 | Production 變數 | Plan ID | 網站預期收費 |
+| --- | --- | --- | --- |
+| NOVA AI PRO | `PAYPAL_PLAN_ID_PRO_MONTHLY_USD` | `P-4N9467757S0676023NKTIQVY` | USD 49／月 |
+| NOVA AI PRO 12 months | `PAYPAL_PLAN_ID_PRO_YEARLY_USD` | `P-1M717124B4455531ENKTJKVQ` | USD 468／年 |
+| NOVA Business | `PAYPAL_PLAN_ID_BUSINESS_MONTHLY_USD` | `P-33E98130HA1920135NKTJQZY` | USD 149／月 |
+| NOVA Business (12 months) | `PAYPAL_PLAN_ID_BUSINESS_YEARLY_USD` | `P-0DX10850JY725084FNKTJX5I` | USD 1,668／年 |
+
+沿用既有後端 checkout／webhook 流程，沒有嵌入使用者貼上的 PayPal 按鈕程式。公開 PayPal 方案入口導向登入／訪客 Email 頁，未取得收費摘要；未輸入付款資料或完成訂閱。Sensitive Client ID／Secret 無法透過 CLI 讀回，不能據此聲稱已核實商家帳號相容性或付款成功。
+
+部署驗收：以當時正式 commit `a90654d6bf2c0bf6c235c7946d611060775c70d8` 重新部署，產生 `dpl_B1YeWJymMFxygipRfzduxFPXQHvD`（`https://roll-gou153y9m-erics-projects-57e51613.vercel.app`）並接上 `www.rollgrp.com`。Build 通過；英／中產品頁 HTTP 200、未登入 Billing 導向登入、訂閱 API 拒絕未登入請求（401）。本次沒有資料庫結構或資料異動。
+
+仍待補齊：Resend 金鑰及已驗證寄件地址；已請使用者透過 Vercel Production 安全設定，不在聊天貼憑證。設定完成後需再次部署並使用已授權測試帳號驗收。往後發布需把 schema 差異與必要環境變數檢查納入上線條件，Sensitive 值則在實際部署環境驗證。
+
+2026-09-14 補充非扣款驗證（使用者回報先前 Sandbox 付款與訂閱啟用已測試，本次未重跑）：
+
+- `pnpm test` 34/34 通過；`pnpm lint` 無錯誤，保留 Navbar hook dependency、TaiwanMap unused import 兩項既有 warnings。
+- 正式 DB 唯讀 `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code` 回報 `No difference detected`；不需再次更新結構，未修改會員或訂閱資料。
+- 正式 API 共 17 項未登入／無簽章／格式錯誤檢查符合預期：Investor、邀請接受、AI 生成／診斷／Copilot、Billing、額度、試用管理等拒絕未登入請求（401），不支援的 milestones POST 回 405；webhook 無簽章回 401、無效 JSON 回 400。這不代表已驗證合法 webhook 簽章或登入後操作。
+- 使用獨立 Private Blob token 上傳合成測試位元組、授權讀回逐 byte 比對成功；匿名讀取回 403。測試物件已刪除，prefix list 確認無殘留。這是儲存層驗證，未驗收完整 PDF 格式、應用程式上傳介面或會員文件權限流程。
+- 對實際 `billing/gate.ts` 原始碼做一次性純函式檢查，僅隔離 server-only／帳號讀取依賴：24 項通過，涵蓋到期當刻、取消後已付期間、pending／expired、24 小時 SUSPENDED 寬限期邊界、嚴格訂閱 ID 要求、試用起迄、較高方案優先及人工 Enterprise。未讀寫會員資料；不是正式帳號端到端驗收。
+- 可查的近 3 日 Vercel error logs 無結果；正式 DB 近 3 日 AiUsage、ActionPlan、WebhookEvent 查無紀錄。訂閱狀態彙總只有 2 筆 `APPROVAL_PENDING`，InvestorPortal 為 0 筆。因此沒有近期正式成功使用的紀錄可供佐證，不能據此宣稱 AI、付款啟用或 Investor 完整流程已通過。
+
+確定待補項仍為 Production 的 `RESEND_API_KEY`／`RESEND_FROM_EMAIL`；正式 AI 生成、PayPal Live 實際金額／週期及付款啟用、邀請信與登入後 PDF 操作仍未驗收。本次僅新增驗證紀錄，沒有應用程式碼變更或新部署。
+
+2026-09-14 Resend 設定進度：已依使用者授權進入 Resend，建立 `rollgrp.com` 的網域設定流程（ID `606a0cbe-602a-466c-af81-6820099f617c`，Tokyo）。權威 DNS 為 GoDaddy；自動設定目前停在 GoDaddy 登入頁，等待使用者完成登入／兩步驟驗證。所需紀錄為 `resend._domainkey` TXT、`send` TXT（`v=spf1 include:amazonses.com ~all`）、`send` MX（`feedback-smtp.ap-northeast-1.amazonses.com`，priority 10）；Receiving 保持關閉。尚未修改 DNS、建立寄信金鑰、寫入 Vercel env 或寄出郵件；既有其他專案網域與金鑰保持原樣。網域完成後再建立僅供此網域使用的 Sending access 金鑰並部署。
 
 ## 內容頁（SEO / GEO 主引擎）
 
