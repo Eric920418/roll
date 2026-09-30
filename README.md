@@ -371,7 +371,7 @@ Account and plan 在 `/dashboard/account` 同頁顯示公司檔案、現有 Bill
 Next steps 在 `/dashboard/agenda` 直接包含可編輯的里程碑清單與其完成進度，沿用原 `checklistState`／`milestoneConfig`，不複製或搬移資料；舊 `/dashboard/tools` 導向頁內里程碑區。
 舊版落地任務與里程碑共用的系統勾選狀態更新後，`ChecklistTool` 會按新的 server groups 重新載入，避免同頁進度顯示舊值。
 Action 排序維持「可執行且高優先級先顯示」，凡有未完成的前置 Action 一律鎖定；API 拒絕提前勾選被阻擋的任務，也拒絕把已完成後續任務的前置項目改回未完成。Next steps 同時顯示 Action 完成進度，勾選成功後由回傳的計畫立即重算。
-2026-09-30 依賴驗收：新生成的五項 Action 使用固定 `task_1`–`task_5` 識別碼，AI 必須先列前置任務，再以 `dependsOnKeys` 指向已生成的 ID；server 拒絕缺失目標、循環、重複標題、沒有連結 ID 的依賴，以及超過一項 Critical impact，失敗時要求 AI 修正一次。Home 與 Next steps 均使用 `rankActions` 的 Ready／Blocked 結果；舊計畫若只有依賴等級而沒有關聯 ID，顯示為 Blocked，需人工編輯連結，不自動猜測或改寫既有資料。
+2026-09-30 依賴驗收：新生成的五項 Action 使用固定 `task_1`–`task_5` 識別碼，AI 必須先列前置任務，再以 `dependsOnKeys` 指向已生成的 ID；server 拒絕缺失或重複的依賴 ID、循環、重複標題、沒有連結 ID 的依賴，以及超過一項 Critical impact，失敗時要求 AI 修正一次。Home 與 Next steps 均使用 `rankActions` 的 Ready／Blocked 結果；舊計畫若只有依賴等級而沒有關聯 ID，顯示為 Blocked，需人工編輯連結，不自動猜測或改寫既有資料。
 Action 完成進度以當前 active plan 的 `done` 數量即時計算，與里程碑原有的完成率分別標示。
 排序回歸測試以非 Required（level 1）依賴驗證同樣會鎖定，直到前置項目完成。
 Share with investors 仍由 Business 以上方案控管；Business 月費從 `PLAN_CONFIG` 讀取 USD 149 顯示在升級提示，不另造價格常數。

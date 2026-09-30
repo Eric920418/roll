@@ -213,6 +213,7 @@ test("生成驗證拒絕時間反轉、Fit 超界、錯誤 enum、缺少依賴�
     { ...generated(0), impact: "Extreme" },
     { ...generated(0), dependencyLevel: 3, dependsOnKeys: ["missing"] },
     { ...generated(0), dependencyLevel: 1, dependsOnKeys: [] },
+    { ...generated(0), dependencyLevel: 1, dependsOnKeys: ["action-1", "action-1"] },
   ];
   for (const invalid of cases) {
     const actions = Array.from({ length: 20 }, (_, index) => index === 0 ? invalid : generated(index));

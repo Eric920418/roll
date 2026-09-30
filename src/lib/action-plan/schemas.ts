@@ -122,6 +122,9 @@ export const generatedActionSchema = z
     if (value.dependencyLevel > 0 && value.dependsOnKeys.length === 0) {
       ctx.addIssue({ code: "custom", path: ["dependsOnKeys"], message: "有依賴的 Action 必須指定前置任務 ID" });
     }
+    if (new Set(value.dependsOnKeys).size !== value.dependsOnKeys.length) {
+      ctx.addIssue({ code: "custom", path: ["dependsOnKeys"], message: "前置任務 ID 不可重複" });
+    }
     if (value.outcomeTime.max < 1) {
       ctx.addIssue({ code: "custom", path: ["outcomeTime"], message: "Outcome time 至少為 1 天" });
     }
@@ -255,6 +258,9 @@ export const actionInputSchema = z
     }
     if (value.dependencyLevel > 0 && value.dependencyActionIds.length === 0) {
       ctx.addIssue({ code: "custom", path: ["dependencyActionIds"], message: "有依賴的 Action 必須指定前置任務 ID" });
+    }
+    if (new Set(value.dependencyActionIds).size !== value.dependencyActionIds.length) {
+      ctx.addIssue({ code: "custom", path: ["dependencyActionIds"], message: "前置任務 ID 不可重複" });
     }
     if (value.actionTime.maxMinutes < 1 || value.outcomeTime.max < 1) {
       ctx.addIssue({ code: "custom", path: ["actionTime"], message: "時間上限至少為 1" });
