@@ -8,6 +8,8 @@ import { pathForLocale } from "@/lib/routes";
 import FounderResult, {
   type FounderResultView,
 } from "@/components/quiz/FounderResult";
+import NovaLogo from "@/components/brand/NovaLogo";
+import { parseGrowthProfile, GROWTH_DIMENSIONS } from "@/lib/quiz/growth";
 import type { Locale } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -36,8 +38,36 @@ export default async function QuizResultPage({ params }: Props) {
     orderBy: { createdAt: "desc" },
     include: { founder: true },
   });
-  // 還沒做測驗（或配對不到）→ 回測驗
-  if (!submission || !submission.founder) redirect(pathForLocale("/quiz", l));
+  if (!submission) redirect(pathForLocale("/quiz", l));
+
+  const growth = parseGrowthProfile(submission.scores);
+  if (growth) {
+    const t = await getTranslations({ locale, namespace: "Quiz.growthResult" });
+    return (
+      <main className="nova-theme min-h-screen bg-white px-5 py-12 font-[family-name:var(--font-body)]" data-brand="nova">
+        <div className="mx-auto max-w-2xl">
+          <NovaLogo variant="black" className="h-auto w-[150px]" sizes="150px" />
+          <p className="mt-12 text-xs font-bold uppercase tracking-[0.18em] text-dark/45">{t("eyebrow")}</p>
+          <h1 className="mt-3 text-3xl font-bold text-dark md:text-4xl">{t("title")}</h1>
+          <p className="mt-3 text-sm text-dark/60">{t("intro")}</p>
+          <div className="mt-8 grid gap-4">
+            {growth.answers.map((answer, i) => (
+              <section key={answer.dimension} className="rounded-2xl border border-dark/10 p-5">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-dark/50">
+                  {t(GROWTH_DIMENSIONS[i].replace("growth-", "") as "bottleneck" | "style" | "milestone")}
+                </h2>
+                <p className="mt-2 text-lg font-semibold text-dark">{pick(answer.label, l)}</p>
+                <p className="mt-1 text-sm text-dark/60">{pick(answer.desc, l)}</p>
+              </section>
+            ))}
+          </div>
+          <a href={pathForLocale("/dashboard", l)} className="mt-8 inline-flex min-h-11 items-center rounded-xl bg-primary px-6 py-3 font-semibold text-white">{t("finish")}</a>
+        </div>
+      </main>
+    );
+  }
+  // 舊版創辦人配對結果保留，供既有紀錄檢視。
+  if (!submission.founder) redirect(pathForLocale("/quiz", l));
 
   const f = submission.founder;
   const sec = f.statSecondary as

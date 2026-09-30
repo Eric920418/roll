@@ -57,8 +57,8 @@ export default function QuizSubmissionsList({
             <tr>
               <th className="px-4 py-2.5 text-left font-medium">用戶</th>
               <th className="px-4 py-2.5 text-left font-medium">作答</th>
-              <th className="px-4 py-2.5 text-left font-medium">配對創辦人</th>
-              <th className="px-4 py-2.5 text-left font-medium">決策分數</th>
+              <th className="px-4 py-2.5 text-left font-medium">舊版配對</th>
+              <th className="px-4 py-2.5 text-left font-medium">結果類型／舊版分數</th>
               <th className="px-4 py-2.5 text-left font-medium">時間</th>
               <th className="px-4 py-2.5" />
             </tr>

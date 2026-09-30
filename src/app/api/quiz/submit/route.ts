@@ -10,6 +10,7 @@ import {
   type Scores,
   type ScorableQuestion,
 } from "@/lib/quiz/match";
+import { GROWTH_DIMENSIONS, type GrowthProfile } from "@/lib/quiz/growth";
 
 const CHOICES: Choice[] = ["A", "B", "C", "D"];
 const NEUTRAL: Scores = {
@@ -69,7 +70,38 @@ export async function POST(req: NextRequest) {
     // 重新從 DB 取題目（不信任前端的分數）
     const questions = await prisma.quizQuestion.findMany({
       where: { published: true },
+      orderBy: { order: "asc" },
     });
+    if (questions.some((q) => q.dimension.startsWith("growth-"))) {
+      if (questions.length !== 3 || questions.some((q, i) => q.dimension !== GROWTH_DIMENSIONS[i])) {
+        return fail("測驗題目設定不完整，請聯絡管理員", 409);
+      }
+      if (answers.length !== 3 || new Set(answers.map((a) => a.questionId)).size !== 3) {
+        return fail("請完成三題，每題只能選一個答案", 400);
+      }
+      const profile: GrowthProfile = { kind: "growth-v1", answers: [] };
+      for (const question of questions) {
+        const answer = answers.find((a) => a.questionId === question.id);
+        const option = answer && ({ A: question.optionA, B: question.optionB, C: question.optionC, D: question.optionD })[answer.choice];
+        if (!answer || !option) return fail("作答內容與目前題目不符，請重新作答", 400);
+        const value = option as { label?: unknown; desc?: unknown };
+        const label = value.label as GrowthProfile["answers"][number]["label"];
+        const desc = value.desc as GrowthProfile["answers"][number]["desc"];
+        if (typeof label?.en !== "string" || typeof label?.["zh-tw"] !== "string" ||
+            typeof desc?.en !== "string" || typeof desc?.["zh-tw"] !== "string") {
+          return fail("測驗選項設定不完整，請聯絡管理員", 409);
+        }
+        profile.answers.push({
+          dimension: question.dimension as GrowthProfile["answers"][number]["dimension"],
+          choice: answer.choice, label, desc,
+        });
+      }
+      await prisma.$transaction([
+        prisma.quizSubmission.create({ data: { userId: session.uid, answers, scores: profile } }),
+        prisma.user.update({ where: { id: session.uid }, data: { quizCompleted: true, completed: true } }),
+      ]);
+      return ok({ kind: profile.kind });
+    }
     const scorable: ScorableQuestion[] = questions.map((q) => {
       const cols: Record<Choice, unknown> = {
         A: q.optionA,

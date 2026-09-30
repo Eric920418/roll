@@ -459,15 +459,15 @@
     }
   },
   "Quiz": {
-    "metaTitle": "NOVA 決策風格測驗",
-    "metaDescription": "3 題測驗，把你的決策風格配對到一位創辦人。",
+    "metaTitle": "NOVA 成長診斷",
+    "metaDescription": "透過三題釐清當前瓶頸、成長方式與 12 個月目標。",
     "byline": "by ROLL ON",
     "next": "下一題",
     "back": "上一題",
     "seeResult": "看我的結果",
     "submitting": "分析中…",
     "result": {
-      "metaTitle": "NOVA｜你的創辦人配對",
+      "metaTitle": "NOVA｜你的診斷結果",
       "byline": "by ROLL ON",
       "eyebrow": "你的創辦人配對",
       "decisionAlignment": "決策風格對齊",
@@ -481,6 +481,15 @@
       "fullAnalysis": "看完整公司分析",
       "intro": "NOVA 以 AI 分析你的創辦人決策風格，並依你的進度給出個人化的下一步行動。",
       "finish": "完成"
+    },
+    "growthResult": {
+      "eyebrow": "你的成長診斷",
+      "title": "釐清你的下一步重點",
+      "intro": "NOVA 會依這些答案調整行動建議。12 個月里程碑是目標，目前尚非完整的月度路線圖。",
+      "bottleneck": "最大瓶頸",
+      "style": "成長方式",
+      "milestone": "12 個月目標",
+      "finish": "前往後台"
     }
   },
   "Dashboard": {

@@ -66,6 +66,16 @@ function memberContext(profile: Account["profile"]): string {
 /** quiz 結果 → 創辦人決策風格 context，讓 NOVA 調整教練風格、不重複問。 */
 function quizContextBlock(quiz: QuizContext | null): string {
   if (!quiz) return "";
+  if (quiz.growth) {
+    const [bottleneck, style, milestone] = quiz.growth.answers;
+    return [
+      "## Member's growth priorities (from the current NOVA assessment)",
+      `- Single biggest bottleneck: ${bottleneck.label.en}. ${bottleneck.desc.en}`,
+      `- Preferred growth and market-entry style: ${style.label.en}. ${style.desc.en}`,
+      `- Target milestone within 12 months: ${milestone.label.en}. ${milestone.desc.en}`,
+      "Use these choices to tailor next actions. Treat the 12-month milestone as a goal, not a completed achievement or an existing detailed roadmap; verify missing details before making claims.",
+    ].join("\n");
+  }
   const lines: string[] = [];
   if (quiz.scores) {
     const s = quiz.scores;

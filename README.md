@@ -338,19 +338,18 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 > Terms / Privacy 連結目前為 `#` placeholder，待有正式條款頁再接。
 
-### 創辦人決策風格測驗（onboarding 之後）
+### NOVA 成長診斷（onboarding 之後）
 
-完成 onboarding（requirements）後 → `/[locale]/quiz`（3 題、每題最多 4 選項）→ `/[locale]/quiz/result`（配對一位創辦人）→「完成」進 `/dashboard`。`User.onboardingStep` 擴成 4=quiz；`completed` 改在**測驗完成**才設 true。`/quiz/*` 由 proxy 以 `user_session` 守衛（同 onboarding）。
+完成 onboarding（requirements）後 → `/[locale]/quiz`（3 題、每題 A–D 四選一）→ `/[locale]/quiz/result`（回顧瓶頸、成長方式、12 個月目標）→ `/dashboard`。`User.onboardingStep` 的 4 代表 quiz；測驗提交後 `quizCompleted` / `completed` 才設 true。`/quiz/*` 由 proxy 以 `user_session` 守衛。
 
-- **配對邏輯**（`src/lib/quiz/match.ts`，純函式）：**每個選項自帶決策風格三維向量**（planningDepth/executionStrength/visionClarity，0~100）；作答彙整各選項向量、逐維取平均 → 三維分數 → 配對**向量距離最近**的已發布創辦人。submit 端（`/api/quiz/submit`）**重新從 DB 取題目自算分數**，不信任前端；對舊格式選項（單一 `value` + 題目 `dimension`）保留 fallback，不致算錯或崩潰。
-- **資料皆 DB、CMS 可編輯**：`QuizQuestion`（`optionA`–`optionD`，每題最多 4 選項，`optionC/D` 可空＝2 選項題；`dimension` 退化為分類標籤）、`Founder`（連結既有 `content/companies` 的 `companySlug`，結果頁放「看完整公司分析」）、`QuizSubmission`（每次作答存一筆，`choice` 為 A/B/C/D）。雙語文字用 Json `{en,"zh-tw"}`。
-- **為何不直接擴充 `content/companies/*.json`**：那是檔案、Vercel FS 唯讀、網頁後台無法寫檔；故創辦人/題目改放 DB 並用 `companySlug` 連結現有公司頁。
-- **Seed**（`prisma/seed.ts`，count-guard）：3 題**市場進入風格測驗**（4 選項 A/B/C/D，每選項帶三維向量；4 原型＝分析型/實驗型/ROI 型/夥伴型）+ 5 位台灣創辦人（張忠謀/郭台銘/洪鎮海/高清愿/中華電信），decisionStyle 為 sample，待後台精修。
-- **換題／套用到 DB**（2026-06，4 選項制）：schema 新增 `optionC?`/`optionD?` 兩個**可空**欄位（加法式 migration、無資料遺失）。套用順序：`pnpm db:push` → `node scripts/reset-quiz-questions.mjs`（清空舊題）→ `pnpm db:seed`（灌入新 3 題）。或改用後台 `/admin/quiz-questions` 以 JSON 編輯。前端作答 UI（`QuizClient`）已重設計為**字母徽章 A/B/C/D 直式選項列**。
+- **新題目**：依序為 `growth-bottleneck`、`growth-style`、`growth-milestone`。提交 API 從 DB 重新核對已發布的三題、每題一個有效選項，將當次答案的雙語文字快照存入 `QuizSubmission.scores`（`kind: growth-v1`）；結果頁和 NOVA AI 讀取這份快照，不再把新答案算成創辦人風格分數。行動計畫診斷也會收到同一份 context；填完測驗本身不會自動產生完整 12 個月路線圖。
+- **保留舊資料**：舊版創辦人配對程式、題目與既有提交均保留供歷史查閱；管理員提交清單可顯示新舊紀錄及 A–D 全部選項。`prisma/seed.ts` 是舊版初始化程式（僅空資料庫才執行），不可用於切換正式題目。
+- **正式題目切換**：先部署支援兩種結果格式的程式，再以現有正式資料庫連線執行 `pnpm exec tsx scripts/publish-growth-quiz.ts`。腳本在單一 serializable 交易中建立三題固定 ID 的新題、將已核對的三題舊題設為未發布；如現況不符便中止且不改資料。重跑會安全跳過。無需 schema migration、`db:push`、reset 或資料清除。
+- **驗證**：`pnpm test` 包含新舊結果辨識與三題順序檢查；正式切換後應核對三題已發布、舊題未發布、歷史提交筆數不變。
 
 ### 後台測驗管理（`/admin`，自動受保護）
 
-- `/admin/quiz-submissions` — 唯讀清單（用戶 / 作答 / 配對創辦人 / 決策分數 / 時間 + 刪除）。
+- `/admin/quiz-submissions` — 清單（用戶 / 作答 / 新診斷或舊版創辦人配對與分數 / 時間 + 刪除）。
 - `/admin/quiz-questions`、`/admin/founders` — 以 JSON 編輯器增刪改（含雙語、timeline、businessDetails 等巢狀結構）；API 在 `/api/admin/{quiz-questions,founders,quiz-submissions}`，皆 `requireAdmin` 把關。
 
 ## NOVA 會員專屬後台 + 訂閱金流（PayPal）

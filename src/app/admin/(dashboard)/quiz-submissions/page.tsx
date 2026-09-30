@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { pick } from "@/lib/quiz/locale";
+import { parseGrowthProfile } from "@/lib/quiz/growth";
 import QuizSubmissionsList, {
   type SubmissionRow,
 } from "@/components/admin/QuizSubmissionsList";
@@ -18,15 +19,16 @@ export default async function QuizSubmissionsPage() {
 
   const submissions: SubmissionRow[] = rows.map((s) => {
     const answers =
-      (s.answers as { questionId: string; choice: "A" | "B" }[] | null) ?? [];
+      (s.answers as { questionId: string; choice: "A" | "B" | "C" | "D" }[] | null) ?? [];
     const answerText = answers.map((a) => {
       const q = qmap.get(a.questionId);
       if (!q) return `?·${a.choice}`;
-      const opt = (a.choice === "A" ? q.optionA : q.optionB) as {
+      const opt = ({ A: q.optionA, B: q.optionB, C: q.optionC, D: q.optionD })[a.choice] as {
         label?: unknown;
-      };
-      return pick(opt.label, "zh-tw") || a.choice;
+      } | null;
+      return pick(opt?.label, "zh-tw") || a.choice;
     });
+    const growth = parseGrowthProfile(s.scores);
     const scores =
       (s.scores as {
         planningDepth?: number;
@@ -39,7 +41,7 @@ export default async function QuizSubmissionsPage() {
       name: [s.user.firstName, s.user.lastName].filter(Boolean).join(" "),
       founder: s.founder ? pick(s.founder.name, "zh-tw") : "—",
       answers: answerText,
-      scores: `P${scores.planningDepth ?? "?"} / E${
+      scores: growth ? "成長診斷" : `P${scores.planningDepth ?? "?"} / E${
         scores.executionStrength ?? "?"
       } / V${scores.visionClarity ?? "?"}`,
       createdAt: s.createdAt.toISOString(),
@@ -50,7 +52,7 @@ export default async function QuizSubmissionsPage() {
     <div>
       <h1 className="mb-1 text-2xl font-bold tracking-tight">測驗提交紀錄</h1>
       <p className="mb-6 text-sm text-neutral-500">
-        用戶完成決策風格測驗後的作答與配對結果
+        用戶的成長診斷作答；舊版紀錄保留創辦人配對結果
       </p>
       <QuizSubmissionsList submissions={submissions} />
     </div>

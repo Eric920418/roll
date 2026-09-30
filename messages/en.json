@@ -459,15 +459,15 @@
     }
   },
   "Quiz": {
-    "metaTitle": "NOVA Decision Style Assessment",
-    "metaDescription": "A 3-question assessment that matches your decision style to a founder.",
+    "metaTitle": "NOVA Growth Assessment",
+    "metaDescription": "Three questions about your bottleneck, growth style, and 12-month goal.",
     "byline": "by ROLL ON",
     "next": "Next",
     "back": "Back",
     "seeResult": "See My Result",
     "submitting": "Analyzing…",
     "result": {
-      "metaTitle": "NOVA | Your Founder Match",
+      "metaTitle": "NOVA | Your Assessment Result",
       "byline": "by ROLL ON",
       "eyebrow": "Your founder match",
       "decisionAlignment": "Decision style alignment",
@@ -481,6 +481,15 @@
       "fullAnalysis": "View full company analysis",
       "intro": "NOVA uses AI to analyze your founder decision style and gives you personalized next-step actions based on your progress.",
       "finish": "Done"
+    },
+    "growthResult": {
+      "eyebrow": "Your growth assessment",
+      "title": "Your priorities, clearly defined.",
+      "intro": "NOVA will use these answers when suggesting next actions. Your 12-month milestone is a goal, not a completed roadmap.",
+      "bottleneck": "Biggest bottleneck",
+      "style": "Growth style",
+      "milestone": "12-month milestone",
+      "finish": "Go to dashboard"
     }
   },
   "Dashboard": {
