@@ -363,6 +363,7 @@ Golden Ticket 使用提供的 EP.3 封面 `public/golden-ticket-call-center.jpg`
 2026-09-30 導覽整併：左側只顯示 Home、Profile、Next steps、Customer insights、Share with investors、Account and plan、Feedback；頁面主標題也改為相應名稱。台灣百大企業及募資測驗暫時隱藏入口，舊資料和舊 URL 保留。Profile 新增可編輯的 ICP 欄位，儲存在 `OnboardingProfile.icp`，並提供給 NOVA 個人化上下文；此 schema 變更只新增 nullable 欄位，不改舊會員資料。
 ICP 前後端皆限制 2000 字元，過長回明確 400 錯誤，會員仍可保留既有公司檔案欄位。
 ICP 編輯欄位放在 Account and plan 的公司資訊區，Profile 頁顯示已儲存內容。
+正式站驗收修正：英文與繁中 ICP 欄位使用 `Dashboard.account` 翻譯，避免顯示原始翻譯鍵。
 正式資料庫更新前 `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` 僅顯示 `ALTER TABLE "OnboardingProfile" ADD COLUMN "icp" TEXT`，再用 `pnpm db:push` 套用；未使用 `--accept-data-loss`，舊會員資料不受影響。
 Customer insights 新頁面 `/dashboard/insights` 並列既有 CRM 聯絡人清單與會議／對話筆記，沿用原 API 與資料；Sales pipeline 從主導覽隱藏，但原有交易資料與舊 URL 保留，不做資料轉移或刪除。
 Account and plan 在 `/dashboard/account` 同頁顯示公司檔案、現有 BillingPanel 與帳戶安全設定；既有 `/dashboard/billing` 與付款回跳 URL 保留以維持相容，主導覽只留一個入口。
