@@ -9,6 +9,7 @@ export type NoteRow = {
   title: string;
   body: string | null;
   meetingAt: string | null; // ISO 字串或 null
+  meetingType: string | null;
 };
 
 const fieldClass =
@@ -16,15 +17,15 @@ const fieldClass =
 const labelClass =
   "text-xs font-semibold text-dark/70 font-[family-name:var(--font-heading)]";
 
-const empty = { title: "", body: "", meetingAt: "" };
+const empty = { title: "", body: "", meetingAt: "", meetingType: "" };
 
-// datetime-local 需 "YYYY-MM-DDTHH:mm"；把 ISO 轉為本地無時區字串
-function toLocalInput(iso: string | null): string {
+function toDateInput(iso: string | null, meetingType?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
+  if (meetingType) return d.toISOString().slice(0, 10);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export default function NotesManager({ notes }: { notes: NoteRow[] }) {
@@ -43,7 +44,8 @@ export default function NotesManager({ notes }: { notes: NoteRow[] }) {
   const original = notes.find((note) => note.id === editingId);
   const dirty = form.title !== (original?.title ?? "") ||
     form.body !== (original?.body ?? "") ||
-    form.meetingAt !== toLocalInput(original?.meetingAt ?? null);
+    form.meetingAt !== toDateInput(original?.meetingAt ?? null, original?.meetingType) ||
+    form.meetingType !== (original?.meetingType ?? "");
 
   function discardChanges() {
     return !dirty || window.confirm(t("discardChanges"));
@@ -57,7 +59,9 @@ export default function NotesManager({ notes }: { notes: NoteRow[] }) {
 
   const fmt = new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", {
     dateStyle: "medium",
-    timeStyle: "short",
+  });
+  const dateOnlyFmt = new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", {
+    dateStyle: "medium", timeZone: "UTC",
   });
 
   function reset() {
@@ -72,7 +76,8 @@ export default function NotesManager({ notes }: { notes: NoteRow[] }) {
     setForm({
       title: n.title,
       body: n.body ?? "",
-      meetingAt: toLocalInput(n.meetingAt),
+      meetingAt: toDateInput(n.meetingAt, n.meetingType),
+      meetingType: n.meetingType ?? "",
     });
     setError("");
     editorRef.current?.focus();
@@ -84,10 +89,14 @@ export default function NotesManager({ notes }: { notes: NoteRow[] }) {
     setLoading(true);
     try {
       const url = editingId ? `/api/notes/${editingId}` : "/api/notes";
+      const payload = { ...form, meetingType: form.meetingType || null };
+      if (editingId && form.meetingAt === toDateInput(original?.meetingAt ?? null, original?.meetingType)) {
+        delete (payload as { meetingAt?: string }).meetingAt;
+      }
       const res = await fetch(url, {
         method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "save failed");
@@ -157,8 +166,11 @@ export default function NotesManager({ notes }: { notes: NoteRow[] }) {
                   </span>
                   {n.meetingAt && (
                     <span className="mt-1 block text-xs text-primary">
-                      {fmt.format(new Date(n.meetingAt))}
+                      {(n.meetingType ? dateOnlyFmt : fmt).format(new Date(n.meetingAt))}
                     </span>
+                  )}
+                  {n.meetingType && (
+                    <span className="mt-1 block text-xs text-dark/50">{t(`types.${n.meetingType}`)}</span>
                   )}
                   {n.body && (
                     <span className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm text-dark/65">
@@ -216,11 +228,20 @@ export default function NotesManager({ notes }: { notes: NoteRow[] }) {
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className={labelClass}>{t("meetingAt")}</span>
             <input
-              type="datetime-local"
+              type="date"
               className={`${fieldClass} min-w-0`}
               value={form.meetingAt}
               onChange={(e) => setForm({ ...form, meetingAt: e.target.value })}
             />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1.5">
+            <span className={labelClass}>{t("meetingType")}</span>
+            <select required className={fieldClass} value={form.meetingType} onChange={(e) => setForm({ ...form, meetingType: e.target.value })}>
+              <option value="">{t("typePlaceholder")}</option>
+              {(["client", "investor", "partner", "internal", "other"] as const).map((type) => (
+                <option key={type} value={type}>{t(`types.${type}`)}</option>
+              ))}
+            </select>
           </label>
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className={labelClass}>{t("body")}</span>

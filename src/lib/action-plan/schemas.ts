@@ -125,7 +125,7 @@ export const generatedActionSchema = z
   });
 
 export const generatedPlanSchema = z
-  .object({ actions: z.array(generatedActionSchema).min(20).max(100) })
+  .object({ actions: z.array(generatedActionSchema).min(5).max(100) })
   .superRefine((value, ctx) => {
     const keys = new Set<string>();
     for (const [index, action] of value.actions.entries()) {
@@ -195,7 +195,7 @@ export const generateBodySchema = z.object({
   messages: z.array(conversationMessageSchema).max(30).default([]),
   diagnosis: diagnosisSchema,
   requestId: z.string().uuid(),
-  candidateCount: z.number().int().min(20).max(100).default(24),
+  candidateCount: z.literal(5).default(5),
 });
 
 const generatedShape = generatedActionSchema.shape;

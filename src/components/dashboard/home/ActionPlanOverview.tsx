@@ -10,6 +10,7 @@ import {
 import { bottleneckLabel } from "@/lib/action-plan/constants";
 import { formatActionTime } from "@/lib/action-plan/time";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
+import { priorityTier } from "@/lib/action-plan/ranking";
 
 type Props = {
   locale: Locale;
@@ -66,12 +67,6 @@ export default async function ActionPlanOverview({
                   : t("stage.final")
                 : null
             }
-            confidence={plan?.diagnosis.stageConfidence ?? null}
-            confidenceLabel={
-              plan
-                ? t("confidence", { value: plan.diagnosis.stageConfidence })
-                : null
-            }
             tone={plan ? "good" : "neutral"}
           />
           <StatusCard
@@ -90,12 +85,6 @@ export default async function ActionPlanOverview({
                 ? plan.diagnosis.bottleneckReason
                 : t("bottleneck.emptyDetail")
             }
-            confidence={plan?.diagnosis.bottleneckConfidence ?? null}
-            confidenceLabel={
-              plan
-                ? t("confidence", { value: plan.diagnosis.bottleneckConfidence })
-                : null
-            }
             tone={plan ? "warn" : "neutral"}
           />
           <StatusCard
@@ -104,8 +93,6 @@ export default async function ActionPlanOverview({
             value={planName}
             detail={subscriptionStatusLabel}
             meta={isPaying ? t("subscription.manage") : t("subscription.upgrade")}
-            confidence={null}
-            confidenceLabel={null}
             tone={isPaying ? "good" : "warn"}
           />
         </div>
@@ -166,12 +153,7 @@ export default async function ActionPlanOverview({
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-extrabold text-primary">
-                          {action.priorityScore.toFixed(2)}
-                        </p>
-                        <p className="text-[10px] uppercase tracking-[0.1em] text-dark/35">
-                          {t("next.score")}
-                        </p>
+                        <p className="text-sm font-extrabold text-primary">{t(`next.priority.${priorityTier(action.priorityScore)}`)}</p>
                       </div>
                     </div>
                   </Link>
@@ -310,8 +292,6 @@ function StatusCard({
   value,
   detail,
   meta,
-  confidence,
-  confidenceLabel,
   tone,
 }: {
   href: string;
@@ -319,8 +299,6 @@ function StatusCard({
   value: string;
   detail: string;
   meta?: string | null;
-  confidence: number | null;
-  confidenceLabel: string | null;
   tone: "good" | "warn" | "neutral";
 }) {
   const dot =
@@ -348,11 +326,6 @@ function StatusCard({
         {detail}
       </p>
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-3 text-[11px] font-bold text-primary">
-        {confidence != null && confidenceLabel ? (
-          <span className="rounded-full bg-primary/[0.07] px-2.5 py-1">
-            {confidenceLabel}
-          </span>
-        ) : null}
         {meta ? <span>{meta}</span> : null}
       </div>
     </Link>

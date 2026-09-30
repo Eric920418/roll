@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { useTranslations, useLocale } from "next-intl";
@@ -23,8 +23,33 @@ export default function CopilotPanel({
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(canUse);
   const [error, setError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!canUse) return;
+    const controller = new AbortController();
+    fetch("/api/copilot", { signal: controller.signal })
+      .then(async (response) => {
+        const raw = await response.text();
+        let json;
+        try { json = JSON.parse(raw); } catch { throw new Error(`HTTP ${response.status}: ${raw || response.statusText}`); }
+        if (!response.ok) throw new Error(json.error || `HTTP ${response.status}: ${raw}`);
+        return json.data as { question: string; answer: string | null }[];
+      })
+      .then((turns) => setMessages(turns.flatMap((turn) => [
+        { role: "user" as const, content: turn.question },
+        ...(turn.answer ? [{ role: "assistant" as const, content: turn.answer }] : []),
+      ])))
+      .catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause)); })
+      .finally(() => { if (!controller.signal.aborted) setLoadingHistory(false); });
+    return () => controller.abort();
+  }, [canUse]);
+
+  useEffect(() => {
+    if (!loadingHistory) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [loadingHistory]);
 
   const shortcuts = [
     { label: t("tools"), href: pathForLocale("/dashboard/tools", locale) },
@@ -34,7 +59,7 @@ export default function CopilotPanel({
   async function send(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || streaming) return;
+    if (!text || streaming || loadingHistory) return;
     const history = [...messages, { role: "user" as const, content: text }];
     setMessages(history);
     setInput("");
@@ -44,11 +69,13 @@ export default function CopilotPanel({
       const res = await fetch("/api/copilot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, locale }),
+        body: JSON.stringify({ message: text, locale }),
       });
       if (!res.ok || !res.body) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || t("error"));
+        const raw = await res.text();
+        let json;
+        try { json = JSON.parse(raw); } catch { throw new Error(`HTTP ${res.status}: ${raw || res.statusText}`); }
+        throw new Error(json.error || `HTTP ${res.status}: ${raw}`);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -109,7 +136,9 @@ export default function CopilotPanel({
             ref={scrollRef}
             className="mt-3 max-h-64 overflow-y-auto rounded-xl bg-white/70 p-3"
           >
-            {messages.length === 0 ? (
+            {loadingHistory ? (
+              <p className="py-4 text-center text-xs text-dark/50">{t("loadingHistory")}</p>
+            ) : messages.length === 0 ? (
               <p className="py-4 text-center text-xs text-dark/50">{t("emptyHint")}</p>
             ) : (
               <div className="flex flex-col gap-3">
@@ -150,12 +179,12 @@ export default function CopilotPanel({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t("placeholder")}
-              disabled={streaming}
+              disabled={streaming || loadingHistory}
               className="min-w-0 flex-1 rounded-xl border border-dark/10 bg-white px-3 py-2 text-sm text-dark outline-none transition placeholder:text-dark/35 focus:border-primary focus:ring-1 focus:ring-primary/40 disabled:opacity-60 font-[family-name:var(--font-body)]"
             />
             <button
               type="submit"
-              disabled={streaming || !input.trim()}
+              disabled={streaming || loadingHistory || !input.trim()}
               className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 font-[family-name:var(--font-heading)]"
             >
               {streaming ? t("thinking") : t("send")}

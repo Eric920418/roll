@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
         title: d.title,
         body: d.body || null,
         meetingAt: parseDate(d.meetingAt) ?? null,
+        meetingType: d.meetingType,
       },
     });
     return ok(row, 201);

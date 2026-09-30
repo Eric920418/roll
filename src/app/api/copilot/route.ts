@@ -3,33 +3,44 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { getUserSession } from "@/lib/auth/guard";
 import { requirePlan } from "@/lib/billing/gate";
-import { fail, unauthorized, failFromError } from "@/lib/api";
+import { fail, ok, unauthorized, failFromError } from "@/lib/api";
 import { completeAiUsage, reserveAiUsage } from "@/lib/ai/allowance";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { runGroundedChat } from "@/lib/ai/run";
 import { publicCopilotFailureMessage } from "@/lib/ai/public-error";
 import { getLatestQuizResult } from "@/lib/quiz/result";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
+import { prisma } from "@/lib/prisma";
 
 // 會員 AI Copilot 串流端點。
 // - 守衛：session（401）+ Pro 方案（403）+ 每訂閱月 150 次／加購額度（429）。
 // - 一旦開始串流即 committed 200，之後的錯誤只能以文字寫入串流（顯示於前端）。
 // - 受治理：system prompt / 找資料（工具查檔）/ 個人化皆由 src/lib/ai 統一處理，見該目錄。
 
-const MAX_MESSAGES = 30;
 const MAX_CHARS = 4000;
 const bodySchema = z.object({
-  messages: z
-    .array(
-      z.object({
-        role: z.enum(["user", "assistant"]),
-        content: z.string().min(1).max(MAX_CHARS),
-      }),
-    )
-    .min(1)
-    .max(MAX_MESSAGES),
+  message: z.string().trim().min(1).max(MAX_CHARS),
   locale: z.string().optional(),
 });
+
+export async function GET() {
+  try {
+    const session = await getUserSession();
+    if (!session) return unauthorized();
+    if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
+    const turns = await prisma.copilotTurn.findMany({
+      where: { userId: session.uid },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 100,
+      select: { id: true, question: true, answer: true },
+    });
+    const response = ok(turns.reverse());
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  } catch (error) {
+    return failFromError(error);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,6 +62,17 @@ export async function POST(req: NextRequest) {
 
     // 缺 key 等設定問題 → 串流開始前由共用 5xx 邊界記錄完整例外、回通用訊息。
     const client = new Anthropic();
+    const priorTurns = await prisma.copilotTurn.findMany({
+      where: { userId: session.uid, answer: { not: null } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 14,
+      select: { question: true, answer: true },
+    });
+    const history = priorTurns.reverse().flatMap((turn) => [
+      { role: "user" as const, content: turn.question },
+      { role: "assistant" as const, content: turn.answer! },
+    ]);
+    history.push({ role: "user", content: parsed.data.message });
 
     // NOVA 診斷先用已知資料：會員 profile + 最新一次 quiz 決策風格。
     const [quiz, actionPlan] = await Promise.all([
@@ -83,36 +105,48 @@ export async function POST(req: NextRequest) {
         429,
       );
     }
+    let turn;
+    try {
+      turn = await prisma.copilotTurn.create({
+        data: { userId: session.uid, question: parsed.data.message },
+        select: { id: true },
+      });
+    } catch (error) {
+      await completeAiUsage(usageId, false);
+      throw error;
+    }
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
       async start(controller) {
         let succeeded = false;
+        let answer = "";
         try {
           await runGroundedChat({
             client,
             system,
-            messages: parsed.data.messages,
-            onText: (chunk) => controller.enqueue(encoder.encode(chunk)),
+            messages: history,
+            onText: (chunk) => {
+              answer += chunk;
+              try { controller.enqueue(encoder.encode(chunk)); } catch { /* 頁面切換後仍完成資料庫儲存 */ }
+            },
             // NOVA 的六段顧問結構較長，放寬輸出上限。
             maxTokens: 4000,
           });
+          if (!answer.trim()) throw new Error("NOVA 未回傳回答");
+          await prisma.copilotTurn.update({ where: { id: turn.id }, data: { answer } });
           succeeded = true;
         } catch (err) {
           // 串流已 committed 200，後端保留完整證據，前端只收到穩定產品文案。
           console.error("[copilot] upstream stream failed", err);
-          controller.enqueue(
-            encoder.encode(
-              `\n\n${publicCopilotFailureMessage(parsed.data.locale, err)}`,
-            ),
-          );
+          try { controller.enqueue(encoder.encode(`\n\n${publicCopilotFailureMessage(parsed.data.locale, err)}`)); } catch { /* client 已離開 */ }
         } finally {
           try {
             await completeAiUsage(usageId, succeeded);
           } catch (usageError) {
             console.error("[copilot] allowance completion failed", usageError);
           }
-          controller.close();
+          try { controller.close(); } catch { /* client 已離開 */ }
         }
       },
     });

@@ -84,6 +84,14 @@ export function priorityScore(action: Pick<RankableAction, "impact" | "urgencyTy
   return Math.round(raw * 100) / 100;
 }
 
+// 對外只顯示可理解的層級；精確分數仍供伺服器排序與同分決勝使用。
+export function priorityTier(score: number): "Critical" | "High" | "Medium" | "Low" {
+  if (score >= 200) return "Critical";
+  if (score >= 100) return "High";
+  if (score >= 40) return "Medium";
+  return "Low";
+}
+
 export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
   const rows = actions.map((action) => {
     const unfinished = action.dependencies

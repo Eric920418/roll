@@ -192,6 +192,7 @@ model User {
   contacts     Contact[]
   deals        Deal[]
   meetingNotes MeetingNote[]
+  copilotTurns CopilotTurn[]
 
   // 雙週知識問答作答歷史（每期一筆）
   playbookQuizAttempts PlaybookQuizAttempt[]
@@ -691,13 +692,27 @@ model MeetingNote {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   body      String?
-  meetingAt DateTime? // 會議時間，可空
+  meetingAt DateTime? // 會議日期，可空；舊資料可能含時間，顯示時只取日期
+  meetingType String? // client / investor / partner / internal / other
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([createdAt])
+}
+
+/// 會員 NOVA 對話紀錄；每輪問題先儲存，回答完成後補上，刪帳號連帶清除。
+model CopilotTurn {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question  String
+  answer    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
 }
 
 // ============================================

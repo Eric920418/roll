@@ -68,12 +68,14 @@ export const noteCreateSchema = z.object({
   title: z.string().trim().min(1, "必填"),
   body: optStr,
   meetingAt: optStr, // ISO 字串或空；route 端轉 Date|null
+  meetingType: z.enum(["client", "investor", "partner", "internal", "other"]),
 });
 
 export const noteUpdateSchema = z.object({
   title: z.string().trim().min(1, "必填").optional(),
   body: optStr,
   meetingAt: optStr,
+  meetingType: z.enum(["client", "investor", "partner", "internal", "other"]).nullable().optional(),
 });
 
 // ── 落地待辦自訂任務 ──

@@ -121,7 +121,7 @@ export default async function DashboardOverview({ params }: Props) {
           billingHref={billingHref}
         />
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <InvestorHubCard
             name={([account.firstName, account.lastName].filter(Boolean).join(" ") || account.email).slice(0, 200)}
             email={account.email}

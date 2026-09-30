@@ -27,6 +27,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       ...(d.title !== undefined && { title: d.title }),
       ...(d.body !== undefined && { body: nullifyEmpty(d.body) }),
       ...(d.meetingAt !== undefined && { meetingAt: parseDate(d.meetingAt) }),
+      ...(d.meetingType !== undefined && { meetingType: d.meetingType }),
     };
 
     const res = await prisma.meetingNote.updateMany({

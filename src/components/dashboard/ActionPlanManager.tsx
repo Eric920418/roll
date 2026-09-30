@@ -6,6 +6,7 @@ import { BOTTLENECKS, COMPANY_STAGES, type BottleneckGroup } from "@/lib/action-
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import { formatActionTime } from "@/lib/action-plan/time";
+import { priorityTier } from "@/lib/action-plan/ranking";
 import ActionPlanBuilder from "./ActionPlanBuilder";
 
 type Filter = "ready" | "blocked" | "done" | "all";
@@ -97,12 +98,10 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
               <p className="rounded-xl bg-white/[0.06] p-4">
                 <strong className="block text-xs uppercase tracking-[0.12em] text-white/45">{t("diagnosis.stage")}</strong>
                 <span className="mt-2 block leading-6">{plan.diagnosis.stageReason}</span>
-                <span className="mt-2 block text-xs text-accent">{t("confidence", { value: plan.diagnosis.stageConfidence })}</span>
               </p>
               <p className="rounded-xl bg-white/[0.06] p-4">
                 <strong className="block text-xs uppercase tracking-[0.12em] text-white/45">{t("diagnosis.bottleneck")}</strong>
                 <span className="mt-2 block leading-6">{plan.diagnosis.bottleneckReason}</span>
-                <span className="mt-2 block text-xs text-accent">{t("confidence", { value: plan.diagnosis.bottleneckConfidence })}</span>
               </p>
             </div>
           </div>
@@ -116,7 +115,6 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("next.eyebrow")}</p>
             <h2 className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("next.title")}</h2>
           </div>
-          <p className="text-xs text-dark/50">{t("next.rule")}</p>
         </div>
         <div className="mt-4 grid gap-4 xl:grid-cols-3">
           {plan.nextMoves.map((action) => <TopMove key={action.id} action={action} t={t} onEdit={() => setEditing(action)} />)}
@@ -181,13 +179,15 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
                     <StatusBadge action={action} t={t} />
                   </div>
                   <p className="mt-1 text-sm text-dark/55">{action.expectedOutcome.text}</p>
+                  <p className="mt-1 text-xs text-dark/50">{t("fields.estimatedTime")}: {action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {t("days")}</p>
+                  <p className="mt-1 line-clamp-1 text-xs text-dark/50">{t("whyNow")}: {action.bottleneckFit.reason.split(/[.!?。！？]/)[0]}</p>
                 </div>
                 <div className="text-right">
-                  <strong className="block text-lg text-primary">{action.priorityScore.toFixed(2)}</strong>
-                  <span className="text-[10px] uppercase tracking-[0.1em] text-dark/35">{t("score")}</span>
+                  <strong className="block text-sm text-primary">{t(`priority.${priorityTier(action.priorityScore)}`)}</strong>
                 </div>
               </summary>
               <div className="border-t border-dark/10 px-4 pb-5 pt-4">
+                <p className="mb-3 text-sm font-bold text-dark">{t("details")}</p>
                 <DimensionGrid action={action} t={t} />
                 {action.dependency.blocked && (
                   <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -219,14 +219,18 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
 
 function TopMove({ action, t, onEdit }: { action: ActionPlanActionDto; t: ReturnType<typeof useTranslations>; onEdit: () => void }) {
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-primary/20 bg-[#fffdf8] p-5 shadow-[0_12px_35px_rgba(32,37,50,0.06)]">
-      <div className="absolute right-0 top-0 rounded-bl-2xl bg-accent px-4 py-2 text-sm font-black text-dark">#{action.rank}</div>
-      <p className="pr-12 text-xs font-bold uppercase tracking-[0.12em] text-primary">{t("score")} {action.priorityScore.toFixed(2)}</p>
-      <h3 className="mt-2 pr-10 text-lg font-extrabold leading-6 text-dark font-[family-name:var(--font-heading)]">{action.title}</h3>
-      <p className="mt-2 text-sm leading-6 text-dark/60">{action.expectedOutcome.text}</p>
-      <DimensionGrid action={action} t={t} compact />
+    <details className="group rounded-2xl border border-primary/20 bg-[#fffdf8] p-5 shadow-[0_12px_35px_rgba(32,37,50,0.06)]">
+      <summary className="cursor-pointer list-none">
+        <span className="text-xs font-bold uppercase tracking-wide text-primary">{t(`priority.${priorityTier(action.priorityScore)}`)}</span>
+        <h3 className="mt-2 text-lg font-extrabold leading-6 text-dark font-[family-name:var(--font-heading)]">{action.title}</h3>
+        <p className="mt-2 text-sm leading-6 text-dark/60">{action.expectedOutcome.text}</p>
+        <p className="mt-3 text-xs text-dark/55">{t("fields.estimatedTime")}: {action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {t("days")}</p>
+        <p className="mt-2 line-clamp-2 text-xs text-dark/65"><strong>{t("whyNow")}:</strong> {action.bottleneckFit.reason.split(/[.!?。！？]/)[0]}</p>
+        <span className="mt-4 inline-block text-sm font-bold text-primary">{t("details")} ↓</span>
+      </summary>
+      <DimensionGrid action={action} t={t} />
       <button type="button" onClick={onEdit} className="mt-4 min-h-11 w-full rounded-xl border border-primary/20 bg-white text-sm font-bold text-primary hover:bg-primary/[0.04]">{t("edit")}</button>
-    </article>
+    </details>
   );
 }
 
@@ -235,7 +239,7 @@ function StatusBadge({ action, t }: { action: ActionPlanActionDto; t: ReturnType
   return <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status === "ready" ? "bg-green-100 text-green-700" : status === "blocked" ? "bg-amber-100 text-amber-800" : "bg-dark/10 text-dark/50"}`}>{t(`filter.${status}`)}</span>;
 }
 
-function DimensionGrid({ action, t, compact = false }: { action: ActionPlanActionDto; t: ReturnType<typeof useTranslations>; compact?: boolean }) {
+function DimensionGrid({ action, t }: { action: ActionPlanActionDto; t: ReturnType<typeof useTranslations> }) {
   const locale = useLocale() === "zh-tw" ? "zh-tw" : "en";
   const cells = [
     [t("fields.impact"), `${action.impact.label} · ${action.impact.weight}`],
@@ -248,7 +252,7 @@ function DimensionGrid({ action, t, compact = false }: { action: ActionPlanActio
     [t("fields.estimatedTime"), `${action.expectedOutcome.estimatedTime.minDays}–${action.expectedOutcome.estimatedTime.maxDays}d`],
   ];
   return (
-    <dl className={`grid gap-2 ${compact ? "mt-4 grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
+    <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       {cells.map(([label, value]) => (
         <div key={label} className="rounded-xl bg-dark/[0.035] px-3 py-2.5">
           <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-dark/40">{label}</dt>

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { bottleneckLabel, urgencyWeight } from "../src/lib/action-plan/constants";
-import { priorityScore, rankActions, wouldCreateCycle, type RankableAction } from "../src/lib/action-plan/ranking";
+import { priorityScore, priorityTier, rankActions, wouldCreateCycle, type RankableAction } from "../src/lib/action-plan/ranking";
 import {
   actionInputSchema,
   appendGeneratedActions,
@@ -85,6 +85,13 @@ test("Priority score 使用固定權重公式並保留兩位小數", () => {
   assert.deepEqual([1, 3, 4, 7, 8].map((days) => urgencyWeight("scheduled", days)), [3, 3, 2, 2, 1]);
 });
 
+test("優先級顯示固定區間，原始數值仍用於排名", () => {
+  assert.equal(priorityTier(312.5), "Critical");
+  assert.equal(priorityTier(100), "High");
+  assert.equal(priorityTier(40), "Medium");
+  assert.equal(priorityTier(39.99), "Low");
+});
+
 test("No leads 正確顯示為 Sales · Lead generation，不映射為 conversion", () => {
   assert.equal(bottleneckLabel("Sales", "no_leads"), "Lead generation");
 });
@@ -127,10 +134,11 @@ test("依賴圖拒絕 self-reference 與循環", () => {
   assert.equal(wouldCreateCycle(graph, "b", []), false);
 });
 
-test("生成驗證接受 20、24、100 項，拒絕 101 項與重複 clientKey", () => {
-  for (const count of [20, 24, 100]) {
+test("生成驗證接受新版 5 項及舊計畫規模，拒絕不足 5 項、101 項與重複 clientKey", () => {
+  for (const count of [5, 20, 24, 100]) {
     assert.equal(generatedPlanSchema.safeParse({ actions: Array.from({ length: count }, (_, index) => generated(index)) }).success, true);
   }
+  assert.equal(generatedPlanSchema.safeParse({ actions: Array.from({ length: 4 }, (_, index) => generated(index)) }).success, false);
   assert.equal(generatedPlanSchema.safeParse({ actions: Array.from({ length: 101 }, (_, index) => generated(index)) }).success, false);
   const duplicate = Array.from({ length: 20 }, (_, index) => generated(index));
   duplicate[19].clientKey = duplicate[0].clientKey;
@@ -190,7 +198,7 @@ test("Anthropic strict tool schema 不包含供應商不支援的範圍關鍵字
   }
 });
 
-test("24 項生成保留五分鐘執行時間，且前端完整顯示非 JSON 平台錯誤", () => {
+test("5 項生成保留五分鐘執行時間，且前端完整顯示非 JSON 平台錯誤", () => {
   const ai = readFileSync("src/lib/action-plan/ai.ts", "utf8");
   const route = readFileSync("src/app/api/action-plans/generate/route.ts", "utf8");
   const builder = readFileSync("src/components/dashboard/ActionPlanBuilder.tsx", "utf8");

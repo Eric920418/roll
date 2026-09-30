@@ -18,7 +18,7 @@ export default async function NotesPage({ params }: Props) {
     ? await prisma.meetingNote.findMany({
         where: { userId: account.id },
         orderBy: { createdAt: "desc" },
-        select: { id: true, title: true, body: true, meetingAt: true },
+        select: { id: true, title: true, body: true, meetingAt: true, meetingType: true },
       })
     : [];
   // Date → ISO 字串（傳給 client 元件）

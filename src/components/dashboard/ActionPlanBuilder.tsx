@@ -45,6 +45,8 @@ export default function ActionPlanBuilder({
   const [answer, setAnswer] = useState("");
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [correcting, setCorrecting] = useState(false);
   const [requestId, setRequestId] = useState("");
   const [error, setError] = useState("");
 
@@ -69,6 +71,8 @@ export default function ActionPlanBuilder({
       } else {
         setQuestion("");
         setDiagnosis(json.data.diagnosis);
+        setConfirmed(false);
+        setCorrecting(false);
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("genericError"));
@@ -84,6 +88,8 @@ export default function ActionPlanBuilder({
     setAnswer("");
     setAnswers([]);
     setDiagnosis(null);
+    setConfirmed(false);
+    setCorrecting(false);
     setRequestId(id);
     setError("");
     void callDiagnose([]);
@@ -116,7 +122,7 @@ export default function ActionPlanBuilder({
   }
 
   async function generate() {
-    if (!diagnosis) return;
+    if (!diagnosis || !confirmed) return;
     setBusy(true);
     setError("");
     try {
@@ -128,7 +134,7 @@ export default function ActionPlanBuilder({
           messages: messages.slice(-30),
           diagnosis,
           requestId,
-          candidateCount: 24,
+          candidateCount: 5,
         }),
       });
       const json = await readApiResponse<unknown>(response, t("genericError"));
@@ -222,7 +228,12 @@ export default function ActionPlanBuilder({
 
             {diagnosis && (
               <div className="mt-7">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <h3 className="text-lg font-bold text-dark">{t("yourDiagnosis")}</h3>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Evidence title={t("stageEvidence")} reason={diagnosis.stageReason} />
+                  <Evidence title={t("bottleneckEvidence")} reason={diagnosis.bottleneckReason} />
+                </div>
+                {correcting && <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <label className="text-sm font-bold text-dark">
                     {t("stage")}
                     <select
@@ -253,20 +264,20 @@ export default function ActionPlanBuilder({
                       {bottlenecks.map(([code, label]) => <option key={code} value={code}>{group} · {label}</option>)}
                     </select>
                   </label>
-                </div>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <Evidence title={t("stageEvidence")} reason={diagnosis.stageReason} confidence={diagnosis.stageConfidence} confidenceLabel={t("confidence", { value: diagnosis.stageConfidence })} />
-                  <Evidence title={t("bottleneckEvidence")} reason={diagnosis.bottleneckReason} confidence={diagnosis.bottleneckConfidence} confidenceLabel={t("confidence", { value: diagnosis.bottleneckConfidence })} />
-                </div>
-                <p className="mt-5 rounded-xl bg-accent/10 px-4 py-3 text-xs leading-5 text-dark/65">{t("confirmHint")}</p>
-                <button
+                </div>}
+                {!confirmed && <div className="mt-5 flex flex-wrap gap-3">
+                  <button type="button" onClick={() => { setConfirmed(true); setCorrecting(false); }} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">{t("confirmDiagnosis")}</button>
+                  <button type="button" onClick={() => setCorrecting(true)} className="min-h-11 rounded-xl border border-dark/15 px-5 py-2.5 text-sm font-bold text-dark">{t("correctDiagnosis")}</button>
+                </div>}
+                {confirmed && <button
                   type="button"
                   onClick={generate}
                   disabled={busy}
                   className="mt-5 min-h-11 w-full rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {busy ? t("generating") : t("confirm")}
-                </button>
+                </button>}
+                {confirmed && <button type="button" onClick={() => { setConfirmed(false); setCorrecting(true); }} className="mt-3 text-sm font-semibold text-primary">{t("correctDiagnosis")}</button>}
               </div>
             )}
 
@@ -282,12 +293,11 @@ export default function ActionPlanBuilder({
   );
 }
 
-function Evidence({ title, reason, confidence, confidenceLabel }: { title: string; reason: string; confidence: number; confidenceLabel: string }) {
+function Evidence({ title, reason }: { title: string; reason: string }) {
   return (
     <div className="rounded-2xl border border-dark/10 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-dark/45">{title}</p>
-        {confidence > 0 && <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary">{confidenceLabel}</span>}
       </div>
       <p className="mt-2 text-sm leading-6 text-dark/70">{reason}</p>
     </div>
