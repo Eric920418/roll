@@ -2,6 +2,7 @@ import { IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight } from "./constants";
 
 export type RankableAction = {
   id: string;
+  clientKey: string;
   title: string;
   impact: string;
   urgencyType: string;
@@ -32,12 +33,13 @@ export type RankableAction = {
   bottleneckFitEditedByUser: boolean;
   createdAt: Date | string;
   dependencies: Array<{
-    dependsOn: { id: string; title: string; done: boolean };
+    dependsOn: { id: string; clientKey: string; title: string; done: boolean };
   }>;
 };
 
 export type ActionPlanActionDto = {
   id: string;
+  clientKey: string;
   title: string;
   impact: { label: string; weight: number };
   urgency: {
@@ -50,6 +52,8 @@ export type ActionPlanActionDto = {
     notes: string | null;
     actionIds: string[];
     actionTitles: string[];
+    actionRefs: Array<{ clientKey: string; title: string; done: boolean }>;
+    missingLink: boolean;
     resolved: boolean;
     blocked: boolean;
   };
@@ -92,12 +96,18 @@ export function priorityTier(score: number): "Critical" | "High" | "Medium" | "L
   return "Low";
 }
 
+export function taskReference(task: { clientKey: string; title: string }): string {
+  const number = /^task_(\d+)$/.exec(task.clientKey)?.[1];
+  return number ? `#${number} · ${task.title}` : task.title;
+}
+
 export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
   const rows = actions.map((action) => {
     const unfinished = action.dependencies
       .map((edge) => edge.dependsOn)
       .filter((dependency) => !dependency.done);
-    const resolved = unfinished.length === 0;
+    const missingLink = action.dependencyLevel > 0 && action.dependencies.length === 0;
+    const resolved = unfinished.length === 0 && !missingLink;
     const blocked = !resolved;
     const impactWeight = IMPACT_WEIGHTS[action.impact as keyof typeof IMPACT_WEIGHTS] ?? 0;
     const weight = urgencyWeight(action.urgencyType, action.urgencyDays);
@@ -113,6 +123,7 @@ export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
       resolved,
       blocked,
       unfinished,
+      missingLink,
       actionTimeMinMinutes,
       actionTimeMaxMinutes,
     };
@@ -130,8 +141,9 @@ export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
   const ranks = new Map(ready.map((row, index) => [row.action.id, index + 1]));
 
   return rows
-    .map(({ action, score, impactWeight, urgencyWeight: urgency, resolved, blocked, unfinished, actionTimeMinMinutes, actionTimeMaxMinutes }) => ({
+    .map(({ action, score, impactWeight, urgencyWeight: urgency, resolved, blocked, unfinished, missingLink, actionTimeMinMinutes, actionTimeMaxMinutes }) => ({
       id: action.id,
+      clientKey: action.clientKey,
       title: action.title,
       impact: { label: action.impact, weight: impactWeight },
       urgency: {
@@ -144,6 +156,8 @@ export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
         notes: action.dependencyNotes,
         actionIds: action.dependencies.map((edge) => edge.dependsOn.id),
         actionTitles: unfinished.map((dependency) => dependency.title),
+        actionRefs: action.dependencies.map((edge) => edge.dependsOn),
+        missingLink,
         resolved,
         blocked,
       },

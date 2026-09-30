@@ -25,6 +25,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         id: true,
         actionPlanId: true,
         done: true,
+        dependencyLevel: true,
         dependencies: { select: { dependsOn: { select: { title: true, done: true } } } },
         requiredBy: { select: { action: { select: { title: true, done: true } } } },
         stageFit: true,
@@ -41,6 +42,9 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
     if (Object.keys(parsed.data).length === 1 && "done" in parsed.data) {
       if (parsed.data.done) {
+        if (current.dependencyLevel > 0 && current.dependencies.length === 0) {
+          return fail("此任務尚未連結前置任務 ID，請先編輯依賴。", 409);
+        }
         const unmet = current.dependencies.filter((edge) => !edge.dependsOn.done).map((edge) => edge.dependsOn.title);
         if (unmet.length) return fail(`請先完成前置任務：${unmet.join("、")}`, 409);
       } else {

@@ -10,7 +10,7 @@ import {
 import { bottleneckLabel } from "@/lib/action-plan/constants";
 import { formatActionTime } from "@/lib/action-plan/time";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
-import { priorityTier } from "@/lib/action-plan/ranking";
+import { priorityTier, taskReference } from "@/lib/action-plan/ranking";
 
 type Props = {
   locale: Locale;
@@ -138,8 +138,11 @@ export default async function ActionPlanOverview({
                       {t("next.ready")}
                     </span>
                     <h3 className="mt-4 pr-8 text-lg font-extrabold leading-6 text-dark transition-colors group-hover:text-primary font-[family-name:var(--font-heading)]">
-                      {action.title}
+                      {taskReference(action)}
                     </h3>
+                    {action.dependency.actionRefs.length > 0 ? (
+                      <p className="mt-2 text-xs font-bold text-dark/55">{t("next.after")}: {action.dependency.actionRefs.map(taskReference).join(", ")}</p>
+                    ) : null}
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-dark/55">
                       {action.expectedOutcome.text}
                     </p>
@@ -223,7 +226,7 @@ export default async function ActionPlanOverview({
                   <ul className="mt-2 list-disc space-y-1 pl-5">
                     {plan.blockers.map((blocker) => (
                       <li key={blocker.id}>
-                        {blocker.title}: {blocker.dependencies.join(", ")}
+                        {blocker.title}: {blocker.missingLink ? t("next.missingDependency") : blocker.dependencies.join(", ")}
                       </li>
                     ))}
                   </ul>

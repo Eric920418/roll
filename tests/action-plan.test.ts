@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { bottleneckLabel, urgencyWeight } from "../src/lib/action-plan/constants";
-import { priorityScore, priorityTier, rankActions, wouldCreateCycle, type RankableAction } from "../src/lib/action-plan/ranking";
+import { priorityScore, priorityTier, rankActions, taskReference, wouldCreateCycle, type RankableAction } from "../src/lib/action-plan/ranking";
 import {
   actionInputSchema,
   appendGeneratedActions,
@@ -22,6 +22,7 @@ import type { ActionPlanDto } from "../src/lib/action-plan/service";
 function action(overrides: Partial<RankableAction> = {}): RankableAction {
   return {
     id: "a",
+    clientKey: "task_1",
     title: "Define ICP",
     impact: "Critical",
     urgencyType: "urgent",
@@ -97,9 +98,10 @@ test("No leads 正確顯示為 Sales · Lead generation，不映射為 conversio
 });
 
 test("任一前置 Action 未完成時排除 Top 3；完成後立即進入排名", () => {
-  const dependency = { id: "base", title: "Finish interviews", done: false };
+  const dependency = { id: "base", clientKey: "task_1", title: "Finish interviews", done: false };
   const blocked = action({
     id: "blocked",
+    clientKey: "task_2",
     title: "Build pilot",
     dependencyLevel: 1,
     dependencies: [{ dependsOn: dependency }],
@@ -108,12 +110,37 @@ test("任一前置 Action 未完成時排除 Top 3；完成後立即進入排名
   let ranked = rankActions([blocked, ready]);
   assert.equal(ranked.find((item) => item.id === "blocked")?.dependency.blocked, true);
   assert.equal(ranked.find((item) => item.id === "blocked")?.rank, null);
+  assert.equal(taskReference(ranked.find((item) => item.id === "blocked")!.dependency.actionRefs[0]), "#1 · Finish interviews");
   assert.equal(ranked.find((item) => item.id === "ready")?.rank, 1);
 
   dependency.done = true;
   ranked = rankActions([blocked, ready]);
   assert.equal(ranked.find((item) => item.id === "blocked")?.dependency.blocked, false);
   assert.equal(ranked.find((item) => item.id === "blocked")?.rank, 1);
+});
+
+test("舊任務若宣稱有依賴卻沒有連結 ID，兩頁都視為 Blocked", () => {
+  const ranked = rankActions([action({ id: "legacy", dependencyLevel: 1, dependencies: [] })]);
+  assert.equal(ranked[0].dependency.missingLink, true);
+  assert.equal(ranked[0].dependency.blocked, true);
+  assert.equal(dashboardPlan(ranked).nextMoves.length, 0);
+});
+
+test("收款 → 付費方案 → 試點依完成狀態逐一解鎖，不因高分跳過前置任務", () => {
+  const payment = { id: "payment", clientKey: "task_1", title: "建立收款系統", done: false };
+  const offer = { id: "offer", clientKey: "task_2", title: "推出付費方案", done: false };
+  const rows = [
+    action({ id: payment.id, clientKey: payment.clientKey, title: payment.title, impact: "Medium" }),
+    action({ id: offer.id, clientKey: offer.clientKey, title: offer.title, dependencyLevel: 1, dependencies: [{ dependsOn: payment }] }),
+    action({ id: "pilot", clientKey: "task_3", title: "啟動付費試點", dependencyLevel: 1, dependencies: [{ dependsOn: offer }] }),
+  ];
+  assert.deepEqual(dashboardPlan(rankActions(rows)).nextMoves.map((item) => item.clientKey), ["task_1"]);
+  payment.done = true;
+  rows[0].done = true;
+  assert.deepEqual(dashboardPlan(rankActions(rows)).nextMoves.map((item) => item.clientKey), ["task_2"]);
+  offer.done = true;
+  rows[1].done = true;
+  assert.deepEqual(dashboardPlan(rankActions(rows)).nextMoves.map((item) => item.clientKey), ["task_3"]);
 });
 
 test("完成項目排除排名；同分依 urgency、impact、較短時間、建立時間排序", () => {
@@ -143,6 +170,10 @@ test("生成驗證接受新版 5 項及舊計畫規模，拒絕不足 5 項、10
   const duplicate = Array.from({ length: 20 }, (_, index) => generated(index));
   duplicate[19].clientKey = duplicate[0].clientKey;
   assert.equal(generatedPlanSchema.safeParse({ actions: duplicate }).success, false);
+  const inflated = Array.from({ length: 5 }, (_, index) => generated(index));
+  inflated[0].impact = "Critical";
+  inflated[1].impact = "Critical";
+  assert.equal(generatedPlanSchema.safeParse({ actions: inflated }).success, false);
 });
 
 test("AI 分批生成可累積完整計畫，並拒絕重複 key、向後依賴與超量", () => {
@@ -157,6 +188,7 @@ test("AI 分批生成可累積完整計畫，並拒絕重複 key、向後依賴�
     /必須指向先前已生成/,
   );
   assert.throws(() => appendGeneratedActions(first, [generated(2), generated(3)], 3), /數量超過/);
+  assert.throws(() => appendGeneratedActions([{ ...generated(0), impact: "Critical" }], [{ ...generated(1), impact: "Critical" }], 3), /最多一項 Critical/);
 });
 
 test("AI 的 Immediate/Urgent 天數與空白依賴備註標準化為 null，Scheduled 缺天數仍拒絕", () => {
@@ -180,6 +212,7 @@ test("生成驗證拒絕時間反轉、Fit 超界、錯誤 enum、缺少依賴�
     { ...generated(0), stageFit: { score: 6, reason: "Too high", confidence: 90 } },
     { ...generated(0), impact: "Extreme" },
     { ...generated(0), dependencyLevel: 3, dependsOnKeys: ["missing"] },
+    { ...generated(0), dependencyLevel: 1, dependsOnKeys: [] },
   ];
   for (const invalid of cases) {
     const actions = Array.from({ length: 20 }, (_, index) => index === 0 ? invalid : generated(index));
@@ -270,7 +303,7 @@ function dashboardPlan(actions: ReturnType<typeof rankActions>): ActionPlanDto {
     nextMoves: actions.filter((item) => item.rank != null && item.rank <= 3),
     blockers: actions
       .filter((item) => !item.done && item.dependency.blocked)
-      .map((item) => ({ id: item.id, title: item.title, dependencies: item.dependency.actionTitles })),
+      .map((item) => ({ id: item.id, title: item.title, dependencies: item.dependency.actionTitles, missingLink: item.dependency.missingLink })),
   };
 }
 
@@ -282,7 +315,7 @@ test("Dashboard priority 遵守方案、Action、依賴、完成與診斷引導�
   const blockedPlan = dashboardPlan(rankActions([action({
     id: "blocked",
     dependencyLevel: 3,
-    dependencies: [{ dependsOn: { id: "dependency", title: "Finish discovery", done: false } }],
+    dependencies: [{ dependsOn: { id: "dependency", clientKey: "task_1", title: "Finish discovery", done: false } }],
   })]));
   assert.equal(deriveDashboardPriority({ isPaying: true, onboardingDone: true, quizDone: true, plan: blockedPlan }).kind, "blocked");
 

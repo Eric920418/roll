@@ -6,7 +6,7 @@ import { BOTTLENECKS, COMPANY_STAGES, type BottleneckGroup } from "@/lib/action-
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import { formatActionTime } from "@/lib/action-plan/time";
-import { priorityTier } from "@/lib/action-plan/ranking";
+import { priorityTier, taskReference } from "@/lib/action-plan/ranking";
 import ActionPlanBuilder from "./ActionPlanBuilder";
 
 type Filter = "ready" | "blocked" | "done" | "all";
@@ -134,7 +134,7 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
           <div role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <p className="font-bold">{t("next.blockedNote")}</p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
-              {plan.blockers.map((blocker) => <li key={blocker.id}>{blocker.title}: {blocker.dependencies.join(", ")}</li>)}
+              {plan.blockers.map((blocker) => <li key={blocker.id}>{blocker.title}: {blocker.missingLink ? t("missingDependency") : blocker.dependencies.join(", ")}</li>)}
             </ul>
           </div>
         )}
@@ -181,12 +181,17 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
                 </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className={`font-bold text-dark font-[family-name:var(--font-heading)] ${action.done ? "line-through opacity-50" : ""}`}>{action.title}</h3>
+                    <h3 className={`font-bold text-dark font-[family-name:var(--font-heading)] ${action.done ? "line-through opacity-50" : ""}`}>{taskReference(action)}</h3>
                     <StatusBadge action={action} t={t} />
                   </div>
                   <p className="mt-1 text-sm text-dark/55">{action.expectedOutcome.text}</p>
                   <p className="mt-1 text-xs text-dark/50">{t("fields.estimatedTime")}: {action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {t("days")}</p>
                   <p className="mt-1 line-clamp-1 text-xs text-dark/50">{t("whyNow")}: {action.bottleneckFit.reason.split(/[.!?。！？]/)[0]}</p>
+                  {action.dependency.missingLink ? (
+                    <p className="mt-1 text-xs font-bold text-amber-800">{t("missingDependency")}</p>
+                  ) : action.dependency.actionRefs.length > 0 ? (
+                    <p className="mt-1 text-xs font-bold text-amber-800">{t(action.dependency.blocked ? "blockedBy" : "after")}: {action.dependency.actionRefs.filter((ref) => !action.dependency.blocked || !ref.done).map(taskReference).join(", ")}</p>
+                  ) : null}
                 </div>
                 <div className="text-right">
                   <strong className="block text-sm text-primary">{t(`priority.${priorityTier(action.priorityScore)}`)}</strong>
@@ -195,11 +200,6 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
               <div className="border-t border-dark/10 px-4 pb-5 pt-4">
                 <p className="mb-3 text-sm font-bold text-dark">{t("details")}</p>
                 <DimensionGrid action={action} t={t} />
-                {action.dependency.blocked && (
-                  <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    {t("blockedBy")}: {action.dependency.actionTitles.join(", ")}
-                  </p>
-                )}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button type="button" onClick={() => setEditing(action)} className="min-h-11 rounded-xl border border-dark/15 bg-white px-4 text-sm font-bold text-dark hover:border-primary">{t("edit")}</button>
                   <button type="button" onClick={() => void remove(action)} disabled={pending === action.id} className="min-h-11 rounded-xl border border-red-200 bg-white px-4 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">{t("delete")}</button>
@@ -228,10 +228,11 @@ function TopMove({ action, t, onEdit }: { action: ActionPlanActionDto; t: Return
     <details className="group rounded-2xl border border-primary/20 bg-[#fffdf8] p-5 shadow-[0_12px_35px_rgba(32,37,50,0.06)]">
       <summary className="cursor-pointer list-none">
         <span className="text-xs font-bold uppercase tracking-wide text-primary">{t(`priority.${priorityTier(action.priorityScore)}`)}</span>
-        <h3 className="mt-2 text-lg font-extrabold leading-6 text-dark font-[family-name:var(--font-heading)]">{action.title}</h3>
+        <h3 className="mt-2 text-lg font-extrabold leading-6 text-dark font-[family-name:var(--font-heading)]">{taskReference(action)}</h3>
         <p className="mt-2 text-sm leading-6 text-dark/60">{action.expectedOutcome.text}</p>
         <p className="mt-3 text-xs text-dark/55">{t("fields.estimatedTime")}: {action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {t("days")}</p>
         <p className="mt-2 line-clamp-2 text-xs text-dark/65"><strong>{t("whyNow")}:</strong> {action.bottleneckFit.reason.split(/[.!?。！？]/)[0]}</p>
+        {action.dependency.actionRefs.length > 0 ? <p className="mt-2 text-xs font-bold text-dark/60">{t("after")}: {action.dependency.actionRefs.map(taskReference).join(", ")}</p> : null}
         <span className="mt-4 inline-block text-sm font-bold text-primary">{t("details")} ↓</span>
       </summary>
       <DimensionGrid action={action} t={t} />
@@ -250,7 +251,7 @@ function DimensionGrid({ action, t }: { action: ActionPlanActionDto; t: ReturnTy
   const cells = [
     [t("fields.impact"), `${action.impact.label} · ${action.impact.weight}`],
     [t("fields.urgency"), `${action.urgency.type}${action.urgency.days ? ` · ${action.urgency.days}d` : ""}`],
-    [t("fields.dependency"), `${action.dependency.level} · ${action.dependency.resolved ? t("resolved") : t("unresolved")}`],
+    [t("fields.dependency"), action.dependency.missingLink ? t("missingDependency") : action.dependency.actionRefs.length ? action.dependency.actionRefs.map(taskReference).join(", ") : t("noDependency")],
     [t("fields.difficulty"), `${action.difficulty.level} · ${formatActionTime(action.difficulty.actionTime, locale)}`],
     [t("fields.companyStage"), `${action.companyStage} · ${action.stageFit.score}/5`],
     [t("fields.bottleneck"), `${action.bottleneck.group} · ${action.bottleneck.label} · ${action.bottleneckFit.score}/5`],

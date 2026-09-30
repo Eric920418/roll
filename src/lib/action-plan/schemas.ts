@@ -119,6 +119,9 @@ export const generatedActionSchema = z
     if (value.dependencyLevel === 0 && value.dependsOnKeys.length > 0) {
       ctx.addIssue({ code: "custom", path: ["dependsOnKeys"], message: "Dependency 0 不可指定依賴 Action" });
     }
+    if (value.dependencyLevel > 0 && value.dependsOnKeys.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["dependsOnKeys"], message: "有依賴的 Action 必須指定前置任務 ID" });
+    }
     if (value.outcomeTime.max < 1) {
       ctx.addIssue({ code: "custom", path: ["outcomeTime"], message: "Outcome time 至少為 1 天" });
     }
@@ -128,11 +131,21 @@ export const generatedPlanSchema = z
   .object({ actions: z.array(generatedActionSchema).min(5).max(100) })
   .superRefine((value, ctx) => {
     const keys = new Set<string>();
+    const titles = new Set<string>();
+    let criticalCount = 0;
     for (const [index, action] of value.actions.entries()) {
       if (keys.has(action.clientKey)) {
         ctx.addIssue({ code: "custom", path: ["actions", index, "clientKey"], message: "clientKey 不可重複" });
       }
       keys.add(action.clientKey);
+      const title = action.title.trim().toLocaleLowerCase();
+      if (titles.has(title)) {
+        ctx.addIssue({ code: "custom", path: ["actions", index, "title"], message: "Action 標題不可重複" });
+      }
+      titles.add(title);
+      if (action.impact === "Critical" && ++criticalCount > 1) {
+        ctx.addIssue({ code: "custom", path: ["actions", index, "impact"], message: "每份計畫最多一項 Critical" });
+      }
     }
     const graph = new Map(value.actions.map((a) => [a.clientKey, a.dependsOnKeys]));
     for (const [index, action] of value.actions.entries()) {
@@ -175,9 +188,16 @@ export function appendGeneratedActions(
   }
 
   const availableKeys = new Set(existing.map((action) => action.clientKey));
+  const titles = new Set(existing.map((action) => action.title.trim().toLocaleLowerCase()));
+  let criticalCount = existing.filter((action) => action.impact === "Critical").length;
   for (const action of incoming) {
     if (availableKeys.has(action.clientKey)) {
       throw new Error(`clientKey 不可重複：${action.clientKey}`);
+    }
+    const title = action.title.trim().toLocaleLowerCase();
+    if (titles.has(title)) throw new Error(`Action 標題不可重複：${action.title}`);
+    if (action.impact === "Critical" && ++criticalCount > 1) {
+      throw new Error("每份計畫最多一項 Critical");
     }
     for (const dependencyKey of action.dependsOnKeys) {
       if (!availableKeys.has(dependencyKey)) {
@@ -185,6 +205,7 @@ export function appendGeneratedActions(
       }
     }
     availableKeys.add(action.clientKey);
+    titles.add(title);
   }
 
   return [...existing, ...incoming];
@@ -231,6 +252,9 @@ export const actionInputSchema = z
     }
     if (value.dependencyLevel === 0 && value.dependencyActionIds.length > 0) {
       ctx.addIssue({ code: "custom", path: ["dependencyActionIds"], message: "Dependency 0 不可指定依賴 Action" });
+    }
+    if (value.dependencyLevel > 0 && value.dependencyActionIds.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["dependencyActionIds"], message: "有依賴的 Action 必須指定前置任務 ID" });
     }
     if (value.actionTime.maxMinutes < 1 || value.outcomeTime.max < 1) {
       ctx.addIssue({ code: "custom", path: ["actionTime"], message: "時間上限至少為 1" });

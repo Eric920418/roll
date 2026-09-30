@@ -7,7 +7,7 @@ import { legacyHoursForMinutes } from "./time";
 
 const actionInclude = {
   dependencies: {
-    select: { dependsOn: { select: { id: true, title: true, done: true } } },
+    select: { dependsOn: { select: { id: true, clientKey: true, title: true, done: true } } },
   },
 } as const;
 
@@ -18,7 +18,7 @@ export type ActionPlanDto = {
   createdAt: string;
   actions: ActionPlanActionDto[];
   nextMoves: ActionPlanActionDto[];
-  blockers: Array<{ id: string; title: string; dependencies: string[] }>;
+  blockers: Array<{ id: string; title: string; dependencies: string[]; missingLink: boolean }>;
 };
 
 type PlanWithActions = Awaited<ReturnType<typeof findActivePlanRecord>>;
@@ -49,7 +49,7 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
     nextMoves: actions.filter((action) => action.rank != null && action.rank <= 3),
     blockers: actions
       .filter((action) => !action.done && action.dependency.blocked)
-      .map((action) => ({ id: action.id, title: action.title, dependencies: action.dependency.actionTitles })),
+      .map((action) => ({ id: action.id, title: action.title, dependencies: action.dependency.actionTitles, missingLink: action.dependency.missingLink })),
   };
 }
 

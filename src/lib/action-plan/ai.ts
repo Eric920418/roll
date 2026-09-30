@@ -83,7 +83,7 @@ const generationActionInputSchema = {
   ],
 };
 
-function generationTool(batchCount: number): { tool: Anthropic.Tool; slotNames: string[] } {
+function generationTool(batchCount: number, startIndex: number): { tool: Anthropic.Tool; slotNames: string[] } {
   const slotNames = Array.from({ length: batchCount }, (_, index) => `action${index + 1}`);
   return {
     slotNames,
@@ -96,7 +96,11 @@ function generationTool(batchCount: number): { tool: Anthropic.Tool; slotNames: 
         additionalProperties: false,
         properties: Object.fromEntries(slotNames.map((name, index) => [name, {
           ...generationActionInputSchema,
-          description: `Required action ${index + 1} of ${batchCount}.`,
+          description: `Required task_${startIndex + index + 1} of ${startIndex + batchCount}.`,
+          properties: {
+            ...generationActionInputSchema.properties,
+            clientKey: { type: "string" as const, enum: [`task_${startIndex + index + 1}`] },
+          },
         }])),
         required: slotNames,
       },
@@ -224,7 +228,7 @@ export async function generateActionCandidates(input: {
   for (let call = 0; actions.length < input.candidateCount && call < maxCalls; call += 1) {
     const batchCount = Math.min(GENERATION_BATCH_SIZE, input.candidateCount - actions.length);
     const previousActions = actions.map(({ clientKey, title }) => ({ clientKey, title }));
-    const { tool, slotNames } = generationTool(batchCount);
+    const { tool, slotNames } = generationTool(batchCount, actions.length);
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: 8000,
@@ -236,6 +240,8 @@ export async function generateActionCandidates(input: {
         "Impact weights: Critical 5, High 4, Medium 3, Low 2. Urgency types: immediate, urgent, scheduled. Difficulty is 1-5.",
         "Fit scores are 1-5 with evidence-based reasons and 0-100 confidence. Evaluate fit against the confirmed diagnosis; the server adds the confirmed stage and bottleneck to every Action.",
         "Dependency keys may only point to a prior clientKey listed in the user message or an earlier numbered action field. Dependency 0 has no keys.",
+        "Order prerequisites before the tasks that need them. If a task cannot start until another task is complete, set dependencyLevel above 0 and put that exact task_# clientKey in dependsOnKeys. Never describe a prerequisite only in dependencyNotes.",
+        "Across the entire plan, at most ONE action may have Critical impact. Different actions must solve distinct problems and have distinct outcomes; combine overlapping paid-offer/pilot experiments and use the freed slot for customer willingness-to-pay interviews.",
         `Across all batches, build a balanced ${input.candidateCount}-action sequence rather than paraphrases. AI never sets priority or rank; the server computes it.`,
         repair,
       ].filter(Boolean).join("\n"),
@@ -257,6 +263,12 @@ export async function generateActionCandidates(input: {
       : raw;
     const parsed = batchSchema.safeParse(normalized);
     let validation = parsed.success ? "" : issueText(parsed.error);
+    if (parsed.success) {
+      for (const [index, action] of parsed.data.actions.entries()) {
+        const expected = `task_${actions.length + index + 1}`;
+        if (action.clientKey !== expected) validation += ` action${index + 1}.clientKey: 必須為 ${expected};`;
+      }
+    }
     if (parsed.success && !validation) {
       try {
         actions = appendGeneratedActions(actions, parsed.data.actions, input.candidateCount);
