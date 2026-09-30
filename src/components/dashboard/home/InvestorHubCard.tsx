@@ -40,8 +40,8 @@ export default function InvestorHubCard({ name, email, message, joined }: {
   }
 
   return (
-    <div className="nova-dashboard-card flex h-full flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-dark/10 bg-white p-5">
-      <div className="min-w-0 flex-1">
+    <div className="nova-dashboard-card flex flex-col items-start gap-3 rounded-2xl border border-dark/10 bg-white p-5">
+      <div className="min-w-0">
         <h2 className="text-base font-bold text-dark font-[family-name:var(--font-heading)]">{t("title")}</h2>
         <p className="mt-1 text-xs font-medium text-dark/50">{t("comingSoon")}</p>
       </div>

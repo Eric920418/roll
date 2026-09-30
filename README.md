@@ -358,7 +358,7 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 資料庫部署前以 `pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` 確認差異僅為 `MeetingNote.meetingType` nullable 欄位與 `CopilotTurn` 新表、索引、外鍵，再執行 `pnpm db:push`；未使用 `--accept-data-loss`，部署後 diff 為空。對話僅會員本人、Pro 以上可讀寫，GET 回應禁止快取。回歸測試名稱也改為對應目前 5 項生成。
 
-Golden Ticket 使用提供的 EP.3 封面 `public/golden-ticket-call-center.jpg`。程式部署後以 `pnpm exec tsx scripts/publish-golden-ticket.ts` 新增排序第 0 的影片，連到已核對的 `https://www.youtube.com/watch?v=CAZhCUssgn0`；舊影片保留、不覆寫。新資料固定 ID，重跑會跳過，views 留空避免捏造觀看數；執行後關閉資料庫連線。
+Golden Ticket 使用提供的 EP.3 封面 `public/golden-ticket-call-center.jpg`。程式部署後以 `pnpm exec tsx scripts/publish-golden-ticket.ts` 新增排序第 0 的影片，連到已核對的 `https://www.youtube.com/watch?v=CAZhCUssgn0`；舊影片保留、不覆寫。新資料固定 ID，重跑會跳過，views 留空避免捏造觀看數；執行後關閉資料庫連線。正式站視覺檢查後將預告卡改為獨立短卡，不再被影片高度撐滿，也不讓標題和候補按鈕擠在同一行。
 
 登入會員的自助 Dashboard，與 onboarding/quiz 共用 `user_session`。proxy 已把 `/dashboard`（及 `/company` 台灣企業智庫）納入保護（`^/(zh-tw/)?(onboarding|quiz|dashboard|company)`）；proxy 只樂觀驗 session，方案 gating 由各頁面 / API 的 DAL 即時查 DB（不在 proxy 查庫）。
 
