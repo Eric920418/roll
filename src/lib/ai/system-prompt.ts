@@ -43,6 +43,7 @@ function memberContext(profile: Account["profile"]): string {
   if (profile.industry) parts.push(`industry: ${profile.industry}`);
   if (profile.companySize) parts.push(`team size: ${profile.companySize}`);
   if (profile.country) parts.push(`home country: ${profile.country}`);
+  if (profile.icp) parts.push(`ideal customer profile: ${profile.icp}`);
   if (profile.website) parts.push(`website: ${profile.website}`);
   if (profile.targetMarkets?.length)
     parts.push(`target markets: ${profile.targetMarkets.join(", ")}`);

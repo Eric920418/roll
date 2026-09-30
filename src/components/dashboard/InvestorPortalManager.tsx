@@ -223,7 +223,7 @@ export default function InvestorPortalManager({
 
           {!canHideFields && (
             <Link
-              href={pathForLocale("/dashboard/billing", locale)}
+              href={pathForLocale("/dashboard/account#plan", locale)}
               className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-dark/15 px-4 text-sm font-bold text-dark"
             >
               {t("fieldVisibilityLockedCta")}

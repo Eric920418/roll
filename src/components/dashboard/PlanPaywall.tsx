@@ -13,7 +13,7 @@ export default async function PlanPaywall({ locale }: { locale: Locale }) {
       </h2>
       <p className="mt-2 text-sm text-dark/70">{t("lockedBody")}</p>
       <Link
-        href={pathForLocale("/dashboard/billing", locale)}
+        href={pathForLocale("/dashboard/account#plan", locale)}
         className="mt-5 inline-block rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
       >
         {t("upgrade")}

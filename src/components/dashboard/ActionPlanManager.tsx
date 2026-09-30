@@ -85,6 +85,8 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
     );
   }
 
+  const doneCount = plan.actions.filter((action) => action.done).length;
+
   return (
     <section className="flex flex-col gap-6">
       <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-dark text-white">
@@ -110,6 +112,10 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
       </div>
 
       <section>
+        <div className="mb-5 rounded-2xl border border-dark/10 bg-white p-4">
+          <div className="flex justify-between text-sm font-semibold text-dark"><span>{t("actionProgress")}</span><span>{doneCount}/{plan.actions.length}</span></div>
+          <div role="progressbar" aria-label={t("actionProgress")} aria-valuemin={0} aria-valuemax={plan.actions.length || 1} aria-valuenow={doneCount} className="mt-2 h-2 overflow-hidden rounded-full bg-primary/10"><div className="h-full rounded-full bg-primary" style={{ width: `${plan.actions.length ? (doneCount / plan.actions.length) * 100 : 0}%` }} /></div>
+        </div>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("next.eyebrow")}</p>
@@ -167,7 +173,7 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
                 <button
                   type="button"
                   onClick={(event) => { event.preventDefault(); void mutate(action.id, { done: !action.done }); }}
-                  disabled={pending === action.id}
+                  disabled={pending === action.id || (!action.done && action.dependency.blocked)}
                   aria-label={action.done ? t("undo") : t("completeAction")}
                   className={`flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border text-base font-bold ${action.done ? "border-green-500 bg-green-500 text-white" : "border-dark/15 bg-white text-dark/35 hover:border-primary hover:text-primary"}`}
                 >

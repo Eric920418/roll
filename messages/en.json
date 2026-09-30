@@ -383,6 +383,8 @@
       "website": "Website",
       "websitePlaceholder": "https://",
       "country": "Home market / country",
+      "icp": "Ideal Customer Profile (ICP)",
+      "icpPlaceholder": "Who buys from you? Include customer type, problem, and buying trigger.",
       "countryPlaceholder": "e.g. United States",
       "continue": "Continue",
       "back": "Back",
@@ -502,19 +504,26 @@
       "enterprise": "Enterprise"
     },
     "nav": {
-      "overview": "Dashboard",
+      "overview": "Home",
       "profile": "Profile",
       "companies": "Taiwan top 100",
       "quiz": "Fundraising quiz",
       "crm": "CRM",
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
-      "agenda": "Action plan",
+      "insights": "Customer insights",
+      "agenda": "Next steps",
       "tools": "Milestones",
-      "account": "Account",
+      "account": "Account and plan",
       "billing": "Billing",
-      "investors": "Investor portal",
-      "feedback": "Report an issue"
+      "investors": "Share with investors",
+      "feedback": "Feedback"
+    },
+    "insights": {
+      "title": "Customer insights",
+      "subtitle": "Keep your contacts and conversation notes in one place.",
+      "contacts": "Contacts",
+      "notes": "Conversation notes"
     },
     "overview": {
       "title": "Welcome back",
@@ -531,7 +540,7 @@
       "goToTools": "Open tools"
     },
     "account": {
-      "title": "Account & profile",
+      "title": "Account and plan",
       "subtitle": "The information we use to tailor your dashboard. Update anytime.",
       "companySection": "Company information",
       "requirementsSection": "Landing requirements",
@@ -936,8 +945,10 @@
       "discardChanges": "You have unsaved changes. Discard them?"
     },
     "agenda": {
-      "title": "Action plan",
+      "title": "Next steps",
       "subtitle": "Your ranked next moves, evidence, dependencies, and measurable outcomes.",
+      "milestoneSection": "Milestones",
+      "milestoneSectionBody": "Mark a milestone done to update its progress automatically.",
       "legacyEyebrow": "Previous workflow",
       "legacyTitle": "Legacy landing tasks",
       "legacyBody": "Your original checklist and custom tasks are preserved here and are not changed by NOVA.",
@@ -970,6 +981,7 @@
       "emptyCta": "Go to Account"
     },
     "actionPlan": {
+      "actionProgress": "Action progress",
       "confidence": "{value}% confidence",
       "score": "Priority score",
       "priority": { "Critical": "Critical", "High": "High", "Medium": "Medium", "Low": "Low" },
@@ -1078,7 +1090,7 @@
       "errors": { "save": "Could not save the action.", "delete": "Could not delete the action." }
     },
     "feedback": {
-      "title": "Report an issue",
+      "title": "Feedback",
       "subtitle": "Found a bug or have an idea? Tell us here — we read every report.",
       "formTitle": "New report",
       "type": "What is this about?",
@@ -1179,9 +1191,9 @@
         "allActions": "Full action list"
       }
     },
-    "title": "Investor portal",
+    "title": "Share with investors",
     "subtitle": "Share one controlled, read-only company view with your invited investors.",
-    "upgradeTitle": "Investor portal is included with Business",
+    "upgradeTitle": "Share with investors is included with Business ({price}/month)",
     "upgradeBody": "Upgrade to Business to invite investors and privately share selected company data and your business plan.",
     "upgradeCta": "View Business plan",
     "sharingTitle": "Shared information",

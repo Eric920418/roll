@@ -24,6 +24,9 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       select: {
         id: true,
         actionPlanId: true,
+        done: true,
+        dependencies: { select: { dependsOn: { select: { title: true, done: true } } } },
+        requiredBy: { select: { action: { select: { title: true, done: true } } } },
         stageFit: true,
         stageFitReason: true,
         stageFitConfidence: true,
@@ -37,6 +40,13 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!current) return fail("找不到 Action。", 404);
 
     if (Object.keys(parsed.data).length === 1 && "done" in parsed.data) {
+      if (parsed.data.done) {
+        const unmet = current.dependencies.filter((edge) => !edge.dependsOn.done).map((edge) => edge.dependsOn.title);
+        if (unmet.length) return fail(`請先完成前置任務：${unmet.join("、")}`, 409);
+      } else {
+        const completed = current.requiredBy.filter((edge) => edge.action.done).map((edge) => edge.action.title);
+        if (completed.length) return fail(`請先取消後續任務的完成狀態：${completed.join("、")}`, 409);
+      }
       await prisma.actionItem.update({ where: { id }, data: { done: parsed.data.done } });
       return ok(await getActiveActionPlan(session.uid));
     }
@@ -47,6 +57,13 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     const stageFitChanged = action.stageFit.score !== current.stageFit || action.stageFit.reason !== current.stageFitReason;
     const bottleneckFitChanged = action.bottleneckFit.score !== current.bottleneckFit || action.bottleneckFit.reason !== current.bottleneckFitReason;
     await assertDependencies({ userId: session.uid, planId: current.actionPlanId, actionId: id, dependencyIds: action.dependencyActionIds });
+    if (current.done || action.done) {
+      const unmet = await prisma.actionItem.findMany({
+        where: { id: { in: action.dependencyActionIds }, actionPlanId: current.actionPlanId, done: false },
+        select: { title: true },
+      });
+      if (unmet.length) return fail(`請先完成前置任務：${unmet.map((item) => item.title).join("、")}`, 409);
+    }
     await prisma.$transaction(async (tx) => {
       await tx.actionItem.update({
         where: { id },

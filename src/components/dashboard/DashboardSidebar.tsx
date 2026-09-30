@@ -12,15 +12,9 @@ import type { Locale } from "@/i18n/routing";
 type NavKey =
   | "overview"
   | "profile"
-  | "companies"
-  | "quiz"
-  | "crm"
-  | "pipeline"
-  | "notes"
+  | "insights"
   | "agenda"
-  | "tools"
   | "account"
-  | "billing"
   | "investors"
   | "feedback";
 
@@ -29,16 +23,10 @@ type NavKey =
 const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "overview", path: "/dashboard" },
   { key: "profile", path: "/dashboard/profile" },
-  { key: "companies", path: "/dashboard/companies" },
-  { key: "quiz", path: "/dashboard/quiz" },
-  { key: "crm", path: "/dashboard/crm" },
-  { key: "pipeline", path: "/dashboard/pipeline" },
-  { key: "notes", path: "/dashboard/notes" },
   { key: "agenda", path: "/dashboard/agenda" },
-  { key: "tools", path: "/dashboard/tools" },
-  { key: "account", path: "/dashboard/account" },
-  { key: "billing", path: "/dashboard/billing" },
+  { key: "insights", path: "/dashboard/insights" },
   { key: "investors", path: "/dashboard/investors" },
+  { key: "account", path: "/dashboard/account" },
   { key: "feedback", path: "/dashboard/feedback" },
 ];
 

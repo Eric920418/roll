@@ -360,6 +360,20 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 Golden Ticket 使用提供的 EP.3 封面 `public/golden-ticket-call-center.jpg`。程式部署後以 `pnpm exec tsx scripts/publish-golden-ticket.ts` 新增排序第 0 的影片，連到已核對的 `https://www.youtube.com/watch?v=CAZhCUssgn0`；舊影片保留、不覆寫。新資料固定 ID，重跑會跳過，views 留空避免捏造觀看數；執行後關閉資料庫連線。正式站視覺檢查後將預告卡改為獨立短卡，不再被影片高度撐滿，也不讓標題和候補按鈕擠在同一行。
 
+2026-09-30 導覽整併：左側只顯示 Home、Profile、Next steps、Customer insights、Share with investors、Account and plan、Feedback；頁面主標題也改為相應名稱。台灣百大企業及募資測驗暫時隱藏入口，舊資料和舊 URL 保留。Profile 新增可編輯的 ICP 欄位，儲存在 `OnboardingProfile.icp`，並提供給 NOVA 個人化上下文；此 schema 變更只新增 nullable 欄位，不改舊會員資料。
+ICP 前後端皆限制 2000 字元，過長回明確 400 錯誤，會員仍可保留既有公司檔案欄位。
+ICP 編輯欄位放在 Account and plan 的公司資訊區，Profile 頁顯示已儲存內容。
+正式資料庫更新前 `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` 僅顯示 `ALTER TABLE "OnboardingProfile" ADD COLUMN "icp" TEXT`，再用 `pnpm db:push` 套用；未使用 `--accept-data-loss`，舊會員資料不受影響。
+Customer insights 新頁面 `/dashboard/insights` 並列既有 CRM 聯絡人清單與會議／對話筆記，沿用原 API 與資料；Sales pipeline 從主導覽隱藏，但原有交易資料與舊 URL 保留，不做資料轉移或刪除。
+Account and plan 在 `/dashboard/account` 同頁顯示公司檔案、現有 BillingPanel 與帳戶安全設定；既有 `/dashboard/billing` 與付款回跳 URL 保留以維持相容，主導覽只留一個入口。
+站內方案升級、付款完成返回與額度返回入口改連到 `/dashboard/account#plan`；原 Billing URL 仍可使用。
+Next steps 在 `/dashboard/agenda` 直接包含可編輯的里程碑清單與其完成進度，沿用原 `checklistState`／`milestoneConfig`，不複製或搬移資料；舊 `/dashboard/tools` 導向頁內里程碑區。
+舊版落地任務與里程碑共用的系統勾選狀態更新後，`ChecklistTool` 會按新的 server groups 重新載入，避免同頁進度顯示舊值。
+Action 排序維持「可執行且高優先級先顯示」，凡有未完成的前置 Action 一律鎖定；API 拒絕提前勾選被阻擋的任務，也拒絕把已完成後續任務的前置項目改回未完成。Next steps 同時顯示 Action 完成進度，勾選成功後由回傳的計畫立即重算。
+Action 完成進度以當前 active plan 的 `done` 數量即時計算，與里程碑原有的完成率分別標示。
+排序回歸測試以非 Required（level 1）依賴驗證同樣會鎖定，直到前置項目完成。
+Share with investors 仍由 Business 以上方案控管；Business 月費從 `PLAN_CONFIG` 讀取 USD 149 顯示在升級提示，不另造價格常數。
+
 登入會員的自助 Dashboard，與 onboarding/quiz 共用 `user_session`。proxy 已把 `/dashboard`（及 `/company` 台灣企業智庫）納入保護（`^/(zh-tw/)?(onboarding|quiz|dashboard|company)`）；proxy 只樂觀驗 session，方案 gating 由各頁面 / API 的 DAL 即時查 DB（不在 proxy 查庫）。
 
 ### 路由

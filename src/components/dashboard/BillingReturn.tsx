@@ -71,7 +71,7 @@ export default function BillingReturn({
         )}
 
         <Link
-          href={pathForLocale("/dashboard/billing", locale)}
+          href={pathForLocale("/dashboard/account#plan", locale)}
           className="mt-6 inline-block rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
         >
           {t("currentPlan")}

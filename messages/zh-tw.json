@@ -383,6 +383,8 @@
       "website": "網站",
       "websitePlaceholder": "https://",
       "country": "母國市場 / 國家",
+      "icp": "理想客戶輪廓（ICP）",
+      "icpPlaceholder": "描述目標客戶、他們的問題與購買時機。",
       "countryPlaceholder": "例如：美國",
       "continue": "繼續",
       "back": "上一步",
@@ -502,19 +504,26 @@
       "enterprise": "Enterprise"
     },
     "nav": {
-      "overview": "總覽",
+      "overview": "首頁",
       "profile": "公司檔案",
       "companies": "台灣百大企業",
       "quiz": "募資測驗",
       "crm": "CRM 客戶",
       "pipeline": "銷售管道",
       "notes": "會議記錄",
-      "agenda": "落地待辦",
+      "insights": "客戶洞察",
+      "agenda": "下一步",
       "tools": "里程碑",
-      "account": "帳號",
+      "account": "帳號與方案",
       "billing": "訂閱帳單",
-      "investors": "投資人專區",
-      "feedback": "問題回報"
+      "investors": "分享給投資人",
+      "feedback": "意見回饋"
+    },
+    "insights": {
+      "title": "客戶洞察",
+      "subtitle": "在同一處管理聯絡人與對話記錄。",
+      "contacts": "聯絡人",
+      "notes": "對話記錄"
     },
     "overview": {
       "title": "歡迎回來",
@@ -531,7 +540,7 @@
       "goToTools": "開啟工具"
     },
     "account": {
-      "title": "帳號與個人資料",
+      "title": "帳號與方案",
       "subtitle": "我們用這些資訊為你客製化後台，隨時可更新。",
       "companySection": "公司資訊",
       "requirementsSection": "進入需求",
@@ -936,8 +945,10 @@
       "discardChanges": "目前有尚未儲存的內容，確定放棄這些變更嗎？"
     },
     "agenda": {
-      "title": "行動計畫",
+      "title": "下一步",
       "subtitle": "依據證據、依賴與預期成果排序你的下一步。",
+      "milestoneSection": "里程碑",
+      "milestoneSectionBody": "完成里程碑後，進度會自動更新。",
       "legacyEyebrow": "原有流程",
       "legacyTitle": "舊版落地待辦",
       "legacyBody": "原有 checklist 與自訂任務完整保留，NOVA 不會修改這些資料。",
@@ -970,6 +981,7 @@
       "emptyCta": "前往帳號頁"
     },
     "actionPlan": {
+      "actionProgress": "任務進度",
       "confidence": "信心值 {value}%",
       "score": "優先分數",
       "priority": { "Critical": "Critical", "High": "High", "Medium": "Medium", "Low": "Low" },
@@ -1078,7 +1090,7 @@
       "errors": { "save": "無法儲存 Action。", "delete": "無法刪除 Action。" }
     },
     "feedback": {
-      "title": "問題回報",
+      "title": "意見回饋",
       "subtitle": "發現 bug 或有建議都可以告訴我們，每一則我們都會看。",
       "formTitle": "新增回報",
       "type": "回報類型",
@@ -1179,9 +1191,9 @@
         "allActions": "完整動作清單"
       }
     },
-    "title": "投資人專區",
+    "title": "分享給投資人",
     "subtitle": "將你選擇的公司資訊，以同一份受控唯讀頁面分享給受邀投資人。",
-    "upgradeTitle": "Investor Portal 包含在 Business 方案",
+    "upgradeTitle": "分享給投資人包含於 Business 方案（每月 {price}）",
     "upgradeBody": "升級 Business 後即可邀請投資人，並私密分享指定的公司資料與 Business Plan。",
     "upgradeCta": "查看 Business 方案",
     "sharingTitle": "分享內容",

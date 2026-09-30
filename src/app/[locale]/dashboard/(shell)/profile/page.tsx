@@ -29,6 +29,7 @@ export default async function CompanyProfilePage({ params }: Props) {
         p.companySize ||
         p.website ||
         p.country ||
+        p.icp ||
         p.needs.length ||
         p.targetMarkets.length ||
         p.timeline ||
@@ -100,6 +101,7 @@ export default async function CompanyProfilePage({ params }: Props) {
                 }
               />
               <Row label={t("account.country")} value={p?.country || na} />
+              <Row label={t("account.icp")} value={p?.icp || na} />
             </dl>
           </section>
 

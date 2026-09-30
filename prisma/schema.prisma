@@ -221,6 +221,7 @@ model OnboardingProfile {
   companySize String?
   website     String?
   country     String?
+  icp         String? // Ideal Customer Profile，會員可自行編輯
 
   // --- Step 3：Landing requirements assessment ---
   targetMarkets String[] // 目標亞洲市場（多選）

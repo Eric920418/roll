@@ -52,7 +52,7 @@ export default function CopilotPanel({
   }, [loadingHistory]);
 
   const shortcuts = [
-    { label: t("tools"), href: pathForLocale("/dashboard/tools", locale) },
+    { label: t("tools"), href: pathForLocale("/dashboard/agenda#milestones", locale) },
     { label: t("profile"), href: pathForLocale("/dashboard/profile", locale) },
   ];
 
@@ -201,7 +201,7 @@ export default function CopilotPanel({
             {t("upsell.body")}
           </p>
           <Link
-            href={pathForLocale("/dashboard/billing", locale)}
+            href={pathForLocale("/dashboard/account#plan", locale)}
             className="mt-3 inline-block rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
           >
             {t("upsell.cta")}

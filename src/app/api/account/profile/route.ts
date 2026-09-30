@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
-import { ok, unauthorized, failFromError } from "@/lib/api";
+import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 
 // 會員後台「帳號 / 個人資料」頁的儲存端點。
 // 與 /api/auth/onboarding 不同：這裡一次更新全部 profile 欄位，且「不」推進 onboardingStep —
@@ -34,6 +34,9 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json();
     const data = body?.data ?? {};
+    if (typeof data.icp === "string" && data.icp.trim().length > 2000) {
+      return fail("ICP 最多 2000 字元", 400);
+    }
 
     const fields = {
       // Step 2：公司資訊
@@ -42,6 +45,7 @@ export async function PATCH(req: NextRequest) {
       companySize: str(data.companySize),
       website: webUrl(data.website),
       country: str(data.country),
+      icp: str(data.icp),
       // Step 3：需求評估。targetMarkets 已自表單移除、不再寫入（保留 DB 既有值）；
       // needs 仍保留於帳號頁，供 Tools 落地清單個人化生成。
       needs: strArray(data.needs),

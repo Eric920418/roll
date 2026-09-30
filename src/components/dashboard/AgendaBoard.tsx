@@ -13,6 +13,8 @@ import type {
 } from "@/lib/dashboard/agenda";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import ActionPlanManager from "@/components/dashboard/ActionPlanManager";
+import ChecklistTool from "@/components/dashboard/ChecklistTool";
+import type { MilestoneGroupView } from "@/lib/tools/checklist";
 
 type Props = {
   focus: { state: FocusState; href: string };
@@ -21,6 +23,7 @@ type Props = {
   /** 任務清單為空時顯示的引導卡（由 server 傳入） */
   emptyState?: ReactNode;
   actionPlan: ActionPlanDto | null;
+  milestoneGroups: MilestoneGroupView[];
 };
 
 const STATUS_STYLE: Record<TaskStatus, string> = {
@@ -40,6 +43,7 @@ export default function AgendaBoard({
   agenda,
   emptyState,
   actionPlan,
+  milestoneGroups,
 }: Props) {
   const t = useTranslations("Dashboard.agenda");
   const tP = useTranslations("Dashboard.home.priority");
@@ -138,6 +142,12 @@ export default function AgendaBoard({
   return (
     <div className="mt-7 flex flex-col gap-8">
       <ActionPlanManager initialPlan={actionPlan} />
+
+      <section id="milestones" className="scroll-mt-6">
+        <h2 className="text-xl font-extrabold text-dark font-[family-name:var(--font-heading)]">{t("milestoneSection")}</h2>
+        <p className="mt-1 text-sm text-dark/55">{t("milestoneSectionBody")}</p>
+        <ChecklistTool key={JSON.stringify(milestoneGroups)} groups={milestoneGroups} />
+      </section>
 
       <section className="rounded-[1.75rem] border border-dark/10 bg-dark/[0.025] p-4 sm:p-6">
         <div className="mb-5">

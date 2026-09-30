@@ -58,7 +58,7 @@ export default function CreditPurchaseReturn({
           {message}
         </p>
         <Link
-          href={pathForLocale("/dashboard/billing", locale)}
+          href={pathForLocale("/dashboard/account#plan", locale)}
           className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white"
         >
           {t("backToBilling")}

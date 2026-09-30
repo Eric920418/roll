@@ -18,6 +18,7 @@ export type ProfileInitial = {
   companySize?: string | null;
   website?: string | null;
   country?: string | null;
+  icp?: string | null;
   needs?: string[];
   timeline?: string | null;
   budgetRange?: string | null;
@@ -80,6 +81,7 @@ export default function AccountProfileForm({
   const [companySize, setCompanySize] = useState(initial.companySize ?? "");
   const [website, setWebsite] = useState(initial.website ?? "");
   const [country, setCountry] = useState(initial.country ?? "");
+  const [icp, setIcp] = useState(initial.icp ?? "");
   const [needs, setNeeds] = useState<string[]>(initial.needs ?? []);
   const [timeline, setTimeline] = useState(initial.timeline ?? "");
   const [budgetRange, setBudgetRange] = useState(initial.budgetRange ?? "");
@@ -111,6 +113,7 @@ export default function AccountProfileForm({
             companySize,
             website,
             country,
+            icp,
             needs,
             timeline,
             budgetRange,
@@ -199,6 +202,10 @@ export default function AccountProfileForm({
             />
           </label>
         </div>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelClass}>{t("icp")}</span>
+          <textarea value={icp} onChange={(event) => setIcp(event.target.value)} maxLength={2000} rows={3} placeholder={t("icpPlaceholder")} className={`${fieldClass} resize-y placeholder:text-dark/35`} />
+        </label>
       </section>
 
       {/* 進入需求 */}

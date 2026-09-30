@@ -96,12 +96,12 @@ test("No leads 正確顯示為 Sales · Lead generation，不映射為 conversio
   assert.equal(bottleneckLabel("Sales", "no_leads"), "Lead generation");
 });
 
-test("Required dependency 未完成時排除 Top 3；完成後立即進入排名", () => {
+test("任一前置 Action 未完成時排除 Top 3；完成後立即進入排名", () => {
   const dependency = { id: "base", title: "Finish interviews", done: false };
   const blocked = action({
     id: "blocked",
     title: "Build pilot",
-    dependencyLevel: 3,
+    dependencyLevel: 1,
     dependencies: [{ dependsOn: dependency }],
   });
   const ready = action({ id: "ready", title: "Define ICP", impact: "High" });

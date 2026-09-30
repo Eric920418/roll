@@ -98,7 +98,7 @@ export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
       .map((edge) => edge.dependsOn)
       .filter((dependency) => !dependency.done);
     const resolved = unfinished.length === 0;
-    const blocked = action.dependencyLevel === 3 && !resolved;
+    const blocked = !resolved;
     const impactWeight = IMPACT_WEIGHTS[action.impact as keyof typeof IMPACT_WEIGHTS] ?? 0;
     const weight = urgencyWeight(action.urgencyType, action.urgencyDays);
     const actionTimeMinMinutes =

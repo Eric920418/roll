@@ -44,6 +44,7 @@ export interface Account {
     companySize: string | null;
     website: string | null;
     country: string | null;
+    icp: string | null;
     targetMarkets: string[];
     needs: string[];
     timeline: string | null;
@@ -97,6 +98,7 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
           companySize: user.profile.companySize,
           website: user.profile.website,
           country: user.profile.country,
+          icp: user.profile.icp,
           targetMarkets: user.profile.targetMarkets,
           needs: user.profile.needs,
           timeline: user.profile.timeline,

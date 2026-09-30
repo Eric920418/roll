@@ -68,7 +68,7 @@ export default async function DashboardOverview({ params }: Props) {
     plan: visibleActionPlan,
   });
   const agendaHref = pathForLocale("/dashboard/agenda", l);
-  const billingHref = pathForLocale("/dashboard/billing", l);
+  const billingHref = pathForLocale("/dashboard/account#plan", l);
   const priorityHref =
     priority.kind === "upgrade"
       ? billingHref

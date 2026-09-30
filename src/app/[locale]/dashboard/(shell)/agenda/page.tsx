@@ -2,7 +2,7 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { requirePlan } from "@/lib/billing/gate";
 import { prisma } from "@/lib/prisma";
-import { buildChecklist } from "@/lib/tools/checklist";
+import { buildChecklist, buildMilestoneBoard } from "@/lib/tools/checklist";
 import {
   computeFocus,
   computeMilestones,
@@ -61,6 +61,7 @@ export default async function AgendaPage({ params }: Props) {
     customTasks,
     t("customGroup"),
   );
+  const milestoneGroups = buildMilestoneBoard(needs, l, account.checklistState, account.milestoneConfig);
 
   return (
     <div className="font-[family-name:var(--font-body)]">
@@ -79,6 +80,7 @@ export default async function AgendaPage({ params }: Props) {
         milestones={milestones}
         agenda={agenda}
         actionPlan={actionPlan}
+        milestoneGroups={milestoneGroups}
         emptyState={
           <div className="rounded-2xl border border-dashed border-dark/15 bg-white p-7">
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">
