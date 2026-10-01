@@ -41,7 +41,11 @@ export function nextIcpQuestion(draft: IcpDraft | null, messages: IcpMessage[], 
   if (messages.filter(m => m.role === "user").length >= 3) return null;
   const missing = [!draft?.who || !draft?.problem, !draft?.workaround || !draft?.channels, !draft?.location || !draft?.stage];
   const topic = missing.findIndex((needed, index) => needed && !asked.has(index));
-  return topic < 0 ? null : { role: "assistant", topic, content: QUESTIONS[locale][topic] };
+  if (topic < 0) return null;
+  let content = QUESTIONS[locale][topic];
+  if (topic === 2 && draft?.stage) content = locale === "zh-tw" ? "這些客戶位於哪些市場？還不確定也沒關係。" : "Which markets are these customers in? It is OK if you are not sure yet.";
+  if (topic === 2 && draft?.location) content = locale === "zh-tw" ? "這些客戶目前處於什麼階段？還不確定也沒關係。" : "What stage are these customers at? It is OK if you are not sure yet.";
+  return { role: "assistant", topic, content };
 }
 
 const nullableText = (max: number) => z.string().trim().max(max).nullable().transform(value => value || null).optional();

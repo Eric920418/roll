@@ -8,11 +8,11 @@ import { EMPTY_ICP, ICP_FIELDS, nextIcpQuestion, profilePatchSchema, readIcp, ha
 import type { Account } from "../src/lib/auth/account";
 
 const require = createRequire(import.meta.url);
-function load<T>(path: string, mocks: Record<string, unknown>): T {
+function load<T>(path: string, mocks: Record<string, unknown>, globals: Record<string, unknown> = {}): T {
   const loaded = { exports: {} };
-  runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
+  runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
     module: loaded, exports: loaded.exports, require: (id: string) => id === "server-only" ? {} : id in mocks ? mocks[id] : require(id),
-    console: { error() {} }, process: { env: {} }, Date, Set, JSON, Object, Error,
+    console: { error() {} }, process: { env: {} }, Date, Set, JSON, Object, Error, ...globals,
   });
   return loaded.exports as T;
 }
@@ -40,6 +40,9 @@ test("ICP questions use distinct topics and stop after three answers", () => {
     messages.push(question, { role: "user", content: `Answer ${round}` });
   }
   assert.equal(nextIcpQuestion(null, messages, "en"), null);
+  const knownStage = { ...draft, stage: "MVP", workaround: "Courses", channels: "Events" };
+  assert.equal(nextIcpQuestion(knownStage, [messages[0], messages[1]], "en")?.content.includes("stage"), false);
+  assert.equal(nextIcpQuestion({ ...knownStage, location: "Taiwan", stage: "" }, [messages[0], messages[1]], "en")?.content.includes("markets"), false);
   assert.equal(nextIcpQuestion({ ...draft, workaround: "Courses", channels: "Events" }, [messages[0], messages[1]], "en")?.topic, 2);
 });
 
@@ -213,4 +216,18 @@ test("Lost response clears only a server-acknowledged input, never unsent edits 
   assert.equal(persistedIcpAnswer(workspace, { ...cached, answerIndex: 3 }), false);
   assert.equal(persistedIcpAnswer(workspace, { ...cached, revision: 2 }), false);
   assert.equal(persistedIcpAnswer(workspace, null), false);
+});
+
+
+test("Billing reset date renders identically on UTC server and Taipei browser", () => {
+  const render = (fallback: string) => {
+    const panel = load<{ default(props: object): unknown }>("src/components/dashboard/BillingPanel.tsx", {
+      react: { useState: (value: unknown) => [value, () => {}] },
+      "next/navigation": { useRouter: () => ({ refresh() {} }) },
+      "next-intl": { useTranslations: () => (key: string, values?: { date?: string }) => key === "aiUsageDetail" ? values?.date : key },
+    }, { Intl: { DateTimeFormat: function(locale: string, options: Intl.DateTimeFormatOptions) { return new Intl.DateTimeFormat(locale, { timeZone: fallback, ...options }); } } });
+    return JSON.stringify(panel.default({ locale: "en", currentPlan: "enterprise", statusLabel: "Testing", hasActiveSub: false, betaAccess: true, usage: { included: 150, used: 3, remaining: 147, bonusRemaining: 0, resetsAt: "2026-11-01T18:30:00.000Z" } }));
+  };
+  assert.equal(render("UTC"), render("Asia/Taipei"));
+  assert.match(render("UTC"), /Nov 2, 2026/);
 });

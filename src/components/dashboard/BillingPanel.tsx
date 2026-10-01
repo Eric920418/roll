@@ -178,6 +178,7 @@ export default function BillingPanel({
                   bonus: usage.bonusRemaining,
                   date: new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", {
                     dateStyle: "medium",
+                    timeZone: "Asia/Taipei",
                   }).format(new Date(usage.resetsAt)),
                 })}
               </p>

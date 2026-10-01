@@ -34,6 +34,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
 
   const dateFmt = new Intl.DateTimeFormat(l === "zh-tw" ? "zh-TW" : "en-US", {
     dateStyle: "medium",
+    timeZone: "Asia/Taipei",
     timeStyle: "short",
   });
 
@@ -42,6 +43,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
       ? t("renews", {
           date: new Intl.DateTimeFormat(l === "zh-tw" ? "zh-TW" : "en-US", {
             dateStyle: "medium",
+            timeZone: "Asia/Taipei",
           }).format(account.currentPeriodEnd),
         })
       : undefined;
