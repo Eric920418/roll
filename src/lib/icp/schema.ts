@@ -71,3 +71,13 @@ export type IcpWorkspaceView = {
   messages: IcpMessage[]; draft: IcpDraft | null; saved: IcpDraft | null; legacy: string | null;
   pending: boolean; error: string | null;
 };
+
+/** Server acknowledgement after a lost response: clear only the exact answer stored at its original slot. */
+export function persistedIcpAnswer(workspace: IcpWorkspaceView, cached: unknown): boolean {
+  if (!cached || typeof cached !== "object") return false;
+  const input = cached as { text?: unknown; revision?: unknown; answerIndex?: unknown };
+  if (typeof input.text !== "string" || !input.text || !Number.isInteger(input.revision) || !Number.isInteger(input.answerIndex)) return false;
+  const revision = input.revision as number, index = input.answerIndex as number;
+  const message = workspace.messages[index];
+  return revision >= 0 && index >= 0 && workspace.revision > revision && message?.role === "user" && message.content === input.text.trim();
+}

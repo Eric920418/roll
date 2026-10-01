@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
-import { EMPTY_ICP, ICP_FIELDS, nextIcpQuestion, profilePatchSchema, readIcp, hasIcp, type IcpDraft, type IcpMessage } from "../src/lib/icp/schema";
+import { EMPTY_ICP, ICP_FIELDS, nextIcpQuestion, profilePatchSchema, readIcp, hasIcp, persistedIcpAnswer, type IcpWorkspaceView, type IcpDraft, type IcpMessage } from "../src/lib/icp/schema";
 import type { Account } from "../src/lib/auth/account";
 
 const require = createRequire(import.meta.url);
@@ -202,4 +202,15 @@ test("Saved ICP is mapped into Next steps context as a hypothesis, with company/
   assert.equal(known.profile.companyStage, "Growth");
   assert.equal(known.profile.icpDetails.stage, "MVP, no paid users");
   assert.match(known.icpStatus, /not market-validated/);
+});
+
+
+test("Lost response clears only a server-acknowledged input, never unsent edits for a different slot", () => {
+  const workspace = { revision: 2, messages: [{ role: "assistant", content: "First question" }, { role: "user", content: "My submitted answer" }, { role: "assistant", content: "Next question" }] } as IcpWorkspaceView;
+  const cached = { revision: 1, answerIndex: 1, text: "My submitted answer" };
+  assert.equal(persistedIcpAnswer(workspace, cached), true);
+  assert.equal(persistedIcpAnswer(workspace, { ...cached, text: "Unsent new answer" }), false);
+  assert.equal(persistedIcpAnswer(workspace, { ...cached, answerIndex: 3 }), false);
+  assert.equal(persistedIcpAnswer(workspace, { ...cached, revision: 2 }), false);
+  assert.equal(persistedIcpAnswer(workspace, null), false);
 });

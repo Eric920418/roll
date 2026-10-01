@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
-import { EMPTY_ICP, ICP_FIELDS, nextIcpQuestion, readIcp, type IcpDraft, type IcpWorkspaceView } from "@/lib/icp/schema";
+import { EMPTY_ICP, ICP_FIELDS, nextIcpQuestion, readIcp, persistedIcpAnswer, type IcpDraft, type IcpWorkspaceView } from "@/lib/icp/schema";
 
 const button = "rounded-xl border border-dark/15 bg-white px-4 py-3 text-sm font-semibold text-dark transition hover:bg-dark/[0.04] disabled:opacity-50";
 const inputClass = "w-full rounded-xl border border-dark/15 bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -40,7 +40,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
     const timer = window.setInterval(async () => {
       try {
         const fresh = await request();
-        if (!cancelled) { setWorkspace(fresh); setLoaded(true); }
+        if (!cancelled) { setWorkspace(fresh); reconcileInput(fresh); setLoaded(true); }
       } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause)); }
     }, 2500);
     return () => { cancelled = true; window.clearInterval(timer); };
@@ -60,14 +60,24 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
   }
   function store(nextText: string, nextForm: IcpDraft, isEditing: boolean) {
     try {
-      if (nextText || isEditing) localStorage.setItem(storageKey, JSON.stringify({ text: nextText, form: nextForm, editing: isEditing }));
+      if (nextText || isEditing) localStorage.setItem(storageKey, JSON.stringify({ text: nextText, form: nextForm, editing: isEditing, revision: workspace.revision, answerIndex: workspace.messages.length }));
       else localStorage.removeItem(storageKey);
+    } catch { setNotice(t("storageWarning")); }
+  }
+  function reconcileInput(fresh: IcpWorkspaceView) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (persistedIcpAnswer(fresh, cached)) {
+        setText(current => current === cached.text ? "" : current);
+        if (cached.editing) localStorage.setItem(storageKey, JSON.stringify({ ...cached, text: "" }));
+        else localStorage.removeItem(storageKey);
+      }
     } catch { setNotice(t("storageWarning")); }
   }
   async function load(preserveEdit = false) {
     setBusy(true); setError("");
     try {
-      const fresh = await request(); setWorkspace(fresh); setLoaded(true);
+      const fresh = await request(); setWorkspace(fresh); reconcileInput(fresh); setLoaded(true);
       if (!preserveEdit) setForm(fresh.draft || fresh.saved || { ...EMPTY_ICP, summary: fresh.legacy || "" });
       return fresh;
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
@@ -78,10 +88,11 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
     if (document.activeElement instanceof HTMLButtonElement) trigger.current = document.activeElement;
     setOpen(true); setNotice(""); setLoaded(false);
     dialog.current?.showModal();
-    let local: { text?: string; form?: IcpDraft; editing?: boolean } | null = null;
+    let local: { text?: string; form?: IcpDraft; editing?: boolean; revision?: number; answerIndex?: number } | null = null;
     try { local = JSON.parse(localStorage.getItem(storageKey) || "null"); } catch { setNotice(t("storageWarning")); }
     setText(typeof local?.text === "string" ? local.text : "");
     const fresh = await load();
+    if (fresh && persistedIcpAnswer(fresh, local)) local = { ...local, text: "" };
     const restored = readIcp(local?.form);
     if (local?.editing && restored) { setForm(restored); setEditing(true); setNotice(t("localRestored")); }
     else {
@@ -113,7 +124,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
       // Reconcile persisted answers after network/provider failure without discarding local edits.
-      try { setWorkspace(await request()); } catch { /* original error remains visible */ }
+      try { const fresh = await request(); setWorkspace(fresh); reconcileInput(fresh); } catch { /* original error remains visible */ }
     } finally { busyRef.current = false; setBusy(false); }
   }
   const current = workspace.saved || saved;
