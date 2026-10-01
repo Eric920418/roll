@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getEffectivePlan } from "@/lib/billing/gate";
+import { getBetaAccess } from "@/lib/auth/account";
 import { planAtLeast, toPlanKey } from "@/lib/billing/plans";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
 import { calculateDashboardProgress, type DashboardProgress } from "@/lib/action-plan/dashboard";
@@ -38,10 +39,11 @@ export function ownerHasInvestorAccess(owner: {
   trialPlan: string | null;
   trialStartsAt: Date | null;
   trialEndsAt: Date | null;
-}): boolean {
+}, betaAccess = false): boolean {
   return planAtLeast(
     getEffectivePlan({
       ...owner,
+      betaAccess,
       plan: toPlanKey(owner.plan),
       trialPlan: owner.trialPlan ? toPlanKey(owner.trialPlan) : null,
     }),
@@ -210,7 +212,7 @@ export async function getInvestorView(portalId: string, userId: string) {
       },
     },
   });
-  if (!invitation || !ownerHasInvestorAccess(invitation.portal.user)) return null;
+  if (!invitation || !ownerHasInvestorAccess(invitation.portal.user, await getBetaAccess())) return null;
 
   const portal = invitation.portal;
   const hidden = toHideableFields(portal.hiddenFields);
@@ -345,8 +347,9 @@ export async function listInvestorMemberships(userId: string) {
     },
     orderBy: { acceptedAt: "desc" },
   });
+  const betaAccess = await getBetaAccess();
   return invitations
-    .filter((item) => ownerHasInvestorAccess(item.portal.user))
+    .filter((item) => ownerHasInvestorAccess(item.portal.user, betaAccess))
     .map((item) => ({
       portalId: item.portalId,
       companyName:

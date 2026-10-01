@@ -34,6 +34,7 @@ export default function BillingPanel({
   usage,
   trialLabel,
   currentInterval,
+  betaAccess = false,
 }: {
   locale: Locale;
   currentPlan: string;
@@ -51,6 +52,7 @@ export default function BillingPanel({
   };
   trialLabel?: string;
   currentInterval?: BillingInterval;
+  betaAccess?: boolean;
 }) {
   const t = useTranslations("Billing");
   const tPlans = useTranslations("Dashboard.plans");
@@ -144,6 +146,7 @@ export default function BillingPanel({
               {renewsLabel ? ` · ${renewsLabel}` : ""}
             </p>
             {trialLabel && <p className="mt-1 text-sm text-primary">{trialLabel}</p>}
+            {betaAccess && <p role="status" className="mt-2 text-sm text-primary">{t("betaNotice", { plan: tPlans("enterprise") })}</p>}
           </div>
           {hasActiveSub && (
             <button
@@ -217,7 +220,7 @@ export default function BillingPanel({
       )}
 
       {/* 方案選擇 */}
-      <div>
+      {!betaAccess && <div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
             {t("choosePlan")}
@@ -312,7 +315,7 @@ export default function BillingPanel({
             </Link>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

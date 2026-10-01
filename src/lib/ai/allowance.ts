@@ -23,6 +23,7 @@ async function allowanceCycleFor(account: Account, now: Date) {
   const paidPlan = getEffectivePlan(
     {
       ...account,
+      betaAccess: false,
       trialPlan: null,
       trialStartsAt: null,
       trialEndsAt: null,
@@ -36,7 +37,8 @@ async function allowanceCycleFor(account: Account, now: Date) {
     account.trialEndsAt &&
     account.trialStartsAt <= now &&
     account.trialEndsAt > now &&
-    effectivePlan === account.trialPlan && paidPlan !== effectivePlan;
+    getEffectivePlan({ ...account, betaAccess: false }, now) === account.trialPlan &&
+    paidPlan !== account.trialPlan;
   if (trialActive) return monthlyCycle(account.trialStartsAt!, now);
 
   const sub = account.paypalSubscriptionId

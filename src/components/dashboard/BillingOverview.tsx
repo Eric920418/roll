@@ -24,7 +24,9 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   const effectivePlan = getEffectivePlan(account);
   const status = account.subscriptionStatus;
 
-  const statusLabel = !status
+  const statusLabel = account.betaAccess && !status
+    ? t("betaAccess")
+    : !status
     ? t("noSubscription")
     : KNOWN_STATUSES.includes(status)
       ? tStatus(status)
@@ -97,6 +99,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
         usage={usage}
         trialLabel={trialLabel}
         currentInterval={currentInterval}
+        betaAccess={account.betaAccess}
       />
     </section>
   );

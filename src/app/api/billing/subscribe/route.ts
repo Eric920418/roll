@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
+import { getCurrentAccount } from "@/lib/auth/account";
 import { ok, unauthorized, failFromError } from "@/lib/api";
 import {
   PLAN_KEYS,
@@ -31,6 +32,12 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
+
+    const account = await getCurrentAccount();
+    if (!account) return unauthorized();
+    if (account.betaAccess) {
+      return bad("betaAccess", "免費測試期間已開放最高方案權限，無需訂閱。The highest plan is free during testing; no subscription is needed.", 409);
+    }
 
     const body = await req.json();
     const planRaw = typeof body?.plan === "string" ? body.plan : "";

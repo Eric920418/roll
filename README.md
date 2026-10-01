@@ -891,6 +891,20 @@ pnpm optimize:images   # 已加進 package.json scripts
 
 ## 部署
 
+### 2026-10-02 全站免費 Enterprise 測試
+
+正式 CMS 將最高方案 `enterprise` 顯示為 **ALLIANCE**；免費測試提示透過既有方案翻譯取得名稱，與實際帳號徽章一致。
+
+Investor 邀請接受、投資人共享頁／清單、私密 Business Plan 下載也讀取相同測試開關；邀請有效期、會員身分、分享設定與欄位隱藏照常驗證，不公開私密資料。回歸測試額外確認無已接受邀請時，免費測試仍不能取得共享公司清單。
+
+回歸檢查見 `tests/beta-access.test.ts`，涵蓋新舊會員、開關即時生效、原權限還原、未登入、誤購拒絕及 NOVA 額度／試用週期不變；免費授權保留既有試用會員的 NOVA 週期，避免開關測試時意外重置額度。
+
+以既有 `Setting` 的 `billing.betaAccess = { "enabled": true }` 開放所有現有會員及測試期間新註冊會員的 Enterprise 權限，不限註冊日期、不設自動到期，待站方通知再撤銷。DAL 每次請求讀取開關，未登入仍無權限；只覆蓋有效方案，不修改 `User.plan`、人工 trial、PayPal 訂閱、會員內容或資料庫結構。Email／Google 註冊共用此權限，無需逐戶回填。帳號方案頁顯示免費測試說明，測試期間隱藏方案購買卡片，訂閱 API 回 409 防止誤購；既有訂閱的取消與 webhook 對帳照常。沿用每月 150 次 NOVA 與原本週期／加購額度，不提供無限生成或免費加購。
+
+開啟：`pnpm exec tsx scripts/set-beta-access.ts enable`；收到停止指示後執行 `pnpm exec tsx scripts/set-beta-access.ts disable`。腳本只更新這一筆設定，關閉後下次請求恢復原有付費／有效 trial／Free 權限，不刪會員或使用紀錄。腳本預設讀取 `.env`，正式操作必須確認連線與 Vercel Production 相同；也可由已驗證管理員透過既有 `PUT /api/admin/settings` 更新此 key。
+
+正式啟用：2026-10-02 01:20（Asia/Taipei）已確認本機與 Vercel Production 資料庫相同，開啟 `billing.betaAccess`。以正式部署的基底 `125f46a` 隔離發布本次修改，不含另一項開發中的 ICP／schema 變更，未執行 schema push、seed 或資料遺失旗標。49 項測試、TypeScript 與 lint 通過（僅兩個既有 warnings），正式 build 通過。正式 API 驗證原有 9 個帳號及檢查期間新增 2 個帳號均取得免費測試授權並拒絕訂閱誤購；Free 原方案會員通過 Enterprise 專屬欄位權限，無效欄位在寫入前回 400，Dashboard 顯示 ALLIANCE，未登入仍回 401。以啟用前 9 位會員的計費／試用／訂閱紀錄指紋比對，原資料相同；新增帳號不納入舊會員指紋，未為驗證建立或刪除會員。最終部署 `dpl_9uy5aRJhJjWx6jTWtHmNAqNuUcJV`，正式網域 `www.rollgrp.com`。
+
 Vercel Functions 使用 Region `sin1`（新加坡），與 Neon `ap-southeast-1` 同區，設定在 `vercel.json`。函式靠近主要資料來源可降低每次資料庫往返延遲；參考 [Vercel region 文件](https://vercel.com/docs/functions/configuring-functions/region)。
 
 ```bash
@@ -910,4 +924,4 @@ Profile 改為公司資料、六欄 ICP 與公司現況；新增一句話介紹�
 
 驗證：新增 `tests/icp.test.ts` 覆蓋欄位保留、追問上限、引文、草稿隔離、用量／失敗、並發鎖、版本衝突、逾時遲到結果及已存 ICP 進入 Next steps context；隔離版本 54 項測試／型別／建置通過，lint 僅兩個既有 warnings。本機真實 AI 三輪、30 項 API 檢查、17 項桌面／390px 手機互動與實際配額耗盡 429 均通過。API 401／403／400／409、未知客戶所在地保持空白、重送不重複扣額、跨頁草稿恢復、逾時編輯保留均已驗證；不寄信、不付款、不改既有會員。資料庫僅新增欄位／工作區表，已同步且 diff 為 No difference detected，未使用 `accept-data-loss`。
 
-部署與正式站驗收結果待補；部署從隔離工作樹進行，保留主要工作區中另一批未提交的帳務修改。本機驗收已排除執行環境注入金鑰與專案設定不一致，未更換正式金鑰。
+部署與正式站驗收結果待補；部署從隔離工作樹進行。切換前已實測正式站全站試用權限（Free 可查用量、checkout 回 409 禁止誤購）；這批已上線而未提交的試用程式碼一併整合，避免發布 ICP 時回退既有正式功能，不異動試用開關或會員原方案。本機驗收已排除執行環境注入金鑰與專案設定不一致，未更換正式金鑰。

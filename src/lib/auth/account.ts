@@ -29,6 +29,8 @@ export interface Account {
   playbookReads: Record<string, boolean>;
   /** 帳上儲存的方案（未套寬限期）；要判權限請用 gate.ts 的 getEffectivePlan */
   plan: PlanKey;
+  /** 全站免費測試授權；不覆寫會員原本的付費／試用方案。 */
+  betaAccess?: boolean;
   subscriptionStatus: string | null;
   paypalSubscriptionId: string | null;
   currentPeriodEnd: Date | null;
@@ -63,6 +65,13 @@ export interface Account {
  * 取目前登入會員的安全 DTO。
  * 未登入、或 session 指向的 User 已不存在（被刪）一律回 null。
  */
+export const getBetaAccess = cache(async (): Promise<boolean> => {
+  const setting = await prisma.setting.findUnique({
+    where: { key: "billing.betaAccess" },
+  });
+  return (setting?.value as { enabled?: unknown } | null)?.enabled === true;
+});
+
 export const getCurrentAccount = cache(async (): Promise<Account | null> => {
   const session = await getUserSession();
   if (!session) return null;
@@ -72,6 +81,8 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     include: { profile: true },
   });
   if (!user) return null;
+
+  const betaAccess = await getBetaAccess();
 
   return {
     id: user.id,
@@ -89,6 +100,7 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     playbookReads:
       (user.playbookReads as Record<string, boolean> | null) ?? {},
     plan: toPlanKey(user.plan),
+    betaAccess,
     subscriptionStatus: user.subscriptionStatus,
     paypalSubscriptionId: user.paypalSubscriptionId,
     currentPeriodEnd: user.currentPeriodEnd,

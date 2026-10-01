@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { getUserSession } from "@/lib/auth/guard";
+import { getBetaAccess } from "@/lib/auth/account";
 import { prisma } from "@/lib/prisma";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 import { ownerHasInvestorAccess } from "@/lib/investor/portal";
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
       include: { portal: { include: { user: true } } },
     });
     if (!invitation || invitation.status !== "pending") return fail("邀請不存在、已使用或已撤銷。", 404);
-    if (!ownerHasInvestorAccess(invitation.portal.user)) {
+    if (!ownerHasInvestorAccess(invitation.portal.user, await getBetaAccess())) {
       return fail("此 Investor Portal 目前無法使用。", 404);
     }
     if (invitation.expiresAt <= new Date()) {

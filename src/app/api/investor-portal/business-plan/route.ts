@@ -1,5 +1,5 @@
 import { del, get } from "@vercel/blob";
-import { getCurrentAccount } from "@/lib/auth/account";
+import { getBetaAccess, getCurrentAccount } from "@/lib/auth/account";
 import { getUserSession } from "@/lib/auth/guard";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
@@ -149,7 +149,7 @@ export async function GET(req: Request) {
           where: { userId: session.uid },
           include: { user: true },
         });
-    if (!portal || !ownerHasInvestorAccess(portal.user)) return fail("找不到 Business Plan。", 404);
+    if (!portal || !ownerHasInvestorAccess(portal.user, await getBetaAccess())) return fail("找不到 Business Plan。", 404);
     const isOwner = portal.userId === session.uid;
     if ((!isOwner && !portal.shareBusinessPlan) || !portal.businessPlanPath) {
       return fail("找不到 Business Plan。", 404);

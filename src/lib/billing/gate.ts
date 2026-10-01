@@ -9,6 +9,7 @@ import {
 export type BillingAccount = Pick<
   Account,
   | "plan"
+  | "betaAccess"
   | "subscriptionStatus"
   | "paypalSubscriptionId"
   | "currentPeriodEnd"
@@ -113,6 +114,7 @@ export function getEffectivePlan(
   now = new Date(),
 ): PlanKey {
   if (!account) return "free";
+  if (account.betaAccess === true) return "enterprise";
   const paid = paidPlan(account, now);
   const trial = activeTrialPlan(account, now);
   return PLAN_RANK[trial] > PLAN_RANK[paid] ? trial : paid;
