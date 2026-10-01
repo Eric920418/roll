@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { BOTTLENECKS, COMPANY_STAGES, type BottleneckGroup } from "@/lib/action-plan/constants";
@@ -164,8 +165,8 @@ export default function ActionPlanBuilder({
         {variant === "regenerate" ? t("regenerate") : t("build")}
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-dark/45 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+      {open && createPortal(
+        <div data-brand="nova" className="nova-theme fixed inset-0 z-[70] flex items-end justify-center bg-dark/45 p-3 backdrop-blur-sm sm:items-center sm:p-6">
           <div
             role="dialog"
             aria-modal="true"
@@ -294,7 +295,8 @@ export default function ActionPlanBuilder({
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

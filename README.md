@@ -356,6 +356,8 @@ UI 元件全在 `src/components/auth/`（`AuthShell` 雙欄版型、`Stepper`、
 
 2026-10-01 Next steps 建檔修正：正式 runtime log 確認診斷會產生瓶頸 group/code 不一致的 Zod 錯誤。AI 現在只選 bottleneck code，分類由既有 taxonomy 推導；追問以逐輪 Q&A 傳入，伺服器拒絕重複題目、第三題後強制完成診斷，無效回覆最多修復一次，仍失敗以 422 回傳完整驗證原因。診斷 route 的時間上限改為 120 秒以容納修復；每日上限由 10 次 API 呼叫改為 40 次（約十輪完整診斷），避免每題作答都計次、錯誤重試後無法使用。前端只在診斷成功後累積答案，失敗保留原題與草稿，避免重試造成重複作答／超過三題；起始失敗可直接重試。確認後生成的每批任務也會收到三題作答；新 API 欄位預設空陣列相容既有客戶端。測試涵蓋分類推導、重問拒絕、三題上限、五項生成及前端失敗重試。不改 schema 或既有會員資料。44 項測試、TypeScript、lint（僅兩項既有 warnings）及 production build 通過。
 
+2026-10-01 正式生成驗收：從 Home 的 POLARIS「Build action plan」實際作答，第一題問產品／付費客戶，第二題問推薦外的獲客管道，第二次作答後進入 Your diagnosis，沒有要求固定三題。獨立臨時 QA 帳號透過正式登入、diagnose、generate API 成功建立 5 項（201）；Next steps 連續兩次重新讀取均包含同一已儲存計畫，同 requestId 重送回 200／原計畫且 DB 仍只有一份。測試後僅移除此次建立的 QA 帳號及其資料、rate counters；原會員計畫不更動。另實測發現 POLARIS 卡片 hover transform 會限制巢狀 fixed 診斷視窗，現改用 React createPortal 顯示在 document.body，讓所有建檔入口共用正常的全頁視窗，並在 portal 根節點保留 NOVA theme；前端回歸測試核對 portal 目標與失敗重試。沒有 schema 變更。
+
 2026-09-30 客戶驗收調整：Action Plan 新生成固定 5 項（約需 1 分鐘），診斷改為「Your diagnosis」並先確認／修正；卡片只顯示標題、預期成果、預估天數、Why now，八維詳細資料折疊於 Details。優先分數保留作內部排名，對會員顯示 Critical（≥200）／High（≥100）／Medium（≥40）／Low（<40）；移除可見的 Confidence 與 Server-ranked priorities 文案。NOVA 對話新增每會員 CopilotTurn 紀錄，問題先存、回答完成後補上，跨頁載入最近 100 輪（送給 AI 的僅最近 14 輪完整對話）；舊版未曾持久化的對話無法回復。Meeting Notes 增加會議類型選項（客戶／投資人／夥伴／內部／其他）與一般日期輸入，原有標題、內容及會議紀錄保留；新日期以 UTC 日期顯示避免跨時區偏移，舊紀錄維持原本本地時間顯示，編輯舊紀錄但未變更日期時不改寫原時間。
 
 資料庫部署前以 `pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` 確認差異僅為 `MeetingNote.meetingType` nullable 欄位與 `CopilotTurn` 新表、索引、外鍵，再執行 `pnpm db:push`；未使用 `--accept-data-loss`，部署後 diff 為空。對話僅會員本人、Pro 以上可讀寫，GET 回應禁止快取。回歸測試名稱也改為對應目前 5 項生成。

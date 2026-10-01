@@ -451,6 +451,8 @@ test("任務生成每批保留診斷作答，成功產出五項", async () => {
 test("診斷失敗保留答案與題號，重試不重複作答，生成包含答案", async () => {
   const state: unknown[] = [], payloads: Array<{ answers: Array<{ question: string; answer: string }> }> = [];
   let cursor = 0;
+  const portalTargets: unknown[] = [];
+  const body = {};
   const require = createRequire(import.meta.url);
   const loaded = { exports: {} as { default: (props: object) => ReactNode } };
   const responses = [
@@ -463,7 +465,7 @@ test("診斷失敗保留答案與題號，重試不重複作答，生成包含�
     compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
   }).outputText;
   runInNewContext(code, {
-    module: loaded, exports: loaded.exports, crypto: require("node:crypto"),
+    module: loaded, exports: loaded.exports, crypto: require("node:crypto"), document: { body },
     fetch: async (_url: string, options: { body: string }) => {
       payloads.push(JSON.parse(options.body));
       const reply = responses.shift()!;
@@ -478,6 +480,7 @@ test("診斷失敗保留答案與題號，重試不重複作答，生成包含�
           return [state[index], (value: unknown) => { state[index] = value; }];
         },
       };
+      if (id === "react-dom") return { createPortal: (node: ReactNode, target: unknown) => { portalTargets.push(target); return node; } };
       if (id === "next/navigation") return { useRouter: () => ({ push() {}, refresh() {} }) };
       if (id === "next-intl") return { useLocale: () => "en", useTranslations: () => (key: string, values?: { count: number }) => values ? `${key}:${values.count}` : key };
       if (id === "@/lib/action-plan/constants") return require("../src/lib/action-plan/constants");
@@ -508,6 +511,8 @@ test("診斷失敗保留答案與題號，重試不重複作答，生成包含�
   render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Enterprise buyers" } });
   await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
   assert.equal(render().find(n => n.type === "textarea")!.props.value, "Enterprise buyers");
+  assert.ok(portalTargets.length > 0);
+  assert.ok(portalTargets.every(target => target === body), "診斷視窗必須顯示在 body，不能被 POLARIS 卡片 transform 限制");
   assert.ok(render().some(n => n.props.children === "questionCount:1"));
   assert.ok(render().some(n => n.props.role === "alert" && n.props.children === "Diagnostic service unavailable"));
   await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
