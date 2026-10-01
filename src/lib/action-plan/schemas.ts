@@ -217,6 +217,7 @@ export function appendGeneratedActions(
 export const generateBodySchema = z.object({
   locale: z.enum(["en", "zh-tw"]).default("en"),
   messages: z.array(conversationMessageSchema).max(30).default([]),
+  answers: diagnoseBodySchema.shape.answers,
   diagnosis: diagnosisSchema,
   requestId: z.string().uuid(),
   candidateCount: z.literal(5).default(5),

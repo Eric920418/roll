@@ -65,6 +65,8 @@ export default function ActionPlanBuilder({
       const json = await readApiResponse<DiagnoseData>(response, t("genericError"));
       if (!response.ok) throw new Error(json.error || t("genericError"));
       if (!json.data) throw new Error(t("genericError"));
+      setAnswers(nextAnswers);
+      setAnswer("");
       if (json.data.status === "needs_input") {
         setQuestion(json.data.question);
         setDiagnosis(null);
@@ -100,8 +102,6 @@ export default function ActionPlanBuilder({
     const text = answer.trim();
     if (!text || !question) return;
     const next = [...answers, { question, answer: text }];
-    setAnswers(next);
-    setAnswer("");
     await callDiagnose(next);
   }
 
@@ -132,6 +132,7 @@ export default function ActionPlanBuilder({
         body: JSON.stringify({
           locale,
           messages: messages.slice(-30),
+          answers,
           diagnosis,
           requestId,
           candidateCount: 5,
@@ -210,6 +211,7 @@ export default function ActionPlanBuilder({
                 <textarea
                   id="nova-diagnostic-answer"
                   value={answer}
+                  disabled={busy}
                   onChange={(event) => setAnswer(event.target.value)}
                   maxLength={4000}
                   required
@@ -285,6 +287,11 @@ export default function ActionPlanBuilder({
               <div role="alert" className="mt-5 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
               </div>
+            )}
+            {error && !question && !diagnosis && !busy && (
+              <button type="button" onClick={() => void callDiagnose(answers)} className="mt-3 min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">
+                {t("continue")}
+              </button>
             )}
           </div>
         </div>

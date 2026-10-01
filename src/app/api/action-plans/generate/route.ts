@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       profile: account.profile,
       quiz,
       messages: parsed.data.messages,
+      answers: parsed.data.answers,
       diagnosis: parsed.data.diagnosis,
       candidateCount: parsed.data.candidateCount,
     });

@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
+import { Children, isValidElement, type ReactNode } from "react";
 import test from "node:test";
 import { bottleneckLabel, urgencyWeight } from "../src/lib/action-plan/constants";
 import { priorityScore, priorityTier, rankActions, taskReference, wouldCreateCycle, type RankableAction } from "../src/lib/action-plan/ranking";
 import {
   actionInputSchema,
+  diagnosisSchema,
   appendGeneratedActions,
   generatedActionSchema,
   generatedPlanSchema,
@@ -358,4 +363,156 @@ test("Dashboard home 英文與繁中翻譯鍵完全平行", () => {
     leafKeys(en.Dashboard.home).sort(),
     leafKeys(zh.Dashboard.home).sort(),
   );
+});
+
+
+type AiRequest = {
+  system: string;
+  messages: Array<{ role: string; content: string }>;
+  tools: Array<{ input_schema: { required: string[] } }>;
+};
+
+function loadAi(create: (request: AiRequest) => Promise<unknown>) {
+  const require = createRequire(import.meta.url);
+  const loaded = { exports: {} as typeof import("../src/lib/action-plan/ai") };
+  const code = ts.transpileModule(readFileSync("src/lib/action-plan/ai.ts", "utf8"), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true },
+  }).outputText;
+  runInNewContext(code, {
+    module: loaded, exports: loaded.exports, process: { env: {} }, console,
+    require: (id: string) => {
+      if (id === "server-only") return {};
+      if (id === "@anthropic-ai/sdk") return class { messages = { create }; };
+      if (id === "./constants") return require("../src/lib/action-plan/constants");
+      if (id === "./schemas") return require("../src/lib/action-plan/schemas");
+      return require(id);
+    },
+  });
+  return loaded.exports;
+}
+
+const readyDiagnosis = {
+  status: "ready", question: "", companyStage: "Validation", stageReason: "Testing with paying customers",
+  stageConfidence: 80, bottleneckCode: "no_leads", bottleneckReason: "No qualified sales leads", bottleneckConfidence: 80,
+};
+
+const toolReply = (name: string, input: unknown) => ({
+  content: [{ type: "tool_use", name, input }], stop_reason: "tool_use", usage: { output_tokens: 100 },
+});
+
+test("診斷將 Q&A 作為對話、拒絕重問並修復，分類由代碼推導", async () => {
+  const requests: AiRequest[] = [];
+  const ai = loadAi(async (request) => {
+    requests.push(request);
+    return toolReply("submit_action_plan_diagnosis", requests.length === 1
+      ? { ...readyDiagnosis, status: "needs_input", question: "  WHO buys from you？ " }
+      : { ...readyDiagnosis, bottleneckGroup: "Product" });
+  });
+  const result = await ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers: [{ question: "Who buys from you?", answer: "APAC enterprise buyers" }] });
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].messages[2].content, "APAC enterprise buyers");
+  assert.match(requests[1].system, /MUST return ready/);
+  assert.equal(result.status, "ready");
+  if (result.status === "ready") assert.equal(result.diagnosis.bottleneckGroup, "Sales");
+});
+
+test("三題後不能繼續追問，無效診斷最多修復一次並回傳驗證原因", async () => {
+  let calls = 0;
+  const ai = loadAi(async () => {
+    calls++;
+    return toolReply("submit_action_plan_diagnosis", { ...readyDiagnosis, status: "needs_input", question: "Another question?" });
+  });
+  await assert.rejects(ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers: Array.from({ length: 3 }, (_, i) => ({ question: `Question ${i}`, answer: `Answer ${i}` })) }), /NOVA 診斷驗證失敗.*不可繼續追問/);
+  assert.equal(calls, 2);
+});
+
+test("任務生成每批保留診斷作答，成功產出五項", async () => {
+  const requests: AiRequest[] = [];
+  let index = 0;
+  const ai = loadAi(async (request) => {
+    requests.push(request);
+    return toolReply("submit_action_plan", Object.fromEntries(request.tools[0].input_schema.required.map((slot: string) => {
+      const a = generated(++index);
+      return [slot, {
+        ...a, clientKey: `task_${index}`, actionTimeMinMinutes: 30, actionTimeMaxMinutes: 60,
+        stageFitScore: a.stageFit.score, stageFitReason: a.stageFit.reason, stageFitConfidence: a.stageFit.confidence,
+        bottleneckFitScore: a.bottleneckFit.score, bottleneckFitReason: a.bottleneckFit.reason, bottleneckFitConfidence: a.bottleneckFit.confidence,
+        outcomeTimeMinDays: 2, outcomeTimeMaxDays: 7,
+      }];
+    })));
+  });
+  const diagnosis = diagnosisSchema.parse({ ...readyDiagnosis, bottleneckGroup: "Sales" });
+  const actions = await ai.generateActionCandidates({ locale: "en", profile: null, quiz: null, messages: [], diagnosis, candidateCount: 5, answers: [{ question: "ICP?", answer: "APAC enterprise buyers" }] });
+  assert.equal(actions.length, 5);
+  assert.equal(requests.length, 3);
+  for (const request of requests) assert.match(request.messages[0].content, /APAC enterprise buyers/);
+});
+
+test("診斷失敗保留答案與題號，重試不重複作答，生成包含答案", async () => {
+  const state: unknown[] = [], payloads: Array<{ answers: Array<{ question: string; answer: string }> }> = [];
+  let cursor = 0;
+  const require = createRequire(import.meta.url);
+  const loaded = { exports: {} as { default: (props: object) => ReactNode } };
+  const responses = [
+    { data: { status: "needs_input", question: "Who buys?" } },
+    { error: "Diagnostic service unavailable" },
+    { data: { status: "ready", diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" } } },
+    { data: { id: "created-plan" } },
+  ];
+  const code = ts.transpileModule(readFileSync("src/components/dashboard/ActionPlanBuilder.tsx", "utf8"), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  runInNewContext(code, {
+    module: loaded, exports: loaded.exports, crypto: require("node:crypto"),
+    fetch: async (_url: string, options: { body: string }) => {
+      payloads.push(JSON.parse(options.body));
+      const reply = responses.shift()!;
+      return new Response(JSON.stringify(reply), { status: "error" in reply ? 500 : 200 });
+    },
+    require: (id: string) => {
+      if (id === "react") return {
+        useMemo: (fn: () => unknown) => fn(),
+        useState: (initial: unknown) => {
+          const index = cursor++;
+          if (!(index in state)) state[index] = initial;
+          return [state[index], (value: unknown) => { state[index] = value; }];
+        },
+      };
+      if (id === "next/navigation") return { useRouter: () => ({ push() {}, refresh() {} }) };
+      if (id === "next-intl") return { useLocale: () => "en", useTranslations: () => (key: string, values?: { count: number }) => values ? `${key}:${values.count}` : key };
+      if (id === "@/lib/action-plan/constants") return require("../src/lib/action-plan/constants");
+      if (id === "@/lib/routes") return { pathForLocale: (path: string) => path };
+      return require(id);
+    },
+  });
+  type Props = {
+    children?: ReactNode; role?: string; value?: string;
+    onClick: () => void | Promise<void>;
+    onChange: (event: { target: { value: string } }) => void;
+    onSubmit: (event: { preventDefault(): void }) => Promise<void>;
+  };
+  function render() {
+    cursor = 0;
+    const nodes: Array<{ type: unknown; props: Props }> = [];
+    function visit(node: ReactNode) {
+      Children.forEach(node, child => {
+        if (isValidElement<Props>(child)) { nodes.push(child); visit(child.props.children); }
+      });
+    }
+    visit(loaded.exports.default({}));
+    return nodes;
+  }
+  const button = (text: string) => render().find(n => n.type === "button" && n.props.children === text)!.props;
+  button("build").onClick();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Enterprise buyers" } });
+  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
+  assert.equal(render().find(n => n.type === "textarea")!.props.value, "Enterprise buyers");
+  assert.ok(render().some(n => n.props.children === "questionCount:1"));
+  assert.ok(render().some(n => n.props.role === "alert" && n.props.children === "Diagnostic service unavailable"));
+  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
+  assert.equal(payloads[2].answers.length, 1);
+  button("confirmDiagnosis").onClick();
+  await button("confirm").onClick();
+  assert.deepEqual(payloads[3].answers, [{ question: "Who buys?", answer: "Enterprise buyers" }]);
 });
