@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import Link from "next/link";
+import { pathForLocale } from "@/lib/routes";
+import type { Locale } from "@/i18n/routing";
+import { COMPANY_STAGES } from "@/lib/action-plan/constants";
+import { PRIMARY_NEEDS } from "@/lib/icp/schema";
 import { resolveAuthError } from "@/components/auth/error-codes";
 import {
   INDUSTRIES,
@@ -18,7 +23,9 @@ export type ProfileInitial = {
   companySize?: string | null;
   website?: string | null;
   country?: string | null;
-  icp?: string | null;
+  oneLinePitch?: string | null;
+  companyStage?: string | null;
+  primaryNeed?: string | null;
   needs?: string[];
   timeline?: string | null;
   budgetRange?: string | null;
@@ -72,6 +79,8 @@ export default function AccountProfileForm({
   initial: ProfileInitial;
 }) {
   const t = useTranslations("Dashboard.account");
+  const tIcp = useTranslations("Dashboard.icp");
+  const locale = useLocale() as Locale;
   const tOpt = useTranslations("Auth.options");
   const tErr = useTranslations("Auth.errors");
   const router = useRouter();
@@ -81,7 +90,9 @@ export default function AccountProfileForm({
   const [companySize, setCompanySize] = useState(initial.companySize ?? "");
   const [website, setWebsite] = useState(initial.website ?? "");
   const [country, setCountry] = useState(initial.country ?? "");
-  const [icp, setIcp] = useState(initial.icp ?? "");
+  const [oneLinePitch, setOneLinePitch] = useState(initial.oneLinePitch ?? "");
+  const [companyStage, setCompanyStage] = useState(initial.companyStage ?? "");
+  const [primaryNeed, setPrimaryNeed] = useState(initial.primaryNeed ?? "");
   const [needs, setNeeds] = useState<string[]>(initial.needs ?? []);
   const [timeline, setTimeline] = useState(initial.timeline ?? "");
   const [budgetRange, setBudgetRange] = useState(initial.budgetRange ?? "");
@@ -113,7 +124,9 @@ export default function AccountProfileForm({
             companySize,
             website,
             country,
-            icp,
+            oneLinePitch,
+            companyStage,
+            primaryNeed,
             needs,
             timeline,
             budgetRange,
@@ -139,7 +152,7 @@ export default function AccountProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-8">
+    <form id="profile" onSubmit={handleSubmit} className="mt-7 flex flex-col gap-8">
       {/* 公司資訊 */}
       <section className="flex flex-col gap-5">
         <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
@@ -203,9 +216,22 @@ export default function AccountProfileForm({
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={labelClass}>{t("icp")}</span>
-          <textarea value={icp} onChange={(event) => setIcp(event.target.value)} maxLength={2000} rows={3} placeholder={t("icpPlaceholder")} className={`${fieldClass} resize-y placeholder:text-dark/35`} />
+          <span className={labelClass}>{tIcp("pitch")}</span>
+          <textarea aria-label={tIcp("pitch")} value={oneLinePitch} onChange={event => setOneLinePitch(event.target.value)} maxLength={500} rows={2} className={fieldClass} />
         </label>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5"><span className={labelClass}>{tIcp("companyStage")}</span>
+            <select aria-label={tIcp("companyStage")} value={companyStage} onChange={event => setCompanyStage(event.target.value)} className={fieldClass}>
+              <option value="">{t("selectPlaceholder")}</option>{COMPANY_STAGES.map(stage => <option key={stage} value={stage}>{tIcp(`stages.${stage}`)}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5"><span className={labelClass}>{tIcp("primaryNeed")}</span>
+            <select aria-label={tIcp("primaryNeed")} value={primaryNeed} onChange={event => setPrimaryNeed(event.target.value)} className={fieldClass}>
+              <option value="">{t("selectPlaceholder")}</option>{PRIMARY_NEEDS.map(need => <option key={need} value={need}>{tIcp(`needs.${need}`)}</option>)}
+            </select>
+          </label>
+        </div>
+        <Link href={pathForLocale("/dashboard/profile", locale)} className="text-sm font-semibold text-primary underline">{tIcp("editLink")}</Link>
       </section>
 
       {/* 進入需求 */}

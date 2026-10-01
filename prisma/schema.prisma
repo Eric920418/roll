@@ -193,6 +193,7 @@ model User {
   deals        Deal[]
   meetingNotes MeetingNote[]
   copilotTurns CopilotTurn[]
+  icpWorkspace IcpWorkspace?
 
   // 雙週知識問答作答歷史（每期一筆）
   playbookQuizAttempts PlaybookQuizAttempt[]
@@ -221,7 +222,12 @@ model OnboardingProfile {
   companySize String?
   website     String?
   country     String?
-  icp         String? // Ideal Customer Profile，會員可自行編輯
+  icp         String? // 舊版 ICP 文字；確認儲存後為結構化 ICP 摘要
+  oneLinePitch String?
+  companyStage String?
+  primaryNeed  String?
+  icpDetails   Json?
+  icpVersion   Int @default(0)
 
   // --- Step 3：Landing requirements assessment ---
   targetMarkets String[] // 目標亞洲市場（多選）
@@ -784,4 +790,20 @@ model FeedbackReport {
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
+}
+
+/// 每會員一份 ICP 工作區；草稿與已儲存的 Profile 分開，CAS 防跨分頁覆蓋。
+model IcpWorkspace {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Json @default("[]")
+  draft Json?
+  revision Int @default(0)
+  profileVersion Int @default(0)
+  pendingRequestId String?
+  pendingSince DateTime?
+  usageId String?
+  lastRequestId String?
+  lastError String?
+  updatedAt DateTime @updatedAt
 }

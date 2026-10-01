@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { readIcp, type IcpDraft } from "@/lib/icp/schema";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import { toPlanKey, type PlanKey } from "@/lib/billing/plans";
@@ -45,6 +46,11 @@ export interface Account {
     website: string | null;
     country: string | null;
     icp: string | null;
+    oneLinePitch?: string | null;
+    companyStage?: string | null;
+    primaryNeed?: string | null;
+    icpDetails?: IcpDraft | null;
+    icpVersion?: number;
     targetMarkets: string[];
     needs: string[];
     timeline: string | null;
@@ -99,6 +105,11 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
           website: user.profile.website,
           country: user.profile.country,
           icp: user.profile.icp,
+          oneLinePitch: user.profile.oneLinePitch,
+          companyStage: user.profile.companyStage,
+          primaryNeed: user.profile.primaryNeed,
+          icpDetails: readIcp(user.profile.icpDetails),
+          icpVersion: user.profile.icpVersion,
           targetMarkets: user.profile.targetMarkets,
           needs: user.profile.needs,
           timeline: user.profile.timeline,

@@ -2,66 +2,22 @@ import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
+import { profilePatchSchema } from "@/lib/icp/schema";
 
-// 會員後台「帳號 / 個人資料」頁的儲存端點。
-// 與 /api/auth/onboarding 不同：這裡一次更新全部 profile 欄位，且「不」推進 onboardingStep —
-// 這是設定編輯，不是 onboarding 流程。
-// proxy 對 /api/* 放行，故此 route 自行以 getUserSession() 守衛（符合「二次守衛」慣例）。
-
-const str = (v: unknown): string | null =>
-  typeof v === "string" && v.trim() ? v.trim() : null;
-
-// 基本 URL 正規化：補上 https:// 後能被 URL() 解析才保留，否則存 null（僅資料品質）。
-const webUrl = (v: unknown): string | null => {
-  const s = str(v);
-  if (!s) return null;
-  const withScheme = /^https?:\/\//i.test(s) ? s : `https://${s}`;
-  try {
-    new URL(withScheme);
-    return withScheme;
-  } catch {
-    return null;
-  }
-};
-
-const strArray = (v: unknown): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-
+// Field presence means update; omission means preserve. ICP belongs to /api/account/icp.
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getUserSession();
-    if (!session) return unauthorized();
-
+    const session = await getUserSession(); if (!session) return unauthorized();
     const body = await req.json();
-    const data = body?.data ?? {};
-    if (typeof data.icp === "string" && data.icp.trim().length > 2000) {
-      return fail("ICP 最多 2000 字元", 400);
-    }
-
-    const fields = {
-      // Step 2：公司資訊
-      companyName: str(data.companyName),
-      industry: str(data.industry),
-      companySize: str(data.companySize),
-      website: webUrl(data.website),
-      country: str(data.country),
-      icp: str(data.icp),
-      // Step 3：需求評估。targetMarkets 已自表單移除、不再寫入（保留 DB 既有值）；
-      // needs 仍保留於帳號頁，供 Tools 落地清單個人化生成。
-      needs: strArray(data.needs),
-      timeline: str(data.timeline),
-      budgetRange: str(data.budgetRange),
-      notes: str(data.notes),
-    };
-
+    const parsed = profilePatchSchema.safeParse(body?.data);
+    if (!parsed.success) return fail(parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; "), 400);
+    if (!Object.keys(parsed.data).length) return fail("沒有可更新的欄位 / No profile fields supplied", 400);
     await prisma.onboardingProfile.upsert({
-      where: { userId: session.uid },
-      create: { userId: session.uid, ...fields },
-      update: fields,
+      where: { userId: session.uid }, create: { userId: session.uid, targetMarkets: [], needs: [], ...parsed.data }, update: parsed.data,
     });
-
     return ok({ saved: true });
   } catch (error) {
+    if (error instanceof SyntaxError || error instanceof TypeError || error instanceof Error && error.message === "Website must use HTTP or HTTPS") return fail("無效的 JSON 或網站網址 / Invalid JSON or website URL", 400);
     return failFromError(error);
   }
 }

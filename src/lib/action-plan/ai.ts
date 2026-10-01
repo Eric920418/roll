@@ -125,7 +125,7 @@ function toolInput(message: Anthropic.Message, name: string): unknown {
 }
 
 function contextText(profile: Account["profile"], quiz: QuizContext | null, messages: Array<{ role: string; content: string }>) {
-  return JSON.stringify({ profile, quiz, conversation: messages }, null, 2);
+  return JSON.stringify({ profile, icpStatus: "Hypothesis: saved by user, not market-validated; empty fields are unknown. Company stage/location are distinct from customer stage/location.", quiz, conversation: messages }, null, 2);
 }
 
 function normalizeGeneratedActionSlot(value: unknown, diagnosis: Diagnosis): unknown {

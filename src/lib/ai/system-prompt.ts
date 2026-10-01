@@ -43,7 +43,11 @@ function memberContext(profile: Account["profile"]): string {
   if (profile.industry) parts.push(`industry: ${profile.industry}`);
   if (profile.companySize) parts.push(`team size: ${profile.companySize}`);
   if (profile.country) parts.push(`home country: ${profile.country}`);
-  if (profile.icp) parts.push(`ideal customer profile: ${profile.icp}`);
+  if (profile.oneLinePitch) parts.push(`company pitch: ${profile.oneLinePitch}`);
+  if (profile.companyStage) parts.push(`self-reported company stage: ${profile.companyStage}`);
+  if (profile.primaryNeed) parts.push(`primary growth goal: ${profile.primaryNeed}`);
+  if (profile.icpDetails) parts.push(`user-confirmed ICP HYPOTHESIS (not market-validated; unknown fields stay unknown): ${JSON.stringify(profile.icpDetails)}`);
+  else if (profile.icp) parts.push(`legacy ICP HYPOTHESIS (not market-validated): ${profile.icp}`);
   if (profile.website) parts.push(`website: ${profile.website}`);
   if (profile.targetMarkets?.length)
     parts.push(`target markets: ${profile.targetMarkets.join(", ")}`);
