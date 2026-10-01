@@ -56,6 +56,14 @@ SUPER_PLAN=enterprise pnpm db:super   # 站方管理的 Enterprise
 
 重置後驗收通過：原帳密登入 200、回傳未完成 onboarding／step 2；Chrome 實際導向 `/onboarding/company` 且公司欄位空白。正式 agenda 不再包含舊模板任務或測試 Action Plan，Business 仍顯示；AI 用量 API 回傳 used 0／remaining 150／bonusRemaining 0，原額度週期保留。驗收截圖存於同一備份目錄的 `super-reset-2026-09-29.png`。
 
+2026-10-01：登入故障排查確認正式 DB 中 `super@rollgrp.com` 與原 user ID `cmr7nynsy0000xs8o4lf9ic8p` 均已不存在，因此登入回 401。正式站在 9/30 23:35、10/1 10:08 與 10:10（台北時間）有三筆成功的 `POST /api/account/delete`；現有日誌沒有會員 ID，不能把任一請求確定歸因到此帳號。刪帳號端點會 cascade 刪除會員資料，不能拿來代替「清空資料重填」。
+
+使用者明確要求「恢復帳號、保留資料、不要清空」後，已使用上述 **9/29 清空前** 的完整備份恢復原帳號，而非重跑 `db:super`。先核對備份 SHA-256、原密碼雜湊、每筆資料歸屬、正式 DB 欄位與主鍵／Email 衝突，再以單一 Serializable 交易 **只 INSERT 缺失資料**：User、公司資料、創辦人測驗各 1 筆、知識問答 2 筆、CRM 31 筆、商機 8 筆、筆記 6 筆、Action Plan 4 份／Action 93 筆／dependency 126 筆、AI allowance 與 usage 各 1 筆。保留備份中的原憑證、Business、歷史人工 ACTIVE 授權／2099 到期日、註冊日、onboarding 完成狀態、清單／里程碑／閱讀設定與 AI 週期；沒有建立 PayPal 訂閱或扣款。交易內逐欄比對恢復結果與備份，並對每個涉及資料表的其他資料比對筆數與內容指紋，全部通過；不 UPDATE／DELETE 現有資料，不修改 schema，也未部署程式。
+
+**恢復範圍只到 9/29 04:18 UTC 備份**，不代表已找回 9/29 清空後重新填寫、又隨帳號刪除的內容；那些資料需要另有備份或 Neon 歷史還原。操作與驗證記錄：`/Users/eric/.codex/backups/roll/super-restore-2026-10-01T02-30-46-574Z.json`；唯讀預檢脚本：`/Users/eric/.codex/backups/roll/restore-super-2026-10-01.ts`，需先在隔離目錄取得 Production env，再執行 `ROLL_RESTORE_ENV_FILE=/path/to/production.env env -u DATABASE_URL pnpm exec tsx /Users/eric/.codex/backups/roll/restore-super-2026-10-01.ts`（原帳號已恢復後會因衝突而停止，防止重複寫入）。記錄／脚本均在 Git 外、權限 0600；排查用的暫存 Production env 驗收後刪除。
+
+恢復後已用原帳密在正式站實際登入並進入 `/dashboard`，原公司／Action Plan 內容可見；驗收截圖：`/Users/eric/.codex/backups/roll/super-restore-2026-10-01.jpg`。這次只恢復指定帳號的備份與更新本 README，既有其他程式修改未更動。
+
 ### 環境變數
 
 Vercel CLI 部署由 `.vercelignore` 明確排除所有 `.env*`；正式憑證只設定在 Vercel Environment Variables，不隨原始碼上傳。
