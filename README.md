@@ -936,4 +936,4 @@ Next steps 的目標規劃沿用 ActionPlan／ActionItem／ActionDependency。AI
 
 Profile 頁名與選單改為 Profile + ICP（中文：公司檔案 + ICP）。右側已儲存 ICP 的摘要與六欄尚未提供時顯示 Not provided／未提供，不以測驗狀態清空既有資料；未確認 AI 草稿的未知欄位仍顯示尚未確認。移除 Profile 與草稿卡的 Hypothesis 標籤，按鈕改為 Ask POLARIS to sharpen my ICP，公司現況卡另加 Sharpen my ICP，兩個入口共用既有對話與工作區。首則助理訊息顯示 Let's define your ICP.，舊對話不改寫；僅調整呈現，AI 及 Next steps 仍將 ICP 視為未驗證假設，權限、配額與人工確認儲存不變。不新增套件、不異動資料庫 schema 或既有會員資料。
 
-驗證：72 項既有測試、TypeScript 與建置通過，lint 只有兩個既有 warnings。本機以尚未完成測驗且無 ICP 的專用帳號通過 17 項桌面／390px 手機檢查：空白摘要與六欄、兩個入口共用未送出回答、開場不重複、關閉焦點返回、草稿及人工儲存、重整恢復與公司資料保留；瀏覽器錯誤為 0，未呼叫 AI 或扣額。正式站結果於部署驗收後補齊。
+驗證：72 項既有測試、TypeScript 與建置通過，lint 只有兩個既有 warnings。本機以尚未完成測驗且無 ICP 的專用帳號通過 17 項桌面／390px 手機檢查：空白摘要與六欄、兩個入口共用未送出回答、開場不重複、關閉焦點返回、草稿及人工儲存、重整恢復與公司資料保留；瀏覽器錯誤為 0，未呼叫 AI 或扣額。正式站 `https://www.rollgrp.com` 已切換至 `dpl_BPTTDKWjQ1FZ3Gd7gsFpfug1gwP1`（程式碼 `af96fc7`）。候選版本先通過 SSR 文案／空白狀態／按鈕／開場與無 Hypothesis 標籤檢查；正式網域再通過同一組 17 項桌面／手機互動檢查，瀏覽器錯誤為 0。兩次驗證的專用帳號各自核對公司欄位與未完成測驗狀態、零 AI 用量後移除；既有會員資料與所有權限／配額不變，未執行資料庫 schema 更新。
