@@ -970,3 +970,5 @@ Profile 頁名與選單改為 Profile + ICP（中文：公司檔案 + ICP）。�
 正式站專用帳號重現原生 dialog 內的背景、標籤、按鈕與 backdrop 游標均為 none，只有 textarea 保留 text。原因是自訂圓點游標位於文件層、被 showModal 的 top layer 蓋住，而全站原生游標隱藏規則仍生效。共用樣式改為原生 modal 內使用正常游標，按鈕／連結為 pointer、文字區域為 text；modal 開啟時隱藏自訂圓點／外圈，關閉後自動恢復。ICP 與目標規劃沿用同一規則，不新增滑鼠事件、套件或變更對話／草稿／資料庫。
 
 驗證：78 項既有測試、型別及建置通過；lint 無錯誤，僅 Navbar／TaiwanMap 兩項既有警告。本機專用帳號通過 44 項瀏覽器檢查：ICP 七個輸入框滑鼠移入後維持文字游標及草稿區塊、面板背景／標籤／backdrop 原生游標、按鈕手形、modal 內兩層自訂游標隱藏、Esc 焦點返回、未提交編輯重開保留、目標規劃共用規則、關閉 modal 後自訂游標恢復、390px 手機不啟用自訂游標及七欄編輯／無橫向溢出；瀏覽器錯誤為 0，未呼叫 AI／寄信／儲存 Profile。
+
+正式站 `https://www.rollgrp.com` 已切換至 `dpl_DH6bxLeE48xUt6zve1tQKhDzkjb2`（程式碼 `f5a3aea`），Git 已推送。候選部署先核對實際 CSS 包含 modal 原生游標／兩層自訂游標隱藏規則；正式網域再通過同一組 44 項桌面／手機檢查，瀏覽器錯誤為 0。對話、已儲存 ICP 與 Profile 未修改；測試僅保留本機未提交文字，未呼叫 AI／扣額／寄信；核對公司欄位及零 AI 用量後移除專用 QA 帳號與其關聯 fixture，無資料庫 schema 更新。
