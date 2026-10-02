@@ -1087,8 +1087,12 @@
         "eyebrow": "Your next moves",
         "title": "Next 3 moves",
         "rule": "Score → urgency → impact → shorter action time",
-        "unavailable": "No executable action is available for this slot.",
-        "blockedNote": "Some required dependencies are not finished:"
+        "summary": "{total} actions in your plan · {ready} ready · {blocked} waiting · {done} done",
+        "explanation": "Up to three ready actions appear here. All actions remain in the complete plan below.",
+        "viewAll": "View all {count} actions",
+        "noneReady": "No action is ready yet. Check prerequisites and milestone status in the complete plan below.",
+        "allDone": "All actions are done. If this plan has milestones, confirm their outcomes separately.",
+        "waiting": "{count} actions are waiting for prerequisites or an earlier milestone. The complete plan below shows what each action needs first."
       },
       "complete": {
         "eyebrow": "All dimensions, fully editable",

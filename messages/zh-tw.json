@@ -1087,8 +1087,12 @@
         "eyebrow": "你的下一步",
         "title": "Next 3 moves",
         "rule": "分數 → 緊急度 → 影響力 → 較短執行時間",
-        "unavailable": "目前沒有可執行的 Action 可放入此順位。",
-        "blockedNote": "以下必要依賴尚未完成："
+        "summary": "計畫共 {total} 項 · {ready} 項可開始 · {blocked} 項等待前置條件 · {done} 項已完成",
+        "explanation": "這裡最多顯示三項可開始的任務；所有任務都保留在下方完整清單。",
+        "viewAll": "查看全部 {count} 項任務",
+        "noneReady": "目前沒有可開始的任務，請查看下方完整清單的前置任務與里程碑狀態。",
+        "allDone": "所有任務已完成；若計畫有里程碑，仍需另外確認實際成果。",
+        "waiting": "另有 {count} 項任務等待前置任務或前一階段完成，下方完整清單會標示每項需要先完成什麼。"
       },
       "complete": {
         "eyebrow": "八個維度，可完整編輯",

@@ -543,3 +543,54 @@ test("診斷失敗保留答案與題號，重試不重複作答，生成包含�
   await button("confirm").onClick();
   assert.deepEqual(payloads[3].answers, [{ question: "Who buys?", answer: "Enterprise buyers" }]);
 });
+
+test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除篩選與搜尋", () => {
+  const state: unknown[] = [];
+  let cursor = 0;
+  const require = createRequire(import.meta.url);
+  const loaded = { exports: {} as { default: (props: object) => ReactNode } };
+  const actions = rankActions(Array.from({ length: 5 }, (_, i) => action({
+    id: `task-${i + 1}`, clientKey: `task_${i + 1}`, title: `Task ${i + 1}`,
+    dependencyLevel: i ? 1 : 0,
+    dependencies: i ? [{ dependsOn: { id: "task-1", clientKey: "task_1", title: "Task 1", done: false } }] : [],
+  })));
+  const plan = { id: "plan-1", actions, nextMoves: actions.filter(a => a.rank != null && a.rank <= 3), blockers: actions.filter(a => a.dependency.blocked), diagnosis: readyDiagnosis };
+  const code = ts.transpileModule(readFileSync("src/components/dashboard/ActionPlanManager.tsx", "utf8"), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  runInNewContext(code, {
+    module: loaded, exports: loaded.exports,
+    require: (id: string) => {
+      if (id === "react") return {
+        useEffect() {}, useMemo: (fn: () => unknown) => fn(),
+        useState: (initial: unknown) => { const index = cursor++; if (!(index in state)) state[index] = initial; return [state[index], (value: unknown) => { state[index] = value; }]; },
+      };
+      if (id === "next/navigation") return { useRouter: () => ({ refresh() {} }) };
+      if (id === "next-intl") return { useTranslations: () => (key: string, values?: object) => `${key}${values ? JSON.stringify(values) : ""}` };
+      if (id.startsWith("@/lib/action-plan/")) return require(`../src/lib/action-plan/${id.split("/").at(-1)}`);
+      if (id === "./ActionPlanBuilder") return { default: () => null };
+      return require(id);
+    },
+  });
+  type Props = { id?: string; children?: ReactNode; disabled?: boolean; href?: string; value?: string; onClick?: () => void; onChange?: (event: { target: { value: string } }) => void };
+  function render() {
+    cursor = 0;
+    const nodes: Array<{ type: unknown; props: Props }> = [];
+    function visit(node: ReactNode) { Children.forEach(node, child => { if (isValidElement<Props>(child)) { nodes.push(child); visit(child.props.children); } }); }
+    visit(loaded.exports.default({ initialPlan: plan }));
+    return nodes;
+  }
+  const list = () => render().filter(n => n.type === "details" && n.props.id?.startsWith("action-"));
+  assert.equal(list().length, 5);
+  assert.equal(plan.nextMoves.length, 1);
+  assert.equal(render().filter(n => n.props.disabled).length, 4, "受阻擋任務仍禁止完成");
+  assert.ok(render().some(n => n.props.children === 'next.summary{"total":5,"ready":1,"blocked":4,"done":0}'));
+  assert.ok(!render().some(n => n.props.children === "next.unavailable"));
+  render().find(n => n.type === "button" && n.props.children === "filter.ready")!.props.onClick!();
+  assert.equal(list().length, 1);
+  render().find(n => n.type === "input")!.props.onChange!({ target: { value: "No matching task" } });
+  assert.equal(list().length, 0);
+  render().find(n => n.props.href === "#action-plan-list")!.props.onClick!();
+  assert.equal(list().length, 5);
+  assert.equal(render().find(n => n.type === "input")!.props.value, "");
+});

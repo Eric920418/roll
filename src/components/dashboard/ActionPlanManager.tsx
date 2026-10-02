@@ -16,13 +16,14 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
   const t = useTranslations("Dashboard.actionPlan");
   const router = useRouter();
   const [plan, setPlan] = useState(initialPlan);
-  const [filter, setFilter] = useState<Filter>("ready");
+  const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<ActionPlanActionDto | "new" | null>(null);
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => setPlan(initialPlan), [initialPlan]);
+  useEffect(() => { setFilter("all"); setSearch(""); }, [initialPlan?.id]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -88,6 +89,7 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
   }
 
   const doneCount = plan.actions.filter((action) => action.done).length;
+  const readyCount = plan.actions.filter((action) => !action.done && !action.dependency.blocked).length;
 
   return (
     <section className="flex flex-col gap-6">
@@ -122,27 +124,23 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("next.eyebrow")}</p>
             <h2 className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("next.title")}</h2>
+            <p className="mt-2 text-sm text-dark/65">{t("next.summary", { total: plan.actions.length, ready: readyCount, blocked: plan.blockers.length, done: doneCount })}</p>
+            <p className="mt-1 text-xs text-dark/55">{t("next.explanation")}</p>
           </div>
+          <a href="#action-plan-list" onClick={() => { setFilter("all"); setSearch(""); }} className="inline-flex min-h-11 items-center rounded-xl border border-dark/15 bg-white px-4 text-sm font-bold text-dark hover:border-primary">{t("next.viewAll", { count: plan.actions.length })} ↓</a>
         </div>
-        <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        <div className={`mt-4 grid gap-4 ${plan.nextMoves.length > 2 ? "xl:grid-cols-3" : plan.nextMoves.length > 1 ? "xl:grid-cols-2" : ""}`}>
           {plan.nextMoves.map((action) => <TopMove key={action.id} action={action} t={t} onEdit={() => setEditing(action)} />)}
-          {Array.from({ length: Math.max(0, 3 - plan.nextMoves.length) }, (_, index) => (
-            <div key={index} className="rounded-2xl border border-dashed border-dark/15 bg-white/40 p-5 text-sm text-dark/45">
-              {t("next.unavailable")}
-            </div>
-          ))}
+          {plan.nextMoves.length === 0 && <p className="rounded-2xl border border-dark/10 bg-white p-5 text-sm text-dark/65 xl:col-span-3">{t(doneCount === plan.actions.length ? "next.allDone" : "next.noneReady")}</p>}
         </div>
         {plan.nextMoves.length < 3 && plan.blockers.length > 0 && (
           <div role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p className="font-bold">{t("next.blockedNote")}</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              {plan.blockers.map((blocker) => <li key={blocker.id}>{blocker.title}: {blocker.missingLink ? t("missingDependency") : blocker.dependencies.join(", ")}</li>)}
-            </ul>
+            <p>{t("next.waiting", { count: plan.blockers.length })}</p>
           </div>
         )}
       </section>
 
-      <section className="rounded-[1.75rem] border border-dark/10 bg-white p-5 sm:p-6">
+      <section id="action-plan-list" tabIndex={-1} className="scroll-mt-6 rounded-[1.75rem] border border-dark/10 bg-white p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("complete.eyebrow")}</p>
@@ -159,7 +157,7 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
           </label>
           <div className="flex flex-wrap gap-2" aria-label={t("filter.label")}>
             {(["ready", "blocked", "done", "all"] as const).map((value) => (
-              <button key={value} type="button" onClick={() => setFilter(value)} className={`min-h-11 rounded-xl border px-4 text-sm font-bold ${filter === value ? "border-primary bg-primary text-white" : "border-dark/10 bg-white text-dark/60"}`}>
+              <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-11 rounded-xl border px-4 text-sm font-bold ${filter === value ? "border-primary bg-primary text-white" : "border-dark/10 bg-white text-dark/60"}`}>
                 {t(`filter.${value}`)}
               </button>
             ))}
@@ -170,7 +168,7 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
 
         <div className="mt-5 flex flex-col gap-3">
           {filtered.map((action) => (
-            <details id={`action-${action.id}`} key={action.id} style={{ contentVisibility: "auto" }} className="group scroll-mt-24 rounded-2xl border border-dark/10 bg-[#fffdf8] open:border-primary/25">
+            <details id={`action-${action.id}`} key={action.id} className="group scroll-mt-24 rounded-2xl border border-dark/10 bg-[#fffdf8] open:border-primary/25">
               <summary className="flex min-h-16 cursor-pointer list-none items-start gap-3 p-4 sm:items-center">
                 <button
                   type="button"
