@@ -925,3 +925,8 @@ Profile 改為公司資料、六欄 ICP 與公司現況；新增一句話介紹�
 驗證：新增 `tests/icp.test.ts` 覆蓋欄位保留、追問上限、引文、草稿隔離、用量／失敗、並發鎖、版本衝突、逾時遲到結果及已存 ICP 進入 Next steps context；ICP、既有試用與跨時區日期的整合測試／型別／建置通過，lint 僅兩個既有 warnings。本機真實 AI 三輪、30 項 API 檢查、17 項桌面／390px 手機互動與實際配額耗盡 429 均通過。API 401／403／400／409、未知客戶所在地保持空白、重送不重複扣額、跨頁草稿恢復、逾時編輯保留均已驗證；不寄信、不付款、不改既有會員。資料庫僅新增欄位／工作區表，已同步且 diff 為 No difference detected，未使用 `accept-data-loss`。
 
 正式站瀏覽器驗收發現 Account 的額度重置日期採不同預設時區而發生 hydration mismatch；BillingPanel／BillingOverview 統一 Asia/Taipei，回歸測試比較 UTC 伺服器與台灣瀏覽器文字相同。ICP 最後一題只問未知的客戶市場或階段，不重問已知部分。正式站 `https://www.rollgrp.com` 已切換至 `dpl_6mGYf92yopNgHrVX4VVkoNcT5X12`（程式碼 `bb4c60c`）；從隔離工作樹部署。最終 60 項測試、型別檢查與建置通過；該部署 33 項 API 檢查／三輪真實 AI、正式網域 17 項桌面手機互動及 8 項雙分頁／雙擊／長文字／鍵盤焦點檢查均通過，瀏覽器執行錯誤為 0。資料庫再次比對 No difference detected。兩個專用 QA 帳號及其關聯測試資料已移除，並核對其他公司欄位未變及三次成功 AI 計量；既有會員資料未改動。切換前已實測正式站全站試用權限（Free 可查用量、checkout 回 409 禁止誤購）；這批已上線而未提交的試用程式碼一併整合，避免發布 ICP 時回退既有正式功能，不異動試用開關或會員原方案。本機驗收已排除執行環境注入金鑰與專案設定不一致，未更換正式金鑰。
+
+
+### AI 目標與里程碑
+
+Next steps 的目標規劃沿用 ActionPlan／ActionItem／ActionDependency。AI 提供 3–5 個依序里程碑和當期五項任務，草稿確認後才啟用；任務完成進度自動計算，成果需會員填寫說明確認。每會員獨立 RoadmapWorkspace 保存草稿，舊計畫封存且可唯讀查看；僅新增相容欄位、PlanMilestone 與工作區，不改舊清單、不回填、禁用 accept-data-loss。生成沿用 Pro／有效試用與 AI 配額，一次成功草稿計一次用量，內部分批不另扣。新增工作區 API `/api/action-plans/roadmap`（GET 恢復／本人歷史、POST 新目標／下一階段、PATCH 草稿／啟用）及里程碑成果 PATCH；同一會員的任務／成果／計畫啟用交易先鎖定 ActionPlan 並遞增 revision，杜絕跨分頁矛盾。任務變更同步 Home／Next steps／POLARIS；任務全完成仍待成果確認。日期採日曆日期與台灣今日，月末加月截到月底。草稿及未提交成果說明依會員暫存；遲到回應不可清除另一輪新輸入。資料庫已確認只有新增並同步，未改既有紀錄。本機五階段真實 AI 及 98 項 API 流程通過；額度耗盡 429 無呼叫／扣額且輸入保留。71 項測試、TypeScript 與建置通過，lint 僅兩個既有 warnings。本機另通過 18 項桌面／390px 手機互動及 11 項任務完成／成果暫存／Home 狀態同步驗證，瀏覽器錯誤為 0；正式部署验收結果於上線後記錄。

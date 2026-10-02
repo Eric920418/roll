@@ -7,6 +7,8 @@ export type DashboardPriority =
   | { kind: "action"; action: ActionPlanActionDto }
   | { kind: "blocked"; blockerCount: number }
   | { kind: "complete" }
+  | { kind: "outcome" }
+  | { kind: "next-stage" }
   | { kind: "onboarding" }
   | { kind: "quiz" }
   | { kind: "build" };
@@ -24,7 +26,13 @@ export function deriveDashboardPriority(input: {
     if (first) return { kind: "action", action: first };
 
     const unfinished = input.plan.actions.filter((action) => !action.done);
-    if (unfinished.length === 0) return { kind: "complete" };
+    if (input.plan.roadmap) {
+      const current = input.plan.roadmap.milestones.find(m => !m.achievedAt);
+      if (current?.status === "awaiting") return { kind: "outcome" };
+      if (current?.status === "unplanned") return { kind: "next-stage" };
+      if (!current) return { kind: "complete" };
+    }
+    if (unfinished.length === 0 && !input.plan.roadmap) return { kind: "complete" };
     return {
       kind: "blocked",
       blockerCount: input.plan.blockers.length || unfinished.length,

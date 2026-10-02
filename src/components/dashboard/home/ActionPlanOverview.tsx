@@ -37,7 +37,10 @@ export default async function ActionPlanOverview({
   });
   const progress = calculateDashboardProgress(plan?.actions ?? []);
   const nextStage = plan ? nextCompanyStage(plan.diagnosis.companyStage) : null;
-  const allDone = Boolean(plan && plan.actions.every((action) => action.done));
+  const currentMilestone = plan?.roadmap?.milestones.find(m => !m.achievedAt);
+  const awaitingOutcome = currentMilestone?.status === "awaiting";
+  const needsNextStage = currentMilestone?.status === "unplanned";
+  const allDone = Boolean(plan && (plan.roadmap ? !currentMilestone : plan.actions.every((action) => action.done)));
 
   return (
     <div id="action-plan-summary" className="flex scroll-mt-24 flex-col gap-6">
@@ -166,13 +169,13 @@ export default async function ActionPlanOverview({
               <div className="flex min-h-52 flex-col justify-between rounded-2xl border border-dashed border-dark/15 bg-white/55 p-6">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                    {allDone ? t("next.completeEyebrow") : t("next.blockedEyebrow")}
+                    {awaitingOutcome ? t("next.outcomeTitle") : needsNextStage ? t("next.nextStageTitle") : allDone ? t("next.completeEyebrow") : t("next.blockedEyebrow")}
                   </p>
                   <h3 className="mt-2 text-xl font-extrabold text-dark font-[family-name:var(--font-heading)]">
-                    {allDone ? t("next.completeTitle") : t("next.blockedTitle")}
+                    {awaitingOutcome ? t("next.outcomeTitle") : needsNextStage ? t("next.nextStageTitle") : allDone ? t("next.completeTitle") : t("next.blockedTitle")}
                   </h3>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-dark/60">
-                    {allDone
+                    {awaitingOutcome ? t("next.outcomeBody") : needsNextStage ? t("next.nextStageBody") : allDone
                       ? t("next.completeBody")
                       : t("next.blockedBody", { count: plan.blockers.length })}
                   </p>

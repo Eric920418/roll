@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
@@ -12,11 +12,13 @@ import type {
   TaskStatus,
 } from "@/lib/dashboard/agenda";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
+import RoadmapPanel from "./RoadmapPanel";
 import ActionPlanManager from "@/components/dashboard/ActionPlanManager";
 import ChecklistTool from "@/components/dashboard/ChecklistTool";
 import type { MilestoneGroupView } from "@/lib/tools/checklist";
 
 type Props = {
+  userId: string;
   focus: { state: FocusState; href: string };
   milestones: Milestone[];
   agenda: AgendaTasks;
@@ -38,6 +40,7 @@ const STATUS_STYLE: Record<TaskStatus, string> = {
 // 自訂任務（＋ 新增的）走 /api/agenda-tasks（LandingTask 表），可改期限、可刪除。
 // 兩者完成後都 router.refresh()，由 server 重算期限/狀態/排序。
 export default function AgendaBoard({
+  userId,
   focus,
   milestones,
   agenda,
@@ -52,6 +55,8 @@ export default function AgendaBoard({
   const router = useRouter();
 
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [currentPlan, setCurrentPlan] = useState(actionPlan);
+  useEffect(() => setCurrentPlan(actionPlan), [actionPlan]);
   const [error, setError] = useState("");
 
   // 新增任務 composer（點 ＋ 才展開，維持清單本身的視覺密度）
@@ -141,7 +146,8 @@ export default function AgendaBoard({
 
   return (
     <div className="mt-7 flex flex-col gap-8">
-      <ActionPlanManager initialPlan={actionPlan} />
+      <RoadmapPanel userId={userId} initialPlan={currentPlan} onChanged={setCurrentPlan} />
+      <ActionPlanManager initialPlan={currentPlan} onChanged={setCurrentPlan} />
 
       <section id="milestones" className="scroll-mt-6">
         <h2 className="text-xl font-extrabold text-dark font-[family-name:var(--font-heading)]">{t("milestoneSection")}</h2>

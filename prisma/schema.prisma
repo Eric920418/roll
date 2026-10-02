@@ -208,6 +208,8 @@ model User {
   feedbackReports FeedbackReport[]
 
   @@index([email])
+  roadmapWorkspace RoadmapWorkspace?
+
 }
 
 /// Onboarding Step 2/3 資料（與 User 1:1）。欄位內容為推測，待設計確認。
@@ -491,6 +493,13 @@ model ActionPlan {
   activeKey            String?   @unique
   archivedAt           DateTime?
 
+  goal String?
+  goalStartsAt DateTime? @db.Date
+  goalDeadline DateTime? @db.Date
+  goalAssumptions Json?
+  revision Int @default(0)
+  milestones PlanMilestone[]
+
   actions   ActionItem[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -506,6 +515,8 @@ model ActionItem {
   actionPlan   ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
   clientKey    String
   title        String
+  milestoneId String?
+  milestone PlanMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
 
   impact               String
   urgencyType          String
@@ -546,6 +557,7 @@ model ActionItem {
 
   @@unique([actionPlanId, clientKey])
   @@index([actionPlanId, done])
+  @@index([milestoneId])
 }
 
 /// 同一 Action Plan 內的有向依賴：action 必須等待 dependsOn。
@@ -800,6 +812,39 @@ model IcpWorkspace {
   draft Json?
   revision Int @default(0)
   profileVersion Int @default(0)
+  pendingRequestId String?
+  pendingSince DateTime?
+  usageId String?
+  lastRequestId String?
+  lastError String?
+  updatedAt DateTime @updatedAt
+}
+
+/// Outcomes require member confirmation; task progress remains derived from ActionItem.done.
+model PlanMilestone {
+  id String @id @default(cuid())
+  actionPlanId String
+  actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+  position Int
+  title String
+  expectedOutcome String
+  acceptanceCriteria String
+  targetDate DateTime @db.Date
+  achievedAt DateTime?
+  outcomeNote String?
+  actions ActionItem[]
+  @@unique([actionPlanId, position])
+}
+
+/// One recoverable draft per member, separate from ICP and active plans.
+model RoadmapWorkspace {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  input Json?
+  draft Json?
+  revision Int @default(0)
+  basePlanId String?
+  basePlanRevision Int?
   pendingRequestId String?
   pendingSince DateTime?
   usageId String?

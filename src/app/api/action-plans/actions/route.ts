@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
@@ -5,7 +6,7 @@ import { getUserSession } from "@/lib/auth/guard";
 import { requirePlan } from "@/lib/billing/gate";
 import { prisma } from "@/lib/prisma";
 import { actionInputSchema } from "@/lib/action-plan/schemas";
-import { assertDependencies, getActiveActionPlan } from "@/lib/action-plan/service";
+import { assertDependencies, getActiveActionPlan, lockActivePlan, PlanWriteError } from "@/lib/action-plan/service";
 import { legacyHoursForMinutes } from "@/lib/action-plan/time";
 
 export async function POST(req: NextRequest) {
@@ -24,14 +25,21 @@ export async function POST(req: NextRequest) {
     if (!plan) return fail("尚未建立 Active Action Plan，請先由 NOVA 生成計畫。", 409);
     if (plan._count.actions >= 100) return fail("每份 Action Plan 最多 100 項。", 409);
     const id = randomUUID();
-    await assertDependencies({ userId: session.uid, planId: plan.id, actionId: id, dependencyIds: parsed.data.dependencyActionIds });
     const action = parsed.data;
     const legacyActionTime = legacyHoursForMinutes(action.actionTime);
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async raw => {
+      const tx = raw as unknown as Prisma.TransactionClient;
+      await lockActivePlan(tx, session.uid, plan.id);
+      if (await tx.actionItem.count({ where: { actionPlanId: plan.id } }) >= 100) throw new PlanWriteError("每份計畫最多 100 項 / Maximum 100 tasks");
+      const stages = await tx.planMilestone.findMany({ where: { actionPlanId: plan.id }, orderBy: { position: "asc" }, include: { _count: { select: { actions: true } } } });
+      const stage = stages.find(m => !m.achievedAt);
+      if (stages.length && (!stage || !stage._count.actions)) throw new PlanWriteError("請先生成當期任務或建立新目標 / Generate this stage's tasks first, or create a new goal");
+      await assertDependencies({ userId: session.uid, planId: plan.id, actionId: id, dependencyIds: action.dependencyActionIds, milestoneId: stage?.id }, tx);
       await tx.actionItem.create({
         data: {
           id,
           actionPlanId: plan.id,
+          milestoneId: stage?.id,
           clientKey: randomUUID(),
           title: action.title,
           impact: action.impact,
@@ -70,6 +78,7 @@ export async function POST(req: NextRequest) {
     });
     return ok(await getActiveActionPlan(session.uid), 201);
   } catch (error) {
+    if (error instanceof PlanWriteError) return fail(error.message, error.status);
     if (error instanceof Error && /依賴|循環|自己/.test(error.message)) return fail(error.message, 400);
     return failFromError(error);
   }

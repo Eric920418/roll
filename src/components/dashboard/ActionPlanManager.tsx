@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { BOTTLENECKS, COMPANY_STAGES, type BottleneckGroup } from "@/lib/action-plan/constants";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
@@ -11,8 +12,9 @@ import ActionPlanBuilder from "./ActionPlanBuilder";
 
 type Filter = "ready" | "blocked" | "done" | "all";
 
-export default function ActionPlanManager({ initialPlan }: { initialPlan: ActionPlanDto | null }) {
+export default function ActionPlanManager({ initialPlan, onChanged }: { initialPlan: ActionPlanDto | null; onChanged?: (plan: ActionPlanDto | null) => void }) {
   const t = useTranslations("Dashboard.actionPlan");
+  const router = useRouter();
   const [plan, setPlan] = useState(initialPlan);
   const [filter, setFilter] = useState<Filter>("ready");
   const [search, setSearch] = useState("");
@@ -46,7 +48,7 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || t("errors.save"));
-      setPlan(json.data);
+      setPlan(json.data); onChanged?.(json.data); router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("errors.save"));
     } finally {
@@ -62,7 +64,7 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
       const response = await fetch(`/api/action-plans/actions/${action.id}`, { method: "DELETE" });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || t("errors.delete"));
-      setPlan(json.data);
+      setPlan(json.data); onChanged?.(json.data); router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("errors.delete"));
     } finally {
@@ -187,7 +189,7 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
                   <p className="mt-1 text-sm text-dark/55">{action.expectedOutcome.text}</p>
                   <p className="mt-1 text-xs text-dark/50">{t("fields.estimatedTime")}: {action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {t("days")}</p>
                   <p className="mt-1 line-clamp-1 text-xs text-dark/50">{t("whyNow")}: {action.bottleneckFit.reason.split(/[.!?。！？]/)[0]}</p>
-                  {action.dependency.missingLink ? (
+                  {action.dependency.milestoneTitle ? <p className="mt-1 text-xs font-bold text-amber-800">{t("blockedBy")}: {action.dependency.milestoneTitle}</p> : action.dependency.missingLink ? (
                     <p className="mt-1 text-xs font-bold text-amber-800">{t("missingDependency")}</p>
                   ) : action.dependency.actionRefs.length > 0 ? (
                     <p className="mt-1 text-xs font-bold text-amber-800">{t(action.dependency.blocked ? "blockedBy" : "after")}: {action.dependency.actionRefs.filter((ref) => !action.dependency.blocked || !ref.done).map(taskReference).join(", ")}</p>
@@ -216,7 +218,7 @@ export default function ActionPlanManager({ initialPlan }: { initialPlan: Action
           action={editing === "new" ? null : editing}
           plan={plan}
           onClose={() => setEditing(null)}
-          onSaved={(nextPlan) => { setPlan(nextPlan); setEditing(null); setError(""); }}
+          onSaved={(nextPlan) => { setPlan(nextPlan); onChanged?.(nextPlan); router.refresh(); setEditing(null); setError(""); }}
         />
       )}
     </section>

@@ -3,6 +3,7 @@ import { IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight } from "./constants";
 export type RankableAction = {
   id: string;
   clientKey: string;
+  milestoneId?: string | null;
   title: string;
   impact: string;
   urgencyType: string;
@@ -40,6 +41,7 @@ export type RankableAction = {
 export type ActionPlanActionDto = {
   id: string;
   clientKey: string;
+  milestoneId?: string | null;
   title: string;
   impact: { label: string; weight: number };
   urgency: {
@@ -56,6 +58,7 @@ export type ActionPlanActionDto = {
     missingLink: boolean;
     resolved: boolean;
     blocked: boolean;
+    milestoneTitle?: string;
   };
   difficulty: {
     level: 1 | 2 | 3 | 4 | 5;
@@ -101,13 +104,14 @@ export function taskReference(task: { clientKey: string; title: string }): strin
   return number ? `#${number} · ${task.title}` : task.title;
 }
 
-export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
+export function rankActions(actions: RankableAction[], milestoneBlocks = new Map<string, string>()): ActionPlanActionDto[] {
   const rows = actions.map((action) => {
     const unfinished = action.dependencies
       .map((edge) => edge.dependsOn)
       .filter((dependency) => !dependency.done);
     const missingLink = action.dependencyLevel > 0 && action.dependencies.length === 0;
-    const resolved = unfinished.length === 0 && !missingLink;
+    const milestoneTitle = action.milestoneId ? milestoneBlocks.get(action.milestoneId) : undefined;
+    const resolved = unfinished.length === 0 && !missingLink && !milestoneTitle;
     const blocked = !resolved;
     const impactWeight = IMPACT_WEIGHTS[action.impact as keyof typeof IMPACT_WEIGHTS] ?? 0;
     const weight = urgencyWeight(action.urgencyType, action.urgencyDays);
@@ -124,6 +128,7 @@ export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
       blocked,
       unfinished,
       missingLink,
+      milestoneTitle,
       actionTimeMinMinutes,
       actionTimeMaxMinutes,
     };
@@ -141,8 +146,9 @@ export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
   const ranks = new Map(ready.map((row, index) => [row.action.id, index + 1]));
 
   return rows
-    .map(({ action, score, impactWeight, urgencyWeight: urgency, resolved, blocked, unfinished, missingLink, actionTimeMinMinutes, actionTimeMaxMinutes }) => ({
+    .map(({ action, score, impactWeight, urgencyWeight: urgency, resolved, blocked, unfinished, missingLink, milestoneTitle, actionTimeMinMinutes, actionTimeMaxMinutes }) => ({
       id: action.id,
+      milestoneId: action.milestoneId,
       clientKey: action.clientKey,
       title: action.title,
       impact: { label: action.impact, weight: impactWeight },
@@ -160,6 +166,7 @@ export function rankActions(actions: RankableAction[]): ActionPlanActionDto[] {
         missingLink,
         resolved,
         blocked,
+        milestoneTitle,
       },
       difficulty: {
         level: action.difficulty as 1 | 2 | 3 | 4 | 5,

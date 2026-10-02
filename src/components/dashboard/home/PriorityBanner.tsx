@@ -51,6 +51,8 @@ export default async function PriorityBanner({
       cta: t("blockedCta"),
       onTrack: false,
     },
+    outcome: { title: t("outcomeTitle"), body: t("outcomeBody"), cta: t("outcomeCta"), onTrack: false },
+    "next-stage": { title: t("nextStageTitle"), body: t("nextStageBody"), cta: t("nextStageCta"), onTrack: false },
     complete: {
       title: t("readyTitle"),
       body: t("completeBody"),

@@ -234,8 +234,11 @@ export async function generateActionCandidates(input: {
   diagnosis: Diagnosis;
   candidateCount: number;
   answers: Array<{ question: string; answer: string }>;
+  timeoutMs?: number;
+  allowCritical?: boolean;
+  existingTitles?: string[];
 }): Promise<GeneratedAction[]> {
-  const client = new Anthropic();
+  const client = new Anthropic(input.timeoutMs ? { timeout: input.timeoutMs, maxRetries: 0 } : undefined);
   const batchSchema = z.object({ actions: z.array(generatedActionSchema).min(1).max(GENERATION_BATCH_SIZE) });
   let actions: GeneratedAction[] = [];
   let repair = "";
@@ -260,6 +263,7 @@ export async function generateActionCandidates(input: {
         "Order prerequisites before the tasks that need them. If a task cannot start until another task is complete, set dependencyLevel above 0 and put that exact task_# clientKey in dependsOnKeys. Never describe a prerequisite only in dependencyNotes.",
         "Across the entire plan, at most ONE action may have Critical impact. Different actions must solve distinct problems and have distinct outcomes; combine overlapping paid-offer/pilot experiments and use the freed slot for customer willingness-to-pay interviews.",
         `Across all batches, build a balanced ${input.candidateCount}-action sequence rather than paraphrases. AI never sets priority or rank; the server computes it.`,
+        input.allowCritical === false ? "An earlier phase already has a Critical task: no task in this batch may use Critical." : "",
         repair,
       ].filter(Boolean).join("\n"),
       messages: [{
@@ -283,6 +287,8 @@ export async function generateActionCandidates(input: {
     if (parsed.success) {
       for (const [index, action] of parsed.data.actions.entries()) {
         const expected = `task_${actions.length + index + 1}`;
+        if (input.existingTitles?.some(title => title.trim().toLocaleLowerCase() === action.title.trim().toLocaleLowerCase())) validation += " Task title repeats an earlier phase; create a distinct task;";
+        if (input.allowCritical === false && action.impact === "Critical") validation += " Critical is reserved for an earlier stage; use High or lower;";
         if (action.clientKey !== expected) validation += ` action${index + 1}.clientKey: 必須為 ${expected};`;
       }
     }

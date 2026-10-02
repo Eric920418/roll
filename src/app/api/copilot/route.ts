@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
       ? [
           `Confirmed company stage: ${actionPlan.diagnosis.companyStage} (${actionPlan.diagnosis.stageReason})`,
           `Confirmed bottleneck: ${actionPlan.diagnosis.bottleneckGroup} · ${actionPlan.diagnosis.bottleneckCode} (${actionPlan.diagnosis.bottleneckReason})`,
+          ...(actionPlan.roadmap ? [`Goal roadmap (member-confirmed plan, not a promise): ${JSON.stringify(actionPlan.roadmap)}. Task progress is not proof of business outcomes. Only achievedAt means the member confirmed the result; awaiting means ask them to confirm, unplanned means offer next-stage generation.`] : []),
           ...actionPlan.nextMoves.map((action) =>
             `#${action.rank} ${action.title} — priority ${action.priorityScore}; outcome: ${action.expectedOutcome.text}`,
           ),

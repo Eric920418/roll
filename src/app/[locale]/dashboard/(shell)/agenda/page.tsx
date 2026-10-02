@@ -75,7 +75,7 @@ export default async function AgendaPage({ params }: Props) {
         以 slot 傳進 client 元件，讓「新增任務」按鈕在這種情況下依然可用 —
         否則沒填需求的會員會卡在死路：看不到清單，也就加不了自己的任務。
       */}
-      <AgendaBoard
+      <AgendaBoard userId={account.id}
         focus={focus}
         milestones={milestones}
         agenda={agenda}
