@@ -66,7 +66,7 @@ export default function AgendaBoard({
 
   const fmt = new Intl.DateTimeFormat(
     locale === "zh-tw" ? "zh-TW" : "en-US",
-    { dateStyle: "medium" },
+    { dateStyle: "medium", timeZone: "Asia/Taipei" },
   );
 
   async function toggle(task: AgendaTask, nextDone: boolean) {
