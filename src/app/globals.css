@@ -421,6 +421,22 @@ html.custom-cursor-active textarea {
   cursor: text !important;
 }
 
+/* Native modal dialogs sit above document overlays, including the custom cursor. */
+html.custom-cursor-active dialog:modal,
+html.custom-cursor-active dialog:modal *,
+html.custom-cursor-active dialog:modal::backdrop {
+  cursor: auto !important;
+}
+html.custom-cursor-active dialog:modal :is(a, button, summary, [role="button"], [role="link"]) {
+  cursor: pointer !important;
+}
+html.custom-cursor-active dialog:modal :is(textarea, [contenteditable="true"]) {
+  cursor: text !important;
+}
+html:has(dialog:modal) [data-custom-cursor] {
+  visibility: hidden;
+}
+
 body {
   font-family: var(--font-body);
   background: #ffffff;

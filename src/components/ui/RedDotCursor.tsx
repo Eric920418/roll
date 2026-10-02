@@ -139,6 +139,7 @@ export default function RedDotCursor() {
     <>
       <div
         ref={ringRef}
+        data-custom-cursor=""
         aria-hidden="true"
         className="fixed top-0 left-0 z-[9999] pointer-events-none rounded-full"
         style={{
@@ -154,6 +155,7 @@ export default function RedDotCursor() {
       />
       <div
         ref={dotRef}
+        data-custom-cursor=""
         aria-hidden="true"
         className="fixed top-0 left-0 z-[9999] pointer-events-none rounded-full"
         style={{
