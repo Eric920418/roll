@@ -58,6 +58,27 @@ test("AI facts require verbatim user evidence; company geography is not evidence
   assert.throws(() => groundedDraft({ who: "wrong format" }, []));
 });
 
+test("Unknown customer answers accept an empty structured result; malformed output still fails", async () => {
+  let calls = 0;
+  let raw: unknown = Object.fromEntries(["summary", ...ICP_FIELDS].map(key => [key, { value: "", evidence: "" }]));
+  class Client {
+    messages = { create: async () => { calls++; return { content: [{ type: "tool_use", name: "draft_icp", input: raw }] }; } };
+  }
+  const ai = load<{ generateIcp(profile: Account["profile"], messages: IcpMessage[], locale: string): Promise<IcpDraft> }>("src/lib/icp/ai.ts", {
+    "./schema": schema, "@anthropic-ai/sdk": { default: Client },
+  });
+  for (const text of ["I don’ t know", "I don't know", "我不知道", "Not sure yet"]) {
+    const result = await ai.generateIcp({ country: "Taiwan", companyStage: "MVP" } as Account["profile"], [{ role: "user", content: text }], "en");
+    assert.equal(hasIcp(result), false);
+    assert.equal(result.location, "");
+    assert.equal(result.stage, "");
+  }
+  assert.equal(calls, 4); // Unknown is valid, so no repair calls.
+  raw = { who: "malformed" };
+  await assert.rejects(ai.generateIcp(null, [{ role: "user", content: "I don't know" }], "en"), /supported ICP/);
+  assert.equal(calls, 6); // Invalid structure still receives one repair then an error.
+});
+
 function harness() {
   type Row = Record<string, unknown>;
   const profiles = new Map<string, Row>([["a", { userId: "a", companyName: "Keep me", country: "Taiwan", needs: ["legal"], icp: "Old ICP", icpVersion: 0, icpDetails: null }]]);
@@ -137,6 +158,43 @@ test("AI failure and quota failure preserve answer and saved ICP, allow retry wi
   await assert.rejects(q.api.runIcp(user("a"), post), (e: unknown) => (e as { status: number }).status === 429);
   assert.equal(q.completions.length, 0);
   assert.equal((await q.api.getIcpWorkspace("a", "en")).messages.filter(m => m.role === "user").length, 1);
+});
+
+test("Three unknown answers continue without invented facts, repeat questions, charges or overwriting saved ICP", async () => {
+  const h = harness(); h.generate(async () => ({ ...EMPTY_ICP }));
+  let state = await h.api.getIcpWorkspace("a", "en");
+  const questions: string[] = [];
+  for (let round = 0; round < 3; round++) {
+    questions.push(state.messages.at(-1)!.content);
+    const payload = { ...post, text: "I don't know", revision: state.revision, requestId: `unknown-${round}` };
+    await h.api.runIcp(user("a"), payload);
+    await h.api.runIcp(user("a"), payload);
+    state = await h.api.getIcpWorkspace("a", "en");
+    assert.equal(hasIcp(state.draft!), false);
+    assert.equal(h.workspaces.get("a")!.lastError, null);
+  }
+  assert.match(questions[1], /one situation/);
+  assert.equal(new Set(questions).size, 3);
+  assert.equal(state.messages.filter(m => m.role === "user").length, 3);
+  assert.equal(state.messages.at(-1)!.role, "user");
+  assert.deepEqual(h.completions, [false, false, false]);
+  assert.equal(h.reservations(), 3);
+  assert.equal(h.profiles.get("a")!.icp, "Old ICP");
+  await assert.rejects(h.api.patchIcp("a", { ...patch, draft: EMPTY_ICP, revision: state.revision }), /at least one ICP field/);
+  assert.equal(h.profiles.get("a")!.icpVersion, 0);
+});
+
+test("Retry recovers a previously failed unknown answer without removing it or billing an empty draft", async () => {
+  const h = harness(); h.generate(async () => { throw new Error("AI failed"); });
+  await assert.rejects(h.api.runIcp(user("a"), { ...post, text: "我不知道" }));
+  h.generate(async () => ({ ...EMPTY_ICP }));
+  await h.api.runIcp(user("a"), { ...post, action: "retry", revision: 1, requestId: "recover-unknown", locale: "zh-tw" });
+  const state = await h.api.getIcpWorkspace("a", "zh-tw");
+  assert.equal(state.messages.filter(m => m.role === "user").length, 1);
+  assert.equal(state.messages[1].content, "我不知道");
+  assert.match(state.messages.at(-1)!.content, /具體情境/);
+  assert.equal(h.workspaces.get("a")!.lastError, null);
+  assert.deepEqual(h.completions, [false, false]);
 });
 
 test("Concurrent requests own one analysis lock; stale revisions cannot overwrite draft", async () => {

@@ -85,7 +85,7 @@ export async function runIcp(account: Account, input: { action: "answer" | "retr
       data: { draft: json(draft), messages: json(messages), pendingRequestId: null, pendingSince: null, usageId: null, lastRequestId: input.requestId, lastError: null },
     });
     if (!committed.count) throw conflict();
-    succeeded = true;
+    succeeded = hasIcp(draft);
     return await getIcpWorkspace(userId, input.locale);
   } catch (cause) {
     const timeout = cause instanceof Error && /timeout|timed out/i.test(cause.name + cause.message);

@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
-import { EMPTY_ICP, ICP_FIELDS, nextIcpQuestion, readIcp, persistedIcpAnswer, type IcpDraft, type IcpWorkspaceView } from "@/lib/icp/schema";
+import { EMPTY_ICP, ICP_FIELDS, hasIcp, nextIcpQuestion, readIcp, persistedIcpAnswer, type IcpDraft, type IcpWorkspaceView } from "@/lib/icp/schema";
 
 const button = "rounded-xl border border-dark/15 bg-white px-4 py-3 text-sm font-semibold text-dark transition hover:bg-dark/[0.04] disabled:opacity-50";
 const inputClass = "w-full rounded-xl border border-dark/15 bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -167,13 +167,14 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
           <button type="submit" disabled={blocked || !text.trim()} className={`${button} bg-black! text-white!`}>{busy ? t("analysing") : t("send")}</button>
         </form>}
         {(workspace.draft || editing) && <section className="rounded-2xl border border-sky-300 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-bold">{t("draftTitle")}</h3></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-bold">{t(workspace.draft && !hasIcp(workspace.draft) && !editing ? "emptyDraftTitle" : "draftTitle")}</h3></div>
+          {workspace.draft && !hasIcp(workspace.draft) && !editing && <p role="status" className="mt-3 text-sm text-dark/60">{t("emptyDraftHint")}</p>}
           {editing ? <div className="mt-4 space-y-4">{(["summary", ...ICP_FIELDS] as const).map(key => <label key={key} className="block text-sm font-semibold">
             {t(`fields.${key}`)}<textarea aria-label={t(`fields.${key}`)} autoFocus={key === "summary"} rows={2} maxLength={key === "summary" ? 2000 : 500} value={form[key]} disabled={blocked} className={`${inputClass} mt-1`} onChange={event => { const draft = { ...form, [key]: event.target.value }; setForm(draft); store(text, draft, true); }} />
           </label>)}</div> : <>{workspace.draft?.summary && <p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-semibold">{workspace.draft.summary}</p>}{rows(workspace.draft!)}</>}
           <div className="mt-5 flex flex-wrap gap-2">
-            <button type="button" disabled={blocked} onClick={() => void mutate("save")} className={`${button} bg-black! text-white!`}>{t("save")}</button>
-            {editing ? <button type="button" disabled={blocked} onClick={() => void mutate("edit")} className={button}>{t("saveDraft")}</button> : <button type="button" disabled={blocked} onClick={beginEdit} className={button}>{t("edit")}</button>}
+            <button type="button" disabled={blocked || !hasIcp(editing ? form : workspace.draft!)} onClick={() => void mutate("save")} className={`${button} bg-black! text-white!`}>{t("save")}</button>
+            {editing ? <button type="button" disabled={blocked || !hasIcp(form)} onClick={() => void mutate("edit")} className={button}>{t("saveDraft")}</button> : <button type="button" disabled={blocked} onClick={beginEdit} className={button}>{t("edit")}</button>}
             {canUseAi && !editing && <button type="button" disabled={blocked} onClick={() => void mutate("retry")} className={button}>{t("retry")}</button>}
           </div>
         </section>}

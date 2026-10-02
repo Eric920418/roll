@@ -43,6 +43,9 @@ export function nextIcpQuestion(draft: IcpDraft | null, messages: IcpMessage[], 
   const topic = missing.findIndex((needed, index) => needed && !asked.has(index));
   if (topic < 0) return null;
   let content = QUESTIONS[locale][topic];
+  if (topic === 1 && !draft?.who) content = locale === "zh-tw"
+    ? "還不知道也沒關係。你的產品可以幫忙處理哪一個具體情境？如果曾和任何人聊過，請描述對方提到的困擾；沒有聊過也可以說明目前知道的事。"
+    : "That is OK. What is one situation your product could help with? If you have spoken to anyone, describe a problem they mentioned; otherwise tell me what you know so far.";
   if (topic === 2 && draft?.stage) content = locale === "zh-tw" ? "這些客戶位於哪些市場？還不確定也沒關係。" : "Which markets are these customers in? It is OK if you are not sure yet.";
   if (topic === 2 && draft?.location) content = locale === "zh-tw" ? "這些客戶目前處於什麼階段？還不確定也沒關係。" : "What stage are these customers at? It is OK if you are not sure yet.";
   return { role: "assistant", topic, content };
