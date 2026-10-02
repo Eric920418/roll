@@ -258,7 +258,7 @@ test("Saved ICP is mapped into Next steps context as a hypothesis, with company/
     "./constants": require("../src/lib/action-plan/constants"),
     "./schemas": require("../src/lib/action-plan/schemas"),
   });
-  await assert.rejects(engine.diagnoseActionPlan({ locale: "en", profile: account.profile, quiz: null, messages: [], answers: [{ question: "Current bottleneck?", answer: "No qualified leads" }] }), /captured/);
+  await assert.rejects(engine.diagnoseActionPlan({ locale: "en", profile: account.profile, quiz: null, messages: [], answers: [{ question: "Current bottleneck?", answer: "No qualified leads" }, { question: "Progress?", answer: "Ten interviews" }, { question: "Goal?", answer: "Five paid pilots" }] }), /captured/);
   const known = JSON.parse(context.split("Known context:\n")[1]);
   assert.equal(known.profile.companyStage, "Growth");
   assert.equal(known.profile.icpDetails.stage, "MVP, no paid users");

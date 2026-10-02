@@ -758,7 +758,7 @@
         "openPlan": "開啟 Action Plan",
         "emptyEyebrow": "尚無有效計畫",
         "emptyTitle": "讓 NOVA 診斷你的下一步",
-        "emptyBody": "NOVA 最多逐題追問三題，確認公司階段與瓶頸後，生成由伺服器排序的 Action Plan。",
+        "emptyBody": "逐題回答瓶頸、實際進展與目標，共三題；確認診斷後生成五項任務。",
         "upgrade": "升級 Pro",
         "fewerBlocked": "目前只顯示可執行項目；另有 {count} 個受阻擋 Actions 尚不能進入 Next 3。",
         "fewerAvailable": "此計畫目前只剩 {count} 個可執行 Actions。"
@@ -1076,7 +1076,7 @@
       "deleteConfirm": "確定刪除「{title}」？",
       "empty": {
         "title": "建立一份能解釋優先順序的計畫",
-        "body": "NOVA 診斷公司階段與瓶頸，最多追問三題，再生成 5 個 Actions；分析約需 1 分鐘。"
+        "body": "逐題回答三題，確認公司階段與瓶頸後生成 5 個 Actions；分析約需 1 分鐘。"
       },
       "diagnosis": {
         "eyebrow": "你的診斷",
@@ -1142,10 +1142,11 @@
         "build": "建立 Action plan",
         "regenerate": "請 NOVA 重新生成",
         "title": "建立你的 Action Plan",
-        "intro": "NOVA 會先請你確認目前最重要的瓶頸，再結合公司資料與既有對話補問缺少的資訊。每次只問一題，共 1–3 題，確認診斷後才生成任務。",
+        "intro": "依序回答目前瓶頸、實際進展與下一個目標，共三題。NOVA 會結合三份回答與公司資料完成診斷；確認診斷後才生成五項任務。",
         "close": "關閉",
         "diagnosing": "NOVA 正在診斷公司狀況…",
         "questionCount": "聚焦問題 {count} / 3",
+        "answerAllThree": "請完成三題診斷後再生成任務。目前回答已保留，請繼續診斷。",
         "answerLabel": "你的回答",
         "continue": "繼續診斷",
         "stage": "公司階段",

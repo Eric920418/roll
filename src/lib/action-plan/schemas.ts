@@ -217,7 +217,7 @@ export function appendGeneratedActions(
 export const generateBodySchema = z.object({
   locale: z.enum(["en", "zh-tw"]).default("en"),
   messages: z.array(conversationMessageSchema).max(30).default([]),
-  answers: diagnoseBodySchema.shape.answers.unwrap().min(1, "請先回答目前瓶頸，再生成任務 / Answer the current bottleneck question before generating actions"),
+  answers: diagnoseBodySchema.shape.answers.unwrap().length(3, "請完成三題診斷後再生成任務 / Answer all three diagnostic questions before generating actions"),
   diagnosis: diagnosisSchema,
   requestId: z.string().uuid(),
   candidateCount: z.literal(5).default(5),

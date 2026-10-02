@@ -66,6 +66,7 @@ export default function ActionPlanBuilder({
       const json = await readApiResponse<DiagnoseData>(response, t("genericError"));
       if (!response.ok) throw new Error(json.error || t("genericError"));
       if (!json.data) throw new Error(t("genericError"));
+      if (json.data.status === "ready" && nextAnswers.length !== 3) throw new Error(t("answerAllThree"));
       setAnswers(nextAnswers);
       setAnswer("");
       if (json.data.status === "needs_input") {
@@ -124,6 +125,7 @@ export default function ActionPlanBuilder({
 
   async function generate() {
     if (!diagnosis || !confirmed) return;
+    if (answers.length !== 3) { setError(t("answerAllThree")); return; }
     setBusy(true);
     setError("");
     try {

@@ -758,7 +758,7 @@
         "openPlan": "Open action plan",
         "emptyEyebrow": "No active plan",
         "emptyTitle": "Diagnose your next moves with NOVA",
-        "emptyBody": "NOVA asks one to three focused questions, confirms your stage and bottleneck, then helps you choose your next steps.",
+        "emptyBody": "Answer three focused questions about your bottleneck, progress, and goal. Confirm your diagnosis, then generate five actions.",
         "upgrade": "Upgrade to Pro",
         "fewerBlocked": "Only the available moves are shown. {count} blocked actions cannot enter the Next 3 yet.",
         "fewerAvailable": "Only {count} executable moves remain in this plan."
@@ -1076,7 +1076,7 @@
       "deleteConfirm": "Delete “{title}”?",
       "empty": {
         "title": "Build a plan that can defend its priorities",
-        "body": "NOVA diagnoses your stage and bottleneck, asks up to three focused questions, then generates five actions. Analysis usually takes about one minute."
+        "body": "Answer three focused questions, confirm your stage and bottleneck, then generate five actions. Analysis usually takes about one minute."
       },
       "diagnosis": {
         "eyebrow": "Your diagnosis",
@@ -1142,10 +1142,11 @@
         "build": "Build action plan",
         "regenerate": "Regenerate with NOVA",
         "title": "Build your action plan",
-        "intro": "First confirm your most important bottleneck. NOVA then uses your profile and saved conversation to ask any missing facts: one question at a time, 1–3 in total. Confirm the diagnosis before generating actions.",
+        "intro": "Answer three questions, one at a time: your current bottleneck, actual progress, and next goal. NOVA uses all three answers and your profile to diagnose your situation. Confirm the diagnosis before generating five actions.",
         "close": "Close",
         "diagnosing": "NOVA is diagnosing your company…",
         "questionCount": "Focused question {count} of 3",
+        "answerAllThree": "Answer all three diagnostic questions before generating actions. Your current answer is preserved; continue diagnosis.",
         "answerLabel": "Your answer",
         "continue": "Continue diagnosis",
         "stage": "Company stage",

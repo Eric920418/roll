@@ -401,28 +401,35 @@ const toolReply = (name: string, input: unknown) => ({
   content: [{ type: "tool_use", name, input }], stop_reason: "tool_use", usage: { output_tokens: 100 },
 });
 
-test("已有充分 Profile 與對話仍先確認當前瓶頸，不由 AI 跳過首題", async () => {
+test("已有充分 Profile 與對話仍逐題詢問三個不同主題，前兩份回答不可交 AI 提前完成", async () => {
   let calls = 0;
   const ai = loadAi(async () => { calls++; return toolReply("submit_action_plan_diagnosis", readyDiagnosis); });
   for (const locale of ["en", "zh-tw"] as const) {
-    const result = await ai.diagnoseActionPlan({ locale, profile: { companyStage: "MVP", primaryNeed: "paying-customers" } as Parameters<typeof ai.diagnoseActionPlan>[0]["profile"], quiz: null, messages: [{ role: "user", content: "We have an MVP but no paying customers." }], answers: [] });
-    assert.equal(result.status, "needs_input");
-    if (result.status === "needs_input") assert.match(result.question, locale === "en" ? /bottleneck/ : /瓶頸/);
+    const answers: Array<{ question: string; answer: string }> = [];
+    for (let i = 0; i < 3; i++) {
+      const result = await ai.diagnoseActionPlan({ locale, profile: { companyStage: "MVP", primaryNeed: "paying-customers" } as Parameters<typeof ai.diagnoseActionPlan>[0]["profile"], quiz: null, messages: [{ role: "user", content: "We have an MVP but no paying customers." }], answers });
+      assert.equal(result.status, "needs_input");
+      if (result.status !== "needs_input") throw Error("Missing question");
+      if (i === 0) assert.match(result.question, locale === "en" ? /bottleneck/ : /瓶頸/);
+      answers.push({ question: result.question, answer: "I don't know yet" });
+    }
+    assert.equal(new Set(answers.map(a => a.question)).size, 3);
   }
   assert.equal(calls, 0);
 });
 
-test("Action Plan 生成 API 必須有至少一份回答，仍允許回答後完成診斷", async () => {
+test("Action Plan 生成 API 拒絕零／一／二份回答，三份後才完成診斷與生成", async () => {
   const body = { locale: "en", messages: [], diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" }, requestId: "fa2b2e98-8876-4f9d-a53b-c18f9abec742", candidateCount: 5 };
   assert.equal(generateBodySchema.safeParse({ ...body, answers: [] }).success, false);
   assert.equal(generateBodySchema.safeParse(body).success, false);
-  const answers = [{ question: "Current bottleneck?", answer: "No paying customers" }];
+  const answers = [{ question: "Current bottleneck?", answer: "No paying customers" }, { question: "Progress?", answer: "MVP with ten interviews" }, { question: "Goal?", answer: "Five paid pilots in three months" }];
+  for (const count of [1, 2]) assert.equal(generateBodySchema.safeParse({ ...body, answers: answers.slice(0, count) }).success, false);
   assert.equal(generateBodySchema.safeParse({ ...body, answers }).success, true);
   const ai = loadAi(async () => toolReply("submit_action_plan_diagnosis", readyDiagnosis));
   assert.equal((await ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers })).status, "ready");
 });
 
-test("診斷將 Q&A 作為對話、拒絕重問並修復，分類由代碼推導", async () => {
+test("三份 Q&A 全數交給 AI，拒絕額外追問並修復，分類由代碼推導", async () => {
   const requests: AiRequest[] = [];
   const ai = loadAi(async (request) => {
     requests.push(request);
@@ -430,9 +437,11 @@ test("診斷將 Q&A 作為對話、拒絕重問並修復，分類由代碼推導
       ? { ...readyDiagnosis, status: "needs_input", question: "  WHO buys from you？ " }
       : { ...readyDiagnosis, bottleneckGroup: "Product" });
   });
-  const result = await ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers: [{ question: "Who buys from you?", answer: "APAC enterprise buyers" }] });
+  const result = await ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers: [{ question: "Who buys from you?", answer: "APAC enterprise buyers" }, { question: "Progress?", answer: "Ten interviews" }, { question: "Goal?", answer: "Five paid pilots" }] });
   assert.equal(requests.length, 2);
   assert.equal(requests[0].messages[2].content, "APAC enterprise buyers");
+  assert.equal(requests[0].messages[4].content, "Ten interviews");
+  assert.equal(requests[0].messages[6].content, "Five paid pilots");
   assert.match(requests[1].system, /MUST return ready/);
   assert.equal(result.status, "ready");
   if (result.status === "ready") assert.equal(result.diagnosis.bottleneckGroup, "Sales");
@@ -480,6 +489,9 @@ test("診斷失敗保留答案與題號，重試不重複作答，生成包含�
   const responses = [
     { data: { status: "needs_input", question: "Who buys?" } },
     { error: "Diagnostic service unavailable" },
+    { data: { status: "needs_input", question: "Progress?" } },
+    { data: { status: "ready", diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" } } },
+    { data: { status: "needs_input", question: "Goal?" } },
     { data: { status: "ready", diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" } } },
     { data: { id: "created-plan" } },
   ];
@@ -539,9 +551,18 @@ test("診斷失敗保留答案與題號，重試不重複作答，生成包含�
   assert.ok(render().some(n => n.props.role === "alert" && n.props.children === "Diagnostic service unavailable"));
   await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
   assert.equal(payloads[2].answers.length, 1);
+  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Ten interviews" } });
+  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
+  assert.ok(render().some(n => n.props.role === "alert" && n.props.children === "answerAllThree"));
+  assert.equal(render().find(n => n.type === "textarea")!.props.value, "Ten interviews");
+  assert.ok(!render().some(n => n.props.children === "confirmDiagnosis"));
+  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
+  assert.equal(payloads[4].answers.length, 2);
+  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Five paid pilots" } });
+  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
   button("confirmDiagnosis").onClick();
   await button("confirm").onClick();
-  assert.deepEqual(payloads[3].answers, [{ question: "Who buys?", answer: "Enterprise buyers" }]);
+  assert.deepEqual(payloads[6].answers, [{ question: "Who buys?", answer: "Enterprise buyers" }, { question: "Progress?", answer: "Ten interviews" }, { question: "Goal?", answer: "Five paid pilots" }]);
 });
 
 test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除篩選與搜尋", () => {
