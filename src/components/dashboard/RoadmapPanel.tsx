@@ -16,7 +16,7 @@ const editorSchema = z.object({ ...roadmapDraftSchema.shape, goal: z.string().ma
 
 export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userId: string; initialPlan: ActionPlanDto | null; onChanged: (plan: ActionPlanDto | null) => void }) {
   const t = useTranslations("Dashboard.roadmap"), locale = useLocale() === "zh-tw" ? "zh-tw" : "en", router = useRouter();
-  const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLElement | null>(null), busyRef = useRef(false);
+  const planTrigger = useRef<HTMLButtonElement>(null), dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLElement | null>(null), busyRef = useRef(false);
   const [mounted, setMounted] = useState(false), [opened, setOpened] = useState(false), [busy, setBusy] = useState(false);
   const [view, setView] = useState<RoadmapView | null>(null), [form, setForm] = useState<RoadmapDraft | null>(null);
   const [goal, setGoal] = useState(""), [deadline, setDeadline] = useState("");
@@ -114,10 +114,10 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   }
   const disabled = busy || Boolean(view?.pending) || !view;
   return <section id="goal-roadmap" className="min-w-0 rounded-2xl border border-sky-300 bg-white p-5 sm:p-7">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">{t("title")}</h2><p className="mt-1 text-sm text-dark/60">{t("intro")}</p></div><button type="button" className={button} onClick={() => void open()}>{t("planGoal")}</button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">{t("title")}</h2><p className="mt-1 text-sm text-dark/60">{t("intro")}</p></div><button ref={planTrigger} type="button" className={button} onClick={() => void open()}>{t("planGoal")}</button></div>
     {initialPlan?.roadmap && <div className="mt-5 space-y-3"><p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-bold">{initialPlan.roadmap.goal}</p><p className="text-sm text-dark/60">{initialPlan.roadmap.startsAt} → {initialPlan.roadmap.deadline}</p>{initialPlan.roadmap.assumptions.length > 0 && <details className="text-sm"><summary className="cursor-pointer">{t("assumptions")}</summary><ul className="mt-2 list-inside list-disc space-y-1 text-dark/60">{initialPlan.roadmap.assumptions.map((a, i) => <li key={i} className="break-words [overflow-wrap:anywhere]">{a}</li>)}</ul></details>}{initialPlan.roadmap.milestones.map(m => milestoneCard(m))}</div>}
     {error && !opened && <div role="alert" className="mt-3 space-y-3 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
-    {mounted && createPortal(<dialog ref={dialog} aria-labelledby="roadmap-title" onClose={() => { setOpened(false); trigger.current?.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[920px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
+    {mounted && createPortal(<dialog ref={dialog} aria-labelledby="roadmap-title" onClose={() => { setOpened(false); (trigger.current?.isConnected ? trigger.current : planTrigger.current)?.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[920px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-dark/10 bg-white p-5"><h2 id="roadmap-title" className="text-xl font-bold">✧ POLARIS · {t("title")}</h2><button type="button" className={button} onClick={() => dialog.current?.close()}>{t("close")}</button></header>
       <div className="space-y-5 p-5 sm:p-8">
         <p className="text-sm text-dark/60">{t("previewHint")}</p>
