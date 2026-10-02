@@ -29,6 +29,11 @@ test("Date resolution respects explicit dates, six-month defaults, leap/month en
  assert.equal(goalDeadline("Find customers within three months",null,"2026-10-02"),"2027-01-02");
  assert.equal(goalDeadline("2027-03-01 拓展海外","2027-02-01","2026-10-02"),"2027-02-01");
  assert.equal(goalDeadline("兩週內完成",null,"2026-10-02"),"2026-10-16");
+ assert.equal(dateSchema.safeParse(goalDeadline("2027年2月31日前找到客戶",null,"2026-10-02")).success,false);
+ assert.equal(goalDeadline("2027年3月1日前找到客戶",null,"2026-10-02"),"2027-03-01");
+ assert.equal(goalDeadline("Expand by 2027/3/1",null,"2026-10-02"),"2027-03-01");
+ assert.equal(goalDeadline("Expand by December 31, 2026",null,"2026-10-02"),"2026-12-31");
+ assert.equal(goalDeadline("2027年3月1日前找到客戶","2027-02-01","2026-10-02"),"2027-02-01");
  assert.equal(today(new Date("2026-10-01T18:00:00Z")),"2026-10-02");
  assert.equal(dateSchema.safeParse("2026-02-30").success,false);
 });
@@ -64,6 +69,9 @@ test("Successful workspace replay does not generate or bill twice; accounts rema
 });
 test("Invalid AI/timeout preserves input and old draft; failure releases reservation",async()=>{
  const h=harness();h.state.draft=clone(draft);h.model=async()=>{throw new Error("Request timed out");};await assert.rejects(h.api.runRoadmap(account,request),(e:unknown)=>e instanceof WriteError&&e.status===504);assert.deepEqual(h.state.draft,draft);assert.equal((h.state.input as typeof request).goal,request.goal);assert.equal(h.state.pendingRequestId,null);assert.deepEqual(h.bill,[false]);
+});
+test("Invalid dates in goal text fail before quota reservation or AI calls",async()=>{
+ const h=harness();await assert.rejects(h.api.runRoadmap(account,{...request,goal:"2027年2月31日前找到客戶"}),(e:unknown)=>e instanceof WriteError&&e.status===400);assert.equal(h.calls,0);assert.equal(h.reserves,0);assert.equal(h.state.revision,0);
 });
 test("Quota exhaustion does not call the model, but retains user input",async()=>{
  const h=harness();h.quota=false;await assert.rejects(h.api.runRoadmap(account,request),(e:unknown)=>e instanceof WriteError&&e.status===429);assert.equal(h.calls,0);assert.equal(h.bill.length,0);assert.equal((h.state.input as typeof request).goal,request.goal);

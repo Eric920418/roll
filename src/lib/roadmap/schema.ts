@@ -18,7 +18,18 @@ export function addMonths(start: string, months: number) {
 export function goalDeadline(goal: string, explicit: string | null, start: string) {
   if (explicit) return explicit;
   const absolute = goal.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0];
-  if (absolute && dateSchema.safeParse(absolute).success) return absolute;
+  if (absolute) return absolute;
+  const calendar = goal.match(/(\d{4})\s*(?:年|\/)\s*(\d{1,2})\s*(?:月|\/)\s*(\d{1,2})\s*(?:日|號)?/);
+  if (calendar) {
+    const value = `${calendar[1]}-${calendar[2].padStart(2, "0")}-${calendar[3].padStart(2, "0")}`;
+    return value;
+  }
+  const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+  const writtenDate = goal.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(\d{4})\b/i);
+  if (writtenDate) {
+    const value = `${writtenDate[3]}-${String(monthNames.indexOf(writtenDate[1].toLowerCase()) + 1).padStart(2, "0")}-${writtenDate[2].padStart(2, "0")}`;
+    return value;
+  }
   if (/半年|half a year/i.test(goal)) return addMonths(start, 6);
   const numbers: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, twelve: 12, 一: 1, 二: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十二: 12 };
   const duration = goal.match(/(\d+|twelve|three|four|five|six|one|two|十二|[一二兩三四五六七八九十])\s*(?:個\s*)?(months?|月|weeks?|週|周|days?|天|years?|年)/i);

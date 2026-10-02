@@ -7,7 +7,7 @@ import { reserveAiUsage, completeAiUsage } from "@/lib/ai/allowance";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { getActiveActionPlan, serializePlan, lockActivePlan, actionRecord, PlanWriteError } from "@/lib/action-plan/service";
 import { generateRoadmap } from "./ai";
-import { roadmapDraftSchema, today, goalDeadline, type RoadmapDraft, type roadmapPostSchema, type roadmapPatchSchema, type outcomePatchSchema } from "./schema";
+import { roadmapDraftSchema, dateSchema, today, goalDeadline, type RoadmapDraft, type roadmapPostSchema, type roadmapPatchSchema, type outcomePatchSchema } from "./schema";
 import type { z } from "zod";
 
 export const LOCK_MS = 360_000;
@@ -53,6 +53,7 @@ export async function runRoadmap(account: Account, input: z.infer<typeof roadmap
     ({ goal, startsAt, deadline } = active.roadmap); milestoneId = milestone.id;
   } else {
     goal = input.goal; startsAt = today(); deadline = goalDeadline(goal, input.deadline, startsAt);
+    if (!dateSchema.safeParse(deadline).success) throw new PlanWriteError("目標文字中的日期無效，請選擇有效期限 / Invalid date in the goal; choose a valid deadline", 400);
     if (deadline <= startsAt) throw new PlanWriteError("期限必須在今天之後 / Deadline must be after today", 400);
   }
   const claimed = await prisma.roadmapWorkspace.updateMany({ where: { userId, revision: input.revision, pendingRequestId: null }, data: { input: asJson(input), basePlanId: active?.id || null, basePlanRevision: active?.revision ?? null, revision: { increment: 1 }, pendingRequestId: input.requestId, pendingSince: new Date(), lastError: null } });
