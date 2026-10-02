@@ -100,16 +100,16 @@ export default function CopilotPanel({
   }
 
   return (
-    <div className="nova-dashboard-card rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
+    <div className="nova-dashboard-card min-w-0 rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-white">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3Z" fill="currentColor" />
           </svg>
         </span>
-        <p className="text-sm font-bold text-dark font-[family-name:var(--font-heading)]">
+        <h2 className="text-sm font-bold text-dark font-[family-name:var(--font-heading)]">
           {t("polarisTitle")}
-        </p>
+        </h2>
       </div>
 
       {/* 快捷連結 */}
@@ -127,14 +127,14 @@ export default function CopilotPanel({
 
       {canUse ? (
         <>
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-primary/15 bg-white/80 p-3">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-white/80 p-3">
             <p className="text-xs leading-5 text-dark/60">{t("actionPlanHint")}</p>
             <ActionPlanBuilder messages={messages} />
           </div>
           {/* 對話 */}
           <div
             ref={scrollRef}
-            className="mt-3 max-h-64 overflow-y-auto rounded-xl bg-white/70 p-3"
+            className="mt-3 max-h-40 overflow-y-auto rounded-xl bg-white/70 p-3"
           >
             {loadingHistory ? (
               <p className="py-4 text-center text-xs text-dark/50">{t("loadingHistory")}</p>
@@ -146,14 +146,14 @@ export default function CopilotPanel({
                   m.role === "user" ? (
                     <p
                       key={i}
-                      className="ml-auto max-w-[85%] rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white"
+                      className="ml-auto max-w-[85%] break-words [overflow-wrap:anywhere] rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white"
                     >
                       {m.content}
                     </p>
                   ) : (
                     <div
                       key={i}
-                      className="prose-copilot max-w-[92%] rounded-xl rounded-bl-sm bg-dark/[0.04] px-3 py-2 text-sm text-dark/85"
+                      className="prose-copilot max-w-[92%] break-words [overflow-wrap:anywhere] rounded-xl rounded-bl-sm bg-dark/[0.04] px-3 py-2 text-sm text-dark/85"
                     >
                       {m.content ? (
                         <ReactMarkdown>{m.content}</ReactMarkdown>
@@ -176,6 +176,7 @@ export default function CopilotPanel({
           {/* 輸入 */}
           <form onSubmit={send} className="mt-2 flex gap-2">
             <input
+              aria-label={t("placeholder")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t("placeholder")}
