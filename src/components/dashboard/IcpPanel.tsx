@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
@@ -12,8 +12,8 @@ import { EMPTY_ICP, ICP_FIELDS, nextIcpQuestion, readIcp, persistedIcpAnswer, ty
 const button = "rounded-xl border border-dark/15 bg-white px-4 py-3 text-sm font-semibold text-dark transition hover:bg-dark/[0.04] disabled:opacity-50";
 const inputClass = "w-full rounded-xl border border-dark/15 bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
 
-export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
-  userId: string; saved: IcpDraft | null; legacy: string | null; version: number; canUseAi: boolean;
+export default function IcpPanel({ userId, saved, legacy, version, canUseAi, children }: {
+  userId: string; saved: IcpDraft | null; legacy: string | null; version: number; canUseAi: boolean; children: ReactNode;
 }) {
   const t = useTranslations("Dashboard.icp");
   const locale = useLocale() as Locale;
@@ -131,24 +131,26 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
   const awaitingAnswer = workspace.messages.at(-1)?.role === "assistant";
   const blocked = busy || workspace.pending || !loaded;
 
-  function rows(draft: IcpDraft) {
+  function rows(draft: IcpDraft, emptyLabel = t("unknown")) {
     return <dl className="mt-4 divide-y divide-dark/10">{ICP_FIELDS.map(key => <div key={key} className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:gap-4">
       <dt className="text-sm text-dark/60">{t(`fields.${key}`)}</dt>
-      <dd className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm font-semibold text-dark sm:text-right">{draft[key] || t("unknown")}</dd>
+      <dd className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm font-semibold text-dark sm:text-right">{draft[key] || emptyLabel}</dd>
     </div>)}</dl>;
   }
-  const badge = <span className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">{t("hypothesis")}</span>;
 
   return <>
     <section className="min-w-0 rounded-2xl border border-sky-300 bg-white p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("title")}</h2>{badge}</div>
-      {(current?.summary || workspace.legacy || legacy) && <p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-lg font-bold text-dark">{current?.summary || workspace.legacy || legacy}</p>}
-      <p className="mt-2 text-sm leading-6 text-dark/60">{t("hypothesisHint")}</p>
-      {rows(current || EMPTY_ICP)}
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("title")}</h2></div>
+      <p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-lg font-bold text-dark">{current?.summary || workspace.legacy || legacy || t("notProvided")}</p>
+      {rows(current || EMPTY_ICP, t("notProvided"))}
       <div className="mt-4 flex flex-wrap gap-2">
         {canUseAi ? <button ref={trigger} type="button" className={`${button} flex-1`} onClick={() => void show()}>✧ {t("ask")}</button> : <Link className={`${button} flex-1 text-center`} href={pathForLocale("/dashboard/account#plan", locale)}>{t("upgrade")}</Link>}
         <button type="button" className={button} onClick={() => void show(true)}>{t("edit")}</button>
       </div>
+    </section>
+    <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6 lg:col-span-2">
+      {children}
+      <div className="mt-5">{canUseAi ? <button type="button" className={button} onClick={() => void show()}>✧ {t("sharpen")}</button> : <Link className={button} href={pathForLocale("/dashboard/account#plan", locale)}>{t("sharpen")}</Link>}</div>
     </section>
     {mounted && createPortal(<dialog ref={dialog} aria-labelledby="icp-panel-title" onClose={() => { setOpen(false); trigger.current?.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[900px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-dark/10 bg-white px-5 py-4 sm:px-8">
@@ -157,7 +159,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
       </div>
       <div className="space-y-5 p-5 sm:p-8">
         <p className="text-sm text-dark/60">{t("panelHint")}</p>
-        {workspace.messages.map((message, index) => <p key={index} className={`max-w-[95%] whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === "user" ? "ml-auto bg-sky-100 text-sky-950" : "border border-dark/10 bg-white text-dark"}`}>{message.content}</p>)}
+        {workspace.messages.map((message, index) => <p key={index} className={`max-w-[95%] whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === "user" ? "ml-auto bg-sky-100 text-sky-950" : "border border-dark/10 bg-white text-dark"}`}>{index === 0 && message.role === "assistant" ? `${t("opening")} ${message.content}` : message.content}</p>)}
         {workspace.pending && <p role="status" className="text-sm text-dark/60">{t("analysing")}</p>}
         {canUseAi && awaitingAnswer && !editing && <form onSubmit={event => { event.preventDefault(); void mutate("answer"); }} className="space-y-3">
           <label className="block text-sm font-semibold" htmlFor="icp-answer">{t("answer")}</label>
@@ -165,7 +167,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
           <button type="submit" disabled={blocked || !text.trim()} className={`${button} bg-black! text-white!`}>{busy ? t("analysing") : t("send")}</button>
         </form>}
         {(workspace.draft || editing) && <section className="rounded-2xl border border-sky-300 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-bold">{t("draftTitle")}</h3>{badge}</div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-bold">{t("draftTitle")}</h3></div>
           {editing ? <div className="mt-4 space-y-4">{(["summary", ...ICP_FIELDS] as const).map(key => <label key={key} className="block text-sm font-semibold">
             {t(`fields.${key}`)}<textarea aria-label={t(`fields.${key}`)} autoFocus={key === "summary"} rows={2} maxLength={key === "summary" ? 2000 : 500} value={form[key]} disabled={blocked} className={`${inputClass} mt-1`} onChange={event => { const draft = { ...form, [key]: event.target.value }; setForm(draft); store(text, draft, true); }} />
           </label>)}</div> : <>{workspace.draft?.summary && <p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-semibold">{workspace.draft.summary}</p>}{rows(workspace.draft!)}</>}

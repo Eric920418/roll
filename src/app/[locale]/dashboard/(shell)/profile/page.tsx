@@ -37,8 +37,7 @@ export default async function CompanyProfilePage({ params }: Props) {
           <Row label={t("icp.homeMarket")} value={p?.country || na} />
         </dl>
       </section>
-      <IcpPanel userId={account.id} saved={p?.icpDetails || null} legacy={p?.icp || null} version={p?.icpVersion || 0} canUseAi={planAtLeast(getEffectivePlan(account), "pro")} />
-      <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6 lg:col-span-2">
+      <IcpPanel userId={account.id} saved={p?.icpDetails || null} legacy={p?.icp || null} version={p?.icpVersion || 0} canUseAi={planAtLeast(getEffectivePlan(account), "pro")}>
         <h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("icp.now")}</h2>
         <dl className="mt-4 grid gap-x-6 md:grid-cols-2">
           <Row label={t("icp.primaryNeed")} value={p?.primaryNeed ? t.has(`icp.needs.${p.primaryNeed}`) ? t(`icp.needs.${p.primaryNeed}`) : p.primaryNeed : na} />
@@ -46,7 +45,7 @@ export default async function CompanyProfilePage({ params }: Props) {
           <Row label={t("icp.companyAge")} value={opt("timeline", p?.timeline)} />
           <Row label={t("account.notes")} value={p?.notes || na} />
         </dl>
-      </section>
+      </IcpPanel>
     </div>
   </div>;
 }
