@@ -982,3 +982,5 @@ Profile 頁名與選單改為 Profile + ICP（中文：公司檔案 + ICP）。�
 正式站完整驗收另發現跨日時段會員在 Next steps 重整會觸發 React hydration 418：Legacy landing tasks 以會員建立時間推算期限，但 AgendaBoard 日期格式使用各執行環境預設時區。專用帳號期限的同一 ISO 時刻，Vercel UTC SSR 顯示 11/16、Asia/Taipei 瀏覽器顯示 11/17；UTC 瀏覽器不出錯。日期格式現在明確使用 Asia/Taipei，沿用既有 Billing 日期呈現慣例，不改儲存時刻、期限推算或任務狀態；新增元件回歸測試核對 UTC／Taipei／Los Angeles 預設環境、中英文皆顯示相同台灣日期，未使用 suppressHydrationWarning 掩蓋錯誤。
 
 日期修正後，本機以 UTC 伺服器／Taipei 瀏覽器重新通過 39 項真實 AI 問答與五項生成檢查，瀏覽器錯誤為 0；另比對無 JavaScript SSR、Taipei 與 UTC 瀏覽器三種環境的截止日期一致，皆無 hydration 錯誤。79 項測試、型別及建置通過，lint 僅兩項既有警告。
+
+正式站 `https://www.rollgrp.com` 已切換至 `dpl_6FG7MRqJt1KCT9WSiH2akWpLhVfe`（程式碼 `4bd1a37`，包含固定三題修正 `5bf0148`），Git 已推送。候選部署先通過三題／兩答拒絕／未登入隔離 API 與 UTC SSR 日期檢查；正式網域再通過完整 39 項桌面／390px 手機驗收，第三份回答後真實 AI 完成診斷、人工確認後成功生成五項，重整保留與同 requestId 重送回原計畫，瀏覽器錯誤為 0。正式站無 JavaScript SSR／Taipei／UTC 瀏覽器日期一致且零 hydration 錯誤。本輪僅使用專用 QA 帳號；核對公司資料不變、舊版五項任務及完成紀錄封存、新版恰五項與無重複計畫後，已移除專用帳號、關聯 fixture 與該帳號診斷／生成限流計數；未修改真實會員資料，未執行資料庫 schema 更新。
