@@ -6,10 +6,11 @@ import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { getLatestQuizResult } from "@/lib/quiz/result";
 import { generateActionCandidates } from "@/lib/action-plan/ai";
 import { generateBodySchema } from "@/lib/action-plan/schemas";
-import { getPlanByRequestId, persistGeneratedPlan } from "@/lib/action-plan/service";
+import { assertGenerationAllowance, getActiveActionPlan, getPlanByRequestId, persistGeneratedPlan, PlanWriteError } from "@/lib/action-plan/service";
 
 export const maxDuration = 300;
-const DAILY_LIMIT = 3;
+// Attempt throttle is separate from the three successful-plan allowance.
+const DAILY_LIMIT = 10;
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,9 +25,11 @@ export async function POST(req: NextRequest) {
 
     const existing = await getPlanByRequestId(session.uid, parsed.data.requestId);
     if (existing) return ok(existing);
+    await assertGenerationAllowance(session.uid);
     const rate = await checkRateLimit(`action-plan:generate:${session.uid}`, DAILY_LIMIT, DAY_MS);
-    if (!rate.ok) return fail(`已達本日 Action Plan 生成上限（每日 ${DAILY_LIMIT} 次）。`, 429);
+    if (!rate.ok) return fail(`已達每日 ${DAILY_LIMIT} 次生成請求保護上限，請稍後再試。 / Daily generation request limit reached (${DAILY_LIMIT} attempts).`, 429);
 
+    const basePlan = await getActiveActionPlan(session.uid);
     const quiz = await getLatestQuizResult(session.uid);
     const actions = await generateActionCandidates({
       locale: parsed.data.locale,
@@ -43,9 +46,14 @@ export async function POST(req: NextRequest) {
       requestId: parsed.data.requestId,
       diagnosis: parsed.data.diagnosis,
       actions,
+      basePlan: basePlan ? { id: basePlan.id, revision: basePlan.revision! } : null,
     });
     return ok(plan, 201);
   } catch (error) {
+    if (error instanceof PlanWriteError) return fail(error.message, error.status);
+    if (error instanceof Error && /timeout|timed out/i.test(error.name + error.message)) {
+      return fail("AI 生成逾時，原計畫不變，請重試；回答仍保留。 / AI timed out. Your previous plan is unchanged; retry with your saved answers.", 504);
+    }
     if (error instanceof Error && error.message.startsWith("NOVA Action Plan 驗證失敗")) {
       return fail(error.message, 422);
     }

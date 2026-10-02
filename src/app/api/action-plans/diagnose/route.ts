@@ -26,6 +26,9 @@ export async function POST(req: NextRequest) {
     const quiz = await getLatestQuizResult(session.uid);
     return ok(await diagnoseActionPlan({ ...parsed.data, profile: account.profile, quiz }));
   } catch (error) {
+    if (error instanceof Error && /timeout|timed out/i.test(error.name + error.message)) {
+      return fail("AI 診斷逾時，回答仍保留，請重試。 / AI diagnosis timed out. Your answers are preserved; retry.", 504);
+    }
     if (error instanceof Error && error.message.startsWith("NOVA 診斷驗證失敗")) {
       return fail(error.message, 422);
     }

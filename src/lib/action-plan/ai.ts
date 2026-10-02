@@ -176,7 +176,7 @@ export async function diagnoseActionPlan(input: {
     "What specific outcome do you want to achieve next? Include your target timeframe and the time or resources you can commit.",
   ];
   if (input.answers.length < questions.length) return { status: "needs_input", question: questions[input.answers.length] };
-  const client = new Anthropic();
+  const client = new Anthropic({ timeout: 45_000, maxRetries: 0 });
   const messages: Anthropic.MessageParam[] = [{
     role: "user",
     content: `Known context:\n${contextText(input.profile, input.quiz, input.messages)}`,
@@ -235,7 +235,7 @@ export async function generateActionCandidates(input: {
   allowCritical?: boolean;
   existingTitles?: string[];
 }): Promise<GeneratedAction[]> {
-  const client = new Anthropic(input.timeoutMs ? { timeout: input.timeoutMs, maxRetries: 0 } : undefined);
+  const client = new Anthropic({ timeout: input.timeoutMs ?? 60_000, maxRetries: 0 });
   const batchSchema = z.object({ actions: z.array(generatedActionSchema).min(1).max(GENERATION_BATCH_SIZE) });
   let actions: GeneratedAction[] = [];
   let repair = "";
@@ -271,7 +271,9 @@ export async function generateActionCandidates(input: {
       tool_choice: { type: "tool", name: tool.name, disable_parallel_tool_use: true },
     });
 
-    const raw = toolInput(message, tool.name);
+    // Missing tool output is a format failure too: use the same single repair budget.
+    let raw: unknown;
+    try { raw = toolInput(message, tool.name); } catch { raw = null; }
     const rawRecord = raw && typeof raw === "object" && !Array.isArray(raw)
       ? raw as Record<string, unknown>
       : null;

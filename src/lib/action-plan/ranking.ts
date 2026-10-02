@@ -141,7 +141,9 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
       b.urgencyWeight - a.urgencyWeight ||
       b.impactWeight - a.impactWeight ||
       a.actionTimeMaxMinutes - b.actionTimeMaxMinutes ||
-      new Date(a.action.createdAt).getTime() - new Date(b.action.createdAt).getTime(),
+      new Date(a.action.createdAt).getTime() - new Date(b.action.createdAt).getTime() ||
+      a.action.clientKey.localeCompare(b.action.clientKey, "en", { numeric: true }) ||
+      a.action.id.localeCompare(b.action.id),
     );
   const ranks = new Map(ready.map((row, index) => [row.action.id, index + 1]));
 

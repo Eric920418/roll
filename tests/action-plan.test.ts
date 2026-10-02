@@ -373,7 +373,7 @@ type AiRequest = {
   tools: Array<{ input_schema: { required: string[] } }>;
 };
 
-function loadAi(create: (request: AiRequest) => Promise<unknown>) {
+function loadAi(create: (request: AiRequest) => Promise<unknown>, configured: (options: unknown) => void = () => {}) {
   const require = createRequire(import.meta.url);
   const loaded = { exports: {} as typeof import("../src/lib/action-plan/ai") };
   const code = ts.transpileModule(readFileSync("src/lib/action-plan/ai.ts", "utf8"), {
@@ -383,7 +383,7 @@ function loadAi(create: (request: AiRequest) => Promise<unknown>) {
     module: loaded, exports: loaded.exports, process: { env: {} }, console,
     require: (id: string) => {
       if (id === "server-only") return {};
-      if (id === "@anthropic-ai/sdk") return class { messages = { create }; };
+      if (id === "@anthropic-ai/sdk") return class { constructor(options: unknown) { configured(options); } messages = { create }; };
       if (id === "./constants") return require("../src/lib/action-plan/constants");
       if (id === "./schemas") return require("../src/lib/action-plan/schemas");
       return require(id);
@@ -614,4 +614,27 @@ test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除�
   render().find(n => n.props.href === "#action-plan-list")!.props.onClick!();
   assert.equal(list().length, 5);
   assert.equal(render().find(n => n.type === "input")!.props.value, "");
+});
+
+
+test("缺少結構化工具回應沿用一次修復；模型逾時界線小於平台執行時間", async () => {
+  let calls = 0;
+  const options: unknown[] = [];
+  const ai = loadAi(async () => { calls++; return { content: [{ type: "text", text: "Invalid AI format" }], stop_reason: "end_turn", usage: { output_tokens: 100 } }; }, value => options.push(value));
+  const diagnosis = diagnosisSchema.parse({ ...readyDiagnosis, bottleneckGroup: "Sales" });
+  await assert.rejects(ai.generateActionCandidates({ locale: "en", profile: null, quiz: null, messages: [], diagnosis, candidateCount: 5, answers: [] }), /NOVA Action Plan 驗證失敗/);
+  assert.equal(calls, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(options[0])), { timeout: 60000, maxRetries: 0 });
+  calls = 0;
+  await assert.rejects(ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers: Array.from({ length: 3 }, (_, i) => ({ question: `Question ${i}`, answer: "Unknown" })) }), /NOVA 診斷驗證失敗/);
+  assert.equal(calls, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(options[1])), { timeout: 45000, maxRetries: 0 });
+});
+
+
+test("同分同時間任務不受資料庫回傳順序影響，Home 與 Next steps 排序固定", () => {
+  const rows = [10, 2, 1].map(i => action({ id: `id-${i}`, clientKey: `task_${i}` }));
+  const expected = ["task_1", "task_2", "task_10"];
+  assert.deepEqual(rankActions(rows).map(row => row.clientKey), expected);
+  assert.deepEqual(rankActions([...rows].reverse()).map(row => row.clientKey), expected);
 });

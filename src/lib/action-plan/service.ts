@@ -74,12 +74,18 @@ export async function getPlanByRequestId(userId: string, requestId: string): Pro
   return plan ? serializePlan(plan) : null;
 }
 
+export async function assertGenerationAllowance(userId: string, tx: Pick<Prisma.TransactionClient, "actionPlan"> = prisma as unknown as Prisma.TransactionClient) {
+  const count = await tx.actionPlan.count({ where: { userId, goal: null, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } });
+  if (count >= 3) throw new PlanWriteError("已達最近 24 小時 3 次成功生成上限。 / Maximum 3 successful action plans per 24 hours.", 429);
+}
+
 export async function persistGeneratedPlan(input: {
   userId: string;
   locale: string;
   requestId: string;
   diagnosis: Diagnosis;
   actions: GeneratedAction[];
+  basePlan: { id: string; revision: number } | null;
 }): Promise<ActionPlanDto> {
   const existing = await getPlanByRequestId(input.userId, input.requestId);
   if (existing) return existing;
@@ -87,12 +93,20 @@ export async function persistGeneratedPlan(input: {
   const actionIds = new Map(input.actions.map((action) => [action.clientKey, randomUUID()]));
   let planId: string;
   try {
-    planId = await prisma.$transaction(async (tx) => {
+    planId = await prisma.$transaction(async raw => {
+      const tx = raw as unknown as Prisma.TransactionClient;
       const insideExisting = await tx.actionPlan.findUnique({
         where: { userId_requestId: { userId: input.userId, requestId: input.requestId } },
         select: { id: true },
       });
       if (insideExisting) return insideExisting.id;
+
+      if (input.basePlan) {
+        await lockActivePlan(tx, input.userId, input.basePlan.id, input.basePlan.revision);
+      } else if (await tx.actionPlan.findFirst({ where: { userId: input.userId, activeKey: input.userId, archivedAt: null }, select: { id: true } })) {
+        throw new PlanWriteError("生成期間計畫已更新，請重新載入後再試；回答仍保留。 / Plan changed during generation. Reload and retry; your answers are preserved.");
+      }
+      await assertGenerationAllowance(input.userId, tx);
 
       await tx.actionPlan.updateMany({
         where: { userId: input.userId, activeKey: input.userId, archivedAt: null },
@@ -123,9 +137,10 @@ export async function persistGeneratedPlan(input: {
   } catch (error) {
     // 同一 requestId 的併發重送，唯一鍵只會讓其中一筆成功；另一筆直接讀取已建立版本。
     const duplicate = error && typeof error === "object" && "code" in error && error.code === "P2002";
-    if (!duplicate) throw error;
+    if (!duplicate && !(error instanceof PlanWriteError)) throw error;
     const idempotent = await getPlanByRequestId(input.userId, input.requestId);
     if (idempotent) return idempotent;
+    if (duplicate) throw new PlanWriteError("另一分頁已建立新計畫，請重新載入後再試。 / Another tab created a plan. Reload and retry.");
     throw error;
   }
 
