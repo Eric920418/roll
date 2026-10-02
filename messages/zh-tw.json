@@ -1138,7 +1138,7 @@
         "build": "建立 Action plan",
         "regenerate": "請 NOVA 重新生成",
         "title": "建立你的 Action Plan",
-        "intro": "NOVA 會使用公司資料、成長診斷與已儲存的對話，每次只問一題，最多三題。",
+        "intro": "NOVA 會先請你確認目前最重要的瓶頸，再結合公司資料與既有對話補問缺少的資訊。每次只問一題，共 1–3 題，確認診斷後才生成任務。",
         "close": "關閉",
         "diagnosing": "NOVA 正在診斷公司狀況…",
         "questionCount": "聚焦問題 {count} / 3",

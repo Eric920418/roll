@@ -165,6 +165,10 @@ export async function diagnoseActionPlan(input: {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   answers: Array<{ question: string; answer: string }>;
 }): Promise<{ status: "needs_input"; question: string } | { status: "ready"; diagnosis: Diagnosis }> {
+  // Confirm the member's current priority before AI can decide whether more facts are needed.
+  if (!input.answers.length) return { status: "needs_input", question: input.locale === "zh-tw"
+    ? "請確認：你現在最想優先解決的瓶頸是什麼？"
+    : "What is the most important bottleneck you want to address right now?" };
   const client = new Anthropic();
   const finalRound = input.answers.length >= 3;
   const messages: Anthropic.MessageParam[] = [{
@@ -188,7 +192,7 @@ export async function diagnoseActionPlan(input: {
         "Read every prior question and answer. Ask about a different missing fact, never repeat or rephrase an answered question. If no new material fact is needed, return ready.",
         finalRound
           ? "This is the third answer: you MUST return ready, state reasonable assumptions, and lower confidence where evidence is weak."
-          : "You may return ready immediately when evidence is sufficient. Otherwise ask only one question.",
+          : "The member has confirmed their current priority. Return ready if evidence is sufficient; otherwise ask one different missing fact.",
         "No leads always maps to Sales/no_leads (displayed as Lead generation), never Low conversion.",
         repair,
       ].join("\n"),

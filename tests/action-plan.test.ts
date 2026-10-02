@@ -10,6 +10,7 @@ import { priorityScore, priorityTier, rankActions, taskReference, wouldCreateCyc
 import {
   actionInputSchema,
   diagnosisSchema,
+  generateBodySchema,
   appendGeneratedActions,
   generatedActionSchema,
   generatedPlanSchema,
@@ -398,6 +399,27 @@ const readyDiagnosis = {
 
 const toolReply = (name: string, input: unknown) => ({
   content: [{ type: "tool_use", name, input }], stop_reason: "tool_use", usage: { output_tokens: 100 },
+});
+
+test("已有充分 Profile 與對話仍先確認當前瓶頸，不由 AI 跳過首題", async () => {
+  let calls = 0;
+  const ai = loadAi(async () => { calls++; return toolReply("submit_action_plan_diagnosis", readyDiagnosis); });
+  for (const locale of ["en", "zh-tw"] as const) {
+    const result = await ai.diagnoseActionPlan({ locale, profile: { companyStage: "MVP", primaryNeed: "paying-customers" } as Parameters<typeof ai.diagnoseActionPlan>[0]["profile"], quiz: null, messages: [{ role: "user", content: "We have an MVP but no paying customers." }], answers: [] });
+    assert.equal(result.status, "needs_input");
+    if (result.status === "needs_input") assert.match(result.question, locale === "en" ? /bottleneck/ : /瓶頸/);
+  }
+  assert.equal(calls, 0);
+});
+
+test("Action Plan 生成 API 必須有至少一份回答，仍允許回答後完成診斷", async () => {
+  const body = { locale: "en", messages: [], diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" }, requestId: "fa2b2e98-8876-4f9d-a53b-c18f9abec742", candidateCount: 5 };
+  assert.equal(generateBodySchema.safeParse({ ...body, answers: [] }).success, false);
+  assert.equal(generateBodySchema.safeParse(body).success, false);
+  const answers = [{ question: "Current bottleneck?", answer: "No paying customers" }];
+  assert.equal(generateBodySchema.safeParse({ ...body, answers }).success, true);
+  const ai = loadAi(async () => toolReply("submit_action_plan_diagnosis", readyDiagnosis));
+  assert.equal((await ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers })).status, "ready");
 });
 
 test("診斷將 Q&A 作為對話、拒絕重問並修復，分類由代碼推導", async () => {
