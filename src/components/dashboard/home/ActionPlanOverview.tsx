@@ -17,6 +17,7 @@ type Props = {
   isPaying: boolean;
   agendaHref: string;
   billingHref: string;
+  nextFirst?: boolean;
 };
 
 export default async function ActionPlanOverview({
@@ -25,6 +26,7 @@ export default async function ActionPlanOverview({
   isPaying,
   agendaHref,
   billingHref,
+  nextFirst = false,
 }: Props) {
   const t = await getTranslations({
     locale,
@@ -39,7 +41,7 @@ export default async function ActionPlanOverview({
 
   return (
     <div id="action-plan-summary" className="flex scroll-mt-24 flex-col gap-6">
-      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+      <div className={`grid min-w-0 gap-6 lg:grid-cols-2 ${nextFirst ? "order-2" : ""}`}>
         <section aria-labelledby="company-status-heading" className="min-w-0 rounded-2xl border border-dark/10 bg-white p-5">
           <h2
             id="company-status-heading"
@@ -142,7 +144,7 @@ export default async function ActionPlanOverview({
         </section>
       </div>
 
-      <section id="next-three-moves" tabIndex={-1} aria-labelledby="next-moves-heading" className="scroll-mt-6 rounded-2xl border border-primary/20 bg-primary/[0.025] p-5 sm:p-6">
+      <section id="next-three-moves" tabIndex={-1} aria-labelledby="next-moves-heading" className={`scroll-mt-6 rounded-2xl border border-primary/20 bg-primary/[0.025] p-5 sm:p-6 ${nextFirst ? "order-1" : ""}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">

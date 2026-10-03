@@ -1,3 +1,5 @@
+import GettingStartedHome from "@/components/dashboard/GettingStartedHome";
+import { getGettingStarted } from "@/lib/getting-started/service";
 import PlanRefresh from "@/components/dashboard/PlanRefresh";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -61,6 +63,7 @@ export default async function DashboardOverview({ params }: Props) {
     location: e.location,
   }));
 
+  const guide = await getGettingStarted(account.id);
   const firstName = account.firstName?.trim();
 
   return (
@@ -72,33 +75,16 @@ export default async function DashboardOverview({ params }: Props) {
       </h1>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-dark/60">{t("home.subtitle")}</p>
-        <a href="#next-three-moves" className="inline-flex min-h-11 items-center rounded-xl bg-dark px-4 py-2 text-sm font-bold text-white hover:bg-dark/90">{t("home.actionSummary.next.title")} ↓</a>
+        <a href={guide.visible && !guide.hasPlan ? "#getting-started" : "#next-three-moves"} className="inline-flex min-h-11 items-center rounded-xl bg-dark px-4 py-2 text-sm font-bold text-white hover:bg-dark/90">{guide.visible && !guide.hasPlan ? t("gettingStarted.title") : t("home.actionSummary.next.title")} ↓</a>
       </div>
 
-      <div className="mt-7 flex flex-col gap-6">
-        <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-2">
-          <InvestorHubCard
-            name={([account.firstName, account.lastName].filter(Boolean).join(" ") || account.email).slice(0, 200)}
-            email={account.email}
-            message={HUB_WAITLIST_MESSAGE}
-            joined={Boolean(waitlistEntry)}
-          />
-          <CopilotPanel canUse={isPaying} />
-        </div>
-
-        <ActionPlanOverview
-          locale={l}
-          plan={visibleActionPlan}
-          isPaying={isPaying}
-          agendaHref={agendaHref}
-          billingHref={billingHref}
-        />
-
-        <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-2">
-          <UpcomingEventsRail locale={l} events={eventViews} />
-          <TutorialVideoCard locale={l} video={video} />
-        </div>
-      </div>
+      <GettingStartedHome initial={guide}
+        investor={<InvestorHubCard name={([account.firstName, account.lastName].filter(Boolean).join(" ") || account.email).slice(0, 200)} email={account.email} message={HUB_WAITLIST_MESSAGE} joined={Boolean(waitlistEntry)} />}
+        copilot={<CopilotPanel canUse={isPaying} />}
+        overview={<ActionPlanOverview locale={l} plan={visibleActionPlan} isPaying={isPaying} agendaHref={agendaHref} billingHref={billingHref} nextFirst={guide.visible && guide.hasPlan} />}
+        events={<UpcomingEventsRail locale={l} events={eventViews} />}
+        podcast={<TutorialVideoCard locale={l} video={video} />}
+      />
     </div>
   );
 }

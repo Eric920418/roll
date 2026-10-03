@@ -1,3 +1,4 @@
+import GettingStartedHint from "@/components/dashboard/GettingStartedHint";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import IcpPanel from "@/components/dashboard/IcpPanel";
@@ -24,6 +25,7 @@ export default async function CompanyProfilePage({ params }: Props) {
       <div><h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark">{t("profile.title")}</h1><p className="mt-2 text-sm text-dark/60">{t("profile.subtitle")}</p></div>
       <Link href={pathForLocale("/dashboard/account#profile", l)} className="rounded-xl border border-dark/15 px-5 py-3 text-sm font-semibold text-dark hover:bg-dark/[0.03]">{t("profile.edit")}</Link>
     </div>
+    <GettingStartedHint mode="profile" />
     <div className="mt-7 grid items-start gap-5 lg:grid-cols-2">
       <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6">
         <h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("icp.company")}</h2>

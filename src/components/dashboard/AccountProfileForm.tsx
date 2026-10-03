@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useDashboardUser } from "./DashboardUserProvider";
+import { notifyPlanChanged } from "./PlanRefresh";
+import { missingGuideFields } from "@/lib/getting-started/state";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
@@ -74,11 +77,15 @@ function ChipGroup({
 }
 
 export default function AccountProfileForm({
-  initial,
+  initial, guided = false, canGenerate = false,
 }: {
-  initial: ProfileInitial;
+  initial: ProfileInitial; guided?: boolean; canGenerate?: boolean;
 }) {
   const t = useTranslations("Dashboard.account");
+  const tGuide = useTranslations("Dashboard.gettingStarted");
+  const userId = useDashboardUser();
+  const formRef = useRef<HTMLFormElement>(null);
+  const savingRef = useRef(false);
   const tIcp = useTranslations("Dashboard.icp");
   const locale = useLocale() as Locale;
   const tOpt = useTranslations("Auth.options");
@@ -102,6 +109,13 @@ export default function AccountProfileForm({
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!guided) return;
+    const field = missingGuideFields(initial)[0];
+    const target = formRef.current?.querySelector<HTMLElement>(`[name="${field || "companyName"}"]`);
+    target?.focus(); target?.scrollIntoView({ block: "center" });
+  }, [guided, initial]);
+
   const toggle =
     (set: React.Dispatch<React.SetStateAction<string[]>>) => (slug: string) =>
       set((prev) =>
@@ -110,6 +124,7 @@ export default function AccountProfileForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (savingRef.current) return; savingRef.current = true;
     setError("");
     setSaved(false);
     setLoading(true);
@@ -118,7 +133,7 @@ export default function AccountProfileForm({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          data: {
+          data: guided ? { companyName, oneLinePitch, companyStage, primaryNeed } : {
             companyName,
             industry,
             companySize,
@@ -143,13 +158,28 @@ export default function AccountProfileForm({
         );
       }
       setSaved(true);
+      notifyPlanChanged(userId || undefined);
       router.refresh(); // 讓 server component（側欄/總覽）重新讀取最新資料
     } catch (err) {
       setError(err instanceof Error ? err.message : tErr("generic"));
     } finally {
-      setLoading(false);
+      savingRef.current = false; setLoading(false);
     }
   }
+
+  if (guided) return <form ref={formRef} id="profile" onSubmit={handleSubmit} className="mt-7 space-y-5 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7">
+    <div><p className="text-xs font-bold text-sky-800">{tGuide("step", { number: 1 })}</p><h2 className="mt-2 text-2xl font-bold">{tGuide("step1Title")}</h2><p className="mt-2 text-sm text-dark/65">{tGuide("profileHintBody")}</p></div>
+    <label className="block"><span className={labelClass}>{t("companyName")}</span><input name="companyName" value={companyName} onChange={e => { setCompanyName(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`} /></label>
+    <label className="block"><span className={labelClass}>{tIcp("pitch")}</span><input name="oneLinePitch" maxLength={300} value={oneLinePitch} onChange={e => { setOneLinePitch(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`} /></label>
+    <div className="grid gap-5 sm:grid-cols-2">
+      <label><span className={labelClass}>{tIcp("companyStage")}</span><select name="companyStage" value={companyStage} onChange={e => { setCompanyStage(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`}><option value="">{t("selectPlaceholder")}</option>{COMPANY_STAGES.map(stage => <option key={stage} value={stage}>{tIcp(`stages.${stage}`)}</option>)}</select></label>
+      <label><span className={labelClass}>{tIcp("primaryNeed")}</span><select name="primaryNeed" value={primaryNeed} onChange={e => { setPrimaryNeed(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`}><option value="">{t("selectPlaceholder")}</option>{PRIMARY_NEEDS.map(need => <option key={need} value={need}>{tIcp(`needs.${need}`)}</option>)}</select></label>
+    </div>
+    {error && <p role="alert" className="whitespace-pre-wrap rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+    {saved && <p role="status" className="text-sm text-green-800">{tGuide("profileSaved")}</p>}
+    <div className="flex flex-wrap items-center gap-4"><button type="submit" disabled={loading} className="min-h-11 rounded-xl bg-dark px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? t("saving") : t("save")}</button>{saved && <Link className="inline-flex min-h-11 items-center text-sm font-bold underline" href={pathForLocale(canGenerate ? "/dashboard/agenda?guide=build" : "/dashboard/account#plan", locale)}>{tGuide(canGenerate ? "buildPlan" : "viewPlanOptions")} →</Link>}</div>
+    <Link className="inline-flex min-h-11 items-center text-sm underline" href={pathForLocale("/dashboard/account#profile", locale)}>{tGuide("otherDetails")}</Link>
+  </form>;
 
   return (
     <form id="profile" onSubmit={handleSubmit} className="mt-7 flex flex-col gap-8">

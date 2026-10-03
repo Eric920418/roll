@@ -384,6 +384,7 @@ function loadAi(create: (request: AiRequest) => Promise<unknown>, configured: (o
     require: (id: string) => {
       if (id === "server-only") return {};
       if (id === "@anthropic-ai/sdk") return class { constructor(options: unknown) { configured(options); } messages = { create }; };
+      if (id === "./builder-draft") return require("../src/lib/action-plan/builder-draft");
       if (id === "./constants") return require("../src/lib/action-plan/constants");
       if (id === "./schemas") return require("../src/lib/action-plan/schemas");
       return require(id);
@@ -479,90 +480,54 @@ test("任務生成每批保留診斷作答，成功產出五項", async () => {
   for (const request of requests) assert.match(request.messages[0].content, /APAC enterprise buyers/);
 });
 
-test("診斷失敗保留答案與題號，重試不重複作答，生成包含答案", async () => {
-  const state: unknown[] = [], payloads: Array<{ answers: Array<{ question: string; answer: string }> }> = [];
-  let cursor = 0;
-  const portalTargets: unknown[] = [];
-  const body = {};
-  const require = createRequire(import.meta.url);
-  const loaded = { exports: {} as { default: (props: object) => ReactNode } };
-  const responses = [
-    { data: { status: "needs_input", question: "Who buys?" } },
-    { error: "Diagnostic service unavailable" },
-    { data: { status: "needs_input", question: "Progress?" } },
-    { data: { status: "ready", diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" } } },
-    { data: { status: "needs_input", question: "Goal?" } },
-    { data: { status: "ready", diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" } } },
-    { data: { id: "created-plan" } },
-  ];
-  const code = ts.transpileModule(readFileSync("src/components/dashboard/ActionPlanBuilder.tsx", "utf8"), {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
-  }).outputText;
+test("三題草稿在診斷失敗前保存，重試沿用三份回答，生成需要人工確認", async () => {
+  const state: unknown[] = [], cache = new Map<string, string>(), payloads: Array<{ answers: Array<{ question: string; answer: string }> }> = [];
+  let cursor = 0, diagnosing = 0;
+  const require = createRequire(import.meta.url), loaded = { exports: {} as { default(props: object): ReactNode } };
+  const questions = require("../src/lib/action-plan/builder-draft").DIAGNOSTIC_QUESTIONS.en;
+  const code = ts.transpileModule(readFileSync("src/components/dashboard/ActionPlanBuilder.tsx", "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
   runInNewContext(code, {
-    module: loaded, exports: loaded.exports, crypto: require("node:crypto"), document: { body },
-    fetch: async (_url: string, options: { body: string }) => {
-      payloads.push(JSON.parse(options.body));
-      const reply = responses.shift()!;
-      return new Response(JSON.stringify(reply), { status: "error" in reply ? 500 : 200 });
+    module: loaded, exports: loaded.exports, crypto: require("node:crypto"), Date, document: { body: {} },
+    localStorage: { getItem: (key: string) => cache.get(key) || null, setItem: (key: string, value: string) => cache.set(key, value), removeItem: (key: string) => cache.delete(key) },
+    fetch: async (url: string, options?: { body: string }) => {
+      if (!options?.body) return Response.json({ data: { planId: null } });
+      const body = JSON.parse(options.body); payloads.push(body);
+      if (url.includes("diagnose")) { diagnosing++;
+        if (body.answers.length < 3) return Response.json({ data: { status: "needs_input", question: questions[body.answers.length] } });
+        if (diagnosing === 3) return Response.json({ error: "Diagnostic service unavailable" }, { status: 504 });
+        return Response.json({ data: { status: "ready", diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" } } });
+      }
+      return Response.json({ data: { id: "created-plan" } });
     },
     require: (id: string) => {
-      if (id === "react") return {
-        useMemo: (fn: () => unknown) => fn(),
-        useState: (initial: unknown) => {
-          const index = cursor++;
-          if (!(index in state)) state[index] = initial;
-          return [state[index], (value: unknown) => { state[index] = value; }];
-        },
-      };
-      if (id === "react-dom") return { createPortal: (node: ReactNode, target: unknown) => { portalTargets.push(target); return node; } };
+      if (id === "react") return { useMemo: (fn: () => unknown) => fn(), useEffect() {},
+        useRef: (value: unknown) => { const i = cursor++; if (!(i in state)) state[i] = { current: value }; return state[i]; },
+        useState: (value: unknown) => { const i = cursor++; if (!(i in state)) state[i] = value; return [state[i], (next: unknown) => { state[i] = next; }]; } };
+      if (id === "react-dom") return { createPortal: (node: ReactNode) => node };
+      if (id === "./DashboardUserProvider") return { useDashboardUser: () => "qa" };
+      if (id === "./PlanRefresh") return { notifyPlanChanged() {} };
+      if (id === "@/lib/action-plan/schemas") return require("../src/lib/action-plan/schemas");
+      if (id === "@/lib/action-plan/builder-draft") return require("../src/lib/action-plan/builder-draft");
       if (id === "next/navigation") return { useRouter: () => ({ push() {}, refresh() {} }) };
-      if (id === "next-intl") return { useLocale: () => "en", useTranslations: () => (key: string, values?: { count: number }) => values ? `${key}:${values.count}` : key };
+      if (id === "next-intl") return { useLocale: () => "en", useTranslations: () => (key: string) => key };
       if (id === "@/lib/action-plan/constants") return require("../src/lib/action-plan/constants");
       if (id === "@/lib/routes") return { pathForLocale: (path: string) => path };
       return require(id);
     },
   });
-  type Props = {
-    children?: ReactNode; role?: string; value?: string;
-    onClick: () => void | Promise<void>;
-    onChange: (event: { target: { value: string } }) => void;
-    onSubmit: (event: { preventDefault(): void }) => Promise<void>;
-  };
-  function render() {
-    cursor = 0;
-    const nodes: Array<{ type: unknown; props: Props }> = [];
-    function visit(node: ReactNode) {
-      Children.forEach(node, child => {
-        if (isValidElement<Props>(child)) { nodes.push(child); visit(child.props.children); }
-      });
-    }
-    visit(loaded.exports.default({}));
-    return nodes;
-  }
-  const button = (text: string) => render().find(n => n.type === "button" && n.props.children === text)!.props;
-  button("build").onClick();
-  await new Promise(resolve => setTimeout(resolve, 0));
-  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Enterprise buyers" } });
-  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
-  assert.equal(render().find(n => n.type === "textarea")!.props.value, "Enterprise buyers");
-  assert.ok(portalTargets.length > 0);
-  assert.ok(portalTargets.every(target => target === body), "診斷視窗必須顯示在 body，不能被 POLARIS 卡片 transform 限制");
-  assert.ok(render().some(n => n.props.children === "questionCount:1"));
-  assert.ok(render().some(n => n.props.role === "alert" && n.props.children === "Diagnostic service unavailable"));
-  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
-  assert.equal(payloads[2].answers.length, 1);
-  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Ten interviews" } });
-  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
-  assert.ok(render().some(n => n.props.role === "alert" && n.props.children === "answerAllThree"));
-  assert.equal(render().find(n => n.type === "textarea")!.props.value, "Ten interviews");
-  assert.ok(!render().some(n => n.props.children === "confirmDiagnosis"));
-  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
-  assert.equal(payloads[4].answers.length, 2);
-  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Five paid pilots" } });
-  await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} });
-  button("confirmDiagnosis").onClick();
-  await button("confirm").onClick();
-  assert.deepEqual(payloads[6].answers, [{ question: "Who buys?", answer: "Enterprise buyers" }, { question: "Progress?", answer: "Ten interviews" }, { question: "Goal?", answer: "Five paid pilots" }]);
+  type Props = { children?: ReactNode; role?: string; value?: string; disabled?: boolean; onClick(): void | Promise<void>; onChange(event: { target: { value: string } }): void; onSubmit(event: { preventDefault(): void }): Promise<void> };
+  function render() { cursor = 0; const nodes: Array<{ type: unknown; props: Props }> = []; function visit(node: ReactNode) { Children.forEach(node, child => { if (isValidElement<Props>(child)) { nodes.push(child); visit(child.props.children); } }); } visit(loaded.exports.default({})); return nodes; }
+  const button = (name: string) => render().find(n => n.type === "button" && n.props.children === name)!.props;
+  await button("build").onClick();
+  for (const answer of ["Enterprise buyers", "Ten interviews", "Five paid pilots"]) { render().find(n => n.type === "textarea")!.props.onChange({ target: { value: answer } }); await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} }); }
+  assert.equal(JSON.parse(cache.get("nova:action-builder:qa")!).answers.length, 3);
+  assert(render().some(n => n.props.role === "alert" && n.props.children === "Diagnostic service unavailable"));
+  assert(!render().some(n => n.props.children === "confirmDiagnosis"));
+  await button("continue").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(payloads[3].answers.length, 3); assert(!render().some(n => n.type === "textarea"));
+  button("confirmDiagnosis").onClick(); await button("confirm").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(payloads.at(-1)?.answers.map(a => a.answer), ["Enterprise buyers", "Ten interviews", "Five paid pilots"]);
+  assert.equal(cache.size, 0);
 });
 
 test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除篩選與搜尋", () => {

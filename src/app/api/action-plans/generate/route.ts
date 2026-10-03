@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { type NextRequest } from "next/server";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 import { getUserSession } from "@/lib/auth/guard";
@@ -59,4 +60,16 @@ export async function POST(req: NextRequest) {
     }
     return failFromError(error);
   }
+}
+
+// Read-only recovery of an owned request; does not invoke AI or consume allowance.
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getUserSession(); if (!session) return unauthorized();
+    if (!await requirePlan("pro")) return fail("此功能需 Pro 以上方案 / Active Pro plan required", 403);
+    const parsed = z.string().uuid().safeParse(req.nextUrl.searchParams.get("requestId"));
+    if (!parsed.success) return fail("請求 ID 無效 / Invalid request ID", 400);
+    const result = await getPlanByRequestId(session.uid, parsed.data);
+    return ok({ planId: result?.id || null });
+  } catch (error) { return failFromError(error); }
 }

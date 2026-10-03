@@ -1,3 +1,4 @@
+import GettingStartedHint from "@/components/dashboard/GettingStartedHint";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -8,9 +9,9 @@ import PlanPaywall from "@/components/dashboard/PlanPaywall";
 import type { Locale } from "@/i18n/routing";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ guide?: string }> };
 
-export default async function AgendaPage({ params }: Props) {
+export default async function AgendaPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;
@@ -31,6 +32,7 @@ export default async function AgendaPage({ params }: Props) {
     );
   }
 
+  const guided = (await searchParams).guide === "build";
   const needs = account.profile?.needs ?? [];
   const actionPlan = await getActiveActionPlan(account.id);
   const milestoneGroups = buildMilestoneBoard(needs, l, account.checklistState, account.milestoneConfig);
@@ -42,7 +44,8 @@ export default async function AgendaPage({ params }: Props) {
       </h1>
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
-      <AgendaBoard userId={account.id} canShare={planAtLeast(getEffectivePlan(account), "business")}
+      <GettingStartedHint mode="next" />
+      <AgendaBoard guided={guided} userId={account.id} canShare={planAtLeast(getEffectivePlan(account), "business")}
         actionPlan={actionPlan}
         milestoneGroups={milestoneGroups}
       />

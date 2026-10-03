@@ -154,6 +154,10 @@ model User {
   completed      Boolean   @default(false) // 全流程（含測驗）完成
   quizCompleted  Boolean   @default(false)
 
+  gettingStartedVersion     Int?
+  gettingStartedDismissedAt DateTime?
+  gettingStartedCompletedAt DateTime?
+
   // --- 計費 / 訂閱（全部 nullable 或有 default，純疊加；權威狀態由 webhook 對帳，此處為即時快取）---
   plan                 String    @default("free") // "free" | "pro" | "business" | "enterprise"
   subscriptionStatus   String? // PayPal 訂閱狀態快取：ACTIVE/PAST_DUE/SUSPENDED/CANCELLED/EXPIRED

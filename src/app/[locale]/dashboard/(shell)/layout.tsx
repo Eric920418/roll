@@ -1,3 +1,4 @@
+import DashboardUserProvider from "@/components/dashboard/DashboardUserProvider";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -30,7 +31,7 @@ export default async function DashboardLayout({ children, params }: Props) {
     account.email;
 
   return (
-    <div
+    <DashboardUserProvider userId={account.id}><div
       className="nova-theme flex min-h-screen flex-col bg-light md:flex-row"
       data-brand="nova"
     >
@@ -42,6 +43,6 @@ export default async function DashboardLayout({ children, params }: Props) {
       <main className="nova-page-enter flex-1 px-5 py-8 md:px-10 md:py-12">
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
-    </div>
+    </div></DashboardUserProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { completeGettingStarted } from "@/lib/getting-started/service";
 import { Prisma } from "@prisma/client";
 import { type NextRequest } from "next/server";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
@@ -70,6 +71,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         if (completed.length) throw new PlanWriteError(`請先取消後續任務的完成狀態：${completed.join("、")}`);
       }
       await tx.actionItem.update({ where: { id }, data: { done: parsed.data.done, completedAt: parsed.data.done ? (current.done ? undefined : new Date()) : null } });
+      if (!current.done && parsed.data.done) await completeGettingStarted(tx, session.uid);
       return;
     }
 
@@ -120,6 +122,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
           ...(action.done == null ? {} : { done: action.done, completedAt: action.done ? (current.done ? undefined : new Date()) : null }),
         },
       });
+      if (!current.done && action.done) await completeGettingStarted(tx, session.uid);
       await tx.actionDependency.deleteMany({ where: { actionId: id } });
       if (action.dependencyActionIds.length) {
         await tx.actionDependency.createMany({

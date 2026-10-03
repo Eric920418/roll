@@ -11,7 +11,7 @@ import ActionPlanBuilder from "./ActionPlanBuilder";
 
 type Filter = "ready" | "blocked" | "done" | "all";
 
-export default function ActionPlanManager({ initialPlan, onChanged }: { initialPlan: ActionPlanDto | null; onChanged?: (plan: ActionPlanDto | null) => void }) {
+export default function ActionPlanManager({ initialPlan, onChanged, guided = false }: { guided?: boolean; initialPlan: ActionPlanDto | null; onChanged?: (plan: ActionPlanDto | null) => void }) {
   const t = useTranslations("Dashboard.actionPlan");
   const router = useRouter();
   const [plan, setPlan] = useState(initialPlan);
@@ -23,6 +23,12 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
 
   useEffect(() => setPlan(prev => prev?.id === initialPlan?.id && (prev?.revision || 0) > (initialPlan?.revision || 0) ? prev : initialPlan), [initialPlan]);
   useEffect(() => { setFilter("all"); setSearch(""); }, [initialPlan?.id]);
+
+  useEffect(() => {
+    if (!window.location.hash.startsWith("#action-")) return;
+    const task = document.getElementById(window.location.hash.slice(1));
+    if (task) { task.querySelector<HTMLDetailsElement>("details")?.setAttribute("open", ""); task.focus(); }
+  }, [plan?.id]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -81,7 +87,7 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
             <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("empty.title")}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-dark/60">{t("empty.body")}</p>
           </div>
-          <ActionPlanBuilder />
+          <ActionPlanBuilder autoOpen={guided} />
         </div>
       </section>
     );
@@ -166,7 +172,7 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
         {error && <div role="alert" className="mt-4 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         <div className="mt-5 flex flex-col gap-3">
-          {filtered.map(action => <div id={`action-${action.id}`} key={action.id} className="scroll-mt-24"><ActionTaskRow action={action} revision={plan.revision} busy={Boolean(pending)} onToggle={() => void mutate(action.id, { done: !action.done })} onMetric={metric => mutate(action.id, metric)} onEdit={() => setEditing(action)} onDelete={() => void remove(action)} /></div>)}
+          {filtered.map(action => <div id={`action-${action.id}`} tabIndex={-1} key={action.id} className="scroll-mt-24"><ActionTaskRow action={action} revision={plan.revision} busy={Boolean(pending)} onToggle={() => void mutate(action.id, { done: !action.done })} onMetric={metric => mutate(action.id, metric)} onEdit={() => setEditing(action)} onDelete={() => void remove(action)} /></div>)}
           {filtered.length === 0 && <p className="rounded-2xl border border-dashed border-dark/15 px-5 py-8 text-center text-sm text-dark/45">{t("noResults")}</p>}
         </div>
       </section>

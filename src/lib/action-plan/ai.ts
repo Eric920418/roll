@@ -1,3 +1,4 @@
+import { DIAGNOSTIC_QUESTIONS } from "./builder-draft";
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
@@ -166,15 +167,7 @@ export async function diagnoseActionPlan(input: {
   answers: Array<{ question: string; answer: string }>;
 }): Promise<{ status: "needs_input"; question: string } | { status: "ready"; diagnosis: Diagnosis }> {
   // The system owns all three questions; AI only diagnoses after the final answer.
-  const questions = input.locale === "zh-tw" ? [
-    "請確認：你現在最想優先解決的瓶頸是什麼？",
-    "目前有哪些實際進展或已嘗試的方法？請描述產品狀態、客戶回饋或實際結果；還不知道也可以直接說。",
-    "接下來最想達成的具體成果是什麼？請說明希望何時達成，以及可投入的時間或資源。",
-  ] : [
-    "What is the most important bottleneck you want to address right now?",
-    "What progress have you made or approaches have you tried? Describe your product status, customer feedback, or actual results. It is OK not to know yet.",
-    "What specific outcome do you want to achieve next? Include your target timeframe and the time or resources you can commit.",
-  ];
+  const questions = DIAGNOSTIC_QUESTIONS[input.locale];
   if (input.answers.length < questions.length) return { status: "needs_input", question: questions[input.answers.length] };
   const client = new Anthropic({ timeout: 45_000, maxRetries: 0 });
   const messages: Anthropic.MessageParam[] = [{
