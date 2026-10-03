@@ -75,7 +75,7 @@ function serviceHarness() {
   const service = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts", {
     "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/rate-limit": { DAY_MS: 86400000 },
     "@/lib/roadmap/schema": { milestoneViews: () => [] },
-    "./ranking": { rankActions: () => [], wouldCreateCycle: () => false }, "./time": { legacyHoursForMinutes: () => ({ minHours: 1, maxHours: 2 }) },
+    "./ranking": { rankActions: () => [], humanizeActionText: (s: string) => s, taskReference: () => "", wouldCreateCycle: () => false }, "./time": { legacyHoursForMinutes: () => ({ minHours: 1, maxHours: 2 }) },
   });
   // Persistence uses generated fields only; schema/AI validation is tested separately.
   const task = { clientKey: "task_1", dependsOnKeys: [], actionTime: {}, stageFit: {}, bottleneckFit: {}, outcomeTime: {} };

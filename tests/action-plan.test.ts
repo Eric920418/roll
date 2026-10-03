@@ -6,7 +6,7 @@ import ts from "typescript";
 import { Children, isValidElement, type ReactNode } from "react";
 import test from "node:test";
 import { bottleneckLabel, urgencyWeight } from "../src/lib/action-plan/constants";
-import { priorityScore, priorityTier, rankActions, taskReference, wouldCreateCycle, type RankableAction } from "../src/lib/action-plan/ranking";
+import { priorityScore, priorityTier, rankActions, taskReference, wouldCreateCycle, type RankableAction, type ActionPlanActionDto } from "../src/lib/action-plan/ranking";
 import {
   actionInputSchema,
   diagnosisSchema,
@@ -122,7 +122,7 @@ test("任一前置 Action 未完成時排除 Top 3；完成後立即進入排名
   dependency.done = true;
   ranked = rankActions([blocked, ready]);
   assert.equal(ranked.find((item) => item.id === "blocked")?.dependency.blocked, false);
-  assert.equal(ranked.find((item) => item.id === "blocked")?.rank, 1);
+  assert.equal(ranked.find((item) => item.id === "blocked")?.rank, 2);
 });
 
 test("舊任務若宣稱有依賴卻沒有連結 ID，兩頁都視為 Blocked", () => {
@@ -149,14 +149,14 @@ test("收款 → 付費方案 → 試點依完成狀態逐一解鎖，不因高�
   assert.deepEqual(dashboardPlan(rankActions(rows)).nextMoves.map((item) => item.clientKey), ["task_3"]);
 });
 
-test("完成項目排除排名；同分依 urgency、impact、較短時間、建立時間排序", () => {
+test("完成項目排除 Next 3；執行順序不使用優先分數", () => {
   const rows = rankActions([
     action({ id: "done", done: true, impact: "Critical" }),
     action({ id: "older", impact: "High", urgencyType: "urgent", actionTimeMaxMinutes: 60, createdAt: "2026-01-01" }),
     action({ id: "newer", impact: "High", urgencyType: "urgent", actionTimeMaxMinutes: 60, createdAt: "2026-01-02" }),
     action({ id: "slower", impact: "High", urgencyType: "urgent", actionTimeMaxMinutes: 90 }),
   ]);
-  assert.deepEqual(rows.filter((row) => row.rank != null).map((row) => row.id), ["older", "newer", "slower"]);
+  assert.deepEqual(rows.filter((row) => row.rank != null).map((row) => row.id), ["older", "slower", "newer"]);
   assert.equal(rows.find((row) => row.id === "done")?.rank, null);
 });
 
@@ -589,6 +589,7 @@ test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除�
       if (id === "next/navigation") return { useRouter: () => ({ refresh() {} }) };
       if (id === "next-intl") return { useTranslations: () => (key: string, values?: object) => `${key}${values ? JSON.stringify(values) : ""}` };
       if (id.startsWith("@/lib/action-plan/")) return require(`../src/lib/action-plan/${id.split("/").at(-1)}`);
+      if (id === "./ActionTaskRow") return { default: ({ action }: { action: ActionPlanActionDto }) => require("react/jsx-runtime").jsx("input", { type: "checkbox", disabled: !action.done && action.dependency.blocked }) };
       if (id === "./ActionPlanBuilder") return { default: () => null };
       return require(id);
     },
@@ -597,11 +598,11 @@ test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除�
   function render() {
     cursor = 0;
     const nodes: Array<{ type: unknown; props: Props }> = [];
-    function visit(node: ReactNode) { Children.forEach(node, child => { if (isValidElement<Props>(child)) { nodes.push(child); visit(child.props.children); } }); }
+    function visit(node: ReactNode) { Children.forEach(node, child => { if (isValidElement<Props>(child)) { nodes.push(child); if (typeof child.type === "function") visit((child.type as (props: Props) => ReactNode)(child.props)); else visit(child.props.children); } }); }
     visit(loaded.exports.default({ initialPlan: plan }));
     return nodes;
   }
-  const list = () => render().filter(n => n.type === "details" && n.props.id?.startsWith("action-"));
+  const list = () => render().filter(n => n.type === "div" && n.props.id?.startsWith("action-"));
   assert.equal(list().length, 5);
   assert.equal(plan.nextMoves.length, 1);
   assert.equal(render().filter(n => n.props.disabled).length, 4, "受阻擋任務仍禁止完成");
@@ -609,11 +610,11 @@ test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除�
   assert.ok(!render().some(n => n.props.children === "next.unavailable"));
   render().find(n => n.type === "button" && n.props.children === "filter.ready")!.props.onClick!();
   assert.equal(list().length, 1);
-  render().find(n => n.type === "input")!.props.onChange!({ target: { value: "No matching task" } });
+  render().find(n => n.type === "input" && typeof n.props.value === "string")!.props.onChange!({ target: { value: "No matching task" } });
   assert.equal(list().length, 0);
   render().find(n => n.props.href === "#action-plan-list")!.props.onClick!();
   assert.equal(list().length, 5);
-  assert.equal(render().find(n => n.type === "input")!.props.value, "");
+  assert.equal(render().find(n => n.type === "input" && typeof n.props.value === "string")!.props.value, "");
 });
 
 

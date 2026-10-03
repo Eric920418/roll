@@ -69,7 +69,7 @@ export const createKpiPointSchema = kpiPointSchema.extend({
 export const createPortalItemSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("kpi"), data: kpiSchema }),
   z.object({ kind: z.literal("milestone"), data: milestoneSchema }),
-  z.object({ kind: z.literal("update"), data: updateSchema }),
+  z.object({ kind: z.literal("update"), data: updateSchema, sourceCheckInId: z.string().min(1).optional(), sourceRevision: z.number().int().nonnegative().optional(), confirmed: z.boolean().optional() }),
 ]);
 
 export const inviteSchema = z.object({

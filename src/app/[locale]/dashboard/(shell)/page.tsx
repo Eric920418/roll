@@ -1,3 +1,4 @@
+import PlanRefresh from "@/components/dashboard/PlanRefresh";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
@@ -64,6 +65,7 @@ export default async function DashboardOverview({ params }: Props) {
 
   return (
     <div className="font-[family-name:var(--font-body)]">
+      <PlanRefresh userId={account.id} />
       <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
         {t("overview.title")}
         {firstName ? `, ${firstName}` : ""} 👋

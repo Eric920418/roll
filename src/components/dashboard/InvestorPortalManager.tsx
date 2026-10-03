@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { upload } from "@vercel/blob/client";
@@ -47,10 +47,12 @@ const shares = ["shareProfile", "shareStrategy", "shareActionPlan", "shareKpis",
 
 export default function InvestorPortalManager({
   locale,
+  weeklyDraft,
   initialPortal,
   canHideFields,
 }: {
   locale: Locale;
+  weeklyDraft?: { id: string; revision: number; title: string; body: string } | null;
   initialPortal: Portal;
   /** Enterprise 才能「修改」隱藏設定；已存在的隱藏對所有方案持續生效。 */
   canHideFields: boolean;
@@ -62,7 +64,9 @@ export default function InvestorPortalManager({
   const [inviteEmail, setInviteEmail] = useState("");
   const [newKpi, setNewKpi] = useState({ label: "", value: "", period: "", unit: "" });
   const [newMilestone, setNewMilestone] = useState({ title: "", status: "planned", targetDate: "", notes: "" });
-  const [newUpdate, setNewUpdate] = useState({ title: "", body: "" });
+  const [newUpdate, setNewUpdate] = useState({ title: weeklyDraft?.title || "", body: weeklyDraft?.body || "" });
+  const publishing = useRef(false);
+  const [weeklyPublished, setWeeklyPublished] = useState(false);
 
   async function jsonRequest(url: string, init?: RequestInit) {
     setError("");
@@ -100,21 +104,24 @@ export default function InvestorPortalManager({
   }
 
   async function create(kind: "kpi" | "milestone" | "update", data: object) {
+    if (publishing.current) return;
+    if (kind === "update" && weeklyDraft && !weeklyPublished && !window.confirm(locale === "zh-tw" ? "確認發布週報？有權限查看 Updates 的投資人將可看到這段內容。" : "Publish this weekly update? Investors with Updates access will be able to view this content.")) return;
+    publishing.current = true;
     setBusy(`create-${kind}`);
     try {
       await jsonRequest("/api/investor-portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, data }),
+        body: JSON.stringify({ kind, data, ...(kind === "update" && weeklyDraft && !weeklyPublished ? { sourceCheckInId: weeklyDraft.id, sourceRevision: weeklyDraft.revision, confirmed: true } : {}) }),
       });
       if (kind === "kpi") setNewKpi({ label: "", value: "", period: "", unit: "" });
       if (kind === "milestone") setNewMilestone({ title: "", status: "planned", targetDate: "", notes: "" });
-      if (kind === "update") setNewUpdate({ title: "", body: "" });
+      if (kind === "update") { setNewUpdate({ title: "", body: "" }); setWeeklyPublished(true); }
       await refresh();
     } catch (cause) {
       report(cause);
     } finally {
-      setBusy("");
+      publishing.current = false; setBusy("");
     }
   }
 
@@ -393,6 +400,7 @@ export default function InvestorPortalManager({
       </PortalItems>
 
       <PortalItems title={t("updates")}>
+        {weeklyDraft && !weeklyPublished && <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">{locale === "zh-tw" ? "已帶入私人週報草稿，尚未發布；按發布並確認後才建立投資人更新。" : "Private weekly draft loaded, not published. Publish and confirm to create an investor update."}</p>}
         <form className="grid gap-3 sm:grid-cols-[1fr_2fr_auto]" onSubmit={(event) => { event.preventDefault(); void create("update", newUpdate); }}>
           <input aria-label={t("titleField")} required value={newUpdate.title} onChange={(e) => setNewUpdate({ ...newUpdate, title: e.target.value })} placeholder={t("titleField")} className={inputClass} />
           <textarea aria-label={t("content")} required value={newUpdate.body} onChange={(e) => setNewUpdate({ ...newUpdate, body: e.target.value })} placeholder={t("content")} className={`${inputClass} min-h-24`} />

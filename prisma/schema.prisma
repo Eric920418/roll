@@ -209,6 +209,7 @@ model User {
 
   @@index([email])
   roadmapWorkspace RoadmapWorkspace?
+  weeklyCheckIns WeeklyCheckIn[]
 
 }
 
@@ -500,6 +501,7 @@ model ActionPlan {
   revision Int @default(0)
   milestones PlanMilestone[]
 
+  weeklyCheckIns WeeklyCheckIn[]
   actions   ActionItem[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -545,6 +547,11 @@ model ActionItem {
   outcomeTimeMinDays Int
   outcomeTimeMaxDays Int
 
+  executionOrder Int?
+  completedAt DateTime?
+  metricTarget Int?
+  metricUnit String?
+  metricCurrent Int?
   done                      Boolean  @default(false)
   source                    String   @default("nova")
   stageFitEditedByUser      Boolean  @default(false)
@@ -667,6 +674,7 @@ model InvestorMilestone {
 }
 
 model InvestorUpdate {
+  sourceCheckInId String? @unique
   id          String         @id @default(cuid())
   portalId    String
   portal      InvestorPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
@@ -851,4 +859,31 @@ model RoadmapWorkspace {
   lastRequestId String?
   lastError String?
   updatedAt DateTime @updatedAt
+}
+
+/// Private weekly facts and AI drafts; never part of public investor reads.
+model WeeklyCheckIn {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionPlanId String
+  actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+  weekStart DateTime @db.Date
+  finding String @default("")
+  blockers String @default("")
+  snapshot Json
+  summary String
+  recommendations Json?
+  investorDraft String?
+  basePlanRevision Int
+  revision Int @default(0)
+  pendingRequestId String?
+  pendingSince DateTime?
+  usageId String?
+  lastRequestId String?
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, actionPlanId, weekStart])
+  @@index([userId, weekStart])
 }

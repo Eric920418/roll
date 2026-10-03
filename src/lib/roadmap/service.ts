@@ -6,9 +6,11 @@ import type { Account } from "@/lib/auth/account";
 import { reserveAiUsage, completeAiUsage } from "@/lib/ai/allowance";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { getActiveActionPlan, serializePlan, lockActivePlan, actionRecord, PlanWriteError } from "@/lib/action-plan/service";
+import { structuredDraft } from "@/lib/check-ins/ai";
+import { correctionSchema, validateCorrection } from "./corrections";
 import { generateRoadmap } from "./ai";
 import { roadmapDraftSchema, dateSchema, today, goalDeadline, type RoadmapDraft, type roadmapPostSchema, type roadmapPatchSchema, type outcomePatchSchema } from "./schema";
-import type { z } from "zod";
+import { z } from "zod";
 
 export const LOCK_MS = 360_000;
 const asJson = (value: unknown) => value as Prisma.InputJsonValue;
@@ -26,7 +28,7 @@ export async function getRoadmap(userId: string) {
     prisma.actionPlan.findMany({ where: { userId, archivedAt: { not: null } }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, goal: true, createdAt: true, archivedAt: true } }),
   ]);
   const parsed = roadmapDraftSchema.safeParse(workspace?.draft);
-  return { revision: workspace?.revision || 0, input: workspace?.input || null, draft: parsed.success ? parsed.data : null, active, history: history.map(p => ({ ...p, createdAt: p.createdAt.toISOString(), archivedAt: p.archivedAt!.toISOString() })), pending: Boolean(workspace?.pendingSince && workspace.pendingRequestId && Date.now() - workspace.pendingSince.getTime() < LOCK_MS), error: workspace?.lastError || null, lastRequestId: workspace?.lastRequestId || null };
+  return { revision: workspace?.revision || 0, input: workspace?.input || null, draft: parsed.success ? parsed.data : null, correction: correctionSchema.safeParse(workspace?.draft).success ? correctionSchema.parse(workspace?.draft) : null, active, history: history.map(p => ({ ...p, createdAt: p.createdAt.toISOString(), archivedAt: p.archivedAt!.toISOString() })), pending: Boolean(workspace?.pendingSince && workspace.pendingRequestId && Date.now() - workspace.pendingSince.getTime() < LOCK_MS), error: workspace?.lastError || null, lastRequestId: workspace?.lastRequestId || null };
 }
 export type RoadmapView = Awaited<ReturnType<typeof getRoadmap>>;
 
@@ -40,6 +42,7 @@ async function ensureWorkspace(userId: string) {
   return workspace;
 }
 export async function runRoadmap(account: Account, input: z.infer<typeof roadmapPostSchema>) {
+  if (input.action === "review") return runCorrection(account, input);
   const userId = account.id, workspace = await ensureWorkspace(userId);
   if (workspace.lastRequestId === input.requestId) return getRoadmap(userId);
   if (workspace.pendingRequestId) throw new PlanWriteError("正在生成，請稍候再載入。 / Generation is in progress. Reload shortly.");
@@ -87,6 +90,7 @@ async function insertActions(tx: Prisma.TransactionClient, planId: string, miles
   if (edges.length) await tx.actionDependency.createMany({ data: edges });
 }
 export async function patchRoadmap(userId: string, input: z.infer<typeof roadmapPatchSchema>) {
+  if ("correction" in input) return patchCorrection(userId, input);
   await ensureWorkspace(userId);
   await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
@@ -135,6 +139,69 @@ export async function confirmMilestone(userId: string, id: string, input: z.infe
       if (stages.some(m => m.position < stage.position && !m.achievedAt) || !stage.actions.length || stage.actions.some(a => !a.done)) throw new PlanWriteError("請先完成前階段成果確認與本階段任務 / Confirm previous milestones and complete this stage's tasks first");
     } else if (stages.some(m => m.position > stage.position && (m.achievedAt || m.actions.some(a => a.done)))) throw new PlanWriteError("請先撤銷後續階段的完成紀錄 / Undo later stage completions first");
     await tx.planMilestone.update({ where: { id }, data: { achievedAt: input.achieved ? new Date() : null, outcomeNote: input.achieved ? input.outcomeNote : null } });
+  });
+  return getRoadmap(userId);
+}
+
+async function runCorrection(account: Account, input: Extract<z.infer<typeof roadmapPostSchema>, { action: "review" }>) {
+  const userId = account.id, active = await getActiveActionPlan(userId);
+  if (!active || active.id !== input.planId) throw new PlanWriteError("找不到本人計畫 / Plan not found", 404);
+  const workspace = await ensureWorkspace(userId);
+  if (workspace.lastRequestId === input.requestId) return getRoadmap(userId);
+  if (workspace.revision !== input.revision || workspace.pendingRequestId) throw conflict();
+  const current = active.roadmap?.milestones.find(m => !m.achievedAt);
+  if (!active || active.id !== input.planId || active.revision !== input.planRevision || !current || !active.actions.some(a => a.milestoneId === current.id && !a.done)) throw new PlanWriteError("請先建立當期未完成任務，或重新載入計畫 / Create current-stage unfinished tasks or reload the plan");
+  const claim = await prisma.roadmapWorkspace.updateMany({ where: { userId, revision: input.revision, pendingRequestId: null }, data: { input: asJson(input), basePlanId: active.id, basePlanRevision: active.revision, revision: { increment: 1 }, pendingRequestId: input.requestId, pendingSince: new Date(), lastError: null } });
+  if (!claim.count) throw conflict();
+  let usageId: string | null = null, success = false;
+  try {
+    if (!(await checkRateLimit(`roadmap:${userId}`, 10, DAY_MS, false)).ok) throw new PlanWriteError("已達每日規劃上限 / Daily roadmap limit reached", 429);
+    usageId = await reserveAiUsage(account);
+    if (!usageId) throw new PlanWriteError("AI 額度不足；原任務保留 / AI allowance exhausted; existing tasks are preserved", 429);
+    const attach = await prisma.roadmapWorkspace.updateMany({ where: { userId, revision: input.revision + 1, pendingRequestId: input.requestId }, data: { usageId } });
+    if (!attach.count) throw conflict();
+    const eligibleIds = active.actions.filter(a => a.milestoneId === current.id && !a.done).map(a => a.id);
+    const dependencyIds = active.actions.filter(a => (a.milestonePosition ?? -1) <= current.position).map(a => a.id);
+    const constrained = correctionSchema.extend({ milestoneId: z.literal(current.id), changes: z.array(correctionSchema.shape.changes.element.extend({ actionId: z.enum(eligibleIds as [string, ...string[]]), dependencyActionIds: z.array(z.enum(dependencyIds as [string, ...string[]])).max(20) })).max(eligibleIds.length) });
+    const draft = validateCorrection(await structuredDraft(constrained, "review_stage", `You are POLARIS. Write in ${input.locale}. Review scope against ALL milestones. Correct ONLY unfinished tasks in the supplied current milestone, retaining their actual actionId. Do not delete, move or change completed tasks or later milestones. Identify overlapping work reserved for later stages: customer discovery should focus on ICP interviews, leaving paid pilot experiments for a later paid-validation milestone when present. Propose genuinely distinct actionable replacements, titles/outcomes/whyNow/dependencies and a clear reason for each change. No changes needed: return an empty changes array. Dependency IDs must be actual existing tasks from this or earlier stages, acyclic. Numeric targets are suggestions, not existing achievements.`, { profile: account.profile, currentMilestoneId: current.id, plan: active }, candidate => validateCorrection(candidate, active)), active);
+    await prisma.$transaction(async raw => {
+      const tx = raw as unknown as Prisma.TransactionClient;
+      if (!(await tx.actionPlan.updateMany({ where: { id: active.id, userId, activeKey: userId, archivedAt: null, revision: input.planRevision }, data: { revision: input.planRevision } })).count) throw conflict();
+      const saved = await tx.roadmapWorkspace.updateMany({ where: { userId, revision: input.revision + 1, pendingRequestId: input.requestId }, data: { draft: asJson(draft), lastRequestId: input.requestId, pendingRequestId: null, pendingSince: null, usageId: null, lastError: null } });
+      if (!saved.count) throw conflict();
+    });
+    success = true; return await getRoadmap(userId);
+  } catch (cause) {
+    const timeout = cause instanceof Error && /timeout|timed out/i.test(cause.name + cause.message);
+    const error = cause instanceof PlanWriteError ? cause : new PlanWriteError(timeout ? "AI 檢查逾時；原任務保留，請重試 / Review timed out; tasks preserved. Retry." : "AI 未產生有效修正；原任務保留，請重試 / Invalid correction; tasks preserved. Retry.", timeout ? 504 : 422);
+    if (!(cause instanceof PlanWriteError)) console.error("[roadmap correction]", cause);
+    await prisma.roadmapWorkspace.updateMany({ where: { userId, revision: input.revision + 1, pendingRequestId: input.requestId }, data: { pendingRequestId: null, pendingSince: null, usageId: null, lastError: error.message } });
+    throw error;
+  } finally { if (usageId) await completeAiUsage(usageId, success); }
+}
+async function patchCorrection(userId: string, input: Extract<z.infer<typeof roadmapPatchSchema>, { correction: unknown }>) {
+  await ensureWorkspace(userId);
+  await prisma.$transaction(async raw => {
+    const tx = raw as unknown as Prisma.TransactionClient;
+    const workspace = await tx.roadmapWorkspace.findUniqueOrThrow({ where: { userId } });
+    if (workspace.lastRequestId === input.requestId) return;
+    const original = correctionSchema.safeParse(workspace.draft);
+    if (!original.success || original.data.milestoneId !== input.correction.milestoneId) throw new PlanWriteError("請先產生當期修正草稿 / Generate a stage correction draft first", 400);
+    if (input.correction.changes.some(c => !original.data.changes.some(o => o.actionId === c.actionId))) throw new PlanWriteError("不可新增非草稿修正目標 / Cannot add correction targets", 400);
+    const claimed = await tx.roadmapWorkspace.updateMany({ where: { userId, revision: input.revision, pendingRequestId: null }, data: { revision: { increment: 1 }, lastRequestId: input.requestId, draft: asJson(input.correction), lastError: null } });
+    if (!claimed.count) throw conflict();
+    if (input.action === "editCorrection") return;
+    const record = await tx.actionPlan.findFirst({ where: { id: workspace.basePlanId || "", userId, activeKey: userId, archivedAt: null }, include: includes });
+    if (!record || record.revision !== workspace.basePlanRevision) throw conflict();
+    try { validateCorrection(input.correction, serializePlan(record)); } catch (cause) { throw new PlanWriteError(cause instanceof Error ? cause.message : "無效修正 / Invalid correction", 400); }
+    await lockActivePlan(tx, userId, record.id, workspace.basePlanRevision!);
+    // Validate the complete proposed graph before applying any edge changes.
+    for (const change of input.correction.changes) {
+      await tx.actionItem.update({ where: { id: change.actionId }, data: { title: change.title, expectedOutcome: change.expectedOutcome, bottleneckFitReason: change.whyNow, bottleneckFitEditedByUser: true, bottleneckFitConfidence: null, dependencyLevel: change.dependencyActionIds.length ? 1 : 0 } });
+      await tx.actionDependency.deleteMany({ where: { actionId: change.actionId } });
+      if (change.dependencyActionIds.length) await tx.actionDependency.createMany({ data: change.dependencyActionIds.map(dependsOnId => ({ actionId: change.actionId, dependsOnId })) });
+    }
+    await tx.roadmapWorkspace.update({ where: { userId }, data: { draft: Prisma.DbNull } });
   });
   return getRoadmap(userId);
 }

@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import ActionTaskRow from "../ActionTaskRow";
 import ActionPlanBuilder from "@/components/dashboard/ActionPlanBuilder";
 import type { Locale } from "@/i18n/routing";
 import {
@@ -8,9 +9,7 @@ import {
   nextCompanyStage,
 } from "@/lib/action-plan/dashboard";
 import { bottleneckLabel } from "@/lib/action-plan/constants";
-import { formatActionTime } from "@/lib/action-plan/time";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
-import { priorityTier, taskReference } from "@/lib/action-plan/ranking";
 
 type Props = {
   locale: Locale;
@@ -138,6 +137,8 @@ export default async function ActionPlanOverview({
               );
             })}
           </div>
+          {plan?.actions.filter(a => a.metric?.target != null).map(a => <p key={a.id} className="mt-2 text-xs text-white/70">{a.title}: {a.metric?.current ?? (locale === "zh-tw" ? "尚未回報" : "Not reported")}/{a.metric?.target} {a.metric?.unit}</p>)}
+          {awaitingOutcome && <p className="mt-3 text-sm font-bold">{locale === "zh-tw" ? "任務已完成，待確認實際成果" : "Tasks complete; awaiting outcome confirmation"}</p>}
         </section>
       </div>
 
@@ -154,13 +155,13 @@ export default async function ActionPlanOverview({
               {t("next.title")}
             </h2>
           </div>
-          {plan ? (
+          {plan ? (<><Link href={`${agendaHref}#weekly-check-in`} className="inline-flex min-h-11 items-center text-sm font-bold">Weekly Check-in →</Link>
             <Link
               href={agendaHref}
               className="inline-flex min-h-11 items-center text-sm font-bold text-primary hover:text-primary-dark"
             >
               {t("next.viewAll")} →
-            </Link>
+            </Link></>
           ) : null}
         </div>
 
@@ -168,40 +169,7 @@ export default async function ActionPlanOverview({
           {plan && plan.nextMoves.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-3">
               {plan.nextMoves.map((action) => (
-                <Link
-                  key={action.id}
-                  href={`${agendaHref}#action-${action.id}`}
-                  className="nova-dashboard-card group relative flex min-h-52 flex-col overflow-hidden rounded-2xl border border-dark/10 bg-white p-5 transition hover:-translate-y-0.5 hover:border-primary/35"
-                >
-                  <span className="absolute right-0 top-0 rounded-bl-2xl bg-accent px-3.5 py-2 text-sm font-black text-dark">
-                    #{action.rank}
-                  </span>
-                  <span className="w-fit rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-bold text-green-700">
-                    {t("next.ready")}
-                  </span>
-                  <h3 className="mt-4 break-words [overflow-wrap:anywhere] pr-8 text-lg font-extrabold leading-6 text-dark transition-colors group-hover:text-primary font-[family-name:var(--font-heading)]">
-                    {taskReference(action)}
-                  </h3>
-                  {action.dependency.actionRefs.length > 0 ? (
-                    <p className="mt-2 break-words [overflow-wrap:anywhere] text-xs font-bold text-dark/55">{t("next.after")}: {action.dependency.actionRefs.map(taskReference).join(", ")}</p>
-                  ) : null}
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-dark/55">
-                    {action.expectedOutcome.text}
-                  </p>
-                  <div className="mt-auto flex items-end justify-between gap-3 pt-5">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-dark/35">
-                        {t("next.actionTime")}
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-dark">
-                        {formatActionTime(action.difficulty.actionTime, locale)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-extrabold text-primary">{t(`next.priority.${priorityTier(action.priorityScore)}`)}</p>
-                    </div>
-                  </div>
-                </Link>
+                <ActionTaskRow key={action.id} action={action} readOnly href={`${agendaHref}#action-${action.id}`} />
               ))}
             </div>
           ) : plan ? (

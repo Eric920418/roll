@@ -298,6 +298,8 @@ test("Next steps deadlines render the same Taipei date across server and browser
         "next/link": { default: () => null },
         "next/navigation": { useRouter: () => ({ refresh() {} }) },
         "next-intl": { useLocale: () => locale, useTranslations: () => (key: string, values?: { date?: string }) => key === "due" ? values?.date : key },
+        "./PlanRefresh": { default: () => null, notifyPlanChanged() {} },
+        "./WeeklyCheckIn": { default: () => null },
         "./RoadmapPanel": { default: () => null },
         "@/components/dashboard/ActionPlanManager": { default: () => null },
         "@/components/dashboard/ChecklistTool": { default: () => null },

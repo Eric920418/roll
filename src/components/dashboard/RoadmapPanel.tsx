@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
+import { correctionSchema, type StageCorrection } from "@/lib/roadmap/corrections";
+import ActionTaskRow from "./ActionTaskRow";
 import { taskReference } from "@/lib/action-plan/ranking";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import type { RoadmapView } from "@/lib/roadmap/service";
@@ -18,6 +20,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   const t = useTranslations("Dashboard.roadmap"), locale = useLocale() === "zh-tw" ? "zh-tw" : "en", router = useRouter();
   const planTrigger = useRef<HTMLButtonElement>(null), dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLElement | null>(null), busyRef = useRef(false);
   const [mounted, setMounted] = useState(false), [opened, setOpened] = useState(false), [busy, setBusy] = useState(false);
+  const [correction, setCorrection] = useState<StageCorrection | null>(null);
   const [view, setView] = useState<RoadmapView | null>(null), [form, setForm] = useState<RoadmapDraft | null>(null);
   const [goal, setGoal] = useState(""), [deadline, setDeadline] = useState("");
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [note, setNote] = useState("");
@@ -34,7 +37,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     try { if (current) localStorage.setItem(`nova:roadmap-outcome:${userId}:${current.id}`, value); } catch { setNotice(t("storageError")); }
   }
   function store(nextGoal = goal, nextDeadline = deadline, draft = form, pendingRequestId?: string) {
-    try { localStorage.setItem(cacheKey, JSON.stringify({ goal: nextGoal, deadline: nextDeadline, draft, pendingRequestId })); } catch { setNotice(t("storageError")); }
+    try { localStorage.setItem(cacheKey, JSON.stringify({ goal: nextGoal, deadline: nextDeadline, draft, correction, pendingRequestId })); } catch { setNotice(t("storageError")); }
   }
   function clearCache(expectedRequestId?: string) { try { if (expectedRequestId && JSON.parse(localStorage.getItem(cacheKey) || "null")?.pendingRequestId !== expectedRequestId) return; localStorage.removeItem(cacheKey); } catch { setNotice(t("storageError")); } }
   async function request(method = "GET", data?: object, path = "/api/action-plans/roadmap") {
@@ -49,7 +52,8 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     try {
       const fresh: RoadmapView = await request(); accept(fresh);
       let cached; try { cached = JSON.parse(localStorage.getItem(cacheKey) || "null"); } catch { setNotice(t("storageError")); }
-      if (cached?.pendingRequestId && cached.pendingRequestId === fresh.lastRequestId) { clearCache(cached.pendingRequestId); setForm(fresh.draft); }
+      if (!preserve || (!fresh.pending && view?.pending)) setCorrection(fresh.correction);
+      if (cached?.pendingRequestId && cached.pendingRequestId === fresh.lastRequestId) { clearCache(cached.pendingRequestId); setForm(fresh.draft); setCorrection(fresh.correction); }
       else if (!preserve || (!fresh.pending && view?.pending) || (!form && fresh.draft && !cached?.draft)) setForm(fresh.draft);
       return fresh;
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
@@ -71,23 +75,25 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     if (fresh && cached?.pendingRequestId === fresh.lastRequestId) cached = null;
     setGoal(typeof cached?.goal === "string" ? cached.goal : (fresh?.input as { goal?: string } | null)?.goal || initialPlan?.roadmap?.goal || "");
     setDeadline(typeof cached?.deadline === "string" ? cached.deadline : (fresh?.input as { deadline?: string } | null)?.deadline || "");
+    const restoredCorrection = correctionSchema.extend({ changes: z.array(correctionSchema.shape.changes.element.extend({ title: z.string().max(200), expectedOutcome: z.string().max(1000), whyNow: z.string().max(600) })).max(100) }).safeParse(cached?.correction);
+    if (restoredCorrection.success && fresh?.correction?.milestoneId === restoredCorrection.data.milestoneId) setCorrection(restoredCorrection.data);
     const parsed = editorSchema.safeParse(cached?.draft);
     if (parsed.success && fresh?.draft && parsed.data.mode === fresh.draft.mode && parsed.data.milestoneId === fresh.draft.milestoneId) { setForm(parsed.data); setNotice(t("restored")); }
   }
-  async function mutate(action: "generate" | "next" | "edit" | "activate") {
+  async function mutate(action: "generate" | "next" | "edit" | "activate" | "review" | "editCorrection" | "correct") {
     if (busyRef.current || !view || view.pending) return;
     busyRef.current = true; setBusy(true); setError(""); setNotice("");
     const requestId = crypto.randomUUID(); store(goal, deadline, form, requestId);
     try {
       const data = { action, requestId, revision: view.revision, locale,
-        ...(action === "generate" ? { goal, deadline: deadline || null } : action === "next" ? { planId: initialPlan!.id, planRevision: initialPlan!.revision, milestoneId: current!.id } : { draft: form }),
+        ...(action === "generate" ? { goal, deadline: deadline || null } : action === "review" ? { planId: initialPlan!.id, planRevision: initialPlan!.revision } : action === "next" ? { planId: initialPlan!.id, planRevision: initialPlan!.revision, milestoneId: current!.id } : action === "correct" || action === "editCorrection" ? { correction } : { draft: form }),
       };
-      const fresh: RoadmapView = await request(action === "generate" || action === "next" ? "POST" : "PATCH", data);
-      accept(fresh); setForm(fresh.draft); clearCache(requestId); setNotice(t(action === "activate" ? "activated" : action === "edit" ? "draftSaved" : "generated"));
-      if (action === "activate") router.refresh();
+      const fresh: RoadmapView = await request(action === "generate" || action === "next" || action === "review" ? "POST" : "PATCH", data);
+      accept(fresh); setForm(fresh.draft); setCorrection(fresh.correction); clearCache(requestId); setNotice(t(action === "activate" || action === "correct" ? "activated" : action === "edit" || action === "editCorrection" ? "draftSaved" : "generated"));
+      if (action === "activate" || action === "correct") router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
-      try { const fresh: RoadmapView = await request(); accept(fresh); if (fresh.lastRequestId === requestId) { setForm(fresh.draft); clearCache(requestId); } } catch { /* retain the original error and local input */ }
+      try { const fresh: RoadmapView = await request(); accept(fresh); if (fresh.lastRequestId === requestId) { setCorrection(fresh.correction); setForm(fresh.draft); clearCache(requestId); } } catch { /* retain the original error and local input */ }
     } finally { busyRef.current = false; setBusy(false); }
   }
   async function outcome(milestone: MilestoneView, achieved: boolean) {
@@ -100,18 +106,27 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     finally { busyRef.current = false; setBusy(false); }
   }
   function updateDraft(next: RoadmapDraft) { setForm(next); if (next.mode === "new") setGoal(next.goal); store(next.mode === "new" ? next.goal : goal, deadline, next); }
+  async function toggleTask(id: string, done: boolean) {
+    if (busyRef.current || !initialPlan) return;
+    busyRef.current = true; setBusy(true); setError("");
+    try { const next: ActionPlanDto = await request("PATCH", { done, revision: initialPlan.revision }, `/api/action-plans/actions/${id}`); onChanged(next); router.refresh(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { busyRef.current = false; setBusy(false); }
+  }
   function milestoneCard(m: MilestoneView, readOnly = false) {
     const isCurrent = m.id === current?.id && !readOnly;
     return <details key={m.id} name={readOnly ? "roadmap-history-stages" : "roadmap-active-stages"} open={isCurrent} className="min-w-0 rounded-xl border border-dark/15 p-4">
       <summary className="cursor-pointer break-words [overflow-wrap:anywhere] text-sm font-semibold"><span>{m.position + 1}. {m.title}</span><span className="ml-3 text-xs text-dark/60">{t(`status.${m.status}`)} · {m.targetDate}</span></summary>
       <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{m.expectedOutcome}</p><p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-dark/60">{t("criteria")}: {m.acceptanceCriteria}</p>
       <p className="mt-3 text-xs">{t("taskProgress", { done: m.done, total: m.total })}</p>
+      <div className="mt-3 space-y-3">{(readOnly ? historical : initialPlan)?.actions.filter(a => a.milestoneId === m.id).map(a => <ActionTaskRow key={a.id} action={a} busy={busy} readOnly={readOnly} onToggle={() => void toggleTask(a.id, !a.done)} href={readOnly ? undefined : `#action-${a.id}`} />)}</div>
       {m.outcomeNote && <p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{t("actualResult")}: {m.outcomeNote}</p>}
       {!readOnly && m.status === "awaiting" && <form onSubmit={e => { e.preventDefault(); void outcome(m, true); }} className="mt-4 space-y-3"><label className="block text-sm">{t("actualResult")}<textarea aria-label={t("actualResult")} required maxLength={4000} rows={3} className={`${input} mt-1`} value={note} onChange={e => storeNote(e.target.value)} /></label><button className={button} disabled={busy || !note.trim()}>{t("confirmOutcome")}</button><p className="text-xs text-dark/60">{t("notAchievedHint")}</p></form>}
       {!readOnly && m.status === "unplanned" && <button type="button" className={`${button} mt-4`} disabled={busy} onClick={() => void open()}>{t("nextStage")}</button>}
       {!readOnly && m.achievedAt && <button type="button" className={`${button} mt-4`} disabled={busy} onClick={() => void outcome(m, false)}>{t("undoOutcome")}</button>}
     </details>;
   }
+  function updateCorrection(next: StageCorrection) { setCorrection(next); try { localStorage.setItem(cacheKey, JSON.stringify({ goal, deadline, draft: form, correction: next })); } catch { setNotice(t("storageError")); } }
   const disabled = busy || Boolean(view?.pending) || !view;
   return <section id="goal-roadmap" className="min-w-0 rounded-2xl border border-sky-300 bg-white p-5 sm:p-7">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">{t("title")}</h2><p className="mt-1 text-sm text-dark/60">{t("intro")}</p></div><button ref={planTrigger} type="button" className={button} onClick={() => void open()}>{t("planGoal")}</button></div>
@@ -123,16 +138,18 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
         <p className="text-sm text-dark/60">{t("previewHint")}</p>
         <label className="block text-sm font-semibold">{t("goal")}<textarea aria-label={t("goal")} autoFocus rows={3} maxLength={2000} value={goal} disabled={disabled} onChange={e => { setGoal(e.target.value); store(e.target.value); }} className={`${input} mt-1`} /></label>
         <label className="block text-sm font-semibold">{t("deadline")}<input aria-label={t("deadline")} type="date" value={deadline} disabled={disabled} onChange={e => { setDeadline(e.target.value); store(goal, e.target.value); }} className={`${input} mt-1`} /></label><p className="text-xs text-dark/60">{t("deadlineHint")}</p>
-        <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={disabled || goal.trim().length < 3} onClick={() => void mutate("generate")}>{form ? t("regenerate") : t("generate")}</button>{current?.status === "unplanned" && <button type="button" className={button} disabled={disabled} onClick={() => void mutate("next")}>{t("nextStage")}</button>}</div>
+        <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={disabled || goal.trim().length < 3} onClick={() => void mutate("generate")}>{form ? t("regenerate") : t("generate")}</button>{current && ["active", "awaiting"].includes(current.status) && initialPlan?.actions.some(a => a.milestoneId === current.id && !a.done) && <button type="button" className={button} disabled={disabled} onClick={() => void mutate("review")}>{locale === "zh-tw" ? "檢查階段任務" : "Review stage tasks"}</button>}{current?.status === "unplanned" && <button type="button" className={button} disabled={disabled} onClick={() => void mutate("next")}>{t("nextStage")}</button>}</div>
         {(busy || view?.pending) && <p role="status" className="text-sm text-dark/60">{t("generating")}</p>}
         {form && <section className="space-y-4 rounded-2xl border border-sky-300 p-4">
           <h3 className="font-bold">{t("draftTitle")} · {t("proposed")}</h3><label className="block text-sm">{t("goal")}<textarea aria-label={t("draftGoal")} rows={2} className={`${input} mt-1`} maxLength={2000} disabled={disabled || form.mode === "next"} value={form.goal} onChange={e => updateDraft({ ...form, goal: e.target.value })} /></label>
           <label className="block text-sm">{t("deadline")}<input aria-label={t("draftDeadline")} className={`${input} mt-1`} type="date" disabled={disabled || form.mode === "next"} value={form.deadline} onChange={e => updateDraft({ ...form, deadline: e.target.value })} /></label>
           <p className="text-sm font-semibold">{t("assumptions")}</p>{form.assumptions.map((a, i) => <textarea key={i} aria-label={`${t("assumptions")} ${i + 1}`} rows={2} maxLength={1000} className={input} disabled={disabled || form.mode === "next"} value={a} onChange={e => updateDraft({ ...form, assumptions: form.assumptions.map((s, j) => i === j ? e.target.value : s) })} />)}
           {form.milestones.map((m, i) => <fieldset key={i} disabled={disabled || form.mode === "next"} className="space-y-3 rounded-xl border border-dark/10 p-4"><legend className="px-1 text-sm font-semibold">{t("milestoneNumber", { number: i + 1 })}</legend>{(["title", "expectedOutcome", "acceptanceCriteria", "targetDate"] as const).map(key => <label key={key} className="block text-sm">{t(`fields.${key}`)}<input aria-label={`${t("milestoneNumber", { number: i + 1 })} ${t(`fields.${key}`)}`} type={key === "targetDate" ? "date" : "text"} maxLength={key === "title" ? 200 : 1000} className={`${input} mt-1`} value={m[key]} onChange={e => updateDraft({ ...form, milestones: form.milestones.map((v, j) => i === j ? { ...v, [key]: e.target.value } : v) })} /></label>)}</fieldset>)}
-          <h4 className="font-semibold">{t("fiveTasks")}</h4>{form.actions.map((a, i) => <fieldset key={a.clientKey} disabled={disabled} className="space-y-3 rounded-xl border border-dark/10 p-4"><legend className="text-sm font-semibold">#{i + 1}</legend>{(["title", "expectedOutcome"] as const).map(key => <label key={key} className="block text-sm">{t(`fields.${key}`)}<textarea aria-label={`${t("taskNumber", { number: i + 1 })} ${t(`fields.${key}`)}`} rows={2} maxLength={key === "title" ? 200 : 1000} className={`${input} mt-1`} value={a[key]} onChange={e => updateDraft({ ...form, actions: form.actions.map((v, j) => i === j ? { ...v, [key]: e.target.value } : v) })} /></label>)}<p className="text-xs text-dark/60">{t("fields.targetDate")}: {a.outcomeTime.min}–{a.outcomeTime.max} {locale === "zh-tw" ? "天" : "days"}</p><p className="text-xs text-dark/60">{locale === "zh-tw" ? "為何現在做" : "Why now"}: {a.bottleneckFit.reason.split(/[.!?。！？]/)[0]}</p><p className="text-xs text-dark/60">{t("prerequisites")}: {a.dependsOnKeys.length ? a.dependsOnKeys.map(key => { const prior = form.actions.find(row => row.clientKey === key); return prior ? taskReference(prior) : key; }).join(", ") : t("none")}</p></fieldset>)}
+          <h4 className="font-semibold">{t("fiveTasks")}</h4>{form.actions.map((a, i) => <fieldset key={a.clientKey} disabled={disabled} className="space-y-3 rounded-xl border border-dark/10 p-4"><legend className="text-sm font-semibold">#{i + 1}</legend>{(["title", "expectedOutcome"] as const).map(key => <label key={key} className="block text-sm">{t(`fields.${key}`)}<textarea aria-label={`${t("taskNumber", { number: i + 1 })} ${t(`fields.${key}`)}`} rows={2} maxLength={key === "title" ? 200 : 1000} className={`${input} mt-1`} value={a[key]} onChange={e => updateDraft({ ...form, actions: form.actions.map((v, j) => i === j ? { ...v, [key]: e.target.value } : v) })} /></label>)}<p className="text-xs text-dark/60">{t("fields.targetDate")}: {a.outcomeTime.min}–{a.outcomeTime.max} {locale === "zh-tw" ? "天" : "days"}</p><p className="text-xs text-dark/60">{locale === "zh-tw" ? "為何現在做" : "Why now"}: {a.bottleneckFit.reason}</p><p className="text-xs text-dark/60">{t("prerequisites")}: {a.dependsOnKeys.length ? a.dependsOnKeys.map(key => { const prior = form.actions.find(row => row.clientKey === key); return prior ? taskReference(prior) : key; }).join(", ") : t("none")}</p></fieldset>)}
           <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={disabled} onClick={() => void mutate("edit")}>{t("saveDraft")}</button><button type="button" className={`${button} bg-black! text-white!`} disabled={disabled} onClick={() => void mutate("activate")}>{t(form.mode === "next" ? "append" : "activate")}</button></div><p className="text-xs text-dark/60">{t("archiveHint")}</p>
         </section>}
+        {correction && <section className="space-y-4 rounded-2xl border border-amber-300 p-4"><h3 className="font-bold">{locale === "zh-tw" ? "階段修正草稿，確認後才更新原任務" : "Stage correction draft; tasks change only after confirmation"}</h3>{!correction.changes.length && <p>{locale === "zh-tw" ? "沒有建議修正。" : "No changes suggested."}</p>}{correction.changes.map((c, i) => { const original = initialPlan?.actions.find(a => a.id === c.actionId); return <fieldset key={c.actionId} disabled={disabled} className="space-y-3 rounded-xl border border-dark/15 p-4"><legend className="font-semibold">#{original?.displayNumber}</legend><p className="whitespace-pre-wrap text-sm">{locale === "zh-tw" ? "原任務" : "Before"}: {original?.title}
+{original?.expectedOutcome.text}</p><p className="whitespace-pre-wrap text-sm text-amber-900">{c.reason}</p>{(["title", "expectedOutcome", "whyNow"] as const).map(key => <label key={key} className="block text-sm">{key === "whyNow" ? (locale === "zh-tw" ? "為何現在做" : "Why now") : t(`fields.${key}`)}<textarea className={`${input} mt-1`} rows={2} maxLength={key === "title" ? 200 : key === "whyNow" ? 600 : 1000} value={c[key]} onChange={e => updateCorrection({ ...correction, changes: correction.changes.map((v, j) => i === j ? { ...v, [key]: e.target.value } : v) })} /></label>)}<p className="text-sm font-bold">{t("prerequisites")}</p>{initialPlan?.actions.filter(a => a.id !== c.actionId && (a.milestonePosition ?? -1) <= (current?.position ?? -1)).map(a => <label key={a.id} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={c.dependencyActionIds.includes(a.id)} onChange={e => updateCorrection({ ...correction, changes: correction.changes.map((v, j) => i === j ? { ...v, dependencyActionIds: e.target.checked ? [...v.dependencyActionIds, a.id] : v.dependencyActionIds.filter(id => id !== a.id) } : v) })} />{taskReference(a)}</label>)}</fieldset>; })}<div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={disabled} onClick={() => void mutate("editCorrection")}>{t("saveDraft")}</button><button type="button" className={`${button} bg-black! text-white!`} disabled={disabled || !correction.changes.length} onClick={() => void mutate("correct")}>{locale === "zh-tw" ? "確認修正未完成任務" : "Confirm corrections to unfinished tasks"}</button></div></section>}
         {(error || view?.error) && <div role="alert" className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{error || view?.error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
         {notice && <p role="status" className="rounded-xl bg-dark/[0.04] p-3 text-sm">{notice}</p>}
         {view && view.history.length > 0 && <section><h3 className="font-bold">{t("history")}</h3><ul className="mt-3 space-y-2">{view.history.map(p => <li key={p.id}><button type="button" className={button} onClick={() => { void request("GET", undefined, `/api/action-plans/roadmap?planId=${encodeURIComponent(p.id)}`).then(data => setHistorical(data.plan)).catch(cause => setError(cause.message)); }}>{p.goal || t("oldPlan")} · {p.createdAt.slice(0, 10)}</button></li>)}</ul></section>}

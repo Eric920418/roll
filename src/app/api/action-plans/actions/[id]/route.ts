@@ -4,9 +4,10 @@ import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 import { getUserSession } from "@/lib/auth/guard";
 import { requirePlan } from "@/lib/billing/gate";
 import { prisma } from "@/lib/prisma";
-import { actionPatchSchema } from "@/lib/action-plan/schemas";
+import { actionPatchSchema, planRevisionSchema } from "@/lib/action-plan/schemas";
 import { assertDependencies, getActiveActionPlan, lockActivePlan, guardActionMilestone, PlanWriteError } from "@/lib/action-plan/service";
 import { legacyHoursForMinutes } from "@/lib/action-plan/time";
+
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -16,7 +17,10 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!session) return unauthorized();
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
     const { id } = await params;
-    const parsed = actionPatchSchema.safeParse(await req.json());
+    const body = await req.json();
+    const { revision } = planRevisionSchema.parse(body);
+    const fields = { ...body }; delete fields.revision;
+    const parsed = actionPatchSchema.safeParse(fields);
     if (!parsed.success) {
       return fail(parsed.error.issues.map((issue) => `${issue.path.join(".") || "欄位"}：${issue.message}`).join("；"), 400);
     }
@@ -24,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!found) return fail("找不到 Action。", 404);
     await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
-    await lockActivePlan(tx, session.uid, found.actionPlanId);
+    await lockActivePlan(tx, session.uid, found.actionPlanId, revision);
     const current = await tx.actionItem.findFirst({
       where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } },
       select: {
@@ -47,6 +51,12 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     });
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
 
+    if ("metricTarget" in parsed.data) {
+      await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
+      await tx.actionItem.update({ where: { id }, data: parsed.data });
+      return;
+    }
+
     if (Object.keys(parsed.data).length === 1 && "done" in parsed.data) {
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, parsed.data.done ? "done" : "undo");
       if (parsed.data.done) {
@@ -59,7 +69,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         const completed = current.requiredBy.filter((edge) => edge.action.done).map((edge) => edge.action.title);
         if (completed.length) throw new PlanWriteError(`請先取消後續任務的完成狀態：${completed.join("、")}`);
       }
-      await tx.actionItem.update({ where: { id }, data: { done: parsed.data.done } });
+      await tx.actionItem.update({ where: { id }, data: { done: parsed.data.done, completedAt: parsed.data.done ? (current.done ? undefined : new Date()) : null } });
       return;
     }
 
@@ -107,7 +117,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
           outcomeTimeMaxDays: action.outcomeTime.max,
           stageFitEditedByUser: current.stageFitEditedByUser || stageFitChanged,
           bottleneckFitEditedByUser: current.bottleneckFitEditedByUser || bottleneckFitChanged,
-          ...(action.done == null ? {} : { done: action.done }),
+          ...(action.done == null ? {} : { done: action.done, completedAt: action.done ? (current.done ? undefined : new Date()) : null }),
         },
       });
       await tx.actionDependency.deleteMany({ where: { actionId: id } });
@@ -121,21 +131,24 @@ export async function PATCH(req: NextRequest, { params }: Context) {
   } catch (error) {
     if (error instanceof PlanWriteError) return fail(error.message, error.status);
     if (error instanceof Error && /依賴|循環|自己/.test(error.message)) return fail(error.message, 400);
+    if (error instanceof SyntaxError) return fail("無效 JSON / Invalid JSON", 400);
+    if (error instanceof Error && error.name === "ZodError") return fail(error.message, 400);
     return failFromError(error);
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: Context) {
+export async function DELETE(req: NextRequest, { params }: Context) {
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
     const { id } = await params;
+    const { revision } = planRevisionSchema.parse(await req.json());
     const found = await prisma.actionItem.findFirst({ where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } }, select: { actionPlanId: true } });
     if (!found) return fail("找不到 Action。", 404);
     await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
-    await lockActivePlan(tx, session.uid, found.actionPlanId);
+    await lockActivePlan(tx, session.uid, found.actionPlanId, revision);
     const current = await tx.actionItem.findFirst({
       where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } },
       select: {
@@ -155,6 +168,8 @@ export async function DELETE(_req: NextRequest, { params }: Context) {
     return ok(await getActiveActionPlan(session.uid));
   } catch (error) {
     if (error instanceof PlanWriteError) return fail(error.message, error.status);
+    if (error instanceof SyntaxError) return fail("無效 JSON / Invalid JSON", 400);
+    if (error instanceof Error && error.name === "ZodError") return fail(error.message, 400);
     return failFromError(error);
   }
 }
