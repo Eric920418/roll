@@ -1189,3 +1189,5 @@ This week 文案提供英文／繁體中文；日期、事項數量、任務進�
 桌面實際拖曳已驗證：#1 從週六移到週四，日期小點同步、積分與完成率不變；手機仍以點選操作。拖曳後鍵盤 Enter 不受滑鼠 click 去重影響；未建計畫的引導亦維持 Rewards／POLARIS／安排順序。
 
 正式環境已於單一交易僅新增 WeekCalendarItem 表／索引／外鍵；同一交易前後 User、Profile、AI allowance、ActionPlan、ActionItem、QuizAttempt、RewardEntry、RewardDelivery 的筆數與完整內容指紋一致，無回填或覆寫。所有 150 項回歸、11 項本機實際 API 檢查、lint（0 errors／2 既有 warnings）及 build 通過，桌面拖曳與繁中手機操作已驗收。
+
+正式候選 roll-1yowtd7vs 已 Ready，14 項受保護部署的實際 API 檢查通過：重送、並行改日期、舊版本衝突、鎖定、有效日期、個人完成與排程不改 Action Plan revision。驗收只使用一個新建 example.invalid 帳號，沒有替會員開啟提醒或寄信；公開發布後清理此帳號及關聯資料。320px／390px 手機皆無頁面溢出，日期最小 44px，窄螢幕只在日期列內捲動。
