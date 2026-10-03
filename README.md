@@ -1147,3 +1147,5 @@ Rewards 發布整合檢查：AgendaBoard 以有條件的 render 狀態同步取�
 整合驗收：140 項回歸（含 12 項隔離 PostgreSQL 子測試）通過。全專案 lint 揭露新引導測試 fixture 的 module 區域變數命名違反 Next 規則，僅改名 loaded；不改測試行為或業務流程。
 
 Home 整合手機順序再確認：同一 grid 的 Rewards → POLARIS → 行動摘要 → Investor DD，桌面摘要仍在雙欄下方，避免引導元件整合後把 Investor DD 移到行動前方。
+
+整合候選手機驗收發現活動卡片的 auto grid track 被英文活動名稱撐到 438px；補上 grid-cols-1 的 minmax(0,1fr)，保持 390px 畫面寬度。正式發布前重新部署並核對中英文手機布局。
