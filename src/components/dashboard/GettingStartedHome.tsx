@@ -32,8 +32,8 @@ export function useGettingStarted(initial: GettingStartedView | null = null) {
 }
 const button = "inline-flex min-h-11 items-center justify-center rounded-xl bg-dark px-5 py-3 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
-export default function GettingStartedHome({ initial, overview, copilot, investor, events, podcast, rewards }: {
-  initial: GettingStartedView; overview: ReactNode; copilot: ReactNode; investor: ReactNode; events: ReactNode; podcast: ReactNode; rewards?: ReactNode;
+export default function GettingStartedHome({ initial, overview, copilot, investor, events, podcast, rewards, calendar }: {
+  initial: GettingStartedView; overview: ReactNode; copilot: ReactNode; investor: ReactNode; events: ReactNode; podcast: ReactNode; rewards?: ReactNode; calendar?: ReactNode;
 }) {
   const { view: state, setView, error, setError, reload } = useGettingStarted(initial);
   const view = state || initial, t = useTranslations("Dashboard.gettingStarted"), locale = useLocale() as Locale;
@@ -64,10 +64,11 @@ export default function GettingStartedHome({ initial, overview, copilot, investo
     : view.currentStep === 2 ? t("buildPlan") : view.nextTask ? t("openFirstTask") : t("resolveBlocker");
   const extras = <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">{investor}{events}{podcast}</div>;
   const daily = <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-2">
-    <div className="order-4 min-w-0 lg:order-1 lg:col-start-1 lg:row-start-1">{investor}</div>
+    <div className="order-5 min-w-0 lg:order-1 lg:col-start-1 lg:row-start-1">{investor}</div>
     <div className="order-1 min-w-0 lg:order-2 lg:col-start-1 lg:row-start-2">{rewards}</div>
     <div className="order-2 min-w-0 lg:order-1 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-stretch">{copilot}</div>
-    <div className="order-3 min-w-0 lg:col-span-2 lg:row-start-3">{overview}</div>
+    <div className="order-3 min-w-0 lg:col-span-2 lg:row-start-3">{calendar}</div>
+    <div className="order-4 min-w-0 lg:col-span-2 lg:row-start-4">{overview}</div>
   </div>;
   return <div className="mt-5 space-y-6">
     <div className="flex justify-end"><button className="min-h-11 rounded-xl px-3 text-sm font-semibold underline underline-offset-4 disabled:opacity-50" disabled={busy} onClick={() => void preference(view.visible ? "dismiss" : "reopen")}>{view.visible ? t("later") : t("reopen")}</button></div>
@@ -89,7 +90,7 @@ export default function GettingStartedHome({ initial, overview, copilot, investo
       <div className="mt-5 flex flex-wrap items-center gap-4"><Link className={button} href={primaryHref}>{primaryLabel} →</Link>{view.currentStep === 1 && <Link href={view.canGenerate ? build : pathForLocale("/dashboard/account#plan", locale)} className="inline-flex min-h-11 items-center text-sm underline">{t("startWithoutProfile")}</Link>}</div>
       <Link href={pathForLocale("/dashboard/profile", locale)} className="mt-3 inline-flex min-h-11 items-center text-sm text-dark/60 underline">{t("optionalIcp")}</Link>
     </section>}
-    {view.visible && !view.hasPlan ? <>{rewards}<details className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{t("optionalPolaris")}</summary>{copilot}</details><details id="explore-more" className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{t("explore")}</summary><div className="mt-4">{extras}</div></details></>
+    {view.visible && !view.hasPlan ? <>{rewards}<details className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{t("optionalPolaris")}</summary>{copilot}</details>{calendar}<details id="explore-more" className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{t("explore")}</summary><div className="mt-4">{extras}</div></details></>
       : <>{daily}<div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">{events}{podcast}</div></>}
   </div>;
 }

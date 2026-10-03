@@ -219,6 +219,7 @@ model User {
   rewardRedemptions RewardRedemption[]
   rewardReminder RewardReminder?
   rewardDeliveries RewardDelivery[]
+  weekCalendarItems WeekCalendarItem[]
 
 }
 
@@ -571,10 +572,33 @@ model ActionItem {
 
   dependencies ActionDependency[] @relation("ActionDependencies")
   requiredBy   ActionDependency[] @relation("ActionDependents")
+  weekCalendarItem WeekCalendarItem?
 
   @@unique([actionPlanId, clientKey])
   @@index([actionPlanId, done])
   @@index([milestoneId])
+}
+
+/// Home 安排與完成任務獨立；移除任務後仍保留來源種類，避免付費內容外洩。
+model WeekCalendarItem {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionId String? @unique
+  action ActionItem? @relation(fields: [actionId], references: [id], onDelete: SetNull)
+  kind String @default("personal")
+  date DateTime @db.Date
+  title String
+  note String @default("")
+  done Boolean @default(false)
+  requestId String
+  revision Int @default(0)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, requestId])
+  @@index([userId, date, deletedAt])
 }
 
 /// 同一 Action Plan 內的有向依賴：action 必須等待 dependsOn。

@@ -1,3 +1,4 @@
+import ThisWeekCalendar from "@/components/dashboard/home/ThisWeekCalendar";
 import GettingStartedHome from "@/components/dashboard/GettingStartedHome";
 import { getGettingStarted } from "@/lib/getting-started/service";
 import PlanRefresh from "@/components/dashboard/PlanRefresh";
@@ -80,6 +81,7 @@ export default async function DashboardOverview({ params }: Props) {
       </div>
 
       <GettingStartedHome initial={guide}
+        calendar={<ThisWeekCalendar />}
         investor={<InvestorHubCard name={([account.firstName, account.lastName].filter(Boolean).join(" ") || account.email).slice(0, 200)} email={account.email} message={HUB_WAITLIST_MESSAGE} joined={Boolean(waitlistEntry)} />}
         rewards={<RewardsCard />}
         copilot={<CopilotPanel canUse={isPaying} canBuildPlan={isPaying} />}

@@ -1,5 +1,13 @@
 # ROLL ON. 企業官網
 
+## Home This week（2026-10-03）
+
+新增週一到週日的安排，日期以 Asia/Taipei 計算。個人事項與 Action Plan 的安排獨立於任務完成／獎勵；排程本身不領分、不消耗 AI。GET /api/week-plan?weekStart=YYYY-MM-DD 只回本人資料，POST 接受 add／schedule／edit／remove，回應沿用 {data}／{error, code}。寫入驗證同源、登入、歸屬、日期、版本及每分鐘 40 次限制；Action Plan 排程沿用方案與前置任務／里程碑權限。個人事項支援備註與完成狀態；Action Plan 完成仍走 Next steps。每項任務只有一個安排，併發使用會員安排鎖與 revision，重送不建立重複事項，移除安排不移除任務或積分紀錄。
+
+WeekCalendarItem 為純新增表；任務刪除只解除關聯並保留 action 來源，免費會員不讀取付費任務內容。Schema 上線前先檢查差異、在隔離資料庫驗收，再只執行新增表 SQL；禁止重設資料庫及 accept-data-loss。無新增環境變數。
+
+介面新增七欄含今日白框、事項小點、空日 + Add、前後週切換及 Plan my week 手動面板。底部顯示真實前 3 項未完成任務：Ready 白色膠囊含數量進度，未解鎖灰框顯示前置編號或里程碑原因。桌面可拖到日期，手機點膠囊選日期；原 Next 3 moves 保留。原生 dialog 支援鍵盤與 Escape；錯誤顯示並可重試，衝突保留輸入、載入新版本後提示審閱再提交。
+
 協助外商進入台灣與亞洲市場的顧問公司官網。
 
 ## 部署環境檢查
@@ -1163,3 +1171,21 @@ Email 真實驗收完成：使用者於建立動作時授權 NOVA Production Sen
 2026-10-03 最終提醒發布：3593558 對應 dpl_BQWHj4Djke86Kfu3v5PE8sFfvrnb（roll-li49xpirp）Ready／www.rollgrp.com 已生效；公開站再通過 11 項檢查，emailAvailable=true、cron enabled、匿名排程請求 401、無新增寄信。Vercel project crons 確認綁此部署，路徑 /api/cron/reward-reminders、每 15 分鐘、disabledAt=null。實際頁面可勾選提醒且預設未勾，鍵盤 Tab 正常。兩個本輪新建 example.invalid QA 帳號及其關聯積分／兌換／提醒／AI 測試資料已僅按指定 ID／Email 清理；原有 User 10、Profile 9、Allowance 3、ActionPlan 6、ActionItem 103、QuizAttempt 3 筆仍保留，計畫／任務／測驗指紋相同。發布期間同一既有帳號的 User／Profile／Allowance 有持續更新，未將驗收基準回寫或還原會員。
 
 每週成效檢查已設定為本對話 heartbeat（NOVA 每週留存與獎勵成本檢查，週一 09:00），僅讀取既有安全設定並執行 pnpm exec tsx scripts/reward-metrics.ts；沒有明顯變化時安靜，有異常或可採取行動才通知，不修改資料或自動調整分值。root 與隔離發布樹都能唯讀執行統計，QA 已排除；目前一個回訪日且有效行動一筆，D1／D7 尚未成熟，不作留存提升結論。Resend key／production env／cron／QA token 等私有暫存於驗收後刪除，正式憑證保留在 Vercel Production 加密變數。
+
+This week 文案提供英文／繁體中文；日期、事項數量、任務進度及鎖定原因均取自本人資料，不使用展示數字。
+
+新增 prisma/week-calendar.sql 僅 CREATE TABLE／INDEX／新表外鍵，已先於 loopback roll_rewards_qa 隔離資料庫套用。新增實際 PostgreSQL 驗收涵蓋重送、雙分頁版本、個人事項與完成分離、付費／歸屬／前置鎖定、移除後再安排、排程與完成併發、任務移除後付費來源保留；日期驗證涵蓋台北跨日、跨年與不存在日期。
+
+隔離測試找出 Prisma 不支援直接反序列化 PostgreSQL advisory lock 的 void 回傳，已轉為 text；保留相同交易鎖。手機明確停用拖曳並顯示點選提示，小螢幕七日列可在卡片內捲動；業務錯誤不被背景更新清除。
+
+中英文新增文案僅追加 weekCalendar 節點，保留既有翻譯檔案格式；星期使用可解析的翻譯鍵。
+
+本機 150 項測試通過，lint 零錯誤／兩個既有警告，build 成功。已驗證新增／刷新保存、繁中手機點選安排、44px 日期區、390px 無溢出及 Escape 焦點回復。追加重送內容變更檢查，避免不確定回應後修改草稿卻誤以為已保存新內容；僅在可見頁面跨台北日界線時自動重載，其餘以焦點與跨分頁事件同步，減少無意義查詢。
+
+未回報的數量進度顯示 —，不推測為 0；小字說明提高對比。
+
+桌面三個膠囊在 lg 排成同一列，兼容使用者較大預設字體；拖曳使用桌面滑鼠 Pointer capture，移動超過 6px 才視為拖曳、落點標示日期、放開儲存；一般點選及鍵盤仍開啟日期面板。避免不同瀏覽器對原生 HTML 拖放的差異。
+
+桌面實際拖曳已驗證：#1 從週六移到週四，日期小點同步、積分與完成率不變；手機仍以點選操作。拖曳後鍵盤 Enter 不受滑鼠 click 去重影響；未建計畫的引導亦維持 Rewards／POLARIS／安排順序。
+
+正式環境已於單一交易僅新增 WeekCalendarItem 表／索引／外鍵；同一交易前後 User、Profile、AI allowance、ActionPlan、ActionItem、QuizAttempt、RewardEntry、RewardDelivery 的筆數與完整內容指紋一致，無回填或覆寫。所有 150 項回歸、11 項本機實際 API 檢查、lint（0 errors／2 既有 warnings）及 build 通過，桌面拖曳與繁中手機操作已驗收。
