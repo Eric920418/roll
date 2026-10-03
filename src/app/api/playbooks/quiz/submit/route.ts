@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import {
@@ -25,14 +26,9 @@ export async function POST(req: NextRequest) {
     if (!user) return unauthorized();
 
     const body = await req.json();
-    const answers: AttemptAnswer[] = Array.isArray(body?.answers)
-      ? body.answers
-          .filter((a: unknown): a is Record<string, unknown> => !!a && typeof a === "object")
-          .map((a: Record<string, unknown>) => ({
-            questionId: String(a.questionId ?? ""),
-            choice: Number(a.choice),
-          }))
-      : [];
+    const parsedAnswers = z.array(z.object({ questionId: z.string().min(1), choice: z.number().int().nonnegative() }).strict()).safeParse(body?.answers);
+    if (!parsedAnswers.success) return fail(parsedAnswers.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("；"), 400);
+    const answers: AttemptAnswer[] = parsedAnswers.data;
 
     const periodIndex = fortnightIndex(user.createdAt, new Date());
     const selected = selectForPeriod(periodIndex);

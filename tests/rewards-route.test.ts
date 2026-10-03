@@ -51,3 +51,20 @@ test("Cron fails closed without a secret, with wrong/Unicode tokens, and accepts
     assert.equal(h.state.cronCalls,0);assert.equal((await h.cron.GET(new Request("https://example.test/api/cron/reward-reminders",{headers:{Authorization:"Bearer local-test-secret"}}))).status,200);assert.equal(h.state.cronCalls,1);
   }finally{if(original===undefined)delete process.env.CRON_SECRET;else process.env.CRON_SECRET=original;}
 });
+
+// Raw request validation must run before coercion: null/empty values are not choice zero.
+test("Quiz rejects null, blank, string, boolean and missing choices before any award", async () => {
+  let transactions = 0;
+  const api = { fail: (error: string, status: number) => Response.json({ error }, { status }), unauthorized: () => Response.json({}, { status: 401 }), failFromError: () => Response.json({}, { status: 500 }) };
+  const route = load<typeof import("../src/app/api/playbooks/quiz/submit/route")>("src/app/api/playbooks/quiz/submit/route.ts", {
+    "@/lib/api": api, "@/lib/auth/guard": { getUserSession: async () => ({ uid: "qa" }) },
+    "@/lib/prisma": { prisma: { user: { findUnique: async () => ({ createdAt: new Date() }) } } },
+    "@/lib/playbook/quiz": {}, "@/lib/rewards/policy": {},
+    "@/lib/rewards/service": { rewardTransaction: async () => { transactions++; } },
+  });
+  for (const choice of [null, "", "0", false, undefined]) {
+    const response = await route.POST(new Request("https://example.test/api/playbooks/quiz/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: [{ questionId: "one", choice }] }) }) as never);
+    assert.equal(response.status, 400);
+  }
+  assert.equal(transactions, 0);
+});

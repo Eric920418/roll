@@ -1142,3 +1142,4 @@ Rewards 發布整合檢查：AgendaBoard 以有條件的 render 狀態同步取�
 本機 QA 資料庫同步新增相同三個可空 gettingStarted 欄位，供最新 Prisma Client 回歸；未修改既有值。
 
 2026-10-03 Rewards 整合最新 main 1544e7f 的新會員引導：保留 DashboardUserProvider、引導狀態及首次完成交易，任務完成同一交易亦入獎勵帳。積分卡在無計畫引導時仍可見；一般 Home 桌面左 Investor DD／Rewards、右 POLARIS，手機 Rewards 先於 POLARIS；不覆蓋 Getting Started 資料或功能。先前候選完成 51 項正式 API 檢查；合併後重新建置驗收，Email 保持關閉。
+上線前輸入審核修正雙週測驗：原流程 Number(null)／Number(空字串) 會把空答案視為選項 0；改為嚴格 number/integer 驗證，不接受空值、字串、布林或缺值，再核對每題完整性。新增實際端點的空答案回歸，確保入帳交易前拒絕。
