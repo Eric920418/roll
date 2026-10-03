@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { useLocale } from "next-intl";
+import TaskCheckbox from "./TaskCheckbox";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { taskReference, priorityTier } from "@/lib/action-plan/ranking";
 import { formatActionTime } from "@/lib/action-plan/time";
@@ -13,13 +14,14 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
   const shownTarget = metricEditing ? target : String(action.metric?.target ?? ""), shownUnit = metricEditing ? unit : action.metric?.unit || "", shownValue = metricEditing ? value : String(action.metric?.current ?? "");
   const captureRevision = () => { if (!metricEditing) { setTarget(shownTarget); setUnit(shownUnit); setValue(shownValue); } setMetricEditing(true); if (metricRevision.current == null) metricRevision.current = revision; };
   const status = action.done ? (zh ? "已完成" : "Done") : action.dependency.blocked ? (zh ? "受阻擋" : "Blocked") : (zh ? "可執行" : "Ready");
+  const blockedReason = `${zh ? "先完成" : "Complete first"}: ${action.dependency.milestoneTitle || (action.dependency.missingLink ? (zh ? "請設定前置任務" : "Link prerequisites") : action.dependency.actionRefs.filter(d => !d.done).map(d => zh ? taskReference(d).replace(/^Milestone (\d+) · /, "里程碑 $1 的 ") : taskReference(d)).join(", "))}`;
   const button = "min-h-11 rounded-xl border border-dark/15 bg-white px-3 py-2 text-sm disabled:opacity-50";
   return <article className="min-w-0 rounded-xl border border-dark/15 bg-white p-4 [overflow-wrap:anywhere]">
     <div className="flex items-start gap-3">
       <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dark/20 font-bold">{action.displayNumber}</span>
-      {!readOnly && onToggle && <input type="checkbox" className="mt-2 h-5 w-5 shrink-0 accent-black" aria-label={`${zh ? "完成任務" : "Complete task"}: ${action.title}`} checked={action.done} disabled={busy || (!action.done && action.dependency.blocked)} onChange={onToggle} />}
+      {!readOnly && onToggle && <TaskCheckbox label={`${zh ? "完成任務" : "Complete task"}: ${action.title}`} checked={action.done} locked={!action.done && action.dependency.blocked} disabled={busy} reason={blockedReason} onChange={onToggle} />}
       <div className="min-w-0 flex-1"><h3 className={`font-bold ${action.done ? "line-through text-dark/50" : "text-dark"}`}>{action.title}</h3><div className="mt-1 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-dark/5 px-2 py-1">{status}</span><span className="rounded-full bg-dark/5 px-2 py-1">{priorityTier(action.priorityScore)}</span></div><p className="mt-2 line-clamp-1 text-sm text-dark/60">{action.expectedOutcome.text}</p>
-      {action.dependency.blocked && <p className="mt-2 text-xs font-semibold text-amber-800">{zh ? "先完成" : "Complete first"}: {action.dependency.milestoneTitle || (action.dependency.missingLink ? (zh ? "請設定前置任務" : "Link prerequisites") : action.dependency.actionRefs.filter(d => !d.done).map(d => { const ref = taskReference(d); return zh ? ref.replace(/^Milestone (\d+) · /, "里程碑 $1 的 ") : ref; }).join(", "))}</p>}
+      {action.dependency.blocked && <p className="mt-2 text-xs font-semibold text-amber-800">{blockedReason}</p>}
       {action.metric?.target != null && <p className="mt-2 text-xs">{action.metric.current ?? (zh ? "尚未回報" : "Not reported")}/{action.metric.target} {action.metric.unit}</p>}</div>
     </div>
     <details className="group mt-3 text-sm">
