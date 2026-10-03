@@ -12,6 +12,10 @@ WeekCalendarItem 為純新增表；任務刪除只解除關聯並保留 action �
 
 ## 部署環境檢查
 
+2026-10-04：`codex/layout-refinement`／`286d53b` 的 Preview 因未配置 `DATABASE_URL` 而被設定檢查拒絕；同一 commit 的 main Production 為 READY。依「目前只維持正式站」的決定，已透過 Vercel 官方專案更新 API 將 roll 的 `previewDeploymentsDisabled` 設為 `true`，並再次讀取確認；正式分支仍為 `main`，正式部署 ID 與 READY 狀態在設定變更前後相同。採用專案層級設定，舊分支也受控，不需要逐一回補分支的 vercel.json。既有 Preview 的 ERROR 歷史紀錄會保留，關閉設定不會將失敗部署改成成功。
+
+本次僅調整自動預覽部署政策與本 README；沒有修改應用程式、DATABASE_URL 檢查、環境變數或資料庫。公開正式首頁回應 200；未登入的 `/api/week-plan` 回應 401，權限限制正常。由於沒有程式碼變更，未重跑完整程式測試。未來需要 Preview 時，先配置隔離的測試資料庫、AUTH_SECRET、站台網址與必要資料表，再將 `previewDeploymentsDisabled` 改回 `false`；不要將正式資料庫或寄信設定複製到 Preview。API 設定與復原方式參見 [Vercel Update an existing project](https://vercel.com/docs/rest-api/projects/update-an-existing-project)。
+
 Production、Preview 的環境變數各自設定；非 main 分支的自動 Preview 不會自動繼承 Production。2026-10-03 的 codex/weekly-checkins／8eb1c50 預覽建置失敗原因為 Preview 缺 DATABASE_URL，同一 commit 的 Production 已 READY。預覽應配置獨立測試資料庫的 DATABASE_URL、獨立 AUTH_SECRET 與預覽 NEXT_PUBLIC_APP_URL，完成資料表及其他需驗收功能的設定後重新部署；不要為了建置通過直接共用正式會員 DB／金流／寄信設定。
 
 next build 在編譯前驗證 DATABASE_URL 的存在與 PostgreSQL 格式；Prisma runtime 也做同一檢查。缺失會立即顯示環境名稱，不再隱性使用 localhost 等待多次 60 秒逾時。錯誤不含連線字串或憑證；prisma generate 保留不需要連線的原行为。依使用者選擇，本次只補設定檢查，保留現有正式部署與既有 MDX 追蹤行為；Turbopack NFT 警告不是本次 Preview 失敗原因，未藉由延長逾時或關閉檢查掩蓋。這批修正不更動資料庫或 Vercel 機密，不部署或配置 Preview。 獨立工作樹以正式 origin/main（8eb1c50）為基準驗收：105 項測試通過，pnpm lint 無錯誤（兩項既有警告），pnpm build 成功。缺 DATABASE_URL 的 Next build 約 0.3 秒即失敗並明示 Preview；不依賴本機 .env 冒充 Preview 設定。
