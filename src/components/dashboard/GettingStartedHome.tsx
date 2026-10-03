@@ -50,7 +50,7 @@ export default function GettingStartedHome({ initial, overview, copilot, investo
   async function preference(action: "dismiss" | "reopen") {
     if (mutation.current) return; mutation.current = true; setBusy(true); setError("");
     try {
-      const res = await fetch("/api/account/getting-started", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+      const res = await fetch("/api/account/getting-started", { method: "PATCH", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
       const json = await res.json(); if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       setView(json.data); notifyPlanChanged(userId || undefined); router.refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
