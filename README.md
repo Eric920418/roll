@@ -1195,3 +1195,13 @@ This week 文案提供英文／繁體中文；日期、事項數量、任務進�
 This week 正式發布完成：3718fc3 對應 dpl_9wHzQiz79jJgQqWRcL84BYsz1puz（roll-5cc1lnjd1）已 Ready／www.rollgrp.com 生效。公開站 11 項 API／頁面檢查、中英文、390px 手機點選改日期、今日白框、事項細節、Next Three Moves 保留，以及實際跨分頁衝突→保留草稿→載入審閱→成功儲存均已驗證；前端 error log 為零。正式 schema 差異為 empty migration。提醒偏好可為 null（未設定）或 enabled=false，皆維持預設關閉，沒有寄信。
 
 專用正式 QA 帳號一個、本機 QA 帳號兩個及其關聯資料已僅按指定 ID／Email 清理。正式既有 User 10、Profile 9、Allowance 3、ActionPlan 6、ActionItem 103、QuizAttempt 3、RewardEntry 2、RewardDelivery 0 的完整內容指紋均與新增 schema 前一致；無會員資料回填／覆寫。驗收截圖使用專用 QA 資料；帳號清理後會員以自己的資料使用行事曆。本機 main 已 fast-forward，同步產生最新 Prisma Client。
+
+
+### 2026-10-03：Home 與 Next steps 版位精簡
+
+- Next steps 整併為單一 Goal roadmap 任務區與進度條。首個 Ready 任務預設展開，其餘任務收合；灰色勾選框、鎖頭、依賴編號、數量回報、搜尋篩選、編輯及刪除沿用同一份 ActionItem 資料與版本檢查。診斷和 Weekly / Monthly 補充清單預設收合，保留原有內容及操作。
+- 手機版編號與勾選框上下排列，受阻擋提示換行，避免擠壓長標題；成果摘要可用 Show more 查看完整原文。任務深連結會展開所屬里程碑，原生編輯視窗聚焦標題，支援 Escape 和關閉後焦點還原。
+- Home 依參考圖將 Investor DD／Rewards 放左、POLARIS 放右、週行事曆置於其下。積分主數字由 36px 改為 72px；每日到訪文案改用無所有格文字，並啟用正常字距配對。
+- Rewards 推薦 API 與提醒信不再引導測驗，保留原三題診斷、既有測驗獎勵及歷史。舊測驗郵件佇列跳過而不改寫冪等 payload。提醒信使用網站主 Logo；網站標題與 Home 介紹為 NOVA AI: Startup Operating Partner，CMS 只更新中英文 Metadata.title，不覆寫其他後台文案。
+- 不新增資料庫結構，不清空或回填會員資料。153 項測試（含獨立 PostgreSQL）全部通過，型別、修改檔案 lint、production build 通過。專用帳號於 production build 驗證單一清單／進度、受阻擋鎖、完成後解鎖、數量回報、編輯焦點、Home 排列、72px 積分、中英文手機與深連結，無頁面 JavaScript／hydration 錯誤。提醒信只驗證 HTML 與 mock provider，未向真實會員發送測試信。
+- 正式候選版本驗收與上線結果待補。

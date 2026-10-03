@@ -1,192 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BOTTLENECKS, COMPANY_STAGES, type BottleneckGroup } from "@/lib/action-plan/constants";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
-import ActionTaskRow from "./ActionTaskRow";
 import ActionPlanBuilder from "./ActionPlanBuilder";
 
-type Filter = "ready" | "blocked" | "done" | "all";
-
-export default function ActionPlanManager({ initialPlan, onChanged, guided = false }: { guided?: boolean; initialPlan: ActionPlanDto | null; onChanged?: (plan: ActionPlanDto | null) => void }) {
+export function ActionDiagnosis({ plan }: { plan: ActionPlanDto }) {
   const t = useTranslations("Dashboard.actionPlan");
-  const router = useRouter();
-  const [plan, setPlan] = useState(initialPlan);
-  const [filter, setFilter] = useState<Filter>("all");
-  const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<ActionPlanActionDto | "new" | null>(null);
-  const [pending, setPending] = useState("");
-  const [error, setError] = useState("");
+  return <details className="rounded-2xl border border-dark/10 bg-white p-5">
+    <summary className="min-h-11 cursor-pointer text-lg font-bold">{t("diagnosis.eyebrow")}</summary>
+    <div className="mt-3 space-y-4">
+      <p className="font-bold">{plan.diagnosis.companyStage} · {plan.diagnosis.bottleneckGroup}</p>
+      <dl className="grid gap-4 text-sm sm:grid-cols-2">
+        <div><dt className="font-semibold">{t("diagnosis.stage")}</dt><dd className="mt-2 whitespace-pre-wrap text-dark/65">{plan.diagnosis.stageReason}</dd></div>
+        <div><dt className="font-semibold">{t("diagnosis.bottleneck")}</dt><dd className="mt-2 whitespace-pre-wrap text-dark/65">{plan.diagnosis.bottleneckReason}</dd></div>
+      </dl>
+      <ActionPlanBuilder variant="regenerate" />
+    </div>
+  </details>;
+}
 
-  useEffect(() => setPlan(prev => prev?.id === initialPlan?.id && (prev?.revision || 0) > (initialPlan?.revision || 0) ? prev : initialPlan), [initialPlan]);
-  useEffect(() => { setFilter("all"); setSearch(""); }, [initialPlan?.id]);
-
-  useEffect(() => {
-    if (!window.location.hash.startsWith("#action-")) return;
-    const task = document.getElementById(window.location.hash.slice(1));
-    if (task) { task.querySelector<HTMLDetailsElement>("details")?.setAttribute("open", ""); task.focus(); }
-  }, [plan?.id]);
-
-  const filtered = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return (plan?.actions ?? []).filter((action) => {
-      const matchesSearch = !query || `${action.title} ${action.expectedOutcome.text}`.toLocaleLowerCase().includes(query);
-      const matchesFilter =
-        filter === "all" ||
-        (filter === "done" && action.done) ||
-        (filter === "blocked" && !action.done && action.dependency.blocked) ||
-        (filter === "ready" && !action.done && !action.dependency.blocked);
-      return matchesSearch && matchesFilter;
-    });
-  }, [filter, plan?.actions, search]);
-
-  async function mutate(id: string, body: object) {
-    setPending(id);
-    setError("");
-    try {
-      const response = await fetch(`/api/action-plans/actions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ revision: plan?.revision, ...body }),
-      });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || t("errors.save"));
-      setPlan(prev => prev?.id === json.data?.id && (prev?.revision || 0) > (json.data?.revision || 0) ? prev : json.data); onChanged?.(json.data); router.refresh(); return true;
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("errors.save")); return false;
-    } finally {
-      setPending("");
-    }
-  }
-
-  async function remove(action: ActionPlanActionDto) {
-    if (!window.confirm(t("deleteConfirm", { title: action.title }))) return;
-    setPending(action.id);
-    setError("");
-    try {
-      const response = await fetch(`/api/action-plans/actions/${action.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision: plan?.revision }) });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || t("errors.delete"));
-      setPlan(prev => prev?.id === json.data?.id && (prev?.revision || 0) > (json.data?.revision || 0) ? prev : json.data); onChanged?.(json.data); router.refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("errors.delete"));
-    } finally {
-      setPending("");
-    }
-  }
-
-  if (!plan) {
-    return (
-      <section className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[#fffdf8]">
-        <div className="grid gap-7 p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">NOVA action plan</p>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("empty.title")}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-dark/60">{t("empty.body")}</p>
-          </div>
-          <ActionPlanBuilder autoOpen={guided} />
-        </div>
-      </section>
-    );
-  }
-
-  const doneCount = plan.actions.filter((action) => action.done).length;
-  const readyCount = plan.actions.filter((action) => !action.done && !action.dependency.blocked).length;
-
-  return (
-    <section className="flex flex-col gap-6">
-      <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-dark text-white">
-        <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-start">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">{t("diagnosis.eyebrow")}</p>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] font-[family-name:var(--font-heading)]">
-              {plan.diagnosis.companyStage} · {plan.diagnosis.bottleneckGroup}
-            </h2>
-            <div className="mt-4 grid gap-3 text-sm text-white/70 sm:grid-cols-2">
-              <p className="rounded-xl bg-white/[0.06] p-4">
-                <strong className="block text-xs uppercase tracking-[0.12em] text-white/45">{t("diagnosis.stage")}</strong>
-                <span className="mt-2 block leading-6">{plan.diagnosis.stageReason}</span>
-              </p>
-              <p className="rounded-xl bg-white/[0.06] p-4">
-                <strong className="block text-xs uppercase tracking-[0.12em] text-white/45">{t("diagnosis.bottleneck")}</strong>
-                <span className="mt-2 block leading-6">{plan.diagnosis.bottleneckReason}</span>
-              </p>
-            </div>
-          </div>
-          <ActionPlanBuilder variant="regenerate" onGenerated={() => setEditing(null)} />
-        </div>
-      </div>
-
-      <section>
-        <div className="mb-5 rounded-2xl border border-dark/10 bg-white p-4">
-          <div className="flex justify-between text-sm font-semibold text-dark"><span>{t("actionProgress")}</span><span>{doneCount}/{plan.actions.length}</span></div>
-          <div role="progressbar" aria-label={t("actionProgress")} aria-valuemin={0} aria-valuemax={plan.actions.length || 1} aria-valuenow={doneCount} className="mt-2 h-2 overflow-hidden rounded-full bg-primary/10"><div className="h-full rounded-full bg-primary" style={{ width: `${plan.actions.length ? (doneCount / plan.actions.length) * 100 : 0}%` }} /></div>
-        </div>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("next.eyebrow")}</p>
-            <h2 className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("next.title")}</h2>
-            <p className="mt-2 text-sm text-dark/65">{t("next.summary", { total: plan.actions.length, ready: readyCount, blocked: plan.blockers.length, done: doneCount })}</p>
-            <p className="mt-1 text-xs text-dark/55">{t("next.explanation")}</p>
-          </div>
-          <a href="#action-plan-list" onClick={() => { setFilter("all"); setSearch(""); }} className="inline-flex min-h-11 items-center rounded-xl border border-dark/15 bg-white px-4 text-sm font-bold text-dark hover:border-primary">{t("next.viewAll", { count: plan.actions.length })} ↓</a>
-        </div>
-        <div className={`mt-4 grid gap-4 ${plan.nextMoves.length > 2 ? "xl:grid-cols-3" : plan.nextMoves.length > 1 ? "xl:grid-cols-2" : ""}`}>
-          {plan.nextMoves.map((action) => <ActionTaskRow key={action.id} action={action} onEdit={() => setEditing(action)} />)}
-          {plan.nextMoves.length === 0 && <p className="rounded-2xl border border-dark/10 bg-white p-5 text-sm text-dark/65 xl:col-span-3">{t(doneCount === plan.actions.length ? "next.allDone" : "next.noneReady")}</p>}
-        </div>
-        {plan.nextMoves.length < 3 && plan.blockers.length > 0 && (
-          <div role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p>{t("next.waiting", { count: plan.blockers.length })}</p>
-          </div>
-        )}
-      </section>
-
-      <section id="action-plan-list" tabIndex={-1} className="scroll-mt-6 rounded-[1.75rem] border border-dark/10 bg-white p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("complete.eyebrow")}</p>
-            <h2 className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("complete.title", { count: plan.actions.length })}</h2>
-          </div>
-          <button type="button" onClick={() => setEditing("new")} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white hover:bg-dark/90">
-            {t("add")}
-          </button>
-        </div>
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <label className="min-w-0 flex-1 text-sm font-bold text-dark">
-            <span className="sr-only">{t("search")}</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("search")} className="min-h-11 w-full rounded-xl border border-dark/15 px-4 text-sm font-normal outline-none focus:border-primary" />
-          </label>
-          <div className="flex flex-wrap gap-2" aria-label={t("filter.label")}>
-            {(["ready", "blocked", "done", "all"] as const).map((value) => (
-              <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-11 rounded-xl border px-4 text-sm font-bold ${filter === value ? "border-primary bg-primary text-white" : "border-dark/10 bg-white text-dark/60"}`}>
-                {t(`filter.${value}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {error && <div role="alert" className="mt-4 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-
-        <div className="mt-5 flex flex-col gap-3">
-          {filtered.map(action => <div id={`action-${action.id}`} tabIndex={-1} key={action.id} className="scroll-mt-24"><ActionTaskRow action={action} revision={plan.revision} busy={Boolean(pending)} onToggle={() => void mutate(action.id, { done: !action.done })} onMetric={metric => mutate(action.id, metric)} onEdit={() => setEditing(action)} onDelete={() => void remove(action)} /></div>)}
-          {filtered.length === 0 && <p className="rounded-2xl border border-dashed border-dark/15 px-5 py-8 text-center text-sm text-dark/45">{t("noResults")}</p>}
-        </div>
-      </section>
-
-      {editing && (
-        <ActionEditor
-          action={editing === "new" ? null : editing}
-          plan={plan}
-          onClose={() => setEditing(null)}
-          onSaved={(nextPlan) => { setPlan(nextPlan); onChanged?.(nextPlan); router.refresh(); setEditing(null); setError(""); }}
-        />
-      )}
-    </section>
-  );
+export default function ActionPlanManager({ initialPlan, guided = false }: { guided?: boolean; initialPlan: ActionPlanDto | null; onChanged?: (plan: ActionPlanDto | null) => void }) {
+  const t = useTranslations("Dashboard.actionPlan");
+  if (initialPlan) return <ActionDiagnosis plan={initialPlan} />;
+  return <section className="rounded-2xl border border-dark/15 bg-white p-5 sm:p-7">
+    <h2 className="text-xl font-bold">{t("empty.title")}</h2>
+    <p className="mt-2 max-w-2xl text-sm leading-6 text-dark/60">{t("empty.body")}</p>
+    <div className="mt-4"><ActionPlanBuilder autoOpen={guided} /></div>
+  </section>;
 }
 
 type Draft = {
@@ -196,9 +39,17 @@ type Draft = {
   bottleneckFit: string; bottleneckFitReason: string; outcomeCategory: string; expectedOutcome: string; outcomeMin: string; outcomeMax: string;
 };
 
-function ActionEditor({ action, plan, onClose, onSaved }: { action: ActionPlanActionDto | null; plan: ActionPlanDto; onClose: () => void; onSaved: (plan: ActionPlanDto) => void }) {
+export function ActionEditor({ action, plan, onClose, onSaved }: { action: ActionPlanActionDto | null; plan: ActionPlanDto; onClose: () => void; onSaved: (plan: ActionPlanDto) => void }) {
   const t = useTranslations("Dashboard.actionPlan");
   const [baseRevision] = useState(plan.revision);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    dialog?.querySelector<HTMLInputElement>("input")?.focus();
+    return () => { dialog?.close(); if (previous?.isConnected) previous.focus(); };
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Draft>(() => action ? {
@@ -261,8 +112,8 @@ function ActionEditor({ action, plan, onClose, onSaved }: { action: ActionPlanAc
 
   const input = "mt-2 min-h-11 w-full rounded-xl border border-dark/15 bg-white px-3 text-sm font-normal outline-none focus:border-primary";
   return (
-    <div className="fixed inset-0 z-[65] flex items-end justify-center bg-dark/45 p-3 backdrop-blur-sm lg:items-center lg:p-6">
-      <form onSubmit={save} role="dialog" aria-modal="true" aria-labelledby="action-editor-title" className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-[1.75rem] bg-[#fffdf8] p-5 shadow-2xl sm:p-7">
+    <dialog ref={dialogRef} aria-labelledby="action-editor-title" onCancel={event => { if (busy) event.preventDefault(); }} onClose={onClose} className="nova-theme fixed inset-0 m-auto max-h-[94dvh] w-[calc(100%-1.5rem)] max-w-5xl overflow-y-auto rounded-[1.75rem] border-0 bg-white p-0 shadow-2xl backdrop:bg-black/45">
+      <form onSubmit={save} className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-[1.75rem] bg-[#fffdf8] p-5 shadow-2xl sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">8 core dimensions</p><h2 id="action-editor-title" className="mt-1 text-2xl font-extrabold text-dark">{action ? t("editor.editTitle") : t("editor.addTitle")}</h2></div>
           <button type="button" onClick={onClose} disabled={busy} aria-label={t("builder.close")} className="min-h-11 min-w-11 rounded-full border border-dark/10 text-xl text-dark/50">×</button>
@@ -306,7 +157,7 @@ function ActionEditor({ action, plan, onClose, onSaved }: { action: ActionPlanAc
         {error && <div role="alert" className="mt-4 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-dark/15 px-5 text-sm font-bold text-dark">{t("cancel")}</button><button type="submit" disabled={busy} className="min-h-11 rounded-xl bg-primary px-6 text-sm font-bold text-white disabled:opacity-50">{busy ? t("saving") : t("save")}</button></div>
       </form>
-    </div>
+    </dialog>
   );
 }
 

@@ -55,11 +55,11 @@ export function emailPayload(to: string, userId: string, version: string, locale
   const unsubscribe = new URL(`${prefix}/rewards/unsubscribe?token=${encodeURIComponent(token)}`, origin).href;
   const oneClick = new URL(`/api/rewards/unsubscribe?token=${encodeURIComponent(token)}`, origin).href;
   const label = zh ? { profile: "完善公司資料", quiz: "完成本期知識測驗", action: "完成下一項行動" }[kind] : { profile: "Complete your company profile", quiz: "Complete this period’s quiz", action: "Complete your next action" }[kind];
-  const subject = zh ? "NOVA：今天的一小步，累積下一個獎勵" : "NOVA: one useful step towards your next reward";
+  const subject = zh ? "NOVA AI：今天的一小步，累積下一個獎勵" : "NOVA AI: one useful step towards your next reward";
   const text = `${label} · +${points} ${zh ? "積分" : "points"}\n${cta}\n${zh ? "退訂每日提醒" : "Unsubscribe from daily reminders"}: ${unsubscribe}`;
   return {
     from: process.env.RESEND_FROM_EMAIL!, to: [to], subject, text,
-    html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;color:#111;padding:32px"><p style="letter-spacing:4px;font-weight:800">NOVA</p><h1>${escape(label)}</h1><p>+${points} ${zh ? "積分，每一步都算數。" : "points. Every useful step counts."}</p><p><a style="display:inline-block;background:#000;color:white;padding:14px 24px;border-radius:12px" href="${escape(cta)}">${zh ? "回到 NOVA" : "Return to NOVA"}</a></p><hr><a href="${escape(unsubscribe)}">${zh ? "退訂每日提醒" : "Unsubscribe from daily reminders"}</a></div>`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;color:#111;padding:32px"><img src="${escape(new URL("/nova/logo-black.png", origin).href)}" width="180" height="34" alt="NOVA AI" style="display:block;width:180px;max-width:100%;height:auto;margin-bottom:28px" /><h1>${escape(label)}</h1><p>+${points} ${zh ? "積分，每一步都算數。" : "points. Every useful step counts."}</p><p><a style="display:inline-block;background:#000;color:white;padding:14px 24px;border-radius:12px" href="${escape(cta)}">${zh ? "回到 NOVA AI" : "Return to NOVA AI"}</a></p><hr><a href="${escape(unsubscribe)}">${zh ? "退訂每日提醒" : "Unsubscribe from daily reminders"}</a></div>`,
     headers: { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
   };
 }
@@ -113,6 +113,9 @@ export async function runRewardReminders(now = new Date()) {
       const opportunity = opportunities[0];
       if (!opportunity) { await finish({ status: "skipped" }); result.skipped++; continue; }
       const payload = delivery.payload ?? emailPayload(user.email, user.id, reminder.tokenVersion, reminder.locale, opportunity.kind, opportunity.href, opportunity.points);
+      // A queued quiz predates removal of quiz recommendations. Do not replace an
+      // idempotent provider payload with different bytes or send obsolete guidance.
+      if (delivery.payload && JSON.stringify(delivery.payload).includes("/dashboard/quiz")) { await finish({ status: "skipped" }); result.skipped++; continue; }
       // Persist the exact payload before calling Resend so retries use the same idempotent request.
       const counted = await prisma.rewardDelivery.updateMany({ where: { id: delivery.id, leaseToken, status: "processing" }, data: { payload, attempts: { increment: 1 } } });
       if (!counted.count) continue;

@@ -45,6 +45,7 @@
   --color-black: #000000;
   background: var(--color-light);
   color: var(--color-dark);
+  font-kerning: normal;
 }
 
 .nova-theme ::selection {

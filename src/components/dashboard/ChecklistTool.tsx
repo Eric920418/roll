@@ -10,7 +10,7 @@ import type {
   MilestoneMutation,
 } from "@/lib/tools/checklist";
 
-export default function ChecklistTool({ groups: initialGroups }: { groups: MilestoneGroupView[] }) {
+export default function ChecklistTool({ groups: initialGroups, hideProgress = false }: { groups: MilestoneGroupView[]; hideProgress?: boolean }) {
   const t = useTranslations("Dashboard.tools");
   const [groups, setGroups] = useState(initialGroups);
   const [error, setError] = useState("");
@@ -179,7 +179,7 @@ export default function ChecklistTool({ groups: initialGroups }: { groups: Miles
     <div className="mt-7">
       <div className="rounded-2xl border border-dark/10 bg-white p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
+          {!hideProgress && <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between text-sm">
               <span className="font-semibold text-dark font-[family-name:var(--font-heading)]">
                 {t("progress")}
@@ -199,7 +199,7 @@ export default function ChecklistTool({ groups: initialGroups }: { groups: Miles
             >
               <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
             </div>
-          </div>
+          </div>}
           <button
             type="button"
             onClick={() => {

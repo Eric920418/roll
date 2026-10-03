@@ -6,6 +6,7 @@ import test from "node:test";
 import ts from "typescript";
 import { z } from "zod";
 import { validReminderTime, validTimeZone } from "../src/lib/rewards/policy";
+import * as rewardPolicy from "../src/lib/rewards/policy";
 function load<T>(path: string, mocks: Record<string, unknown>): T {
   const require = createRequire(import.meta.url), loaded = { exports: {} };
   const source = ts.transpileModule(readFileSync(path,"utf8"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText;
@@ -67,4 +68,41 @@ test("Quiz rejects null, blank, string, boolean and missing choices before any a
     assert.equal(response.status, 400);
   }
   assert.equal(transactions, 0);
+});
+
+test("Rewards recommendations omit the quiz while retaining real profile and Ready task actions", async () => {
+  const source = load<typeof import("../src/lib/rewards/service")>("src/lib/rewards/service.ts", {
+    "server-only": {}, "./policy": rewardPolicy, "@/lib/prisma": { prisma: {
+      rewardEntry: { findUnique: async () => ({ id: "profile-claimed" }), findMany: async () => [] },
+      playbookQuizAttempt: { findUnique: () => { throw new Error("Quiz is not a required next step"); } },
+    } }, "@/lib/auth/account": {}, "@/lib/billing/gate": {},
+    "@/lib/action-plan/service": { getActiveActionPlan: async () => ({ nextMoves: [
+      { id: "ready", title: "Interview customers", done: false, dependency: { blocked: false } },
+      { id: "blocked", title: "Pilot", done: false, dependency: { blocked: true } },
+    ] }) },
+    "@/lib/playbook/quiz": { fortnightIndex: () => 0, periodEnd: () => new Date("2026-10-16") },
+  });
+  const result = await source.rewardOpportunities("owner", true, new Date("2026-10-02"), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.opportunities)), [{ kind: "action", href: "/dashboard/agenda#action-ready", points: 30, title: "Interview customers" }]);
+  assert.equal((await source.rewardOpportunities("owner", false, new Date("2026-10-02"), null)).opportunities.length, 0);
+});
+
+test("Reminder branding uses the main absolute logo and keeps safe escaped links without sending email", () => {
+  const old = { secret: process.env.AUTH_SECRET, url: process.env.NEXT_PUBLIC_APP_URL, from: process.env.RESEND_FROM_EMAIL };
+  try {
+    process.env.AUTH_SECRET = "local-test-secret"; process.env.NEXT_PUBLIC_APP_URL = "https://example.test"; process.env.RESEND_FROM_EMAIL = "NOVA AI <test@example.invalid>";
+    const reminders = load<typeof import("../src/lib/rewards/reminders")>("src/lib/rewards/reminders.ts", {
+      "server-only": {}, "./policy": rewardPolicy, "@/lib/prisma": {}, "@/lib/auth/account": {}, "@/lib/billing/plans": {}, "@/lib/billing/gate": {},
+      "./service": { RewardError },
+    });
+    for (const locale of ["en", "zh-tw"]) {
+      const payload = reminders.emailPayload("test@example.invalid", "owner", "11111111-1111-4111-8111-111111111111", locale, "action", "/dashboard/agenda#action-test", 30);
+      assert.match(payload.html, /src="https:\/\/example\.test\/nova\/logo-black\.png"/);
+      assert.match(payload.html, /alt="NOVA AI"/);
+      assert.doesNotMatch(payload.html, /letter-spacing:4px/);
+      assert.match(payload.headers["List-Unsubscribe"], /example\.test\/api\/rewards\/unsubscribe/);
+    }
+  } finally {
+    for (const [key, value] of [["AUTH_SECRET", old.secret], ["NEXT_PUBLIC_APP_URL", old.url], ["RESEND_FROM_EMAIL", old.from]]) { if (value === undefined) delete process.env[key!]; else process.env[key!] = value; }
+  }
 });

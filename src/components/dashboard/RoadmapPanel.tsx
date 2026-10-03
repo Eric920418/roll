@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { correctionSchema, type StageCorrection } from "@/lib/roadmap/corrections";
 import ActionTaskRow from "./ActionTaskRow";
+import { ActionEditor } from "./ActionPlanManager";
+import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { taskReference } from "@/lib/action-plan/ranking";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import type { RoadmapView } from "@/lib/roadmap/service";
@@ -24,6 +26,9 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   const [view, setView] = useState<RoadmapView | null>(null), [form, setForm] = useState<RoadmapDraft | null>(null);
   const [goal, setGoal] = useState(""), [deadline, setDeadline] = useState("");
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [note, setNote] = useState("");
+  const [editing, setEditing] = useState<ActionPlanActionDto | "new" | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
   const [historical, setHistorical] = useState<ActionPlanDto | null>(null);
   const cacheKey = `nova:roadmap:${userId}`, current = initialPlan?.roadmap?.milestones.find(m => !m.achievedAt);
   const currentId = current?.id;
@@ -106,20 +111,46 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     finally { busyRef.current = false; setBusy(false); }
   }
   function updateDraft(next: RoadmapDraft) { setForm(next); if (next.mode === "new") setGoal(next.goal); store(next.mode === "new" ? next.goal : goal, deadline, next); }
-  async function toggleTask(id: string, done: boolean) {
-    if (busyRef.current || !initialPlan) return;
+  async function changeTask(id: string, body: object, method = "PATCH") {
+    if (busyRef.current || !initialPlan) return false;
     busyRef.current = true; setBusy(true); setError("");
-    try { const next: ActionPlanDto = await request("PATCH", { done, revision: initialPlan.revision }, `/api/action-plans/actions/${id}`); onChanged(next); router.refresh(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    try { const next: ActionPlanDto = await request(method, { revision: initialPlan.revision, ...body }, `/api/action-plans/actions/${id}`); onChanged(next); router.refresh(); return true; }
+    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); return false; }
     finally { busyRef.current = false; setBusy(false); }
   }
+  function matches(a: ActionPlanActionDto) {
+    return (!search.trim() || `${a.title} ${a.expectedOutcome.text}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) &&
+      (filter === "all" || (filter === "done" ? a.done : filter === "blocked" ? !a.done && a.dependency.blocked : !a.done && !a.dependency.blocked));
+  }
+  const featuredId = initialPlan?.nextMoves[0]?.id;
+  function taskRow(a: ActionPlanActionDto, readOnly = false) {
+    return <div key={a.id} id={readOnly ? undefined : `action-${a.id}`} tabIndex={-1} className="scroll-mt-24">
+      <ActionTaskRow action={a} compact featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
+        onToggle={readOnly ? undefined : () => void changeTask(a.id, { done: !a.done })}
+        onMetric={readOnly ? undefined : metric => changeTask(a.id, metric)}
+        onEdit={readOnly ? undefined : () => setEditing(a)}
+        onDelete={readOnly ? undefined : () => { if (window.confirm(locale === "zh-tw" ? `刪除任務「${a.title}」？` : `Delete task “${a.title}”?`)) void changeTask(a.id, {}, "DELETE"); }} />
+    </div>;
+  }
+  useEffect(() => {
+    function revealTask() {
+      if (!window.location.hash.startsWith("#action-")) return;
+      const element = document.getElementById(window.location.hash.slice(1));
+      if (!element) return;
+      let parent = element.parentElement;
+      while (parent) { if (parent instanceof HTMLDetailsElement) parent.open = true; parent = parent.parentElement; }
+      element.querySelector<HTMLDetailsElement>("details")?.setAttribute("open", "");
+      element.scrollIntoView({ block: "center" }); element.focus({ preventScroll: true });
+    }
+    revealTask(); window.addEventListener("hashchange", revealTask);
+    return () => window.removeEventListener("hashchange", revealTask);
+  }, [initialPlan?.id]);
   function milestoneCard(m: MilestoneView, readOnly = false) {
     const isCurrent = m.id === current?.id && !readOnly;
-    return <details key={m.id} name={readOnly ? "roadmap-history-stages" : "roadmap-active-stages"} open={isCurrent} className="min-w-0 rounded-xl border border-dark/15 p-4">
+    return <details key={m.id} open={isCurrent || (!readOnly && (search.length > 0 || filter !== "all") && initialPlan?.actions.some(a => a.milestoneId === m.id && matches(a)))} className="min-w-0 rounded-xl border border-dark/15 p-3 sm:p-4">
       <summary className="cursor-pointer break-words [overflow-wrap:anywhere] text-sm font-semibold"><span>{m.position + 1}. {m.title}</span><span className="ml-3 text-xs text-dark/60">{t(`status.${m.status}`)} · {m.targetDate}</span></summary>
       <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{m.expectedOutcome}</p><p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-dark/60">{t("criteria")}: {m.acceptanceCriteria}</p>
-      <p className="mt-3 text-xs">{t("taskProgress", { done: m.done, total: m.total })}</p>
-      <div className="mt-3 space-y-3">{(readOnly ? historical : initialPlan)?.actions.filter(a => a.milestoneId === m.id).map(a => <ActionTaskRow key={a.id} action={a} busy={busy} readOnly={readOnly} onToggle={() => void toggleTask(a.id, !a.done)} href={readOnly ? undefined : `#action-${a.id}`} />)}</div>
+      <div className="mt-3 space-y-3">{(readOnly ? historical : initialPlan)?.actions.filter(a => a.milestoneId === m.id && (readOnly || matches(a))).map(a => taskRow(a, readOnly))}</div>
       {m.outcomeNote && <p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{t("actualResult")}: {m.outcomeNote}</p>}
       {!readOnly && m.status === "awaiting" && <form onSubmit={e => { e.preventDefault(); void outcome(m, true); }} className="mt-4 space-y-3"><label className="block text-sm">{t("actualResult")}<textarea aria-label={t("actualResult")} required maxLength={4000} rows={3} className={`${input} mt-1`} value={note} onChange={e => storeNote(e.target.value)} /></label><button className={button} disabled={busy || !note.trim()}>{t("confirmOutcome")}</button><p className="text-xs text-dark/60">{t("notAchievedHint")}</p></form>}
       {!readOnly && m.status === "unplanned" && <button type="button" className={`${button} mt-4`} disabled={busy} onClick={() => void open()}>{t("nextStage")}</button>}
@@ -128,9 +159,22 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   }
   function updateCorrection(next: StageCorrection) { setCorrection(next); try { localStorage.setItem(cacheKey, JSON.stringify({ goal, deadline, draft: form, correction: next })); } catch { setNotice(t("storageError")); } }
   const disabled = busy || Boolean(view?.pending) || !view;
-  return <section id="goal-roadmap" className="min-w-0 rounded-2xl border border-sky-300 bg-white p-5 sm:p-7">
+  return <section id="goal-roadmap" className="min-w-0 rounded-2xl border border-sky-300 bg-white p-4 sm:p-7">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">{t("title")}</h2><p className="mt-1 text-sm text-dark/60">{t("intro")}</p></div><button ref={planTrigger} type="button" className={button} onClick={() => void open()}>{t("planGoal")}</button></div>
+    {initialPlan && <div id="action-plan-list" className="mt-5 scroll-mt-6">
+      <div className="flex items-center justify-between text-sm font-bold"><span>{locale === "zh-tw" ? "進度" : "Progress"}</span><span>{initialPlan.actions.filter(a => a.done).length}/{initialPlan.actions.length}</span></div>
+      <div role="progressbar" aria-label={locale === "zh-tw" ? "任務進度" : "Task progress"} aria-valuemin={0} aria-valuemax={initialPlan.actions.length || 1} aria-valuenow={initialPlan.actions.filter(a => a.done).length} className="mt-2 h-2 overflow-hidden rounded-full bg-dark/10"><div className="h-full rounded-full bg-dark transition-all" style={{ width: `${initialPlan.actions.length ? initialPlan.actions.filter(a => a.done).length / initialPlan.actions.length * 100 : 0}%` }} /></div>
+      <details className="mt-3 text-sm"><summary className="min-h-11 cursor-pointer font-semibold">{locale === "zh-tw" ? "搜尋與篩選" : "Search and filter"}</summary><div className="mt-2 flex flex-wrap gap-2">
+        <input aria-label={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} placeholder={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} value={search} onChange={e => setSearch(e.target.value)} className={`${input} min-h-11 sm:w-auto`} />
+        <select aria-label={locale === "zh-tw" ? "任務狀態" : "Task status"} value={filter} onChange={e => setFilter(e.target.value)} className={`${input} min-h-11 sm:w-auto`}>{["all", "ready", "blocked", "done"].map((value, i) => <option key={value} value={value}>{(locale === "zh-tw" ? ["全部", "可執行", "受阻擋", "已完成"] : ["All", "Ready", "Blocked", "Done"])[i]}</option>)}</select>
+      </div></details>
+      {!initialPlan.actions.some(matches) && <p className="mt-3 text-sm text-dark/60">{locale === "zh-tw" ? "沒有符合條件的任務。" : "No matching tasks."}</p>}
+      {!initialPlan.roadmap && <div className="mt-3 space-y-3">{initialPlan.actions.filter(matches).map(a => taskRow(a))}</div>}
+    </div>}
     {initialPlan?.roadmap && <div className="mt-5 space-y-3"><p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-bold">{initialPlan.roadmap.goal}</p><p className="text-sm text-dark/60">{initialPlan.roadmap.startsAt} → {initialPlan.roadmap.deadline}</p>{initialPlan.roadmap.assumptions.length > 0 && <details className="text-sm"><summary className="cursor-pointer">{t("assumptions")}</summary><ul className="mt-2 list-inside list-disc space-y-1 text-dark/60">{initialPlan.roadmap.assumptions.map((a, i) => <li key={i} className="break-words [overflow-wrap:anywhere]">{a}</li>)}</ul></details>}{initialPlan.roadmap.milestones.map(m => milestoneCard(m))}</div>}
+    {initialPlan?.roadmap && initialPlan.actions.some(a => !a.milestoneId) && <div className="mt-4 space-y-3">{initialPlan.actions.filter(a => !a.milestoneId && matches(a)).map(a => taskRow(a))}</div>}
+    {initialPlan && <button type="button" className={`${button} mt-4`} disabled={busy} onClick={() => setEditing("new")}>{locale === "zh-tw" ? "新增任務" : "Add task"}</button>}
+    {editing && initialPlan && <ActionEditor key={editing === "new" ? "new" : editing.id} action={editing === "new" ? null : editing} plan={initialPlan} onClose={() => setEditing(null)} onSaved={next => { onChanged(next); router.refresh(); setEditing(null); setError(""); }} />}
     {error && !opened && <div role="alert" className="mt-3 space-y-3 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
     {mounted && createPortal(<dialog ref={dialog} aria-labelledby="roadmap-title" onClose={() => { setOpened(false); (trigger.current?.isConnected ? trigger.current : planTrigger.current)?.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[920px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-dark/10 bg-white p-5"><h2 id="roadmap-title" className="text-xl font-bold">✧ POLARIS · {t("title")}</h2><button type="button" className={button} onClick={() => dialog.current?.close()}>{t("close")}</button></header>
@@ -153,7 +197,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
         {(error || view?.error) && <div role="alert" className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{error || view?.error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
         {notice && <p role="status" className="rounded-xl bg-dark/[0.04] p-3 text-sm">{notice}</p>}
         {view && view.history.length > 0 && <section><h3 className="font-bold">{t("history")}</h3><ul className="mt-3 space-y-2">{view.history.map(p => <li key={p.id}><button type="button" className={button} onClick={() => { void request("GET", undefined, `/api/action-plans/roadmap?planId=${encodeURIComponent(p.id)}`).then(data => setHistorical(data.plan)).catch(cause => setError(cause.message)); }}>{p.goal || t("oldPlan")} · {p.createdAt.slice(0, 10)}</button></li>)}</ul></section>}
-        {historical && <section className="space-y-3 rounded-xl border border-dark/10 p-4"><h3 className="font-bold">{t("readOnly")}</h3>{historical.roadmap?.milestones.map(m => milestoneCard(m, true))}<ul className="list-inside list-disc space-y-2 text-sm">{historical.actions.map(a => <li key={a.id} className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{a.done ? "✓ " : "○ "}{a.title} — {a.expectedOutcome.text}</li>)}</ul></section>}
+        {historical && <section className="space-y-3 rounded-xl border border-dark/10 p-4"><h3 className="font-bold">{t("readOnly")}</h3>{historical.roadmap?.milestones.map(m => milestoneCard(m, true))}<ul className="list-inside list-disc space-y-2 text-sm">{historical.actions.filter(a => !historical.roadmap || !a.milestoneId).map(a => <li key={a.id} className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{a.done ? "✓ " : "○ "}{a.title} — {a.expectedOutcome.text}</li>)}</ul></section>}
       </div>
     </dialog>, document.body)}
   </section>;

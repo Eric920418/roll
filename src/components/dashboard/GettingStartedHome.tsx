@@ -64,11 +64,11 @@ export default function GettingStartedHome({ initial, overview, copilot, investo
     : view.currentStep === 2 ? t("buildPlan") : view.nextTask ? t("openFirstTask") : t("resolveBlocker");
   const extras = <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">{investor}{events}{podcast}</div>;
   const daily = <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-2">
-    <div className="order-5 min-w-0 lg:order-1 lg:col-start-1 lg:row-start-1">{investor}</div>
-    <div className="order-1 min-w-0 lg:order-2 lg:col-start-1 lg:row-start-2">{rewards}</div>
-    <div className="order-2 min-w-0 lg:order-1 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-stretch">{copilot}</div>
-    <div className="order-3 min-w-0 lg:col-span-2 lg:row-start-3">{calendar}</div>
-    <div className="order-4 min-w-0 lg:col-span-2 lg:row-start-4">{overview}</div>
+    <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1">{investor}</div>
+    <div className="order-2 min-w-0 lg:col-start-1 lg:row-start-2">{rewards}</div>
+    <div className="order-3 min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-stretch">{copilot}</div>
+    <div className="order-4 min-w-0 lg:col-span-2 lg:row-start-3">{calendar}</div>
+    <div className="order-5 min-w-0 lg:col-span-2 lg:row-start-4">{overview}</div>
   </div>;
   return <div className="mt-5 space-y-6">
     <div className="flex justify-end"><button className="min-h-11 rounded-xl px-3 text-sm font-semibold underline underline-offset-4 disabled:opacity-50" disabled={busy} onClick={() => void preference(view.visible ? "dismiss" : "reopen")}>{view.visible ? t("later") : t("reopen")}</button></div>

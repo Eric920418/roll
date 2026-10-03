@@ -22,7 +22,7 @@ test("Rewards integration in isolated PostgreSQL", { skip: !connectionString }, 
   assert(["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) && url.pathname.startsWith("/roll_rewards_qa"), "Use an isolated loopback QA database, never Production");
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   const ids: string[] = [];
-  let currentUser = "", opportunities = [{ kind: "quiz", href: "/dashboard/quiz", points: 50 }];
+  let currentUser = "", opportunities = [{ kind: "profile", href: "/dashboard/profile", points: 50 }];
   let activePlan: { nextMoves: { id: string; title: string; done: boolean; dependency: { blocked: boolean } }[] } | null = null;
   const quizBank = [{ id: "one", options: ["a","b"], answerIndex: 0 }, { id: "two", options: ["a","b"], answerIndex: 1 }];
   const mocks: Record<string, unknown> = {
@@ -136,7 +136,7 @@ test("Rewards integration in isolated PostgreSQL", { skip: !connectionString }, 
       await t.test("Effective action suppresses reminder; a visit alone does not; no opportunity means no email",async()=>{
         const now=new Date(),completed=await user(),visited=await user();await award(completed.id,"quiz","0");await service.claimVisit(visited.id);await schedule(completed.id,now);await schedule(visited.id,now);
         const before=calls;await reminders.runRewardReminders(now);assert.equal(calls-before,1);assert.equal((await db.rewardDelivery.findFirstOrThrow({where:{userId:completed.id}})).status,"skipped");
-        const empty=await user();await schedule(empty.id,now);opportunities=[];const baseline=calls;await reminders.runRewardReminders(now);assert.equal(calls,baseline);assert.equal((await db.rewardDelivery.findFirstOrThrow({where:{userId:empty.id}})).status,"skipped");opportunities=[{kind:"quiz",href:"/dashboard/quiz",points:50}];
+        const empty=await user();await schedule(empty.id,now);opportunities=[];const baseline=calls;await reminders.runRewardReminders(now);assert.equal(calls,baseline);assert.equal((await db.rewardDelivery.findFirstOrThrow({where:{userId:empty.id}})).status,"skipped");opportunities=[{kind:"profile",href:"/dashboard/profile",points:50}];
       });
       await t.test("Completing an action or unsubscribing during the send wait stops the provider request", async () => {
         const now = new Date(), completed = await user();
@@ -148,6 +148,15 @@ test("Rewards integration in isolated PostgreSQL", { skip: !connectionString }, 
         duringSendWait = () => reminders.unsubscribeReminder(reminders.unsubscribeToken(unsubscribed.id, settings.tokenVersion));
         await reminders.runRewardReminders(now);
         assert.equal(calls, before); assert.equal((await db.rewardDelivery.findFirstOrThrow({ where: { userId: unsubscribed.id } })).status, "cancelled");
+      });
+      await t.test("An old queued quiz is skipped without rewriting its fixed payload or contacting the provider", async () => {
+        const u = await user(), now = new Date(); await schedule(u.id, now);
+        const reminder = await db.rewardReminder.findUniqueOrThrow({ where: { userId: u.id } });
+        const payload = reminders.emailPayload(u.email, u.id, reminder.tokenVersion, "en", "quiz", "/dashboard/quiz", 50);
+        const delivery = await db.rewardDelivery.create({ data: { userId: u.id, dayKey: policy.rewardKeys(now).day, scheduledAt: now, reminderVersion: reminder.tokenVersion, nextAttemptAt: now, payload } });
+        const before = calls; await reminders.runRewardReminders(now);
+        const saved = await db.rewardDelivery.findUniqueOrThrow({ where: { id: delivery.id } });
+        assert.equal(calls, before); assert.equal(saved.status, "skipped"); assert.deepEqual(saved.payload, JSON.parse(JSON.stringify(payload))); assert.equal(saved.attempts, 0);
       });
       await t.test("Send retries reuse the exact provider payload/key, stop after three attempts, redact credentials",async()=>{
         const u=await user(),now=new Date();await schedule(u.id,now);failSend=true;

@@ -530,7 +530,7 @@ test("三題草稿在診斷失敗前保存，重試沿用三份回答，生成�
   assert.equal(cache.size, 0);
 });
 
-test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除篩選與搜尋", () => {
+test("Next steps 五項任務只出現一次，一個進度條，只有首個 Ready 預設展開且可篩選", () => {
   const state: unknown[] = [];
   let cursor = 0;
   const require = createRequire(import.meta.url);
@@ -541,25 +541,27 @@ test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除�
     dependencies: i ? [{ dependsOn: { id: "task-1", clientKey: "task_1", title: "Task 1", done: false } }] : [],
   })));
   const plan = { id: "plan-1", actions, nextMoves: actions.filter(a => a.rank != null && a.rank <= 3), blockers: actions.filter(a => a.dependency.blocked), diagnosis: readyDiagnosis };
-  const code = ts.transpileModule(readFileSync("src/components/dashboard/ActionPlanManager.tsx", "utf8"), {
+  const code = ts.transpileModule(readFileSync("src/components/dashboard/RoadmapPanel.tsx", "utf8"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
   }).outputText;
   runInNewContext(code, {
     module: loaded, exports: loaded.exports,
     require: (id: string) => {
       if (id === "react") return {
-        useEffect() {}, useMemo: (fn: () => unknown) => fn(),
+        useEffect() {}, useRef: (value: unknown) => ({ current: value }), useMemo: (fn: () => unknown) => fn(),
         useState: (initial: unknown) => { const index = cursor++; if (!(index in state)) state[index] = initial; return [state[index], (value: unknown) => { state[index] = value; }]; },
       };
       if (id === "next/navigation") return { useRouter: () => ({ refresh() {} }) };
-      if (id === "next-intl") return { useTranslations: () => (key: string, values?: object) => `${key}${values ? JSON.stringify(values) : ""}` };
+      if (id === "next-intl") return { useLocale: () => "en", useTranslations: () => (key: string, values?: object) => `${key}${values ? JSON.stringify(values) : ""}` };
       if (id.startsWith("@/lib/action-plan/")) return require(`../src/lib/action-plan/${id.split("/").at(-1)}`);
       if (id === "./ActionTaskRow") return { default: ({ action }: { action: ActionPlanActionDto }) => require("react/jsx-runtime").jsx("input", { type: "checkbox", disabled: !action.done && action.dependency.blocked }) };
-      if (id === "./ActionPlanBuilder") return { default: () => null };
+      if (id === "./ActionPlanManager") return { ActionEditor: () => null };
+      if (id === "@/lib/roadmap/corrections") return require("../src/lib/roadmap/corrections");
+      if (id === "@/lib/roadmap/schema") return require("../src/lib/roadmap/schema");
       return require(id);
     },
   });
-  type Props = { id?: string; children?: ReactNode; disabled?: boolean; href?: string; value?: string; onClick?: () => void; onChange?: (event: { target: { value: string } }) => void };
+  type Props = { id?: string; children?: ReactNode; featured?: boolean; role?: string; disabled?: boolean; href?: string; value?: string; onClick?: () => void; onChange?: (event: { target: { value: string } }) => void };
   function render() {
     cursor = 0;
     const nodes: Array<{ type: unknown; props: Props }> = [];
@@ -567,19 +569,19 @@ test("五項計畫預設全部可見，Next 3 只放 Ready，查看全部解除�
     visit(loaded.exports.default({ initialPlan: plan }));
     return nodes;
   }
-  const list = () => render().filter(n => n.type === "div" && n.props.id?.startsWith("action-"));
+  const list = () => render().filter(n => n.type === "div" && /^action-task-/.test(n.props.id || ""));
   assert.equal(list().length, 5);
   assert.equal(plan.nextMoves.length, 1);
   assert.equal(render().filter(n => n.props.disabled).length, 4, "受阻擋任務仍禁止完成");
-  assert.ok(render().some(n => n.props.children === 'next.summary{"total":5,"ready":1,"blocked":4,"done":0}'));
-  assert.ok(!render().some(n => n.props.children === "next.unavailable"));
-  render().find(n => n.type === "button" && n.props.children === "filter.ready")!.props.onClick!();
+  assert.equal(render().filter(n => n.props.role === "progressbar").length, 1);
+  assert.equal(render().filter(n => n.props.featured).length, 1);
+  render().find(n => n.type === "select")!.props.onChange!({ target: { value: "ready" } });
   assert.equal(list().length, 1);
   render().find(n => n.type === "input" && typeof n.props.value === "string")!.props.onChange!({ target: { value: "No matching task" } });
   assert.equal(list().length, 0);
-  render().find(n => n.props.href === "#action-plan-list")!.props.onClick!();
+  render().find(n => n.type === "select")!.props.onChange!({ target: { value: "all" } });
+  render().find(n => n.type === "input" && typeof n.props.value === "string")!.props.onChange!({ target: { value: "" } });
   assert.equal(list().length, 5);
-  assert.equal(render().find(n => n.type === "input" && typeof n.props.value === "string")!.props.value, "");
 });
 
 

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
-import { fortnightIndex, periodEnd, selectForPeriod } from "@/lib/playbook/quiz";
+import { fortnightIndex, periodEnd } from "@/lib/playbook/quiz";
 import { REWARD_RULES as rules, completeRewardProfile, rewardKeys } from "./policy";
 
 export class RewardError extends Error {
@@ -74,10 +74,9 @@ export async function redeemReward(userId: string, requestId: string) {
 export type RewardOpportunity = { kind: "profile" | "action" | "quiz"; href: string; points: number; title?: string };
 export async function rewardOpportunities(userId: string, paid: boolean, createdAt: Date, profile: unknown, now = new Date()) {
   const { day } = rewardKeys(now), period = fortnightIndex(createdAt, now);
-  const [profileClaim, actionClaims, quiz, plan] = await Promise.all([
+  const [profileClaim, actionClaims, plan] = await Promise.all([
     prisma.rewardEntry.findUnique({ where: { userId_eventKey: { userId, eventKey: "profile:complete" } } }),
     prisma.rewardEntry.findMany({ where: { userId, kind: "action" }, select: { eventKey: true, dayKey: true, points: true } }),
-    prisma.playbookQuizAttempt.findUnique({ where: { userId_periodIndex: { userId, periodIndex: period } }, select: { id: true } }),
     paid ? getActiveActionPlan(userId) : Promise.resolve(null),
   ]);
   const opportunities: RewardOpportunity[] = [];
@@ -89,7 +88,7 @@ export async function rewardOpportunities(userId: string, paid: boolean, created
       opportunities.push({ kind: "action", href: `/dashboard/agenda#action-${action.id}`, points: rules.action, title: action.title });
     }
   }
-  if (!quiz && selectForPeriod(period).length > 0) opportunities.push({ kind: "quiz", href: "/dashboard/quiz", points: rules.quiz });
+  // Quiz history and awards remain available, but are not part of the recommended next step.
   return { opportunities, nextQuizAt: periodEnd(createdAt, period).toISOString() };
 }
 export async function getRewardSummary(cursor?: string, redemptionRequestId?: string) {
