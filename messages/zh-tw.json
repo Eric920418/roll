@@ -633,7 +633,8 @@
       "account": "帳號與方案",
       "billing": "訂閱帳單",
       "investors": "分享給投資人",
-      "feedback": "意見回饋"
+      "feedback": "意見回饋",
+      "rewards": "獎勵積分"
     },
     "insights": {
       "title": "客戶洞察",
@@ -932,10 +933,12 @@
         "actionPlanHint": "把這段對話轉成可排序、可編輯的行動計畫。",
         "clear": "清除",
         "upsell": {
-          "title": "NOVA 為 Pro 方案功能",
-          "body": "升級 Pro 即可使用 NOVA — 你的 AI 商業顧問，討論台灣與亞洲拓展。",
+          "title": "開啟下一次 POLARIS 對話",
+          "body": "累積積分兌換 AI 對話，或升級 Pro 取得每月 AI 額度與行動計畫功能。",
           "cta": "升級 Pro"
-        }
+        },
+        "rewardAccess": "剩餘 {count} 次獎勵對話，建立行動計畫仍需 Pro",
+        "rewardCta": "累積積分換 AI 對話"
       }
     },
     "profile": {
@@ -1489,6 +1492,91 @@
       "paypalNotConfigured": "金流尚未設定完成，請聯絡客服。",
       "noSubscription": "沒有可取消的生效訂閱。",
       "alreadySubscribed": "您已有生效中的訂閱，請先取消後再更換方案。"
+    }
+  },
+  "Rewards": {
+    "title": "獎勵積分",
+    "eyebrow": "每一小步，都算數",
+    "subtitle": "完成有價值的行動，累積下一次 POLARIS 對話。讓回訪帶來實際進展。",
+    "view": "查看獎勵",
+    "points": "分",
+    "ready": "已可兌換下一個獎勵",
+    "toNext": "再 {points} 分即可兌換",
+    "loading": "正在載入你的積分…",
+    "progressAria": "累積至 100 分的進度",
+    "nextReward": "下一個獎勵 · 100 分",
+    "rewardPack": "5 次 POLARIS 對話",
+    "today": "接下來的一小步",
+    "visitClaimed": "今日回訪 +5 ✓",
+    "visitPending": "每日回訪 +5",
+    "allDone": "目前可得分事項已完成，讓進展稍作沉澱。",
+    "nextQuiz": "下一期測驗於 {date} 開始。",
+    "setReminder": "設定每日回訪提醒",
+    "reminderActive": "每日提醒 · {time}",
+    "retry": "重試",
+    "available": "可用積分",
+    "rewardRemaining": "剩餘獎勵對話次數",
+    "monthRedeemed": "本月已兌換次數",
+    "packDetail": "100 分兌換 5 次 AI 對話，所有方案皆可使用。建立行動計畫與 ICP 等功能仍依原方案權限開放。",
+    "redeem": "兌換 · 100 分",
+    "monthlyLimit": "本月已達 20 次對話兌換上限。",
+    "redeemed": "已增加 5 次 POLARIS 對話，積分與次數已更新。",
+    "saved": "提醒設定已儲存。",
+    "reminderTitle": "留一個時間給下一步",
+    "reminderDetail": "選擇每天回來的時間。當天已完成得分行動，或沒有可做事項時，就不寄提醒。",
+    "reminderOptIn": "每天以 Email 提醒我",
+    "emailUnavailable": "Email 提醒尚未開放。積分與兌換可正常使用，寄送服務準備完成後即可開啟提醒。",
+    "time": "當地時間",
+    "timeZone": "時區",
+    "timing": "通常於選定時間後約 15 分鐘內提交寄送，實際收信可能稍晚。可隨時退訂。",
+    "working": "處理中…",
+    "save": "儲存設定",
+    "nextSend": "下次排程檢查：{date}",
+    "lastSend": "最近一次提醒",
+    "acceptedDetail": "「寄信服務已接受」不代表郵件已實際送達。",
+    "rulesTitle": "如何累積積分",
+    "rulesFootnote": "每日、每月與上限統一以台北時間計算。積分及已兌換次數不過期；取消任務完成後再勾選不重複得分，不補發獎勵上線前已完成任務。每曆月最多兌換 20 次對話。數值為第一版試行設定，未來調整只適用後續行動。",
+    "history": "積分紀錄",
+    "historyEmpty": "從下一小步開始。回到 Home 即可累積第一筆積分。",
+    "loadMore": "載入更多",
+    "confirmTitle": "兌換下一個獎勵？",
+    "confirmDetail": "將扣除 100 分，立即增加 5 次 POLARIS 對話，次數不過期。",
+    "confirm": "確認兌換",
+    "cancel": "取消",
+    "unsubscribeTitle": "關閉每日提醒？",
+    "unsubscribeDetail": "確認後停止獎勵提醒信。積分與其他帳號通知保持不變。",
+    "unsubscribe": "關閉提醒",
+    "unsubscribed": "每日提醒已關閉",
+    "unsubscribeDoneDetail": "你可隨時在獎勵頁重新開啟。",
+    "opportunity": {
+      "profile": "完善公司資料",
+      "quiz": "完成本期知識測驗"
+    },
+    "rule": {
+      "visit": "回訪 Home",
+      "visitDetail": "每個台北日期一次。",
+      "action": "完成行動任務",
+      "actionDetail": "每項一次，每日最多兩項。",
+      "quiz": "完成雙週知識測驗",
+      "quizDetail": "完整作答，每期一次。",
+      "profile": "首次完善公司資料",
+      "profileDetail": "公司名稱、產業、所在地、一句話介紹、階段及主要需求；每帳號一次。"
+    },
+    "entry": {
+      "visit": "每日回訪 Home",
+      "action": "完成行動任務",
+      "quiz": "完成知識測驗",
+      "profile": "完善公司資料",
+      "redeem": "兌換 5 次 POLARIS 對話"
+    },
+    "delivery": {
+      "pending": "等待寄送",
+      "processing": "正在提交寄送",
+      "accepted": "寄信服務已接受",
+      "failed": "寄送失敗",
+      "expired": "已超過寄送時間",
+      "skipped": "已跳過，無需提醒",
+      "cancelled": "已取消"
     }
   }
 }

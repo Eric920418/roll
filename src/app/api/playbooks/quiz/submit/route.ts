@@ -9,6 +9,9 @@ import {
 } from "@/lib/playbook/quiz";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 
+import { awardReward, rewardTransaction, lockRewardAccount } from "@/lib/rewards/service";
+import { validQuizAnswers } from "@/lib/rewards/policy";
+
 // 送出本期雙週問答。server 端以會員註冊日重算 periodIndex（不信前端）→ 挑同一批題 → 計分 → 每期存一筆。
 export async function POST(req: NextRequest) {
   try {
@@ -58,17 +61,20 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (!validQuizAnswers(selected, answers)) return fail("請完整回答本期每一題，答案不可重複或超出選項 / Answer every question once with a valid option", 400);
     const result = scoreAttempt(selected, answers);
-    await prisma.playbookQuizAttempt.create({
-      data: {
-        userId: session.uid,
-        periodIndex,
-        answers: answers as unknown as object[],
-        score: result.score,
-        total: result.total,
-      },
+    const saved = await rewardTransaction(async tx => {
+      await lockRewardAccount(tx, session.uid);
+      const replay = await tx.playbookQuizAttempt.findUnique({ where: { userId_periodIndex: { userId: session.uid, periodIndex } } });
+      if (replay) return { attempt: replay, replay: true };
+      const attempt = await tx.playbookQuizAttempt.create({ data: {
+        userId: session.uid, periodIndex, answers: answers as unknown as object[], score: result.score, total: result.total,
+      } });
+      await awardReward(tx, session.uid, "quiz", String(periodIndex));
+      return { attempt, replay: false };
     });
-    return ok({ score: result.score, total: result.total, results: enrich(result.results) });
+    const scored = scoreAttempt(selected, saved.attempt.answers as unknown as AttemptAnswer[]);
+    return ok({ alreadyDone: saved.replay, score: saved.attempt.score, total: saved.attempt.total, results: enrich(scored.results) });
   } catch (error) {
     return failFromError(error);
   }

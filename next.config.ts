@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
+import { requireDatabaseUrl } from "./src/lib/database-config";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const withBundleAnalyzer = bundleAnalyzer({
@@ -24,4 +26,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(withNextIntl(nextConfig));
+export default function config(phase: string) {
+  // Static CMS pages need the selected deployment's database during the build.
+  if (phase === PHASE_PRODUCTION_BUILD) requireDatabaseUrl(process.env.DATABASE_URL);
+  return withBundleAnalyzer(withNextIntl(nextConfig));
+}

@@ -11,6 +11,7 @@ import ActionPlanOverview from "@/components/dashboard/home/ActionPlanOverview";
 import InvestorHubCard from "@/components/dashboard/home/InvestorHubCard";
 import TutorialVideoCard from "@/components/dashboard/home/TutorialVideoCard";
 import UpcomingEventsRail from "@/components/dashboard/home/UpcomingEventsRail";
+import RewardsCard from "@/components/dashboard/rewards/RewardsCard";
 import CopilotPanel from "@/components/dashboard/home/CopilotPanel";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
 import type { Locale } from "@/i18n/routing";
@@ -80,7 +81,8 @@ export default async function DashboardOverview({ params }: Props) {
 
       <GettingStartedHome initial={guide}
         investor={<InvestorHubCard name={([account.firstName, account.lastName].filter(Boolean).join(" ") || account.email).slice(0, 200)} email={account.email} message={HUB_WAITLIST_MESSAGE} joined={Boolean(waitlistEntry)} />}
-        copilot={<CopilotPanel canUse={isPaying} />}
+        rewards={<RewardsCard />}
+        copilot={<CopilotPanel canUse={isPaying} canBuildPlan={isPaying} />}
         overview={<ActionPlanOverview locale={l} plan={visibleActionPlan} isPaying={isPaying} agendaHref={agendaHref} billingHref={billingHref} nextFirst={guide.visible && guide.hasPlan} />}
         events={<UpcomingEventsRail locale={l} events={eventViews} />}
         podcast={<TutorialVideoCard locale={l} video={video} />}

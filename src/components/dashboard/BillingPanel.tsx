@@ -48,7 +48,7 @@ export default function BillingPanel({
     used: number;
     remaining: number;
     bonusRemaining: number;
-    resetsAt: string;
+    resetsAt: string | null;
   };
   trialLabel?: string;
   currentInterval?: BillingInterval;
@@ -176,10 +176,10 @@ export default function BillingPanel({
                   used: usage.used,
                   included: usage.included,
                   bonus: usage.bonusRemaining,
-                  date: new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", {
+                  date: usage.resetsAt ? new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", {
                     dateStyle: "medium",
                     timeZone: "Asia/Taipei",
-                  }).format(new Date(usage.resetsAt)),
+                  }).format(new Date(usage.resetsAt)) : "—",
                 })}
               </p>
             </div>

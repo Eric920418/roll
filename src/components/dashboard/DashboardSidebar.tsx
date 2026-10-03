@@ -9,6 +9,8 @@ import NovaLogo from "@/components/brand/NovaLogo";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
+import { RewardBadge, useRewards } from "./rewards/RewardsProvider";
+
 type NavKey =
   | "overview"
   | "profile"
@@ -16,7 +18,8 @@ type NavKey =
   | "agenda"
   | "account"
   | "investors"
-  | "feedback";
+  | "feedback"
+  | "rewards";
 
 // 各 nav 項對應的 path（未加 locale 前綴）。新增頁面時在此擴充即可。
 // soon: 尚未上線的占位頁，側欄標「即將」小標，點進去是 coming-soon 頁。
@@ -26,6 +29,7 @@ const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "agenda", path: "/dashboard/agenda" },
   { key: "insights", path: "/dashboard/insights" },
   { key: "investors", path: "/dashboard/investors" },
+  { key: "rewards", path: "/dashboard/rewards" },
   { key: "account", path: "/dashboard/account" },
   { key: "feedback", path: "/dashboard/feedback" },
 ];
@@ -40,6 +44,8 @@ export default function DashboardSidebar({
   userLabel: string;
 }) {
   const t = useTranslations("Dashboard");
+  const rt = useTranslations("Rewards");
+  const rewards = useRewards();
   const pathname = usePathname();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -63,7 +69,7 @@ export default function DashboardSidebar({
   }
 
   return (
-    <aside className="flex shrink-0 flex-col gap-6 border-b border-dark/10 bg-white p-5 md:w-64 md:border-b-0 md:border-r md:p-7">
+    <aside className="flex shrink-0 flex-col gap-4 border-b border-dark/10 bg-white p-5 md:w-64 md:gap-6 md:border-b-0 md:border-r md:p-7">
       <div>
         <Link
           href={pathForLocale("/dashboard", locale)}
@@ -110,6 +116,7 @@ export default function DashboardSidebar({
                 />
               )}
               <span className="relative z-10">{t(`nav.${key}`)}</span>
+              {key === "rewards" && <RewardBadge />}
               {soon && (
                 <span
                   className={`relative z-10 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${
@@ -123,9 +130,10 @@ export default function DashboardSidebar({
           );
         })}
       </nav>
+      {rewards.error && <div role="alert" className="break-words rounded-xl bg-red-50 p-3 text-xs text-red-700"><p>{rewards.error}</p><button type="button" className="min-h-11 underline" onClick={() => void rewards.refresh()}>{rt("retry")}</button></div>}
 
-      <div className="mt-auto flex flex-col gap-3 border-t border-dark/10 pt-5">
-        <div className="flex items-center justify-between gap-2">
+      <div className="mt-auto flex flex-row items-center gap-3 border-t border-dark/10 pt-3 md:flex-col md:items-stretch md:pt-5">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
           <span className="truncate text-sm text-dark/60" title={userLabel}>
             {userLabel}
           </span>
@@ -137,7 +145,7 @@ export default function DashboardSidebar({
           type="button"
           onClick={handleLogout}
           disabled={loggingOut}
-          className="rounded-xl border border-dark/15 px-4 py-2.5 text-sm font-semibold tracking-[0.05em] text-dark/70 transition-colors hover:bg-dark/[0.03] disabled:opacity-60 font-[family-name:var(--font-heading)]"
+          className="min-h-11 shrink-0 rounded-xl border border-dark/15 px-4 py-2.5 text-sm font-semibold tracking-[0.05em] text-dark/70 transition-colors hover:bg-dark/[0.03] disabled:opacity-60 font-[family-name:var(--font-heading)]"
         >
           {t("logout")}
         </button>

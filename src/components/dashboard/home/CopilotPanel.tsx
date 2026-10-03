@@ -8,22 +8,29 @@ import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import ActionPlanBuilder from "@/components/dashboard/ActionPlanBuilder";
 
+import { useRewards } from "../rewards/RewardsProvider";
+
 type Msg = { role: "user" | "assistant"; content: string };
 
 // 右欄「ROLL ON 助理」：真 AI 對話（串流）+ 快捷連結。取代靜態 CopilotShortcuts。
-// canUse=false（未達 Pro）→ 顯示 upsell 卡，不渲染輸入框（避免送出後才吃 403）。
+// 對話可使用獎勵額度；付費建檔與對話資格各自檢查。
 export default function CopilotPanel({
-  canUse,
+  canUse: paidAccess,
+  canBuildPlan = paidAccess,
 }: {
   canUse: boolean;
+  canBuildPlan?: boolean;
 }) {
+  const rewards = useRewards();
+  const canUse = paidAccess || (rewards.data?.rewardRemaining ?? 0) > 0;
   const t = useTranslations("Dashboard.home.copilot");
+  const rewardText = useTranslations("Rewards");
   const locale = useLocale() as Locale;
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(canUse);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -52,7 +59,7 @@ export default function CopilotPanel({
   }, [loadingHistory]);
 
   const shortcuts = [
-    { label: t("tools"), href: pathForLocale("/dashboard/agenda#milestones", locale) },
+    ...(canBuildPlan ? [{ label: t("tools"), href: pathForLocale("/dashboard/agenda#milestones", locale) }] : []),
     { label: t("profile"), href: pathForLocale("/dashboard/profile", locale) },
   ];
 
@@ -96,11 +103,12 @@ export default function CopilotPanel({
       setError(err instanceof Error ? err.message : t("error"));
     } finally {
       setStreaming(false);
+      await rewards.refresh();
     }
   }
 
   return (
-    <div className="nova-dashboard-card min-w-0 rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
+    <div className="nova-dashboard-card flex h-full min-w-0 flex-col rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-white">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -118,23 +126,24 @@ export default function CopilotPanel({
           <Link
             key={s.href}
             href={s.href}
-            className="rounded-full border border-primary/15 bg-white px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 font-[family-name:var(--font-heading)]"
+            className="inline-flex min-h-11 items-center rounded-full border border-primary/15 bg-white px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 font-[family-name:var(--font-heading)]"
           >
             {s.label}
           </Link>
         ))}
       </div>
 
-      {canUse ? (
+      {rewards.loading && !paidAccess ? <p role="status" className="mt-4 text-xs text-dark/55">{rewardText("loading")}</p> : canUse ? (
         <>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-white/80 p-3">
+          {canBuildPlan ? <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-white/80 p-3">
             <p className="text-xs leading-5 text-dark/60">{t("actionPlanHint")}</p>
             <ActionPlanBuilder messages={messages} />
           </div>
+          : <p className="mt-3 text-xs leading-5 text-dark/55">{t("rewardAccess", { count: rewards.data?.rewardRemaining ?? 0 })}</p>}
           {/* 對話 */}
           <div
             ref={scrollRef}
-            className="mt-3 max-h-40 overflow-y-auto rounded-xl bg-white/70 p-3"
+            className="mt-3 max-h-72 min-h-20 flex-1 overflow-y-auto rounded-xl bg-white/70 p-3"
           >
             {loadingHistory ? (
               <p className="py-4 text-center text-xs text-dark/50">{t("loadingHistory")}</p>
@@ -174,26 +183,26 @@ export default function CopilotPanel({
           )}
 
           {/* 輸入 */}
-          <form onSubmit={send} className="mt-2 flex gap-2">
+          <form onSubmit={send} className="mt-2 flex gap-2 lg:mt-auto lg:pt-2">
             <input
               aria-label={t("placeholder")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t("placeholder")}
               disabled={streaming || loadingHistory}
-              className="min-w-0 flex-1 rounded-xl border border-dark/10 bg-white px-3 py-2 text-sm text-dark outline-none transition placeholder:text-dark/35 focus:border-primary focus:ring-1 focus:ring-primary/40 disabled:opacity-60 font-[family-name:var(--font-body)]"
+              className="min-h-11 min-w-0 flex-1 rounded-xl border border-dark/10 bg-white px-3 py-2 text-sm text-dark outline-none transition placeholder:text-dark/35 focus:border-primary focus:ring-1 focus:ring-primary/40 disabled:opacity-60 font-[family-name:var(--font-body)]"
             />
             <button
               type="submit"
               disabled={streaming || loadingHistory || !input.trim()}
-              className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 font-[family-name:var(--font-heading)]"
+              className="min-h-11 shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 font-[family-name:var(--font-heading)]"
             >
               {streaming ? t("thinking") : t("send")}
             </button>
           </form>
         </>
       ) : (
-        /* 未達 Pro：upsell 卡（不渲染輸入框，避免送出後才吃 403） */
+        /* 無對話額度：提供積分兌換與方案入口。 */
         <div className="mt-3 rounded-xl bg-white/70 p-4 text-center">
           <p className="text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
             {t("upsell.title")}
@@ -201,9 +210,10 @@ export default function CopilotPanel({
           <p className="mt-1.5 text-xs leading-relaxed text-dark/60">
             {t("upsell.body")}
           </p>
+          <Link href={pathForLocale("/dashboard/rewards", locale)} className="mt-3 flex min-h-11 items-center justify-center rounded-xl border border-dark/15 px-4 py-2 text-sm font-semibold">{t("rewardCta")}</Link>
           <Link
             href={pathForLocale("/dashboard/account#plan", locale)}
-            className="mt-3 inline-block rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
+            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
           >
             {t("upsell.cta")}
           </Link>

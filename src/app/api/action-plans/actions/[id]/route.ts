@@ -9,6 +9,7 @@ import { actionPatchSchema, planRevisionSchema } from "@/lib/action-plan/schemas
 import { assertDependencies, getActiveActionPlan, lockActivePlan, guardActionMilestone, PlanWriteError } from "@/lib/action-plan/service";
 import { legacyHoursForMinutes } from "@/lib/action-plan/time";
 
+import { awardReward, prepareActionReward } from "@/lib/rewards/service";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -51,6 +52,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       },
     });
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
+    await prepareActionReward(tx, session.uid, id, current.done);
 
     if ("metricTarget" in parsed.data) {
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
@@ -72,6 +74,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       }
       await tx.actionItem.update({ where: { id }, data: { done: parsed.data.done, completedAt: parsed.data.done ? (current.done ? undefined : new Date()) : null } });
       if (!current.done && parsed.data.done) await completeGettingStarted(tx, session.uid);
+      if (!current.done && parsed.data.done) await awardReward(tx, session.uid, "action", id);
       return;
     }
 
@@ -123,6 +126,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         },
       });
       if (!current.done && action.done) await completeGettingStarted(tx, session.uid);
+      if (!current.done && action.done) await awardReward(tx, session.uid, "action", id);
       await tx.actionDependency.deleteMany({ where: { actionId: id } });
       if (action.dependencyActionIds.length) {
         await tx.actionDependency.createMany({

@@ -1,8 +1,9 @@
 import { type NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 import { profilePatchSchema } from "@/lib/icp/schema";
+
+import { awardProfile, rewardTransaction } from "@/lib/rewards/service";
 
 // Field presence means update; omission means preserve. ICP belongs to /api/account/icp.
 export async function PATCH(req: NextRequest) {
@@ -12,8 +13,11 @@ export async function PATCH(req: NextRequest) {
     const parsed = profilePatchSchema.safeParse(body?.data);
     if (!parsed.success) return fail(parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; "), 400);
     if (!Object.keys(parsed.data).length) return fail("沒有可更新的欄位 / No profile fields supplied", 400);
-    await prisma.onboardingProfile.upsert({
+    await rewardTransaction(async tx => {
+    await tx.onboardingProfile.upsert({
       where: { userId: session.uid }, create: { userId: session.uid, targetMarkets: [], needs: [], ...parsed.data }, update: parsed.data,
+    });
+    await awardProfile(tx, session.uid);
     });
     return ok({ saved: true });
   } catch (error) {

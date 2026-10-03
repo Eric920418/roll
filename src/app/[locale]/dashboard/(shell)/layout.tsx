@@ -8,6 +8,8 @@ import { getEffectivePlan } from "@/lib/billing/gate";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
+import { RewardsProvider } from "@/components/dashboard/rewards/RewardsProvider";
+
 type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
 
 export const metadata: Metadata = {
@@ -31,7 +33,8 @@ export default async function DashboardLayout({ children, params }: Props) {
     account.email;
 
   return (
-    <DashboardUserProvider userId={account.id}><div
+    <DashboardUserProvider userId={account.id}><RewardsProvider userId={account.id}>
+    <div
       className="nova-theme flex min-h-screen flex-col bg-light md:flex-row"
       data-brand="nova"
     >
@@ -43,6 +46,7 @@ export default async function DashboardLayout({ children, params }: Props) {
       <main className="nova-page-enter flex-1 px-5 py-8 md:px-10 md:py-12">
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
-    </div></DashboardUserProvider>
+    </div>
+    </RewardsProvider></DashboardUserProvider>
   );
 }

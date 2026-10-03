@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import PlanRefresh, { notifyPlanChanged } from "./PlanRefresh";
@@ -21,9 +21,16 @@ type Props = {
 export default function AgendaBoard({ userId, canShare = false, actionPlan, milestoneGroups, guided = false }: Props) {
   const t = useTranslations("Dashboard.agenda");
   const tGuide = useTranslations("Dashboard.gettingStarted");
-  const [currentPlan, setCurrentPlan] = useState(actionPlan);
-  useEffect(() => setCurrentPlan(prev => prev?.id === actionPlan?.id && (prev?.revision || 0) > (actionPlan?.revision || 0) ? prev : actionPlan), [actionPlan]);
-  function acceptPlan(next: ActionPlanDto | null) { setCurrentPlan(prev => prev?.id === next?.id && (prev?.revision || 0) > (next?.revision || 0) ? prev : next); notifyPlanChanged(userId); }
+  const [planState, setPlanState] = useState({ source: actionPlan, current: actionPlan });
+  if (planState.source !== actionPlan) {
+    const current = planState.current;
+    setPlanState({ source: actionPlan, current: current?.id === actionPlan?.id && (current?.revision || 0) > (actionPlan?.revision || 0) ? current : actionPlan });
+  }
+  const currentPlan = planState.current;
+  function acceptPlan(next: ActionPlanDto | null) {
+    setPlanState(prev => ({ ...prev, current: prev.current?.id === next?.id && (prev.current?.revision || 0) > (next?.revision || 0) ? prev.current : next }));
+    notifyPlanChanged(userId);
+  }
 
   return (
     <div className="mt-7 flex flex-col gap-8">
