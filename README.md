@@ -1155,3 +1155,7 @@ Rewards 發布驗收結果：整合最新 main fcd3850 的引導偏好 keepalive
 正式環境已新增 CRON_SECRET、RESEND_FROM_EMAIL=NOVA <reminders@rollgrp.com>、REWARD_EMAIL_ENABLED=false，排程 */15 * * * *；未變更 Preview。RESEND_API_KEY 尚待憑證建立的動作時授權，沒有寄出真實測試信。已指定驗收收件人 Vivian.lee@roll-grp.com；須驗收 Resend 接受／送達狀態與退訂後才能把全域開關設為 true。兩個本輪專用 QA 帳號以 example.invalid 隔離，提醒關閉，待 Email 驗收後清理；不替既有會員開啟提醒。
 
 2026-10-03 本機 main 同步：本機 Fix（df85452）與遠端 523b636 以 merge 保留雙方完整提交紀錄。重複功能採遠端已驗收版本，保留較新的 Rewards／引導整合、手機寬度與 lint 修正；未使用強制推送，未修改資料庫。本機同步前的提交另保留在 codex/main-before-sync-20261003。同步後程式碼與 origin/main 相同，僅 README 新增此紀錄；127 項測試通過，1 項需專用 PostgreSQL 環境的測試略過，沒有失敗。
+
+2026-10-03 Rewards 已正式發布：523b636 對應 dpl_AVqcqRF2Yujgg8d1DA9doWtudSS3（roll-s8c71piw4-erics-projects-57e51613.vercel.app）Ready 並接上 www.rollgrp.com；公開站再通過 17 項 API／交易檢查。新會員引導與積分卡共存，中英文、96 個每 15 分鐘時間選項、預設 09:00／瀏覽器時區、44px 控制項正常，390px 無溢出，前端錯誤為零。正式 schema 再比對 No difference detected。
+
+Email 真實驗收完成：使用者於建立動作時授權 NOVA Production Sending，僅 rollgrp.com Sending access，金鑰只寫入 roll 的 Vercel Production Sensitive 變數。測試候選 roll-eprsg8tz8 以暫時開關驗證正式排程／outbox／Resend；只寄一封到使用者指定 Vivian.lee@roll-grp.com，Resend 2026-10-03 14:44（台北）顯示 Sent／Delivered。兩個並行 cron 僅一次 accepted，attempts=1，重跑不再寄；GET 退訂確認頁保持原設定，確認 POST 關閉提醒，免登入 One-Click POST 重送成功且只留一次退訂紀錄。會員畫面仍區分 provider accepted 與實際送達，不以 accepted 當收件證明。REWARD_EMAIL_ENABLED 已改 true，隨此版本重新部署；既有會員預設仍關閉，需自行選擇時間與啟用。完成本輪 QA 清理後可開始正式 opt-in。
