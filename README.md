@@ -1149,3 +1149,7 @@ Rewards 發布整合檢查：AgendaBoard 以有條件的 render 狀態同步取�
 Home 整合手機順序再確認：同一 grid 的 Rewards → POLARIS → 行動摘要 → Investor DD，桌面摘要仍在雙欄下方，避免引導元件整合後把 Investor DD 移到行動前方。
 
 整合候選手機驗收發現活動卡片的 auto grid track 被英文活動名稱撐到 438px；補上 grid-cols-1 的 minmax(0,1fr)，保持 390px 畫面寬度。正式發布前重新部署並核對中英文手機布局。
+
+Rewards 發布驗收結果：整合最新 main fcd3850 的引導偏好 keepalive，保留並行修改。140 項回歸、pnpm lint（零錯誤／兩個既有警告）、pnpm build 通過；候選 dpl_98JZ1QMPq3CxZenTDFcTr6rFwKwV／後續手機修正候選 roll-k5zhisyi4 完成 51 項原獎勵 API 檢查及 17 項引導／獎勵整合檢查。中英文桌面及 390px 手機、完成狀態／下期測驗、Rewards 紀錄與提醒不可用說明正常；手機 scrollWidth=390。實際 POLARIS 對話成功，付費／全站試用優先使用 included，includedUsed=1、rewardBalance=5 維持。免費僅可使用 reward、各來源退款及並行限制由真實隔離 PostgreSQL 回歸驗證。正式資料庫差異此前為 No difference detected，會員原始資料指紋保留。
+
+正式環境已新增 CRON_SECRET、RESEND_FROM_EMAIL=NOVA <reminders@rollgrp.com>、REWARD_EMAIL_ENABLED=false，排程 */15 * * * *；未變更 Preview。RESEND_API_KEY 尚待憑證建立的動作時授權，沒有寄出真實測試信。已指定驗收收件人 Vivian.lee@roll-grp.com；須驗收 Resend 接受／送達狀態與退訂後才能把全域開關設為 true。兩個本輪專用 QA 帳號以 example.invalid 隔離，提醒關閉，待 Email 驗收後清理；不替既有會員開啟提醒。
