@@ -1252,8 +1252,12 @@ Next Node.js OG RCE 的必要條件在目前 Edge OG route 不成立；仍完成
 3. 在受保護的 Vercel 候選驗證實際網域 Origin、Google OAuth、付款導向、真實 Blob 回呼與寄信，再發布。正式環境不要啟用 `ROLL_LOCAL_POSTGRES`。本機正式模式驗收可明確設定此旗標（仍強制 loopback／QA DB，pool max=2 避免建置 workers 用盡本機連線），並用 `pnpm start --hostname localhost --port 3187`。
 4. 本機綁 `127.0.0.1` 時曾重現 locale rewrite 的主機名稱不一致造成重導循環，綁 `localhost` 後通過；與 [Next issue #94342](https://github.com/vercel/next.js/issues/94342) 描述一致，這不是正式 Vercel 已驗證的結論。
 
-尚未執行全站動態滲透測試或正式環境整合驗收；套件版本掃描及測試通過不能證明全站沒有漏洞。
+已追加下述正式環境安全驗收，但未執行全站動態滲透測試、真實付款扣款、Google 帳號授權完成或寄信；套件版本掃描及測試通過不能證明全站沒有漏洞。
 
 2026-10-04 使用者已授權正式部署與新增欄位。發布前補上滾動切換相容性：舊實例在建置期間簽發的有效 JWT 也接受至同一固定 cutoff，仍由 jwtVerify 驗證原到期時間且 DB 版本必須為 0；不延長 JWT 本身壽命。正進行正式 schema 指紋驗證與 production 候選部署，維持 Preview 關閉。
 
 正式遷移結果：單一 Repeatable Read 交易只新增 User.sessionVersion INTEGER NOT NULL DEFAULT 0；45 張資料表的原欄位完整指紋與筆數相同，User 保留 10 筆。遷移前差異只有此欄位，遷移後為 empty migration。驗證記錄（僅表名、筆數、指紋，無會員原文）保存於 `/Users/eric/.codex/backups/roll/security-schema-2026-10-04.json`。Production 過渡截止已固定 `AUTH_LEGACY_SESSION_ACCEPT_UNTIL=2026-10-10T18:32:55Z`（台北 2026-10-11 02:32:55），後續重啟／部署不得延長。
+
+正式發布紀錄：安全修補 commit `0480d68` 的 Production 候選 `dpl_HV52sSdVpkAgwLtEJSLhgokjWDT6`（roll-izf5i45l8）Ready，31 項候選安全檢查通過後已 promote 至 `https://www.rollgrp.com`；公開站另通過 32 項檢查。涵蓋真實網域 Origin／JSON、signup／login、固定舊 JWT 過渡、改密碼立即撤銷、刪帳號失效、公司／後台 RSC、付款訂單歸屬、偽造 PayPal webhook、Blob token 來源與登入、Google redirect 設定及錯誤安全化。測試僅用本輪新建 example.invalid 帳號，現已確認刪除；沒有操作既有會員憑證、真實扣款、上傳文件或寄信。
+
+正式中英文登入頁與字型 loaded，瀏覽器無錯誤；runtime error scan 只找到刻意注入壞 JSON 的一筆 api.unexpected／SyntaxError，requestId 與測試記錄一致，原始假密鑰／SQL 未出現在回應、URL 或日誌。Vercel 專案再次確認 previewDeploymentsDisabled=true、productionBranch=main、既有部署保護仍啟用、ROLL_LOCAL_POSTGRES 未設定，固定過渡截止已配置。Git 同步可能另觸發只有發布紀錄差異的 Production 建置，程式修補與固定截止時間不變。
