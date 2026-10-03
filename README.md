@@ -1143,3 +1143,7 @@ Rewards 發布整合檢查：AgendaBoard 以有條件的 render 狀態同步取�
 
 2026-10-03 Rewards 整合最新 main 1544e7f 的新會員引導：保留 DashboardUserProvider、引導狀態及首次完成交易，任務完成同一交易亦入獎勵帳。積分卡在無計畫引導時仍可見；一般 Home 桌面左 Investor DD／Rewards、右 POLARIS，手機 Rewards 先於 POLARIS；不覆蓋 Getting Started 資料或功能。先前候選完成 51 項正式 API 檢查；合併後重新建置驗收，Email 保持關閉。
 上線前輸入審核修正雙週測驗：原流程 Number(null)／Number(空字串) 會把空答案視為選項 0；改為嚴格 number/integer 驗證，不接受空值、字串、布林或缺值，再核對每題完整性。新增實際端點的空答案回歸，確保入帳交易前拒絕。
+
+整合驗收：140 項回歸（含 12 項隔離 PostgreSQL 子測試）通過。全專案 lint 揭露新引導測試 fixture 的 module 區域變數命名違反 Next 規則，僅改名 loaded；不改測試行為或業務流程。
+
+Home 整合手機順序再確認：同一 grid 的 Rewards → POLARIS → 行動摘要 → Investor DD，桌面摘要仍在雙欄下方，避免引導元件整合後把 Investor DD 移到行動前方。
