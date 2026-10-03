@@ -33,6 +33,7 @@ export async function GET() {
     if (!access.account) return access.response;
     return ok(ownerPortalDto(await getOrCreateOwnerPortal(access.account.id)));
   } catch (error) {
+    if (error instanceof Error && error.message === "weekly-publication-conflict") return fail("私人草稿已更新，請重新載入 / Private draft changed; reload", 409);
     return failFromError(error);
   }
 }
@@ -72,6 +73,7 @@ export async function PATCH(req: Request) {
     });
     return ok(ownerPortalDto(portal));
   } catch (error) {
+    if (error instanceof Error && error.message === "weekly-publication-conflict") return fail("私人草稿已更新，請重新載入 / Private draft changed; reload", 409);
     return failFromError(error);
   }
 }
@@ -96,6 +98,22 @@ export async function POST(req: Request) {
         },
       }), 201);
     }
+    if (parsed.data.sourceCheckInId) {
+      if (!parsed.data.confirmed || parsed.data.sourceRevision == null) return fail("請確認發布週報草稿 / Confirm publication of the weekly draft", 400);
+      const source = await prisma.weeklyCheckIn.findFirst({ where: { id: parsed.data.sourceCheckInId, userId: access.account.id }, select: { id: true, revision: true, investorDraft: true } });
+      if (!source) return fail("找不到私人週報 / Private check-in not found", 404);
+      const previous = await prisma.investorUpdate.findUnique({ where: { sourceCheckInId: source.id } });
+      if (previous) return previous.portalId === portal.id ? ok(previous) : fail("找不到更新 / Update not found", 404);
+      if (source.revision !== parsed.data.sourceRevision || !source.investorDraft) return fail("私人草稿已更新，請重新載入後確認 / Private draft changed; reload before publishing", 409);
+      // Unique source prevents double publication. Transfer alone never calls this write.
+      const published = await prisma.$transaction(async raw => {
+        const tx = raw;
+        const locked = await tx.weeklyCheckIn.updateMany({ where: { id: source.id, userId: access.account.id, revision: source.revision }, data: { revision: source.revision } });
+        if (!locked.count) throw new Error("weekly-publication-conflict");
+        return tx.investorUpdate.upsert({ where: { sourceCheckInId: source.id }, update: {}, create: { portalId: portal.id, sourceCheckInId: source.id, ...data, publishedAt: data.publishedAt ? new Date(data.publishedAt) : new Date() } });
+      });
+      return ok(published, 201);
+    }
     return ok(await prisma.investorUpdate.create({
       data: {
         portalId: portal.id,
@@ -104,6 +122,7 @@ export async function POST(req: Request) {
       },
     }), 201);
   } catch (error) {
+    if (error instanceof Error && error.message === "weekly-publication-conflict") return fail("私人草稿已更新，請重新載入 / Private draft changed; reload", 409);
     return failFromError(error);
   }
 }

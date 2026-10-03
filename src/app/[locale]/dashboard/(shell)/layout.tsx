@@ -1,3 +1,4 @@
+import DashboardUserProvider from "@/components/dashboard/DashboardUserProvider";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -6,6 +7,8 @@ import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
+
+import { RewardsProvider } from "@/components/dashboard/rewards/RewardsProvider";
 
 type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
 
@@ -30,6 +33,7 @@ export default async function DashboardLayout({ children, params }: Props) {
     account.email;
 
   return (
+    <RewardsProvider userId={account.id}><DashboardUserProvider userId={account.id}>
     <div
       className="nova-theme flex min-h-screen flex-col bg-light md:flex-row"
       data-brand="nova"
@@ -43,5 +47,6 @@ export default async function DashboardLayout({ children, params }: Props) {
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
     </div>
+    </DashboardUserProvider></RewardsProvider>
   );
 }

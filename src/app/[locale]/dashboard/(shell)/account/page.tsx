@@ -1,3 +1,5 @@
+import { getEffectivePlan } from "@/lib/billing/gate";
+import { planAtLeast } from "@/lib/billing/plans";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import AccountProfileForm from "@/components/dashboard/AccountProfileForm";
 import AccountSecurityForm from "@/components/dashboard/AccountSecurityForm";
@@ -5,9 +7,9 @@ import AccountDangerZone from "@/components/dashboard/AccountDangerZone";
 import BillingOverview from "@/components/dashboard/BillingOverview";
 import { getCurrentAccount } from "@/lib/auth/account";
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ guide?: string }> };
 
-export default async function AccountPage({ params }: Props) {
+export default async function AccountPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Dashboard.account" });
@@ -24,7 +26,7 @@ export default async function AccountPage({ params }: Props) {
       </h1>
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
-      <AccountProfileForm
+      <AccountProfileForm canGenerate={planAtLeast(getEffectivePlan(account), "pro")} guided={(await searchParams).guide === "profile"}
         initial={{
           companyName: p?.companyName,
           industry: p?.industry,

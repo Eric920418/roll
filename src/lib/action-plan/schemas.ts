@@ -269,10 +269,13 @@ export const actionInputSchema = z
   });
 
 export const actionPatchSchema = z.union([
-  z.object({ done: z.boolean() }),
+  z.object({ done: z.boolean() }).strict(),
   actionInputSchema.extend({ done: z.boolean().optional() }),
+  z.object({ metricTarget: z.number().int().positive().max(1000000000).nullable(), metricUnit: z.string().trim().min(1).max(80).nullable(), metricCurrent: z.number().int().nonnegative().max(1000000000).nullable() }).strict().refine(v => (v.metricTarget == null) === (v.metricUnit == null) && (v.metricCurrent == null || v.metricUnit != null), "數量目標與單位需同時提供 / Target and unit must be supplied together"),
 ]);
 
 export type Diagnosis = z.infer<typeof diagnosisSchema>;
 export type GeneratedAction = z.infer<typeof generatedActionSchema>;
 export type ActionInput = z.infer<typeof actionInputSchema>;
+
+export const planRevisionSchema = z.object({ revision: z.number().int().nonnegative() });

@@ -1,3 +1,4 @@
+import { correctionSchema } from "./corrections";
 import { z } from "zod";
 import { diagnosisSchema, generatedPlanSchema } from "@/lib/action-plan/schemas";
 
@@ -76,7 +77,11 @@ export function milestoneViews(milestones: Array<z.infer<typeof milestoneSchema>
 export const baseRequest = { revision: z.number().int().nonnegative(), requestId: z.string().uuid(), locale: z.enum(["en", "zh-tw"]).default("en") };
 export const roadmapPostSchema = z.discriminatedUnion("action", [
   z.object({ ...baseRequest, action: z.literal("generate"), goal: z.string().trim().min(3).max(2000), deadline: dateSchema.nullable().default(null) }).strict(),
+  z.object({ ...baseRequest, action: z.literal("review"), planId: z.string().min(1), planRevision: z.number().int().nonnegative() }).strict(),
   z.object({ ...baseRequest, action: z.literal("next"), planId: z.string().min(1), planRevision: z.number().int().nonnegative(), milestoneId: z.string().min(1) }).strict(),
 ]);
-export const roadmapPatchSchema = z.object({ ...baseRequest, action: z.enum(["edit", "activate"]), draft: roadmapDraftSchema }).strict();
+export const roadmapPatchSchema = z.union([
+  z.object({ ...baseRequest, action: z.enum(["edit", "activate"]), draft: roadmapDraftSchema }).strict(),
+  z.object({ ...baseRequest, action: z.enum(["editCorrection", "correct"]), correction: correctionSchema }).strict(),
+]);
 export const outcomePatchSchema = z.object({ revision: z.number().int().nonnegative(), achieved: z.boolean(), outcomeNote: z.string().trim().max(4000).default("") }).strict();

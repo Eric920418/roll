@@ -13,7 +13,8 @@ export type AiUsageSummary = {
   used: number;
   remaining: number;
   bonusRemaining: number;
-  resetsAt: string;
+  resetsAt: string | null;
+  rewardRemaining: number;
 };
 
 async function allowanceCycleFor(account: Account, now: Date) {
@@ -76,12 +77,12 @@ async function serializable<T>(
 async function currentState(
   tx: Prisma.TransactionClient,
   userId: string,
-  cycle: { start: Date; end: Date },
+  cycle: { start: Date; end: Date } | null,
   now: Date,
 ) {
   let allowance = await tx.aiAllowance.upsert({
     where: { userId },
-    create: { userId, cycleStart: cycle.start, cycleEnd: cycle.end },
+    create: { userId, ...(cycle ? { cycleStart: cycle.start, cycleEnd: cycle.end } : {}) },
     update: {},
   });
 
@@ -89,6 +90,7 @@ async function currentState(
     where: { userId, status: "pending", expiresAt: { lte: now } },
     select: { id: true, source: true, cycleStart: true },
   });
+  const staleReward = stale.filter((item) => item.source === "reward").length;
   const staleBonus = stale.filter((item) => item.source === "bonus").length;
   const staleIncludedCurrent = stale.filter(
     (item) =>
@@ -102,37 +104,40 @@ async function currentState(
     });
   }
 
-  const cycleChanged = allowance.cycleStart?.getTime() !== cycle.start.getTime();
+  const cycleChanged = Boolean(cycle && allowance.cycleStart?.getTime() !== cycle.start.getTime());
   allowance = await tx.aiAllowance.update({
     where: { userId },
     data: {
-      cycleStart: cycle.start,
-      cycleEnd: cycle.end,
+      ...(cycle ? { cycleStart: cycle.start, cycleEnd: cycle.end } : {}),
       includedUsed: cycleChanged ? 0 : allowance.includedUsed,
       includedReserved: cycleChanged
         ? 0
         : Math.max(0, allowance.includedReserved - staleIncludedCurrent),
       bonusBalance: allowance.bonusBalance + staleBonus,
+      rewardBalance: allowance.rewardBalance + staleReward,
     },
   });
   return allowance;
 }
 
-export async function reserveAiUsage(account: Account): Promise<string | null> {
+export async function reserveAiUsage(account: Account, scope: "paid" | "copilot" = "paid"): Promise<string | null> {
   const now = new Date();
   const cycle = await allowanceCycleFor(account, now);
-  if (!cycle) return null;
+  if (!cycle && scope !== "copilot") return null;
 
   return serializable(async (tx) => {
     const allowance = await currentState(tx, account.id, cycle, now);
-    let source: "included" | "bonus";
-    if (allowance.includedUsed + allowance.includedReserved < AI_INCLUDED_PER_MONTH) {
+    let source: "included" | "bonus" | "reward";
+    if (cycle && allowance.includedUsed + allowance.includedReserved < AI_INCLUDED_PER_MONTH) {
       source = "included";
       await tx.aiAllowance.update({
         where: { userId: account.id },
         data: { includedReserved: { increment: 1 } },
       });
-    } else if (allowance.bonusBalance > 0) {
+    } else if (allowance.rewardBalance > 0) {
+      source = "reward";
+      await tx.aiAllowance.update({ where: { userId: account.id }, data: { rewardBalance: { decrement: 1 } } });
+    } else if (cycle && allowance.bonusBalance > 0) {
       source = "bonus";
       await tx.aiAllowance.update({
         where: { userId: account.id },
@@ -146,7 +151,7 @@ export async function reserveAiUsage(account: Account): Promise<string | null> {
       data: {
         userId: account.id,
         source,
-        cycleStart: source === "included" ? cycle.start : null,
+        cycleStart: source === "included" ? cycle!.start : null,
         expiresAt: new Date(now.getTime() + RESERVATION_MS),
       },
     });
@@ -178,7 +183,7 @@ export async function completeAiUsage(
     } else if (!succeeded) {
       await tx.aiAllowance.update({
         where: { userId: usage.userId },
-        data: { bonusBalance: { increment: 1 } },
+        data: usage.source === "reward" ? { rewardBalance: { increment: 1 } } : { bonusBalance: { increment: 1 } },
       });
     }
 
@@ -192,16 +197,16 @@ export async function completeAiUsage(
 export async function getAiUsageSummary(account: Account): Promise<AiUsageSummary | null> {
   const now = new Date();
   const cycle = await allowanceCycleFor(account, now);
-  if (!cycle) return null;
   const allowance = await serializable((tx) => currentState(tx, account.id, cycle, now));
   return {
-    included: AI_INCLUDED_PER_MONTH,
-    used: allowance.includedUsed,
+    included: cycle ? AI_INCLUDED_PER_MONTH : 0,
+    used: cycle ? allowance.includedUsed : 0,
     remaining: Math.max(
       0,
-      AI_INCLUDED_PER_MONTH - allowance.includedUsed - allowance.includedReserved,
+      cycle ? AI_INCLUDED_PER_MONTH - allowance.includedUsed - allowance.includedReserved : 0,
     ),
-    bonusRemaining: allowance.bonusBalance,
-    resetsAt: cycle.end.toISOString(),
+    bonusRemaining: cycle ? allowance.bonusBalance : 0,
+    rewardRemaining: allowance.rewardBalance,
+    resetsAt: cycle?.end.toISOString() ?? null,
   };
 }

@@ -1,7 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
+import { requireDatabaseUrl } from "./database-config";
 
 // Neon serverless 在 Node.js 環境需要 WebSocket constructor
 neonConfig.webSocketConstructor = ws;
@@ -36,7 +38,15 @@ async function withReadRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> 
 }
 
 function createPrismaClient() {
-  const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
+  const connectionString = requireDatabaseUrl(process.env.DATABASE_URL);
+  const localQa = process.env.NODE_ENV !== "production" && process.env.ROLL_LOCAL_POSTGRES === "true";
+  if (localQa) {
+    const url = new URL(connectionString);
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) || !url.pathname.startsWith("/roll_rewards_qa")) throw new Error("Local rewards QA requires a loopback roll_rewards_qa database");
+  }
+  const adapter = localQa
+    ? new PrismaPg({ connectionString })
+    : new PrismaNeon({ connectionString });
   const base = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],

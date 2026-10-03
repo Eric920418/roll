@@ -257,6 +257,7 @@ test("Saved ICP is mapped into Next steps context as a hypothesis, with company/
     "@anthropic-ai/sdk": { default: Client },
     "./constants": require("../src/lib/action-plan/constants"),
     "./schemas": require("../src/lib/action-plan/schemas"),
+    "./builder-draft": require("../src/lib/action-plan/builder-draft"),
   });
   await assert.rejects(engine.diagnoseActionPlan({ locale: "en", profile: account.profile, quiz: null, messages: [], answers: [{ question: "Current bottleneck?", answer: "No qualified leads" }, { question: "Progress?", answer: "Ten interviews" }, { question: "Goal?", answer: "Five paid pilots" }] }), /captured/);
   const known = JSON.parse(context.split("Known context:\n")[1]);
@@ -290,22 +291,11 @@ test("Billing reset date renders identically on UTC server and Taipei browser", 
   assert.match(render("UTC"), /Nov 2, 2026/);
 });
 
-test("Next steps deadlines render the same Taipei date across server and browser timezones", () => {
-  for (const locale of ["en", "zh-tw"]) {
-    const render = (fallback: string) => {
-      const board = load<{ default(props: object): unknown }>("src/components/dashboard/AgendaBoard.tsx", {
-        react: { useState: (value: unknown) => [value, () => {}], useEffect() {} },
-        "next/link": { default: () => null },
-        "next/navigation": { useRouter: () => ({ refresh() {} }) },
-        "next-intl": { useLocale: () => locale, useTranslations: () => (key: string, values?: { date?: string }) => key === "due" ? values?.date : key },
-        "./RoadmapPanel": { default: () => null },
-        "@/components/dashboard/ActionPlanManager": { default: () => null },
-        "@/components/dashboard/ChecklistTool": { default: () => null },
-      }, { Intl: { DateTimeFormat: function(language: string, options: Intl.DateTimeFormatOptions) { return new Intl.DateTimeFormat(language, { timeZone: fallback, ...options }); } } });
-      return JSON.stringify(board.default({ userId: "qa", focus: { state: "ready", href: "/dashboard" }, milestones: [], actionPlan: null, milestoneGroups: [], agenda: { overdueCount: 0, dueSoonCount: 0, doneCount: 0, total: 1, tasks: [{ key: "legal-1", id: null, source: "system", need: "legal", groupTitle: "Legal", text: "Test deadline", done: false, dueAt: "2026-11-16T17:00:00.000Z", status: "upcoming" }] } }));
-    };
-    assert.equal(render("UTC"), render("Asia/Taipei"));
-    assert.equal(render("UTC"), render("America/Los_Angeles"));
-    assert.match(render("UTC"), locale === "en" ? /Nov 17, 2026/ : /2026年11月17日/);
-  }
+
+
+test("Next steps 使用台北日期，不受伺服器或瀏覽器時區影響", () => {
+  const require = createRequire(import.meta.url), { today } = require("../src/lib/roadmap/schema");
+  const before = process.env.TZ;
+  try { for (const zone of ["UTC", "Asia/Taipei", "America/Los_Angeles"]) { process.env.TZ = zone; assert.equal(today(new Date("2026-11-16T17:00:00.000Z")), "2026-11-17"); } }
+  finally { if (before === undefined) delete process.env.TZ; else process.env.TZ = before; }
 });

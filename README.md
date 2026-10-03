@@ -2,6 +2,12 @@
 
 協助外商進入台灣與亞洲市場的顧問公司官網。
 
+## 部署環境檢查
+
+Production、Preview 的環境變數各自設定；非 main 分支的自動 Preview 不會自動繼承 Production。2026-10-03 的 codex/weekly-checkins／8eb1c50 預覽建置失敗原因為 Preview 缺 DATABASE_URL，同一 commit 的 Production 已 READY。預覽應配置獨立測試資料庫的 DATABASE_URL、獨立 AUTH_SECRET 與預覽 NEXT_PUBLIC_APP_URL，完成資料表及其他需驗收功能的設定後重新部署；不要為了建置通過直接共用正式會員 DB／金流／寄信設定。
+
+next build 在編譯前驗證 DATABASE_URL 的存在與 PostgreSQL 格式；Prisma runtime 也做同一檢查。缺失會立即顯示環境名稱，不再隱性使用 localhost 等待多次 60 秒逾時。錯誤不含連線字串或憑證；prisma generate 保留不需要連線的原行为。依使用者選擇，本次只補設定檢查，保留現有正式部署與既有 MDX 追蹤行為；Turbopack NFT 警告不是本次 Preview 失敗原因，未藉由延長逾時或關閉檢查掩蓋。這批修正不更動資料庫或 Vercel 機密，不部署或配置 Preview。 獨立工作樹以正式 origin/main（8eb1c50）為基準驗收：105 項測試通過，pnpm lint 無錯誤（兩項既有警告），pnpm build 成功。缺 DATABASE_URL 的 Next build 約 0.3 秒即失敗並明示 Preview；不依賴本機 .env 冒充 Preview 設定。
+
 ## 技術棧
 
 - **Next.js 16** (App Router)
@@ -106,8 +112,10 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"  # 組 PayPal return/cancel URL；�
 # Investor Portal 邀請信（原生 fetch 呼叫 Resend，不新增套件）
 RESEND_API_KEY="re_..."
 RESEND_FROM_EMAIL="NOVA <investor@your-verified-domain.example>"
+CRON_SECRET="replace-with-a-random-secret"
+REWARD_EMAIL_ENABLED="false"
 
-# 會員 AI Copilot（Pro 方案）— 上游錯誤完整記錄於 server log，串流不依錯誤內容、只回傳雙語通用訊息
+# 會員 AI Copilot（付費額度或免費獎勵對話）— 上游錯誤完整記錄於 server log，串流不依錯誤內容、只回傳雙語通用訊息
 ANTHROPIC_API_KEY="sk-ant-..."   # Claude API 金鑰（platform.claude.com）
 ANTHROPIC_MODEL="claude-sonnet-5" # 可選，預設 claude-sonnet-5；成本敏感可改 claude-haiku-4-5
 ```
@@ -520,6 +528,8 @@ Production 直接使用 PayPal Live；帳號持有人須在 Vercel UI 安全輸�
 確定待補項仍為 Production 的 `RESEND_API_KEY`／`RESEND_FROM_EMAIL`；正式 AI 生成、PayPal Live 實際金額／週期及付款啟用、邀請信與登入後 PDF 操作仍未驗收。本次僅新增驗證紀錄，沒有應用程式碼變更或新部署。
 
 2026-09-14 Resend 設定進度：已依使用者授權進入 Resend，建立 `rollgrp.com` 的網域設定流程（ID `606a0cbe-602a-466c-af81-6820099f617c`，Tokyo）。權威 DNS 為 GoDaddy；自動設定目前停在 GoDaddy 登入頁，等待使用者完成登入／兩步驟驗證。所需紀錄為 `resend._domainkey` TXT、`send` TXT（`v=spf1 include:amazonses.com ~all`）、`send` MX（`feedback-smtp.ap-northeast-1.amazonses.com`，priority 10）；Receiving 保持關閉。尚未修改 DNS、建立寄信金鑰、寫入 Vercel env 或寄出郵件；既有其他專案網域與金鑰保持原樣。網域完成後再建立僅供此網域使用的 Sending access 金鑰並部署。
+
+2026-10-03 13:50（Asia/Taipei）Resend 寄件網域驗證完成：使用者授權新增三筆 DNS 並親自完成 GoDaddy 簡訊驗證；GoDaddy 顯示成功，權威名稱伺服器查詢確認 `resend._domainkey` TXT、`send` TXT 與 priority 10 的 `send` MX 內容正確。Resend 的 `rollgrp.com` 網域及三筆紀錄皆為 Verified。此次僅新增三筆 DNS，保留既有 Vercel A／CNAME、DMARC 與其他紀錄，Receiving 保持關閉。尚未建立／讀出 API 金鑰、寫入 Vercel 環境變數、部署 Rewards 或寄出測試郵件；每日提醒仍未啟用。後續需設定限定此網域的 Sending access 金鑰與寄件地址，完成測試帳號的收信及退訂驗收後再啟用提醒；Verified 不代表實際郵件送達。
 
 ## 內容頁（SEO / GEO 主引擎）
 
@@ -996,3 +1006,136 @@ Profile 頁名與選單改為 Profile + ICP（中文：公司檔案 + ICP）。�
 驗證：87 項測試、型別及建置通過；lint 無錯誤，僅兩項既有警告。專用帳號完成 37 項本機 HTTP／真實 Neon 資料庫檢查：未登入、跨帳號修改／歷史拒絕、缺少／自己／循環依賴拒絕、前置未完成不可勾選或刪除、解鎖／撤銷後續限制、編輯／新增／刪除、不同請求併發恰一個成功且另一個 409、同 requestId 併發回同版本、三份成功後限額及重送、Profile 與舊版五項任務／完成紀錄保留。另用本機供應商模擬連續三次缺工具回應，皆安全 422、原計畫未封存；同帳號隨後通過 39 項真實 AI 桌面／390px 手機流程，成功生成五項，重整及重送保留，瀏覽器錯誤為 0。測試帳號及其限流計數已核對並移除；不改真實會員資料。
 
 正式站 `https://www.rollgrp.com` 已切換至 `dpl_2vomDTbtJJjjPs98F2dif4k9Ebpw`（程式碼 `191e38b`），Git 已推送。候選 API 與 UTC SSR 日期檢查通過；正式站專用帳號通過 46 項 HTTP／Neon 檢查，在本機 37 項基礎上補查明確依賴錯誤原因、交易內成功額度不足會回滾 revision／啟用狀態，以及沒有舊計畫時的併發首次建檔。不同請求併發恰一個成功／另一個 409，相同 requestId 回同版本；跨帳號寫入／歷史拒絕，舊紀錄與 Profile 保留。另以新專用帳號正式通過 39 項真實 AI 桌面／390px 手機完整流程：固定三題、第三題後診斷與人工確認、五項任務、重整、同 requestId 重送、錯誤重試保留回答，瀏覽器錯誤為 0；無 JavaScript SSR／Taipei／UTC 日期一致且無 hydration 錯誤。專用帳號及關聯資料／限流計數均已核對並移除。本次驗收只涵蓋記錄的流程與失敗情境，不宣稱所有功能零缺陷或外部 AI／網路永不故障；舊版未完成診斷的回答在原視窗錯誤重試時保留，整頁重整未完成問答仍會重新開始，ICP／目標規劃才使用各自伺服器工作區恢復。
+
+### 里程碑與 Weekly Check-in（實作中）
+沿用 ActionItem / milestoneId；共用穩定依賴排序與階段內顯示編號，完成狀態不重排編號。新增可空執行順序、完成時間、數量進度，以及私人 WeeklyCheckIn。僅相容新增，不回填舊成果或公開週記。任務寫入新增期望版本檢查與伺服器完成時間，數量達標不自動完成；AI 任務生成提供全部里程碑範圍以避免跨階段重複。尚未部署，驗收完成前不視為上線。
+
+
+## Home Rewards 與每日提醒（2026-10-03）
+
+已實作，尚未部署：NOVA Home 新增積分卡與 Rewards 頁面。Schema 僅疊加 RewardAccount／RewardEntry／RewardRedemption／RewardReminder／RewardDelivery，AiAllowance 新增 rewardBalance（預設 0）。禁止 accept-data-loss、重置或覆寫既有資料；保留既有 WeeklyCheckIn 與 Action Plan 改動。Email 預設停用，測試驗收後才能啟用。
+
+Weekly Check-in 以台北週一起始，快照保留階段編號與累計數量；資料型摘要先保存，AI 提供最多三項真實 Ready 任務與可選數量目標草稿，不將未知數量當零。AI 工具呼叫沿用現有 Anthropic 與配額，格式修復不另計費。
+
+積分核心：每日回訪 5 分、任務 30 分（每項一次、每日最多 2 項）、每期完整測驗 50 分、首次六欄公司資料完整 50 分。100 分兌換 5 次，每台北月份最多 20 次。交易鎖 RewardAccount，使用 Serializable 與有限競態重試；首次初始化將既有完成任務記為 0 分，避免取消再勾選補領。ledger 不依賴 task 外鍵，刪除任務仍保留請領紀錄。GET 只讀；Home POST 領回訪並核對一次性資料獎勵。日期／限額統一台北時間，提醒用會員時區；夏令缺失時間採下一個有效分鐘。
+
+`/api/action-plans/check-ins` 依登入會員限定存取；週記、數量與快照以交易保存，週末後與封存計畫唯讀。AI 生成防重送、預留額度及過期恢复；排序另行確認並鎖定計畫版本，AI 失敗不撤销回報或改原排序。
+
+任務／公司資料／雙週測驗已接入交易內獎勵；測驗必須完整且每題有唯一有效答案。POLARIS 對話允許免費會員消耗獎勵，其他 AI 服務的 reserveAiUsage 預設仍需付費方案。消耗順序為 included → reward → bonus，過期預扣與失敗原路退回。CopilotTurn 新增 rewardOnly，免費對話只讀 rewardOnly 歷史且不載入付費 Action Plan 上下文；免費使用量 included／bonus = 0、resetsAt = null，新增 rewardRemaining。
+
+里程碑、完整任務列表及 Home 改用共用 ActionTaskRow：數字與 checkbox 分開、預設一行摘要、Show more 完整內容、前置任務反灰；Goal roadmap 直接讀同一 ActionItem，跨分頁 BroadcastChannel 與焦點刷新同步進度。
+
+API：GET /api/rewards（私有 no-store、每頁 50 筆／cursor）、POST /api/rewards/visit、POST /api/rewards/redeem（UUID requestId）、PATCH /api/rewards/reminder（enabled/time/timeZone/locale）、POST /api/rewards/unsubscribe（簽章 token）；會員寫入要求同 Origin。GET /api/cron/reward-reminders 只接受 CRON_SECRET Bearer。Vercel Pro 每 15 分鐘排程、每批最多 100 位；REWARD_EMAIL_ENABLED=true 且 RESEND_API_KEY／RESEND_FROM_EMAIL／CRON_SECRET／AUTH_SECRET／NEXT_PUBLIC_APP_URL 齊備才開放。預設不寄。台北每日一筆 outbox、5 分鐘 lease、固定 payload／Resend 冪等鍵，最多 3 次、2 小時後失效；已完成有效行動／無任務／退訂／設定變更則跳過。退訂 GET 頁只顯示确认，POST 才執行；郵件 List-Unsubscribe 支援 One-Click POST。accepted 僅代表 Resend 接受，不代表送達。
+
+Next steps 新增右側 Weekly Check-in 面板與本週可修訂表單、私人時間軸；Home 提供入口與部分數量。輸入依會員/計畫本機暫存，成功保存清除；歷史可讀，AI 逾時可恢復，建議/數量目標皆需確認。
+
+私人投資人草稿只在 Business+本人 Share with investors 表單預填；發布另需明確確認、週記版本檢查及唯一來源鍵防重複，不自動寄信、不改分享開關。
+
+Roadmap 工作區新增 review / editCorrection / correct：完整里程碑檢查階段重疊，產生未完成任務的前後對照草稿；確認時版本鎖定、整張依賴圖驗證及交易更新，任務 ID、完成紀錄與舊週快照保留。
+
+前端：RewardsProvider 共用會員即時積分，Home 小卡 POST 回訪、Rewards 頁包含真實機會／兌換確認／每月額度／提醒設定／50 筆分頁紀錄，請求失敗完整顯示可重試。兌換 requestId 以會員 ID 分隔存 sessionStorage，網路失敗或重新整理可重用。公開退訂頁不需登入，GET 無資料異動、點確認才 POST；頁面禁止索引、no-referrer。
+
+Roadmap 右側面板增加階段檢查、修正前後對照、標題/成果/Why now/實際依賴 ID 的編輯及人工確認；已完成任務不列為修正目標。
+
+驗收中：修正工作區以草稿資料欄位分流，保留既有目標/下一階段 API 行為。
+
+Home 桌面 Investor DD 下方為 Rewards 小卡，右欄保留 POLARIS；手機先顯示積分再 POLARIS，Investor DD 保留在其左欄組內。側欄 Rewards 顯示即時積分與載入錯誤，RewardsProvider 定期及切回頁面刷新，中英文已補齊。免費獎勵對話不顯示付費建檔 CTA。寄送 outbox 加 reminderVersion，設定／退訂變動以版本取消舊工作；排程每封至少間隔 550ms、250 秒處理預算。
+
+測試同步新排序規則，原診斷與 Roadmap 測試保留；週記保存驗證週起始日避免週日/週一切換誤存；數量有值時必須有人工確認單位。
+
+手機順序已調整為 Home 歡迎 → Rewards → POLARIS → 行動摘要 → Investor DD → 活動／影片。Provider 使用版本避免較早 GET 蓋掉回訪或兌換後的新餘額，付費頁的重設時間型別允許免費 null。
+
+新增可執行回歸測試涵蓋穩定拓撲排序、階段編號/引用、內部代碼、台北週界線、未知數量、任務/成果區別、週報推薦實際 Ready ID、階段修正完整依賴圖、AI 格式修復及端點授權。
+
+資料庫更新採逐條檢查後的新增 SQL，只包含本次 ActionItem 可空欄位、WeeklyCheckIn 與 InvestorUpdate 唯一來源鍵；不處理並行 Rewards 結構，不執行刪除或資料回填。
+
+本機隔離驗收：pnpm 引入 @prisma/adapter-pg 7.8.0（供開發／測試使用，因靜態 import 放 dependencies），ROLL_LOCAL_POSTGRES=true 只在非 production 生效，且 URL 必須指向 loopback 與 roll_rewards_qa 開頭的資料庫；正式環境維持 Neon。ROLL_REWARDS_TEST_DATABASE_URL 同樣限定本機 QA 資料庫，用於真實 PostgreSQL 的交易／並行／退款／寄信 mock 整合測試。測試資料不寫入正式 DB。
+
+目前 97 項回歸測試通過，型別與建置成功；實際資料庫已僅套用本次相容新增。完整任務編輯保留開啟時的版本，過期回應不覆蓋較新計畫。專用帳號正式流程驗收仍進行中。
+
+驗收新增 tests/rewards.test.ts（台北跨日、六欄資料、測驗答案、時區／夏令時間、雙語）與 tests/rewards-db.test.ts（獨立本機 PostgreSQL 並行回訪／兌換／回滾／限額／歷史任務／AI 分來源退款／測驗去重／排程重疊／退訂／寄信重試）。整合測試須設定 ROLL_REWARDS_TEST_DATABASE_URL；未設定則 skip，絕不使用一般 DATABASE_URL。Email 以 mock 驗收，不發真信。
+
+本機真實交易測試首輪已通過並行回訪、兌換、回滾、月上限、歷史任務、AI 退款與測驗去重；寄信 mock harness 補齊 URL global 後重跑。交易重試耗盡改回 409/reward_busy，讓前端明確提示重試，不隱藏競態原因。
+
+真實 PostgreSQL 測試揭露 JSONB 會重排物件鍵，首封與重試的 JSON bytes 可能不同；已將 Resend body 統一排序序列化，確保固定 idempotency key 對應完全相同 payload。
+
+驗收發現並行 Rewards 程式已接入任務 API，而其新增資料表尚未套用，導致共用環境 500；本輪未清空或更動 Rewards 資料。先修正週記深連結自動開面板、數量編輯版本及依賴文案，待環境一致後重跑實際驗收。
+
+驗收：新增 16 項獎勵測試（含 10 項真實本機 PostgreSQL 子測試）全部通過，瀏覽器已驗證免費會員扣 100 分、增加 5 次 AI 獎勵，Home 開放對話但不出現付費建檔入口。390px 手機 DOM 寬度無橫向溢出，Rewards 排在 POLARIS 前；手機側欄帳號／登出改為同列以減少首屏佔用，積分卡間距收緊。
+
+任務編輯在寫入前觀察 alreadyDone：即使會員已有積分帳戶，任何沒有獎勵紀錄的已完成任務也先登記 0 分，防止「建立時即 done／歷史任務」透過 undo 後再完成取得補領。
+
+上線 SQL：prisma/rewards.sql 僅含本功能的 5 張表與 AiAllowance.rewardBalance／CopilotTurn.rewardOnly，疊加且可重跑；不包含同步開發中的 WeeklyCheckIn 等其他變更、不寫會員資料。@prisma/adapter-pg 放 dependencies 以確保 production-only 安裝能解析模組，ROLL_LOCAL_POSTGRES 仍只允許非正式環境。翻譯檔已保留原有格式及其他功能新增鍵，減少無關 diff。
+
+每週唯讀成效檢查：pnpm exec tsx scripts/reward-metrics.ts，統計近 28 天每週回訪人數／回訪天數、回訪後有效行動、成熟 D1／D7 回訪、寄信接受／失敗／跳過、接受後退訂、兌換與成功獎勵 AI 用量。退訂在 ledger 記為 0 分 audit，不影響餘額與前端積分紀錄；不新增第三方追蹤或寄送自動報表。
+
+Cron Bearer 驗證先比較 UTF-8 byte 長度，避免異常 Unicode header 造成 timingSafeEqual 例外。
+
+隔離本機環境已通過 44 項實際 API/DB 檢查：五項同 ID、版本衝突、4/10、依賴完成順序、待確認成果/解鎖及舊快照未被改寫。Roadmap AI 不截斷里程碑上下文；週報 AI 只提供所需任務事實，避免重複八維欄位膨脹上下文。真實 AI 與瀏覽器驗收仍進行中。
+
+真實 AI 驗收攔截到週報模型推薦 Blocked 任務：未套用排序且釋放額度。已將生成工具候選 ID 限為實際 Ready 任務，語意驗證納入一次修復；阶段修正也在工具修復內檢查依賴圖。
+
+每週統計脚本以 Node 原生 loadEnvFile 讀取 .env.local／.env，保留 shell 的顯式 QA URL，不依賴未宣告的 @next/env 套件。
+
+新增 API 邊界回歸：未登入／異站 Origin／非法兌換 UUID／偽造 userId／限流／錯誤時區／Cron 缺設定及 Unicode token 全部在異動前拒絕；成功回應 private,no-store。
+
+免費 POLARIS 文案已改為「積分兌換或升級」，避免誤稱全為 Pro 功能；開放獎勵對話時顯示剩餘次數，建檔仍有 Pro 邊界。兌換確認視窗使用明確的手機寬度計算。
+
+兌換遇到「交易已成功、HTTP 回應遺失」時，GET /api/rewards 可附 redemptionRequestId（UUID），只核對目前會員自己的兌換；Provider 以伺服器確認清除 sessionStorage 的 pending ID 並顯示已入帳，避免下次兌換误重播舊成功交易。整合測試驗證成功確認與跨帳號不可讀。
+
+週記補強：本機未送出輸入保留原始版本，跨分頁更新後提交會得到 409，使用者明確重新載入才採用新版本；暫存依台北週界線失效。已確認成果階段的數量唯讀，歷史投資人草稿複製使用對應歷史內容。里程碑任務詳細頁提供原任務編輯入口。
+
+週記中的本人任務勾選成功會採用該次交易的新計畫版本，避免同一表單正常勾選後被自身版本變更阻擋；外部分頁更新仍保留原版本衝突檢查。
+
+階段修正入口先確認會員本人計畫，不同帳號回傳 404；本機修正草稿支援暫時空白欄位恢復，提交仍套用完整嚴格驗證。
+
+真實 AI 週記已驗證 29 項 API／資料庫檢查；修正 AI 的輸出 ID 僅能選當期未完成任務，依賴只允許本人計畫當期及以前任務，完整圖仍由伺服器驗證。格式與語意修復用量合併一次；失敗保留原資料並釋放預留。
+
+可重跑的相容新增 SQL 保存於 prisma/weekly-checkins.sql；只新增可空欄位、週記表、索引與外鍵，不回填或刪除資料。
+
+最終檢查補強：今日任務機會僅列剩餘可領分數量；Email 在發送節流等待後再次查核開關、有效行動與同類機會，避免等待期間完成後仍寄送。兌換暫存 UUID 異常時清除，不阻塞讀取。全專案測試發現並行週記測試的 console mock 缺 warn，僅補 mock 方法以保留原錯誤斷言。正式 Vercel 環境僅核對變數名稱，尚缺 RESEND_API_KEY、RESEND_FROM_EMAIL、CRON_SECRET、REWARD_EMAIL_ENABLED；未讀出金鑰或發送真信。
+
+週記尚有未儲存回答／數量時，生成或套用建議會要求先保存，避免用旧事实生成並清除未提交內容；只儲存投資人草稿會保留其他本機輸入。階段修正 14 項真實 AI/API 檢查與 22 項桌面／手機檢查已通過。
+
+新增可重跑週記工作區回歸測試：成功重送、帳號隔離、格式錯誤／逾時退款、額度不足與計畫變更後拒絕晚到結果。
+
+POLARIS 首次讀取獎勵餘額時顯示載入狀態，避免先閃現升級卡；首次對話歷史載入完成前禁止送出，快捷入口點擊高度統一至少 44px。新增真實交易測試驗證剩餘可領任務數，以及寄送等待期間完成行動／退訂會阻止供應商請求。
+
+桌面 POLARIS 卡延伸至左側 Rewards 底部，輸入列貼齊卡片下緣；手機維持內容高度與既定順序。上線順序：先審核 prisma/rewards.sql 與目標 DB 差異，再以 pnpm exec prisma db execute --file prisma/rewards.sql 套用相容新增；確認會員既有方案／加購與資料保留後部署積分功能。Email 保持 REWARD_EMAIL_ENABLED=false，補齊 CRON_SECRET 與已驗證 Resend 寄件網域／金鑰，僅對測試帳號驗收實際收信與退訂後才開 true。不要以 db push 一次套用工作區其他尚在驗收的 schema，也不使用 accept-data-loss。
+
+故障驗收 28 項實際 API／資料庫檢查通過（額度、格式錯誤、晚到結果、逾時退款及封存唯讀）。數量表單跟隨伺服器已確認值更新，輸入中保留原版本；本人週記勾選會同步本機暫存版本。
+
+數量編輯以未修改時的伺服器值呈現，已修改值獨立保留；409/儲存失敗不清除草稿。無額外同步 effect，避免欄位更新造成陳舊狀態。
+
+Rewards 最終本機驗收：全專案 123 項測試通過（包含 22 項獎勵測試／12 項真實隔離 PostgreSQL 子測試）、pnpm lint 無錯誤（僅 Navbar/TaiwanMap 兩個既有警告）、pnpm build 成功。Rewards-only SQL 在以 HEAD schema 建立的獨立 DB 連續套用兩次，既有 bonusBalance=9、includedUsed=7 保留且 rewardBalance=0；週報統計腳本成功執行。瀏覽器確認實際兌換 100 分／增加 5 次、免費付費建檔隔離、提醒關閉下保存 09:15/America/Los_Angeles、390px 無溢出與 Rewards 在 POLARIS 前，前端 console error 為 0。所有 QA 帳號／積分／郵件 mock 僅位於隔離本機 DB。本功能未部署、未套用正式 Rewards schema、未寄真信；先完成工作區同步功能的整合發佈，再依上述順序上線。評估重點為回訪後有效行動率與每次有效行動的獎勵 AI 成本，不能只以登入／Email 接受率判斷留存。
+
+2026-10-03 里程碑／Weekly Check-in 已由隔離工作目錄推送 main（功能 commit 1284efd），部署 dpl_EihZNmpadcuMjSDhyovpMKaG166D 已切換 www.rollgrp.com。101 項回歸、型別／建置通過；正式候選 44 項 API/DB、37 項真實 AI、22 項桌面/手機驗收，公開網址再通過 8 項資料/授權及 22 項介面檢查。正式及本機本輪專用 weekly-qa-* 帳號及關聯資料已清除，其他並行修改仍保留。
+
+2026-10-03 任務勾選鎖定 UX：共用 TaskCheckbox；受依賴阻擋時方格灰底、框內鎖頭、原生 disabled 與「先完成」原因，獨立編號不變。里程碑、Next steps、Weekly Check-in 一致；已完成與儲存中不誤標鎖頭。44px 操作區、鍵盤焦點；22 項桌面／手機檢查、101 項回歸、型別、相關 ESLint 及正式建置通過，不需資料庫更新。
+
+鎖頭 UX 已於 2026-10-03 推送 995b733 並上線 dpl_7qG5KqYRmCLkt932thkq5LEjKJ55；候選與公開 www.rollgrp.com 各通過 34 項真實桌面／手機檢查，包含三個任務入口的灰底鎖頭、前置完成解鎖、鍵盤勾選、計數同步、重整恢復及撤銷再鎖。此輪專用帳號及關聯資料已清除，未修改真實會員資料；未做資料庫結構更新。
+
+2026-10-03 Next steps 移除整個 Legacy landing tasks 舊流程區塊及專用查詢；保留 Goal roadmap、目前任務、Weekly Check-in 與獨立里程碑。既有 LandingTask／checklistState 資料保留，不需資料庫更新。
+
+Legacy landing tasks 移除驗證：TypeScript 與正式建置通過；候選與公開 www.rollgrp.com 各通過 32 項中英文桌面／手機檢查，確認舊區塊消失、五項任務與鎖頭、Goal roadmap、Milestones、Weekly Check-in 保留，無橫向溢出及瀏覽器錯誤。40b7e02 已推送並上線 dpl_EEcAzBtTNBA8337yxXRS4QgUe27M；本轮專用帳號與關聯測試資料已清除。
+
+Rewards 發布整合檢查：AgendaBoard 以有條件的 render 狀態同步取代 effect 直接 setState，保留較新的任務 revision 並避免 lint 錯誤。移除只驗證已下架 Legacy landing 截止日期的過期測試；Billing 台北日期與 Roadmap 日期／週界線回歸仍保留。
+
+正式 Rewards schema 已僅套用 prisma/rewards.sql。前後比對 User 10 筆、OnboardingProfile 9 筆、AiAllowance 3 筆、ActionPlan 6 筆、ActionItem 103 筆與 PlaybookQuizAttempt 3 筆內容指紋均相同。後續差異檢查發現正式環境另有三個可空 gettingStarted 欄位；僅同步 Prisma 宣告以保留並行新欄位，沒有刪除、回填或更改其值。126 項含本機真實 PostgreSQL 的回歸通過，lint 0 errors／2 既有 warnings、pnpm build 通過。
+
+上線前輸入審核修正雙週測驗：原流程 Number(null)／Number(空字串) 會把空答案視為選項 0；改為嚴格 number/integer 驗證，不接受空值、字串、布林或缺值，再核對每題完整性。新增實際端點的空答案回歸，確保入帳交易前拒絕。
+
+## 新使用者引導（2026-10-03）
+
+Home 以真實資料判斷三步：補充公司名稱／一句話介紹／公司階段／目前最需要 → 現有三題問答與人工診斷確認 → 生成五項任務並開啟第一項 Ready 任務。已有公司資料或啟用計畫不需重做；ICP 選填，Goal roadmap 是進階入口，不自動呼叫 AI、不新增必填阻擋或方案授權。尚無計畫時，Home 次要內容收進探索更多，Next steps 優先顯示建檔入口；建立計畫後 Next Three Moves 優先呈現。
+
+公司引導沿用 AccountProfileForm 與原 Profile PATCH，只提交四個基本欄位，其他資料與 ICP 保留，進入時定位第一個缺漏欄位。第一項任務連結展開完整內容及鍵盤焦點；受阻擋項目不列為第一步，而顯示前置或里程碑成果確認原因。中英文文案、手機版、44px 操作區與原生 dialog 焦點／Escape 已驗證。
+
+/api/account/getting-started 的 GET 回本人狀態，PATCH 僅接受 dismiss／reopen；不能偽造完成或指定其他會員。User 新增 gettingStartedVersion、gettingStartedDismissedAt、gettingStartedCompletedAt 三個可空欄位，prisma/getting-started.sql 僅相容新增，沒有回填、刪除或改用途。首次 ActionItem 成功完成在既有交易內記錄；撤銷不重設，既有完成會員預設收起。偏好提交使用 keepalive，避免離頁取消，完成提示依會員及首次完成時間本機去重；無本機儲存時有提示。
+
+ActionPlanBuilder 與伺服器共用三個不同題目。回答、未送出文字、診斷、requestId、revision 依會員本機保存；恢復不重做 AI，診斷必須再確認，同分頁雙擊及不同分頁覆寫皆防護。generate GET 只查本人既有 requestId 結果，不呼叫 AI／不扣額；生成中的重整只輪詢結果，五分鐘等待结束後才提供人工重試。失敗保留回答，格式檢查及前端安全錯誤不外洩伺服器堆疊。引導資料與 Home／Next steps 沿用會員通知及焦點刷新，晚到讀取不覆蓋新狀態。
+
+驗收：113 項回歸測試、TypeScript、相關 ESLint（零錯誤／警告）及 pnpm build 通過。實際模型完成三题、診斷確認、五項任務與第一項完成／撤銷；候選完整流程與即時重整檢查通過。公開 www.rollgrp.com 通過 23 項完整流程、13 項手機／跨頁恢復／雙分頁／帳號隔離檢查，以及三次收起後立即重整、成功回應後恢復及無瀏覽器錯誤檢查。另驗證受阻擋不勾選、既有完成會員預設收起及跨會員任務／生成查詢隔離。本輪八個專用帳號及關聯資料已清除，未清空真實會員資料。
+
+1544e7f、fcd3850 已推送 main；正式部署 dpl_B1JswCmALLo7MnENnxfFdQehnfZg（roll-9mozsion2-erics-projects-57e51613.vercel.app）已切換公開站。並行 Rewards 的本機修改與交易邏輯保留，未包含在此獨立部署中。
+

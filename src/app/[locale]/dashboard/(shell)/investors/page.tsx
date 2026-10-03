@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -9,7 +10,7 @@ import { canEditFieldVisibility } from "@/lib/investor/fields";
 import InvestorPortalManager from "@/components/dashboard/InvestorPortalManager";
 import type { Locale } from "@/i18n/routing";
 
-export default async function InvestorPortalPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function InvestorPortalPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ checkInId?: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;
@@ -31,11 +32,14 @@ export default async function InvestorPortalPage({ params }: { params: Promise<{
       </div>
     );
   }
+  const query = await searchParams;
+  const source = query.checkInId ? await prisma.weeklyCheckIn.findFirst({ where: { id: query.checkInId, userId: account.id }, select: { id: true, revision: true, investorDraft: true, weekStart: true } }) : null;
+  const weeklyDraft = source?.investorDraft ? { id: source.id, revision: source.revision, body: source.investorDraft, title: `Weekly update · ${source.weekStart.toISOString().slice(0, 10)}` } : null;
   const portal = ownerPortalDto(await getOrCreateOwnerPortal(account.id));
   // 逐欄位／逐筆隱藏只有 Enterprise 能「改」；已設定的隱藏對任何方案都持續生效。
   return (
     <InvestorPortalManager
-      locale={l}
+      locale={l} weeklyDraft={weeklyDraft}
       initialPortal={portal}
       canHideFields={canEditFieldVisibility(plan)}
     />

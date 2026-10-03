@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { milestoneViews } from "@/lib/roadmap/schema";
 import { prisma } from "@/lib/prisma";
 import type { Diagnosis, GeneratedAction } from "./schemas";
-import { rankActions, wouldCreateCycle, type ActionPlanActionDto } from "./ranking";
+import { rankActions, humanizeActionText, taskReference, wouldCreateCycle, type ActionPlanActionDto } from "./ranking";
 import { legacyHoursForMinutes } from "./time";
 
 const actionInclude = {
@@ -37,7 +37,7 @@ async function findActivePlanRecord(userId: string) {
 export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto {
   const milestones = milestoneViews(plan.milestones.map(m => ({ ...m, targetDate: m.targetDate.toISOString().slice(0, 10), achievedAt: m.achievedAt?.toISOString() || null })), plan.actions);
   const blocks = new Map(milestones.filter(m => m.status === "blocked").map(m => [m.id, m.title]));
-  const actions = rankActions(plan.actions, blocks);
+  const actions = rankActions(plan.actions, blocks, new Map(milestones.map(m => [m.id, m.position])));
   return {
     id: plan.id,
     revision: plan.revision,
@@ -45,11 +45,11 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
     locale: plan.locale,
     diagnosis: {
       companyStage: plan.companyStage as Diagnosis["companyStage"],
-      stageReason: plan.stageReason,
+      stageReason: humanizeActionText(plan.stageReason),
       stageConfidence: plan.stageConfidence,
       bottleneckGroup: plan.bottleneckGroup as Diagnosis["bottleneckGroup"],
       bottleneckCode: plan.bottleneckCode,
-      bottleneckReason: plan.bottleneckReason,
+      bottleneckReason: humanizeActionText(plan.bottleneckReason),
       bottleneckConfidence: plan.bottleneckConfidence,
     },
     createdAt: plan.createdAt.toISOString(),
@@ -57,7 +57,7 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
     nextMoves: actions.filter((action) => action.rank != null && action.rank <= 3),
     blockers: actions
       .filter((action) => !action.done && action.dependency.blocked)
-      .map((action) => ({ id: action.id, title: action.title, dependencies: action.dependency.actionTitles, missingLink: action.dependency.missingLink })),
+      .map((action) => ({ id: action.id, title: action.title, dependencies: action.dependency.actionRefs.filter(a => !a.done).map(taskReference), missingLink: action.dependency.missingLink })),
   };
 }
 

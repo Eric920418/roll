@@ -2,17 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { BOTTLENECKS, COMPANY_STAGES, type BottleneckGroup } from "@/lib/action-plan/constants";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
-import { formatActionTime } from "@/lib/action-plan/time";
-import { priorityTier, taskReference } from "@/lib/action-plan/ranking";
+import ActionTaskRow from "./ActionTaskRow";
 import ActionPlanBuilder from "./ActionPlanBuilder";
 
 type Filter = "ready" | "blocked" | "done" | "all";
 
-export default function ActionPlanManager({ initialPlan, onChanged }: { initialPlan: ActionPlanDto | null; onChanged?: (plan: ActionPlanDto | null) => void }) {
+export default function ActionPlanManager({ initialPlan, onChanged, guided = false }: { guided?: boolean; initialPlan: ActionPlanDto | null; onChanged?: (plan: ActionPlanDto | null) => void }) {
   const t = useTranslations("Dashboard.actionPlan");
   const router = useRouter();
   const [plan, setPlan] = useState(initialPlan);
@@ -22,8 +21,14 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => setPlan(initialPlan), [initialPlan]);
+  useEffect(() => setPlan(prev => prev?.id === initialPlan?.id && (prev?.revision || 0) > (initialPlan?.revision || 0) ? prev : initialPlan), [initialPlan]);
   useEffect(() => { setFilter("all"); setSearch(""); }, [initialPlan?.id]);
+
+  useEffect(() => {
+    if (!window.location.hash.startsWith("#action-")) return;
+    const task = document.getElementById(window.location.hash.slice(1));
+    if (task) { task.querySelector<HTMLDetailsElement>("details")?.setAttribute("open", ""); task.focus(); }
+  }, [plan?.id]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -45,13 +50,13 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
       const response = await fetch(`/api/action-plans/actions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ revision: plan?.revision, ...body }),
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || t("errors.save"));
-      setPlan(json.data); onChanged?.(json.data); router.refresh();
+      setPlan(prev => prev?.id === json.data?.id && (prev?.revision || 0) > (json.data?.revision || 0) ? prev : json.data); onChanged?.(json.data); router.refresh(); return true;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("errors.save"));
+      setError(cause instanceof Error ? cause.message : t("errors.save")); return false;
     } finally {
       setPending("");
     }
@@ -62,10 +67,10 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
     setPending(action.id);
     setError("");
     try {
-      const response = await fetch(`/api/action-plans/actions/${action.id}`, { method: "DELETE" });
+      const response = await fetch(`/api/action-plans/actions/${action.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision: plan?.revision }) });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || t("errors.delete"));
-      setPlan(json.data); onChanged?.(json.data); router.refresh();
+      setPlan(prev => prev?.id === json.data?.id && (prev?.revision || 0) > (json.data?.revision || 0) ? prev : json.data); onChanged?.(json.data); router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("errors.delete"));
     } finally {
@@ -82,7 +87,7 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
             <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("empty.title")}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-dark/60">{t("empty.body")}</p>
           </div>
-          <ActionPlanBuilder />
+          <ActionPlanBuilder autoOpen={guided} />
         </div>
       </section>
     );
@@ -130,7 +135,7 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
           <a href="#action-plan-list" onClick={() => { setFilter("all"); setSearch(""); }} className="inline-flex min-h-11 items-center rounded-xl border border-dark/15 bg-white px-4 text-sm font-bold text-dark hover:border-primary">{t("next.viewAll", { count: plan.actions.length })} ↓</a>
         </div>
         <div className={`mt-4 grid gap-4 ${plan.nextMoves.length > 2 ? "xl:grid-cols-3" : plan.nextMoves.length > 1 ? "xl:grid-cols-2" : ""}`}>
-          {plan.nextMoves.map((action) => <TopMove key={action.id} action={action} t={t} onEdit={() => setEditing(action)} />)}
+          {plan.nextMoves.map((action) => <ActionTaskRow key={action.id} action={action} onEdit={() => setEditing(action)} />)}
           {plan.nextMoves.length === 0 && <p className="rounded-2xl border border-dark/10 bg-white p-5 text-sm text-dark/65 xl:col-span-3">{t(doneCount === plan.actions.length ? "next.allDone" : "next.noneReady")}</p>}
         </div>
         {plan.nextMoves.length < 3 && plan.blockers.length > 0 && (
@@ -167,46 +172,7 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
         {error && <div role="alert" className="mt-4 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         <div className="mt-5 flex flex-col gap-3">
-          {filtered.map((action) => (
-            <details id={`action-${action.id}`} key={action.id} className="group scroll-mt-24 rounded-2xl border border-dark/10 bg-[#fffdf8] open:border-primary/25">
-              <summary className="flex min-h-16 cursor-pointer list-none items-start gap-3 p-4 sm:items-center">
-                <button
-                  type="button"
-                  onClick={(event) => { event.preventDefault(); void mutate(action.id, { done: !action.done }); }}
-                  disabled={pending === action.id || (!action.done && action.dependency.blocked)}
-                  aria-label={action.done ? t("undo") : t("completeAction")}
-                  className={`flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border text-base font-bold ${action.done ? "border-green-500 bg-green-500 text-white" : "border-dark/15 bg-white text-dark/35 hover:border-primary hover:text-primary"}`}
-                >
-                  {action.done ? "✓" : action.rank ?? "·"}
-                </button>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className={`font-bold text-dark font-[family-name:var(--font-heading)] ${action.done ? "line-through opacity-50" : ""}`}>{taskReference(action)}</h3>
-                    <StatusBadge action={action} t={t} />
-                  </div>
-                  <p className="mt-1 text-sm text-dark/55">{action.expectedOutcome.text}</p>
-                  <p className="mt-1 text-xs text-dark/50">{t("fields.estimatedTime")}: {action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {t("days")}</p>
-                  <p className="mt-1 line-clamp-1 text-xs text-dark/50">{t("whyNow")}: {action.bottleneckFit.reason.split(/[.!?。！？]/)[0]}</p>
-                  {action.dependency.milestoneTitle ? <p className="mt-1 text-xs font-bold text-amber-800">{t("blockedBy")}: {action.dependency.milestoneTitle}</p> : action.dependency.missingLink ? (
-                    <p className="mt-1 text-xs font-bold text-amber-800">{t("missingDependency")}</p>
-                  ) : action.dependency.actionRefs.length > 0 ? (
-                    <p className="mt-1 text-xs font-bold text-amber-800">{t(action.dependency.blocked ? "blockedBy" : "after")}: {action.dependency.actionRefs.filter((ref) => !action.dependency.blocked || !ref.done).map(taskReference).join(", ")}</p>
-                  ) : null}
-                </div>
-                <div className="text-right">
-                  <strong className="block text-sm text-primary">{t(`priority.${priorityTier(action.priorityScore)}`)}</strong>
-                </div>
-              </summary>
-              <div className="border-t border-dark/10 px-4 pb-5 pt-4">
-                <p className="mb-3 text-sm font-bold text-dark">{t("details")}</p>
-                <DimensionGrid action={action} t={t} />
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setEditing(action)} className="min-h-11 rounded-xl border border-dark/15 bg-white px-4 text-sm font-bold text-dark hover:border-primary">{t("edit")}</button>
-                  <button type="button" onClick={() => void remove(action)} disabled={pending === action.id} className="min-h-11 rounded-xl border border-red-200 bg-white px-4 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">{t("delete")}</button>
-                </div>
-              </div>
-            </details>
-          ))}
+          {filtered.map(action => <div id={`action-${action.id}`} tabIndex={-1} key={action.id} className="scroll-mt-24"><ActionTaskRow action={action} revision={plan.revision} busy={Boolean(pending)} onToggle={() => void mutate(action.id, { done: !action.done })} onMetric={metric => mutate(action.id, metric)} onEdit={() => setEditing(action)} onDelete={() => void remove(action)} /></div>)}
           {filtered.length === 0 && <p className="rounded-2xl border border-dashed border-dark/15 px-5 py-8 text-center text-sm text-dark/45">{t("noResults")}</p>}
         </div>
       </section>
@@ -223,53 +189,6 @@ export default function ActionPlanManager({ initialPlan, onChanged }: { initialP
   );
 }
 
-function TopMove({ action, t, onEdit }: { action: ActionPlanActionDto; t: ReturnType<typeof useTranslations>; onEdit: () => void }) {
-  return (
-    <details className="group rounded-2xl border border-primary/20 bg-[#fffdf8] p-5 shadow-[0_12px_35px_rgba(32,37,50,0.06)]">
-      <summary className="cursor-pointer list-none">
-        <span className="text-xs font-bold uppercase tracking-wide text-primary">{t(`priority.${priorityTier(action.priorityScore)}`)}</span>
-        <h3 className="mt-2 text-lg font-extrabold leading-6 text-dark font-[family-name:var(--font-heading)]">{taskReference(action)}</h3>
-        <p className="mt-2 text-sm leading-6 text-dark/60">{action.expectedOutcome.text}</p>
-        <p className="mt-3 text-xs text-dark/55">{t("fields.estimatedTime")}: {action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {t("days")}</p>
-        <p className="mt-2 line-clamp-2 text-xs text-dark/65"><strong>{t("whyNow")}:</strong> {action.bottleneckFit.reason.split(/[.!?。！？]/)[0]}</p>
-        {action.dependency.actionRefs.length > 0 ? <p className="mt-2 text-xs font-bold text-dark/60">{t("after")}: {action.dependency.actionRefs.map(taskReference).join(", ")}</p> : null}
-        <span className="mt-4 inline-block text-sm font-bold text-primary">{t("details")} ↓</span>
-      </summary>
-      <DimensionGrid action={action} t={t} />
-      <button type="button" onClick={onEdit} className="mt-4 min-h-11 w-full rounded-xl border border-primary/20 bg-white text-sm font-bold text-primary hover:bg-primary/[0.04]">{t("edit")}</button>
-    </details>
-  );
-}
-
-function StatusBadge({ action, t }: { action: ActionPlanActionDto; t: ReturnType<typeof useTranslations> }) {
-  const status = action.done ? "done" : action.dependency.blocked ? "blocked" : "ready";
-  return <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status === "ready" ? "bg-green-100 text-green-700" : status === "blocked" ? "bg-amber-100 text-amber-800" : "bg-dark/10 text-dark/50"}`}>{t(`filter.${status}`)}</span>;
-}
-
-function DimensionGrid({ action, t }: { action: ActionPlanActionDto; t: ReturnType<typeof useTranslations> }) {
-  const locale = useLocale() === "zh-tw" ? "zh-tw" : "en";
-  const cells = [
-    [t("fields.impact"), `${action.impact.label} · ${action.impact.weight}`],
-    [t("fields.urgency"), `${action.urgency.type}${action.urgency.days ? ` · ${action.urgency.days}d` : ""}`],
-    [t("fields.dependency"), action.dependency.missingLink ? t("missingDependency") : action.dependency.actionRefs.length ? action.dependency.actionRefs.map(taskReference).join(", ") : t("noDependency")],
-    [t("fields.difficulty"), `${action.difficulty.level} · ${formatActionTime(action.difficulty.actionTime, locale)}`],
-    [t("fields.companyStage"), `${action.companyStage} · ${action.stageFit.score}/5`],
-    [t("fields.bottleneck"), `${action.bottleneck.group} · ${action.bottleneck.label} · ${action.bottleneckFit.score}/5`],
-    [t("fields.expectedOutcome"), action.expectedOutcome.category],
-    [t("fields.estimatedTime"), `${action.expectedOutcome.estimatedTime.minDays}–${action.expectedOutcome.estimatedTime.maxDays}d`],
-  ];
-  return (
-    <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-      {cells.map(([label, value]) => (
-        <div key={label} className="rounded-xl bg-dark/[0.035] px-3 py-2.5">
-          <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-dark/40">{label}</dt>
-          <dd className="mt-1 text-xs font-semibold leading-5 text-dark/75">{value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
 type Draft = {
   title: string; impact: "Critical" | "High" | "Medium" | "Low"; urgencyType: "immediate" | "urgent" | "scheduled"; urgencyDays: string;
   dependencyLevel: string; dependencyNotes: string; dependencyActionIds: string[]; difficulty: string; actionMin: string; actionMax: string;
@@ -279,6 +198,7 @@ type Draft = {
 
 function ActionEditor({ action, plan, onClose, onSaved }: { action: ActionPlanActionDto | null; plan: ActionPlanDto; onClose: () => void; onSaved: (plan: ActionPlanDto) => void }) {
   const t = useTranslations("Dashboard.actionPlan");
+  const [baseRevision] = useState(plan.revision);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Draft>(() => action ? {
@@ -327,7 +247,7 @@ function ActionEditor({ action, plan, onClose, onSaved }: { action: ActionPlanAc
       const response = await fetch(action ? `/api/action-plans/actions/${action.id}` : "/api/action-plans/actions", {
         method: action ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, revision: baseRevision }),
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || t("errors.save"));

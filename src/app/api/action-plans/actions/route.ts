@@ -5,7 +5,7 @@ import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 import { getUserSession } from "@/lib/auth/guard";
 import { requirePlan } from "@/lib/billing/gate";
 import { prisma } from "@/lib/prisma";
-import { actionInputSchema } from "@/lib/action-plan/schemas";
+import { actionInputSchema, planRevisionSchema } from "@/lib/action-plan/schemas";
 import { assertDependencies, getActiveActionPlan, lockActivePlan, PlanWriteError } from "@/lib/action-plan/service";
 import { legacyHoursForMinutes } from "@/lib/action-plan/time";
 
@@ -14,7 +14,9 @@ export async function POST(req: NextRequest) {
     const session = await getUserSession();
     if (!session) return unauthorized();
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
-    const parsed = actionInputSchema.safeParse(await req.json());
+    const body = await req.json();
+    const { revision } = planRevisionSchema.parse(body);
+    const parsed = actionInputSchema.safeParse(body);
     if (!parsed.success) {
       return fail(parsed.error.issues.map((issue) => `${issue.path.join(".") || "欄位"}：${issue.message}`).join("；"), 400);
     }
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
     const legacyActionTime = legacyHoursForMinutes(action.actionTime);
     await prisma.$transaction(async raw => {
       const tx = raw as unknown as Prisma.TransactionClient;
-      await lockActivePlan(tx, session.uid, plan.id);
+      await lockActivePlan(tx, session.uid, plan.id, revision);
       if (await tx.actionItem.count({ where: { actionPlanId: plan.id } }) >= 100) throw new PlanWriteError("每份計畫最多 100 項 / Maximum 100 tasks");
       const stages = await tx.planMilestone.findMany({ where: { actionPlanId: plan.id }, orderBy: { position: "asc" }, include: { _count: { select: { actions: true } } } });
       const stage = stages.find(m => !m.achievedAt);
@@ -80,6 +82,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof PlanWriteError) return fail(error.message, error.status);
     if (error instanceof Error && /依賴|循環|自己/.test(error.message)) return fail(error.message, 400);
+    if (error instanceof SyntaxError) return fail("無效 JSON / Invalid JSON", 400);
+    if (error instanceof Error && error.name === "ZodError") return fail(error.message, 400);
     return failFromError(error);
   }
 }

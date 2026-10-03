@@ -1,9 +1,14 @@
-import { IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight } from "./constants";
+import { BOTTLENECKS, IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight } from "./constants";
 
 export type RankableAction = {
   id: string;
   clientKey: string;
   milestoneId?: string | null;
+  executionOrder?: number | null;
+  completedAt?: Date | string | null;
+  metricTarget?: number | null;
+  metricUnit?: string | null;
+  metricCurrent?: number | null;
   title: string;
   impact: string;
   urgencyType: string;
@@ -42,6 +47,10 @@ export type ActionPlanActionDto = {
   id: string;
   clientKey: string;
   milestoneId?: string | null;
+  displayNumber?: number;
+  milestonePosition?: number | null;
+  completedAt?: string | null;
+  metric?: { target: number | null; unit: string | null; current: number | null };
   title: string;
   impact: { label: string; weight: number };
   urgency: {
@@ -54,7 +63,7 @@ export type ActionPlanActionDto = {
     notes: string | null;
     actionIds: string[];
     actionTitles: string[];
-    actionRefs: Array<{ clientKey: string; title: string; done: boolean }>;
+    actionRefs: Array<{ id?: string; clientKey: string; title: string; done: boolean; displayNumber?: number; milestonePosition?: number | null; crossMilestone?: boolean }>;
     missingLink: boolean;
     resolved: boolean;
     blocked: boolean;
@@ -99,13 +108,39 @@ export function priorityTier(score: number): "Critical" | "High" | "Medium" | "L
   return "Low";
 }
 
-export function taskReference(task: { clientKey: string; title: string }): string {
-  const number = /^task_(\d+)$/.exec(task.clientKey)?.[1];
-  return number ? `#${number} · ${task.title}` : task.title;
+export function humanizeActionText(text: string): string {
+  for (const [code, label] of Object.values(BOTTLENECKS).flat()) {
+    text = text.replace(new RegExp(`\\b${code}\\b`, "g"), code === "no_icp" ? "Unclear ICP" : label);
+  }
+  return text.replace(/\bicpDetails\b/g, "customer profile");
+}
+export function taskReference(task: { clientKey: string; title: string; displayNumber?: number; milestonePosition?: number | null; crossMilestone?: boolean }): string {
+  const number = task.displayNumber ?? Number(/^task_(\d+)$/.exec(task.clientKey)?.[1]);
+  const prefix = task.crossMilestone && task.milestonePosition != null ? `Milestone ${task.milestonePosition + 1} · ` : "";
+  return `${prefix}${number ? `#${number} · ` : ""}${humanizeActionText(task.title)}`;
+}
+/** Stable topological order: completion and priority labels never renumber tasks. */
+export function executionSequence<T extends Pick<RankableAction, "id" | "clientKey" | "milestoneId" | "executionOrder" | "createdAt" | "dependencies">>(actions: T[], positions = new Map<string, number>()): T[] {
+  const order = [...actions].sort((a, b) => (positions.get(a.milestoneId || "") ?? -1) - (positions.get(b.milestoneId || "") ?? -1)
+    || (a.executionOrder ?? Number.MAX_SAFE_INTEGER) - (b.executionOrder ?? Number.MAX_SAFE_INTEGER)
+    || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    || a.clientKey.localeCompare(b.clientKey, "en", { numeric: true }) || a.id.localeCompare(b.id));
+  const available = new Set(actions.map(a => a.id)), emitted = new Set<string>(), result: T[] = [];
+  while (result.length < order.length) {
+    const next = order.find(a => !emitted.has(a.id) && a.dependencies.every(e => !available.has(e.dependsOn.id) || emitted.has(e.dependsOn.id)));
+    // Invalid legacy cycles remain visible and blocked; writers reject new cycles.
+    const row = next || order.find(a => !emitted.has(a.id))!;
+    emitted.add(row.id); result.push(row);
+  }
+  return result;
 }
 
-export function rankActions(actions: RankableAction[], milestoneBlocks = new Map<string, string>()): ActionPlanActionDto[] {
-  const rows = actions.map((action) => {
+export function rankActions(actions: RankableAction[], milestoneBlocks = new Map<string, string>(), positions = new Map<string, number>()): ActionPlanActionDto[] {
+  const ordered = executionSequence(actions, positions);
+  const counters = new Map<string, number>();
+  const numbers = new Map(ordered.map(a => { const stage = a.milestoneId || ""; const number = (counters.get(stage) || 0) + 1; counters.set(stage, number); return [a.id, number]; }));
+  const byId = new Map(actions.map(a => [a.id, a]));
+  const rows = ordered.map((action) => {
     const unfinished = action.dependencies
       .map((edge) => edge.dependsOn)
       .filter((dependency) => !dependency.done);
@@ -134,17 +169,7 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
     };
   });
 
-  const ready = rows
-    .filter((row) => !row.action.done && !row.blocked)
-    .sort((a, b) =>
-      b.score - a.score ||
-      b.urgencyWeight - a.urgencyWeight ||
-      b.impactWeight - a.impactWeight ||
-      a.actionTimeMaxMinutes - b.actionTimeMaxMinutes ||
-      new Date(a.action.createdAt).getTime() - new Date(b.action.createdAt).getTime() ||
-      a.action.clientKey.localeCompare(b.action.clientKey, "en", { numeric: true }) ||
-      a.action.id.localeCompare(b.action.id),
-    );
+  const ready = rows.filter((row) => !row.action.done && !row.blocked);
   const ranks = new Map(ready.map((row, index) => [row.action.id, index + 1]));
 
   return rows
@@ -152,7 +177,11 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
       id: action.id,
       milestoneId: action.milestoneId,
       clientKey: action.clientKey,
-      title: action.title,
+      displayNumber: numbers.get(action.id),
+      milestonePosition: positions.get(action.milestoneId || "") ?? null,
+      completedAt: action.completedAt ? new Date(action.completedAt).toISOString() : null,
+      metric: { target: action.metricTarget ?? null, unit: action.metricUnit ?? null, current: action.metricCurrent ?? null },
+      title: humanizeActionText(action.title),
       impact: { label: action.impact, weight: impactWeight },
       urgency: {
         type: action.urgencyType as "immediate" | "urgent" | "scheduled",
@@ -161,10 +190,10 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
       },
       dependency: {
         level: action.dependencyLevel as 0 | 1 | 2 | 3,
-        notes: action.dependencyNotes,
+        notes: action.dependencyNotes ? humanizeActionText(action.dependencyNotes) : null,
         actionIds: action.dependencies.map((edge) => edge.dependsOn.id),
-        actionTitles: unfinished.map((dependency) => dependency.title),
-        actionRefs: action.dependencies.map((edge) => edge.dependsOn),
+        actionTitles: unfinished.map((dependency) => humanizeActionText(dependency.title)),
+        actionRefs: action.dependencies.map(({ dependsOn: d }) => ({ ...d, title: humanizeActionText(d.title), displayNumber: numbers.get(d.id), milestonePosition: positions.get(byId.get(d.id)?.milestoneId || "") ?? null, crossMilestone: byId.get(d.id)?.milestoneId !== action.milestoneId })),
         missingLink,
         resolved,
         blocked,
@@ -182,7 +211,7 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
       companyStage: action.companyStage,
       stageFit: {
         score: action.stageFit,
-        reason: action.stageFitReason,
+        reason: humanizeActionText(action.stageFitReason),
         confidence: action.stageFitConfidence,
         adjustedByUser: action.stageFitEditedByUser,
       },
@@ -193,13 +222,13 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
       },
       bottleneckFit: {
         score: action.bottleneckFit,
-        reason: action.bottleneckFitReason,
+        reason: humanizeActionText(action.bottleneckFitReason),
         confidence: action.bottleneckFitConfidence,
         adjustedByUser: action.bottleneckFitEditedByUser,
       },
       expectedOutcome: {
         category: action.outcomeCategory as ActionPlanActionDto["expectedOutcome"]["category"],
-        text: action.expectedOutcome,
+        text: humanizeActionText(action.expectedOutcome),
         estimatedTime: { minDays: action.outcomeTimeMinDays, maxDays: action.outcomeTimeMaxDays },
       },
       priorityScore: score,
@@ -207,13 +236,7 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
       done: action.done,
       source: action.source,
     }))
-    .sort((a, b) => {
-      if (a.rank != null && b.rank != null) return a.rank - b.rank;
-      if (a.rank != null) return -1;
-      if (b.rank != null) return 1;
-      if (a.done !== b.done) return a.done ? 1 : -1;
-      return b.priorityScore - a.priorityScore;
-    });
+;
 }
 
 export function wouldCreateCycle(graph: Map<string, string[]>, actionId: string, nextDependencies: string[]): boolean {

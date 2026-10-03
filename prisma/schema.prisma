@@ -154,6 +154,11 @@ model User {
   completed      Boolean   @default(false) // 全流程（含測驗）完成
   quizCompleted  Boolean   @default(false)
 
+  // Preserve additive onboarding columns already present in Production.
+  gettingStartedVersion Int?
+  gettingStartedCompletedAt DateTime?
+  gettingStartedDismissedAt DateTime?
+
   // --- 計費 / 訂閱（全部 nullable 或有 default，純疊加；權威狀態由 webhook 對帳，此處為即時快取）---
   plan                 String    @default("free") // "free" | "pro" | "business" | "enterprise"
   subscriptionStatus   String? // PayPal 訂閱狀態快取：ACTIVE/PAST_DUE/SUSPENDED/CANCELLED/EXPIRED
@@ -209,6 +214,12 @@ model User {
 
   @@index([email])
   roadmapWorkspace RoadmapWorkspace?
+  weeklyCheckIns WeeklyCheckIn[]
+  rewardAccount RewardAccount?
+  rewardEntries RewardEntry[]
+  rewardRedemptions RewardRedemption[]
+  rewardReminder RewardReminder?
+  rewardDeliveries RewardDelivery[]
 
 }
 
@@ -357,6 +368,7 @@ model AiAllowance {
   includedUsed     Int       @default(0)
   includedReserved Int       @default(0)
   bonusBalance     Int       @default(0)
+  rewardBalance    Int       @default(0)
   updatedAt        DateTime  @updatedAt
 }
 
@@ -500,6 +512,7 @@ model ActionPlan {
   revision Int @default(0)
   milestones PlanMilestone[]
 
+  weeklyCheckIns WeeklyCheckIn[]
   actions   ActionItem[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -545,6 +558,11 @@ model ActionItem {
   outcomeTimeMinDays Int
   outcomeTimeMaxDays Int
 
+  executionOrder Int?
+  completedAt DateTime?
+  metricTarget Int?
+  metricUnit String?
+  metricCurrent Int?
   done                      Boolean  @default(false)
   source                    String   @default("nova")
   stageFitEditedByUser      Boolean  @default(false)
@@ -667,6 +685,7 @@ model InvestorMilestone {
 }
 
 model InvestorUpdate {
+  sourceCheckInId String? @unique
   id          String         @id @default(cuid())
   portalId    String
   portal      InvestorPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
@@ -723,6 +742,7 @@ model MeetingNote {
 
 /// 會員 NOVA 對話紀錄；每輪問題先儲存，回答完成後補上，刪帳號連帶清除。
 model CopilotTurn {
+  rewardOnly Boolean @default(false)
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -851,4 +871,99 @@ model RoadmapWorkspace {
   lastRequestId String?
   lastError String?
   updatedAt DateTime @updatedAt
+}
+
+/// Private weekly facts and AI drafts; never part of public investor reads.
+model WeeklyCheckIn {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionPlanId String
+  actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+  weekStart DateTime @db.Date
+  finding String @default("")
+  blockers String @default("")
+  snapshot Json
+  summary String
+  recommendations Json?
+  investorDraft String?
+  basePlanRevision Int
+  revision Int @default(0)
+  pendingRequestId String?
+  pendingSince DateTime?
+  usageId String?
+  lastRequestId String?
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, actionPlanId, weekStart])
+  @@index([userId, weekStart])
+}
+
+
+/// Append-only reward ledger; source IDs are strings so deleting a task preserves its claim.
+model RewardAccount {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model RewardEntry {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventKey String
+  kind String
+  points Int
+  dayKey String
+  createdAt DateTime @default(now())
+  @@unique([userId, eventKey])
+  @@index([userId, dayKey, kind])
+  @@index([userId, createdAt])
+}
+model RewardRedemption {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestId String
+  monthKey String
+  points Int
+  credits Int
+  createdAt DateTime @default(now())
+  @@unique([userId, requestId])
+  @@index([userId, monthKey])
+}
+model RewardReminder {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enabled Boolean @default(false)
+  time String @default("09:00")
+  timeZone String @default("Asia/Taipei")
+  locale String @default("en")
+  tokenVersion String @default(uuid())
+  nextSendAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@index([enabled, nextSendAt])
+}
+model RewardDelivery {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey String
+  scheduledAt DateTime
+  reminderVersion String @default("")
+  status String @default("pending")
+  attempts Int @default(0)
+  nextAttemptAt DateTime
+  leaseUntil DateTime?
+  leaseToken String?
+  payload Json?
+  providerId String?
+  lastError String?
+  acceptedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, dayKey])
+  @@index([status, nextAttemptAt])
 }

@@ -16,9 +16,9 @@ const diagnosis = { companyStage: "MVP", stageReason: "Working MVP", stageConfid
 const body = { locale: "en", requestId: "11111111-1111-4111-8111-111111111111", candidateCount: 5, diagnosis, answers: [{ question: "Bottleneck?", answer: "Customers" }, { question: "Progress?", answer: "Working MVP" }, { question: "Goal?", answer: "Five pilots" }] };
 class WriteError extends Error { constructor(message: string, public status = 409) { super(message); } }
 function routeHarness() {
-  const state = { uid: "owner" as string | null, allowed: true, successes: 0, attempts: 0, aiCalls: 0, replay: null as unknown, aiError: null as Error | null, writeError: null as Error | null, base: { id: "original", revision: 7 }, saved: [] as unknown[] };
+  const state = { uid: "owner" as string | null, allowed: true, successes: 0, attempts: 0, aiCalls: 0, replay: null as unknown, aiError: null as Error | null, writeError: null as Error | null, base: { id: "original", revision: 7 }, saved: [] as unknown[], reads: [] as Array<[string, string]> };
   const response = (data: unknown, status = 200) => Response.json(data, { status });
-  const route = load<{ POST(request: unknown): Promise<Response> }>("src/app/api/action-plans/generate/route.ts", {
+  const route = load<{ POST(request: unknown): Promise<Response>; GET(request: unknown): Promise<Response> }>("src/app/api/action-plans/generate/route.ts", {
     "@/lib/api": { ok: (data: unknown, status: number) => response({ data }, status), fail: (error: string, status = 400) => response({ error }, status), unauthorized: () => response({ error: "Unauthorized" }, 401), failFromError: () => response({ error: "Safe server error" }, 500) },
     "@/lib/auth/guard": { getUserSession: async () => state.uid ? { uid: state.uid } : null },
     "@/lib/billing/gate": { requirePlan: async () => state.allowed ? { profile: {} } : null },
@@ -26,9 +26,9 @@ function routeHarness() {
     "@/lib/quiz/result": { getLatestQuizResult: async () => null },
     "@/lib/action-plan/schemas": { generateBodySchema },
     "@/lib/action-plan/ai": { generateActionCandidates: async () => { state.aiCalls++; if (state.aiError) throw state.aiError; return Array(5).fill({}); } },
-    "@/lib/action-plan/service": { PlanWriteError: WriteError, getPlanByRequestId: async () => state.replay, getActiveActionPlan: async () => state.base, assertGenerationAllowance: async () => { if (state.successes >= 3) throw new WriteError("3 successful plans", 429); }, persistGeneratedPlan: async (input: unknown) => { if (state.writeError) throw state.writeError; state.saved.push(input); state.successes++; return { id: "new" }; } },
+    "@/lib/action-plan/service": { PlanWriteError: WriteError, getPlanByRequestId: async (uid: string, requestId: string) => { state.reads.push([uid, requestId]); return state.replay; }, getActiveActionPlan: async () => state.base, assertGenerationAllowance: async () => { if (state.successes >= 3) throw new WriteError("3 successful plans", 429); }, persistGeneratedPlan: async (input: unknown) => { if (state.writeError) throw state.writeError; state.saved.push(input); state.successes++; return { id: "new" }; } },
   });
-  return { state, post: (input: unknown = body) => route.POST({ json: async () => input }) };
+  return { state, post: (input: unknown = body) => route.POST({ json: async () => input }), get: (requestId = body.requestId) => route.GET({ nextUrl: { searchParams: new URLSearchParams({ requestId }) } }) };
 }
 
 test("Generation denies anonymous, insufficient-plan and invalid requests before AI or allowance", async () => {
@@ -75,7 +75,7 @@ function serviceHarness() {
   const service = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts", {
     "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/rate-limit": { DAY_MS: 86400000 },
     "@/lib/roadmap/schema": { milestoneViews: () => [] },
-    "./ranking": { rankActions: () => [], wouldCreateCycle: () => false }, "./time": { legacyHoursForMinutes: () => ({ minHours: 1, maxHours: 2 }) },
+    "./ranking": { rankActions: () => [], humanizeActionText: (s: string) => s, taskReference: () => "", wouldCreateCycle: () => false }, "./time": { legacyHoursForMinutes: () => ({ minHours: 1, maxHours: 2 }) },
   });
   // Persistence uses generated fields only; schema/AI validation is tested separately.
   const task = { clientKey: "task_1", dependsOnKeys: [], actionTime: {}, stageFit: {}, bottleneckFit: {}, outcomeTime: {} };
@@ -93,4 +93,15 @@ test("Persistence checks allowance inside the transaction and successful replay 
   const h = serviceHarness(); h.count(3); await assert.rejects(h.service.persistGeneratedPlan(h.input), /3 次成功/); assert.equal(h.writes.length, 0); assert.equal(h.active()?.revision, 2);
   h.count(0); await h.service.persistGeneratedPlan(h.input); assert.equal(h.writes.length, 1); assert.equal((h.writes[0].actions as { create: unknown[] }).create.length, 5);
   h.update({ id: "later", revision: 1, activeKey: "owner" }); await h.service.persistGeneratedPlan(h.input); assert.equal(h.writes.length, 1); assert.equal(h.active()?.id, "later");
+});
+
+
+test("Generation recovery reads only the signed-in owner and never invokes AI, allowance or persistence", async () => {
+  const { state, get } = routeHarness(); state.uid = null; assert.equal((await get()).status, 401);
+  state.uid = "other-account"; state.allowed = false; assert.equal((await get()).status, 403);
+  state.allowed = true; assert.equal((await get("invalid")).status, 400);
+  const pending = await get(); assert.equal(pending.status, 200); assert.equal((await pending.json()).data.planId, null);
+  assert.deepEqual(state.reads, [["other-account", body.requestId]]);
+  state.replay = { id: "owned-result" }; assert.equal((await (await get()).json()).data.planId, "owned-result");
+  assert.equal(state.aiCalls, 0); assert.equal(state.attempts, 0); assert.equal(state.successes, 0); assert.equal(state.saved.length, 0);
 });
