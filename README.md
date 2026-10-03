@@ -1191,3 +1191,7 @@ This week 文案提供英文／繁體中文；日期、事項數量、任務進�
 正式環境已於單一交易僅新增 WeekCalendarItem 表／索引／外鍵；同一交易前後 User、Profile、AI allowance、ActionPlan、ActionItem、QuizAttempt、RewardEntry、RewardDelivery 的筆數與完整內容指紋一致，無回填或覆寫。所有 150 項回歸、11 項本機實際 API 檢查、lint（0 errors／2 既有 warnings）及 build 通過，桌面拖曳與繁中手機操作已驗收。
 
 正式候選 roll-1yowtd7vs 已 Ready，14 項受保護部署的實際 API 檢查通過：重送、並行改日期、舊版本衝突、鎖定、有效日期、個人完成與排程不改 Action Plan revision。驗收只使用一個新建 example.invalid 帳號，沒有替會員開啟提醒或寄信；公開發布後清理此帳號及關聯資料。320px／390px 手機皆無頁面溢出，日期最小 44px，窄螢幕只在日期列內捲動。
+
+This week 正式發布完成：3718fc3 對應 dpl_9wHzQiz79jJgQqWRcL84BYsz1puz（roll-5cc1lnjd1）已 Ready／www.rollgrp.com 生效。公開站 11 項 API／頁面檢查、中英文、390px 手機點選改日期、今日白框、事項細節、Next Three Moves 保留，以及實際跨分頁衝突→保留草稿→載入審閱→成功儲存均已驗證；前端 error log 為零。正式 schema 差異為 empty migration。提醒偏好可為 null（未設定）或 enabled=false，皆維持預設關閉，沒有寄信。
+
+專用正式 QA 帳號一個、本機 QA 帳號兩個及其關聯資料已僅按指定 ID／Email 清理。正式既有 User 10、Profile 9、Allowance 3、ActionPlan 6、ActionItem 103、QuizAttempt 3、RewardEntry 2、RewardDelivery 0 的完整內容指紋均與新增 schema 前一致；無會員資料回填／覆寫。驗收截圖使用專用 QA 資料；帳號清理後會員以自己的資料使用行事曆。本機 main 已 fast-forward，同步產生最新 Prisma Client。
