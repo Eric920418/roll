@@ -1204,4 +1204,4 @@ This week 正式發布完成：3718fc3 對應 dpl_9wHzQiz79jJgQqWRcL84BYsz1puz�
 - Home 依參考圖將 Investor DD／Rewards 放左、POLARIS 放右、週行事曆置於其下。積分主數字由 36px 改為 72px；每日到訪文案改用無所有格文字，並啟用正常字距配對。
 - Rewards 推薦 API 與提醒信不再引導測驗，保留原三題診斷、既有測驗獎勵及歷史。舊測驗郵件佇列跳過而不改寫冪等 payload。提醒信使用網站主 Logo；網站標題與 Home 介紹為 NOVA AI: Startup Operating Partner，CMS 只更新中英文 Metadata.title，不覆寫其他後台文案。
 - 不新增資料庫結構，不清空或回填會員資料。153 項測試（含獨立 PostgreSQL）全部通過，型別、修改檔案 lint、production build 通過。專用帳號於 production build 驗證單一清單／進度、受阻擋鎖、完成後解鎖、數量回報、編輯焦點、Home 排列、72px 積分、中英文手機與深連結，無頁面 JavaScript／hydration 錯誤。提醒信只驗證 HTML 與 mock provider，未向真實會員發送測試信。
-- 正式候選版本驗收與上線結果待補。
+- 正式候選與 www.rollgrp.com 使用專用帳號重跑相同操作皆通過；中英文公開頁面 title 正確。程式提交 `6962683` 已推送 main，候選 `dpl_2qGTWCfhGH92WvTB5nnbUVFJimXc` 已 promote。專用 QA 帳號及其關聯資料已按指定 ID／Email 清理，公司名稱、備註與服務需求保存檢查通過。本機 main 同步遠端；本輪未修改既有會員計畫或任務。
