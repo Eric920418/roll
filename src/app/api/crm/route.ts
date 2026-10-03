@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
@@ -7,6 +8,8 @@ import { contactCreateSchema, zodMessage } from "@/lib/dashboard/schemas";
 
 // CRM 聯絡人 — 建立。proxy 對 /api/* 放行，故此 route 自守衛（session + Pro）並以 session.uid scope。
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import GettingStartedHint from "@/components/dashboard/GettingStartedHint";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -10,6 +11,7 @@ import type { Locale } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string }> };
 export default async function CompanyProfilePage({ params }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;

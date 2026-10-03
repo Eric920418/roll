@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -6,6 +7,8 @@ import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 import { QUESTION_FIELDS, pickFields } from "@/lib/admin/quiz-fields";
 
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   if (!(await requireAdmin())) return unauthorized();
   try {
     const body = (await req.json()) as Record<string, unknown>;

@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import UsersList, { type UserRow } from "@/components/admin/UsersList";
 
@@ -27,6 +28,7 @@ function userStatusLabel(u: {
 }
 
 export default async function UsersPage() {
+  await requireAdminPage();
   // 刻意只 select 需要顯示的欄位 —— 不撈 passwordHash（即使已雜湊也不該進前端 payload）
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },

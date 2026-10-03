@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
@@ -7,6 +8,8 @@ import { dealCreateSchema, zodMessage } from "@/lib/dashboard/schemas";
 
 // 銷售管道商機 — 建立。若帶 contactId 需驗證該聯絡人屬於本人（不信任前端）。
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

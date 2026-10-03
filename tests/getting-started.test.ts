@@ -85,7 +85,7 @@ test("Guide API rejects unauthenticated, forged completion and foreign-owner inp
     "@/lib/getting-started/state": { GUIDE_VERSION: 1 },
     "@/lib/api": { ok: (data: unknown) => response({ data }), unauthorized: () => response({}, 401), fail: (error: string, status: number) => response({ error }, status), failFromError: () => response({}, 500) },
   });
-  const patch = (body: unknown) => api.PATCH({ json: async () => body });
+  const patch = (body: unknown) => api.PATCH({ url: "https://example.test/api/test", headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), json: async () => body });
   assert.equal((await api.GET()).status, 401); assert.equal((await patch({ action: "dismiss" })).status, 401);
   uid = "owner";
   for (const body of [{ action: "complete" }, { action: "dismiss", uid: "victim" }, { action: "dismiss", gettingStartedCompletedAt: "today" }]) assert.equal((await patch(body)).status, 400);

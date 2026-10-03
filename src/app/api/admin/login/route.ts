@@ -1,9 +1,13 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { NextResponse, type NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth/session";
-import { fail, failFromError } from "@/lib/api";
+import { checkRateLimit, clientIp, MINUTE_MS } from "@/lib/rate-limit";
+import { fail, failFromError, rateLimited } from "@/lib/api";
 
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const { email, password } = await req.json();
 
@@ -17,6 +21,11 @@ export async function POST(req: NextRequest) {
       return fail("伺服器未設定管理員帳密（ADMIN_EMAIL / ADMIN_PASSWORD_HASH）", 500);
     }
 
+    const ipLimit = await checkRateLimit(`admin-login:${clientIp(req)}`, 10, 15 * MINUTE_MS);
+    if (!ipLimit.ok) return rateLimited(ipLimit.retryAfterMs);
+    const accountLimit = await checkRateLimit("admin-login:account", 30, 15 * MINUTE_MS);
+    if (!accountLimit.ok) return rateLimited(accountLimit.retryAfterMs);
+    if (email.length > 254 || password.length > 1024) return fail("帳號或密碼錯誤", 401);
     const emailMatch = email.trim().toLowerCase() === adminEmail.toLowerCase();
     const passwordMatch = await bcrypt.compare(password, adminHash);
     if (!emailMatch || !passwordMatch) {

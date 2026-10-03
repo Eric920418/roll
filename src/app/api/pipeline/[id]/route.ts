@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
@@ -13,6 +14,8 @@ type Ctx = { params: Promise<{ id: string }> };
 
 // 更新商機 — 以 updateMany({ id, userId }) 一次完成擁有權把關 + 更新（與 crm/notes 模式一致）。
 export async function PATCH(req: NextRequest, { params }: Ctx) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
@@ -52,6 +55,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  const blocked = browserMutationGuard(_req, false);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

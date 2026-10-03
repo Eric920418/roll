@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { getUserSession } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
@@ -7,6 +8,8 @@ import { awardProfile, rewardTransaction } from "@/lib/rewards/service";
 
 // Field presence means update; omission means preserve. ICP belongs to /api/account/icp.
 export async function PATCH(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession(); if (!session) return unauthorized();
     const body = await req.json();

@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -11,6 +12,7 @@ import InvestorPortalManager from "@/components/dashboard/InvestorPortalManager"
 import type { Locale } from "@/i18n/routing";
 
 export default async function InvestorPortalPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ checkInId?: string }> }) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;

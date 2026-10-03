@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
@@ -21,6 +22,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 }
 
 export async function POST(req: NextRequest, { params }: Ctx) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   if (!(await requireAdmin())) return unauthorized();
   const { resource } = await params;
   const def = getResource(resource);

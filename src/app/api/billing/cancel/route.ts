@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { NextResponse } from "next/server";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { ok, unauthorized, failFromError } from "@/lib/api";
@@ -10,7 +11,9 @@ function bad(code: string, error: string, status: number) {
 
 // 取消本人目前生效的訂閱。PayPal 取消後立即對帳（樂觀更新為 CANCELLED），
 // 之後 webhook 的 CANCELLED 事件會再確認一次。
-export async function POST() {
+export async function POST(req: Request) {
+  const blocked = browserMutationGuard(req, false);
+  if (blocked) return blocked;
   try {
     const account = await getCurrentAccount();
     if (!account) return unauthorized();

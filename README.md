@@ -1129,7 +1129,7 @@ Rewards 最終本機驗收：全專案 123 項測試通過（包含 22 項獎勵
 
 2026-10-03 Next steps 移除整個 Legacy landing tasks 舊流程區塊及專用查詢；保留 Goal roadmap、目前任務、Weekly Check-in 與獨立里程碑。既有 LandingTask／checklistState 資料保留，不需資料庫更新。
 
-Legacy landing tasks 移除驗證：TypeScript 與正式建置通過；候選與公開 www.rollgrp.com 各通過 32 項中英文桌面／手機檢查，確認舊區塊消失、五項任務與鎖頭、Goal roadmap、Milestones、Weekly Check-in 保留，無橫向溢出及瀏覽器錯誤。40b7e02 已推送並上線 dpl_EEcAzBtTNBA8337yxXRS4QgUe27M；本轮專用帳號與關聯測試資料已清除。
+Legacy landing tasks 移除驗證：TypeScript 與正式建置通過；候選與公開 www.rollgrp.com 各通過 32 項中英文桌面／手機檢查，確認舊區塊消失、五項任務與鎖頭、Goal roadmap、Milestones、Weekly Check-in 保留，無橫向溢出及瀏覽器錯誤。40b7e02 已推送並上線 dpl_EEcAzBtTNBA8337yxXRS4QgUe27M；本輪專用帳號與關聯測試資料已清除。
 
 ## 新使用者引導（2026-10-03）
 
@@ -1209,3 +1209,51 @@ This week 正式發布完成：3718fc3 對應 dpl_9wHzQiz79jJgQqWRcL84BYsz1puz�
 - Rewards 推薦 API 與提醒信不再引導測驗，保留原三題診斷、既有測驗獎勵及歷史。舊測驗郵件佇列跳過而不改寫冪等 payload。提醒信使用網站主 Logo；網站標題與 Home 介紹為 NOVA AI: Startup Operating Partner，CMS 只更新中英文 Metadata.title，不覆寫其他後台文案。
 - 不新增資料庫結構，不清空或回填會員資料。153 項測試（含獨立 PostgreSQL）全部通過，型別、修改檔案 lint、production build 通過。專用帳號於 production build 驗證單一清單／進度、受阻擋鎖、完成後解鎖、數量回報、編輯焦點、Home 排列、72px 積分、中英文手機與深連結，無頁面 JavaScript／hydration 錯誤。提醒信只驗證 HTML 與 mock provider，未向真實會員發送測試信。
 - 正式候選與 www.rollgrp.com 使用專用帳號重跑相同操作皆通過；中英文公開頁面 title 正確。程式提交 `6962683` 已推送 main，候選 `dpl_2qGTWCfhGH92WvTB5nnbUVFJimXc` 已 promote。專用 QA 帳號及其關聯資料已按指定 ID／Email 清理，公司名稱、備註與服務需求保存檢查通過。本機 main 同步遠端；本輪未修改既有會員計畫或任務。
+
+
+## 資安修補（2026-10-04，正式發布）
+
+本輪先完成本機程式、套件鎖定檔與新增欄位 SQL 修補，再依使用者後續授權執行正式資料庫遷移及發布。沒有 reset、覆寫會員資料或使用 `--accept-data-loss`；資料庫整合測試先在新建的 loopback `roll_rewards_qa_security_20261004_01` 完成。
+
+### 已修補
+
+- **請求來源與格式**：80 個一般瀏覽器寫入 handler 在 route 入口驗證 Origin，缺少或異站回 403；JSON 入口拒絕 text/plain／表單（415）。涵蓋登入、登出、會員與後台操作。PayPal webhook、Cron、一鍵退訂維持自身驗章／密鑰；兩個 Blob 入口只在 token 簽發時檢查 Origin／JSON／登入，完成回呼仍交由 SDK 驗章。
+- **限流**：管理員 10/IP/15 分鐘及 30/管理員帳號/15 分鐘；會員保留 10/IP+帳號並增加 30/IP/15 分鐘；公開聯絡表單 10/IP/15 分鐘。達上限回 429、Retry-After，密碼比對與寫入不再繼續；安全計數失敗預設拒絕並回 503、Retry-After。IP 限流依賴可信代理覆寫 x-forwarded-for／x-real-ip；自行架設時不可直接信任用戶提供的這些標頭。
+- **可撤銷會員登入**：User.sessionVersion 預設 0，新 JWT 攜帶版本；每次伺服器授權確認帳號存在與 DB 版本。改密碼使用版本＋舊 hash 的 compare-and-swap，原子增加版本並只為目前瀏覽器重發 cookie；避免併發覆蓋新密碼。會員／管理員 JWT 驗證角色、必要欄位與有效期。新設密碼最多 72 UTF-8 bytes，避免 bcrypt 靜默截斷；既有密碼登入仍相容。
+- **資料存取**：公司頁、metadata、會員內容頁及所有後台 dashboard 頁面在資料讀取前驗證登入，避免只依賴 proxy/layout。公司與 Playbook slug／realpath 檢查阻擋 traversal 與 symlink 外讀。MDX 限制 slug、語系與 content 讀取範圍，同時消除新版 Turbopack 全專案檔案追蹤警告。
+- **安全錯誤**：API 非預期錯誤保留 error/code，增加 requestId，訊息也包含追蹤碼供現有 UI 完整顯示；Google redirect 不再帶未知原文。Blob、邀請寄信與其他 runtime catch 使用共用處理。伺服器日誌只保留事件、追蹤碼、例外類型／代碼／狀態，不序列化原始 message、stack、SDK payload；停用 Prisma 自動原文錯誤輸出。因此排查以安全元資料為準，沒有將原始秘密藏到另一份日誌。
+- **回應標頭**：DENY、frame-ancestors 'none'、nosniff、strict-origin-when-cross-origin，並限制 base-uri/object-src；未新增阻擋付款、字型、Blob 的 script/connect 白名單。
+
+### 依賴稽核與相容性
+
+使用 pnpm 更新 Next.js／工具至 16.3.8、next-intl 4.14.9、sharp 0.35.5（包含計畫指定 0.35.4 之後修補），其餘相容間接依賴同步更新。Prisma client／adapters／CLI 對齊 7.10.0；CLI 的 mysql2 使用 scoped override 3.24.5、@prisma/config 的 deepmerge-ts 使用 scoped override 8.0.0。專案 config 只合併一般物件，未依賴 deepmerge Map 舊語意，已驗證 generate／schema／build。
+
+| 範圍 | 最終結果 | 可達條件及處理 |
+| --- | --- | --- |
+| `pnpm audit --prod` | 495 個依賴，0 告警 | 已更新正式依賴；不等同全站零漏洞 |
+| `pnpm audit` | 863 個依賴，1 high，其餘 0 | braces 3.0.3，eslint-config-next → eslint-plugin-next → fast-glob → micromatch 的 lint 工具鏈；不在正式依賴樹 |
+| 上述 braces 告警 | 本機 patch 已驗證，上游版本告警仍保留 | [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)：深層 brace／parenthesis 模式造成遞迴堆疊耗盡。目前 audit 沒有上游修正版；`patches/braces@3.0.3.patch` 限制 parser／AST walker 深度並拒絕循環 AST，經 pnpm patchedDependencies 與 lockfile 固定。測試包含正常展開、深層輸入與循環 AST，沒有 audit ignore；待上游修正版發布後應移除 patch 並重驗 |
+
+Next Node.js OG RCE 的必要條件在目前 Edge OG route 不成立；仍完成整體 Next 安全升級。[官方安全公告](https://nextjs.org/blog/september-2026-security-release)。建置仍提醒 Edge runtime 已棄用，後續遷移需重新驗證 OG 路由，不在本輪改 runtime。
+
+### 如何驗證
+
+- `ROLL_REWARDS_TEST_DATABASE_URL=<隔離測試庫> pnpm test`：**171 項通過，0 失敗、0 略過**。未提供此變數時資料庫測試會略過，因此不能把一般 `pnpm test` 當成 DB 驗收。測試強制 loopback 與 `roll_rewards_qa` 名稱前綴。
+- 新增 `tests/security.test.ts`／`tests/security-db.test.ts`：CSRF、限流短路／503、角色錯置、固定七天截止、版本撤銷／刪帳號、併發改密碼、安全錯誤與 OAuth redirect、檔案 traversal／symlink、偽造 webhook、Blob token 來源與權限。隔離 PostgreSQL 驗證筆記／CRM／邀請／PDF 越權與撤銷、PayPal 入帳重送、原子限流與密碼 CAS；既有資料庫測試亦涵蓋任務／行事曆跨帳號與重複兌換。
+- 以修改前 schema 建立測試庫，插入合成會員後連續套用 `prisma/security-session.sql` 兩次；交易內比對原欄位完整指紋一致、新欄位為 0，確認 SQL 可重跑且保留原資料。
+- 本機 production-mode 服務完成 **78 項 HTTP 檢查**：異站登入 403 且不發 cookie、JSON 格式、註冊／登入 cookie、改密碼立即撤銷、刪帳號失效、公司 RSC／metadata 保護、管理員與會員總量限流、聯絡表單限制、錯誤追蹤碼與安全標頭。合成帳號與聯絡表單資料已清理，未寄信或建立真實付款。
+- `pnpm exec tsc --noEmit` 與隔離 DB 下的 `pnpm build` 通過。`pnpm lint`：**0 errors／14 warnings**，含 2 個既有 warning，以及新版 Next 啟用的 12 個既有 effect 效能警告。僅在 9 個既有 UI 檔案將 set-state-in-effect 設為可見 warning；沒有關閉資安規則。付款導向改用 location.assign 保留行為。
+- 瀏覽器確認中英文登入頁、錯誤顯示、字型 loaded，初始 console 無錯誤。外部 Google／Blob／PayPal／郵件在自動測試中使用替身，不將此宣稱為第三方實際端到端驗收。
+
+### 發布前必要步驟與尚未完成
+
+1. 在正式環境**先**套用 `prisma/security-session.sql` 的新增欄位，再部署新程式；正式 SQL 已依後續授權完成，45 張表原欄位指紋保留。舊程式仍能使用新增欄位後的 schema。
+2. 設定 `AUTH_LEGACY_SESSION_ACCEPT_UNTIL` 為切換部署時間加七天的固定 UTC ISO 值（`YYYY-MM-DDTHH:mm:ssZ`），記錄該值，重啟／重新部署不得順延。缺值或格式錯誤會拒絕舊 JWT；只有 DB 版本仍為 0、且尚未到 cutoff 的舊 JWT 才接受。改密碼立即撤銷舊 JWT，不自動升級延命。
+3. 在受保護的 Vercel 候選驗證實際網域 Origin、Google OAuth、付款導向、真實 Blob 回呼與寄信，再發布。正式環境不要啟用 `ROLL_LOCAL_POSTGRES`。本機正式模式驗收可明確設定此旗標（仍強制 loopback／QA DB，pool max=2 避免建置 workers 用盡本機連線），並用 `pnpm start --hostname localhost --port 3187`。
+4. 本機綁 `127.0.0.1` 時曾重現 locale rewrite 的主機名稱不一致造成重導循環，綁 `localhost` 後通過；與 [Next issue #94342](https://github.com/vercel/next.js/issues/94342) 描述一致，這不是正式 Vercel 已驗證的結論。
+
+尚未執行全站動態滲透測試或正式環境整合驗收；套件版本掃描及測試通過不能證明全站沒有漏洞。
+
+2026-10-04 使用者已授權正式部署與新增欄位。發布前補上滾動切換相容性：舊實例在建置期間簽發的有效 JWT 也接受至同一固定 cutoff，仍由 jwtVerify 驗證原到期時間且 DB 版本必須為 0；不延長 JWT 本身壽命。正進行正式 schema 指紋驗證與 production 候選部署，維持 Preview 關閉。
+
+正式遷移結果：單一 Repeatable Read 交易只新增 User.sessionVersion INTEGER NOT NULL DEFAULT 0；45 張資料表的原欄位完整指紋與筆數相同，User 保留 10 筆。遷移前差異只有此欄位，遷移後為 empty migration。驗證記錄（僅表名、筆數、指紋，無會員原文）保存於 `/Users/eric/.codex/backups/roll/security-schema-2026-10-04.json`。Production 過渡截止已固定 `AUTH_LEGACY_SESSION_ACCEPT_UNTIL=2026-10-10T18:32:55Z`（台北 2026-10-11 02:32:55），後續重啟／部署不得延長。

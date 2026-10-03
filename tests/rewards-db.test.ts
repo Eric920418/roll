@@ -108,7 +108,7 @@ test("Rewards integration in isolated PostgreSQL", { skip: !connectionString }, 
     await t.test("Quiz rejects partial input, races create one attempt and one reward, replay preserves original answers",async()=>{
       const u=await user(); currentUser=u.id;
       const route=load<typeof import("../src/app/api/playbooks/quiz/submit/route")>("src/app/api/playbooks/quiz/submit/route.ts",{...mocks,"@/lib/rewards/service":service,"@/lib/rewards/policy":policy,"@/lib/auth/guard":{getUserSession:async()=>({uid:u.id})},"@/lib/api":{ok:(data:unknown)=>Response.json({data}),fail:(error:string,status=400)=>Response.json({error},{status}),unauthorized:()=>Response.json({},{status:401}),failFromError:()=>Response.json({},{status:500})}});
-      const post=(answers:unknown[])=>route.POST({json:async()=>({answers})} as never);
+      const post=(answers:unknown[])=>route.POST({url:"https://example.test/api/playbooks/quiz/submit",headers:new Headers({Origin:"https://example.test","Content-Type":"application/json"}),json:async()=>({answers})} as never);
       assert.equal((await post([])).status,400); assert.equal(await db.playbookQuizAttempt.count({where:{userId:u.id}}),0);
       const answers=[{questionId:"one",choice:0},{questionId:"two",choice:1}];
       const responses=await Promise.all([post(answers),post(answers)]); assert(responses.every(r=>r.status===200));

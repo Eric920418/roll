@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { captureCreditOrder, getOrder } from "@/lib/billing/paypal";
@@ -6,6 +7,8 @@ import { getUserSession } from "@/lib/auth/guard";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { getUserSession } from "@/lib/auth/guard";
@@ -11,6 +12,8 @@ export async function GET() {
   catch (error) { return failFromError(error); }
 }
 export async function PATCH(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession(); if (!session) return unauthorized();
     const body = z.object({ action: z.enum(["dismiss", "reopen"]) }).strict().parse(await req.json());

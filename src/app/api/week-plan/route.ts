@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -21,6 +22,8 @@ export async function GET(req: Request) {
   } catch (error) { return failure(error); }
 }
 export async function POST(req: Request) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const account = await getCurrentAccount(); if (!account) return unauthorized();
     if (req.headers.get("origin") !== new URL(req.url).origin) throw new CalendarError("請從平台頁面提交 / Submit from the platform", 403, "invalid_origin");

@@ -31,7 +31,7 @@ export async function verifySession(
       algorithms: ["HS256"],
     });
     // 僅接受 admin token，避免 user token 被當成後台 session
-    if (payload.role !== "admin") return null;
+    if (payload.role !== "admin" || typeof payload.email !== "string" || !payload.email || !validTimes(payload)) return null;
     return payload as AdminSession;
   } catch {
     return null;
@@ -48,14 +48,16 @@ export type UserSession = JWTPayload & {
   uid: string;
   email: string;
   role: "user";
+  sessionVersion?: number;
 };
 
 /** 簽發用戶 session token（payload 帶 User.id，免再以 email 查庫） */
 export async function createUserSession(
   uid: string,
   email: string,
+  sessionVersion: number,
 ): Promise<string> {
-  return new SignJWT({ uid, email, role: "user" })
+  return new SignJWT({ uid, email, role: "user", sessionVersion })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -71,9 +73,25 @@ export async function verifyUserSession(
     const { payload } = await jwtVerify(token, getSecret(), {
       algorithms: ["HS256"],
     });
-    if (payload.role !== "user") return null;
+    if (payload.role !== "user" || typeof payload.uid !== "string" || !payload.uid || typeof payload.email !== "string" || !payload.email || !validTimes(payload)) return null;
+    if (payload.sessionVersion !== undefined && (!Number.isSafeInteger(payload.sessionVersion) || (payload.sessionVersion as number) < 0)) return null;
     return payload as UserSession;
   } catch {
     return null;
   }
+}
+
+function validTimes(payload: JWTPayload): boolean {
+  return typeof payload.iat === "number" && typeof payload.exp === "number" &&
+    payload.exp > payload.iat && payload.exp - payload.iat <= SESSION_MAX_AGE && payload.iat <= Math.floor(Date.now() / 1000);
+}
+
+/** Fixed UTC cutoff, never relative to process start. Missing/invalid configuration rejects legacy tokens. */
+export function acceptsSessionVersion(session: UserSession, version: number, now = Date.now()): boolean {
+  if (session.sessionVersion !== undefined) return session.sessionVersion === version;
+  const value = process.env.AUTH_LEGACY_SESSION_ACCEPT_UNTIL;
+  const cutoff = value && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value) ? Date.parse(value) : NaN;
+  // Valid signed tokens minted by the old deployment during rollout also remain valid.
+  // jwtVerify still enforces their original expiry; this fixed cutoff never extends it.
+  return version === 0 && Number.isFinite(cutoff) && now < cutoff;
 }

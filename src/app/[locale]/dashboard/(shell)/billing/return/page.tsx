@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale } from "next-intl/server";
 import BillingReturn from "@/components/dashboard/BillingReturn";
 import type { Locale } from "@/i18n/routing";
@@ -11,6 +12,7 @@ export default async function BillingReturnPage({
   params,
   searchParams,
 }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const sp = await searchParams;

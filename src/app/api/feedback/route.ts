@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
@@ -18,6 +19,8 @@ import {
 // 送出後不開放會員自行修改/刪除：回報是給我們重現問題的事證，且管理員可能已據此回覆，
 // 事後被改寫會讓後台的處理紀錄失去意義。要補充內容就再送一則。
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

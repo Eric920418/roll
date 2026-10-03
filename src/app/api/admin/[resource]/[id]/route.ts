@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
@@ -7,6 +8,8 @@ import { revalidateContent } from "@/lib/cms/revalidate";
 type Ctx = { params: Promise<{ resource: string; id: string }> };
 
 export async function PUT(req: NextRequest, { params }: Ctx) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   if (!(await requireAdmin())) return unauthorized();
   const { resource, id } = await params;
   const def = getResource(resource);
@@ -26,6 +29,8 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  const blocked = browserMutationGuard(_req, false);
+  if (blocked) return blocked;
   if (!(await requireAdmin())) return unauthorized();
   const { resource, id } = await params;
   const def = getResource(resource);

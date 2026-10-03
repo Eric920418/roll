@@ -22,7 +22,7 @@ export async function structuredDraft<T>(schema: z.ZodType<T>, name: string, sys
     }
     issue = parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ").slice(0, 2500);
   }
-  console.warn(`[${name}] validation failed: ${issue}`);
+  console.warn("[ai] draft validation failed", { tool: name });
   throw new Error("AI 草稿格式不合格 / Invalid AI draft format");
 }
 export async function generateWeekly(account: Account, plan: ActionPlanDto, facts: { finding: string; blockers: string; summary: string; snapshot: unknown }, locale: string) {

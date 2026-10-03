@@ -1,3 +1,4 @@
+import * as securityHttp from "../src/lib/security/http";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -16,6 +17,7 @@ function load<T>(file: string, dependencies: Record<string, unknown>): T {
     exports, process, Date,
     require: (name: string) => {
       if (name === "server-only") return {};
+      if (name === "@/lib/security/http") return securityHttp;
       if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);
       return dependencies[name];
     },
@@ -84,7 +86,7 @@ test("beta checkout is rejected before calling PayPal or writing a subscription"
     "@/lib/api": {}, "@/lib/billing/plans": plans,
     "@/lib/billing/paypal": {}, "@/lib/billing/config": {}, "@/lib/routes": {},
   });
-  const response = await route.POST({ json: () => { throw new Error("Checkout must stop before parsing"); } });
+  const response = await route.POST({ url: "https://example.test/api/test", headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), json: () => { throw new Error("Checkout must stop before parsing"); } });
   assert.equal(response.status, 409);
   assert.equal((await response.json()).code, "betaAccess");
 });

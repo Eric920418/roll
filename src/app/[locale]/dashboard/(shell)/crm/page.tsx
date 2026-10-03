@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { requirePlan } from "@/lib/billing/gate";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +9,7 @@ import type { Locale } from "@/i18n/routing";
 type Props = { params: Promise<{ locale: string }> };
 
 export default async function CrmPage({ params }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;

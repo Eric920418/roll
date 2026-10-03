@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { getPlaybookList, pickDual } from "@/lib/playbook/content";
@@ -9,6 +10,7 @@ type Props = { params: Promise<{ locale: string }> };
 
 // 會員知識手冊列表（登入即可看；proxy 已把關 /dashboard）。內容由 content/playbooks/*.json 生成。
 export default async function PlaybooksPage({ params }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;

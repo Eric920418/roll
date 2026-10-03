@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import { pick } from "@/lib/quiz/locale";
 import { parseGrowthProfile } from "@/lib/quiz/growth";
@@ -8,6 +9,7 @@ import QuizSubmissionsList, {
 export const dynamic = "force-dynamic";
 
 export default async function QuizSubmissionsPage() {
+  await requireAdminPage();
   const [rows, questions] = await Promise.all([
     prisma.quizSubmission.findMany({
       orderBy: { createdAt: "desc" },

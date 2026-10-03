@@ -1,3 +1,4 @@
+import { contentJsonPath } from "../security/content-path";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -72,8 +73,8 @@ export function getPlaybookList(): PlaybookListItem[] {
 
 /** 依 slug 取完整 playbook（含 segments + 題庫）；不存在回 null。 */
 export function getPlaybook(slug: string): Playbook | null {
-  const p = path.join(DIR, `${slug}.json`);
-  if (!fs.existsSync(p)) return null;
+  const p = contentJsonPath(DIR, slug);
+  if (!p) return null;
   try {
     return JSON.parse(fs.readFileSync(p, "utf-8")) as Playbook;
   } catch {

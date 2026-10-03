@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,6 +11,7 @@ import type { Locale } from "@/i18n/routing";
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 export default async function PlaybookDetailPage({ params }: Props) {
+  await requireUserPage((await params).locale);
   const { locale, slug } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;

@@ -1,9 +1,11 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { getSetting } from "@/lib/cms/content";
 import SettingsForm from "@/components/admin/SettingsForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  await requireAdminPage();
   const [contactInfo, goldenTicket] = await Promise.all([
     getSetting("contactInfo"),
     getSetting("goldenTicket"),

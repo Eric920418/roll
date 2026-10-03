@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { completeGettingStarted } from "@/lib/getting-started/service";
 import { Prisma } from "@prisma/client";
 import { type NextRequest } from "next/server";
@@ -14,6 +15,8 @@ import { awardReward, prepareActionReward } from "@/lib/rewards/service";
 type Context = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Context) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
@@ -145,6 +148,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 }
 
 export async function DELETE(req: NextRequest, { params }: Context) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

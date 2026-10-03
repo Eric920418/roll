@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getCompanyList } from "@/lib/company/content";
 import DashboardCompanyList from "@/components/dashboard/DashboardCompanyList";
@@ -5,6 +6,7 @@ import DashboardCompanyList from "@/components/dashboard/DashboardCompanyList";
 type Props = { params: Promise<{ locale: string }> };
 
 export default async function DashboardCompaniesPage({ params }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Dashboard.companies" });

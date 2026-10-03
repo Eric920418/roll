@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import FeedbackInbox, {
   type FeedbackItem,
@@ -7,6 +8,7 @@ import { PENDING_STATUSES } from "@/lib/dashboard/feedback";
 export const dynamic = "force-dynamic"; // 後台一律即時資料
 
 export default async function AdminFeedbackPage() {
+  await requireAdminPage();
   const rows = await prisma.feedbackReport.findMany({
     orderBy: { createdAt: "desc" },
     include: {

@@ -142,6 +142,7 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  sessionVersion Int @default(0)
   id             String    @id @default(cuid())
   email          String    @unique
   passwordHash   String? // Email 註冊者有值；Google 註冊者為 null

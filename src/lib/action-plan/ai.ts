@@ -299,7 +299,7 @@ export async function generateActionCandidates(input: {
       received,
       stopReason: message.stop_reason,
       outputTokens: message.usage.output_tokens,
-      validation,
+      validationFailed: true,
     });
     if (repairUsed) throw new Error(`NOVA Action Plan 驗證失敗：${validation}`);
     repairUsed = true;

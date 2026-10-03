@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +14,8 @@ const bodySchema = z.object({
 });
 
 export async function PUT(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   if (!(await requireAdmin())) return unauthorized();
   try {
     const parsed = bodySchema.safeParse(await req.json());

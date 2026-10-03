@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -10,6 +11,7 @@ type Props = { params: Promise<{ locale: string }> };
 // 問題回報 —— 全會員可用（不套 requirePlan，理由見 src/app/api/feedback/route.ts）。
 // (shell)/layout 已擋未登入並 redirect；此處的 null 分支只為型別安全。
 export default async function FeedbackPage({ params }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Dashboard.feedback" });

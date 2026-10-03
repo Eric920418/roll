@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
@@ -24,7 +25,8 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
+  await requireUserPage(locale);
   const company = getCompany(slug);
   if (!company) return { title: "Company not found" };
   const title = `${company.nameEn} (${company.ticker})`;
@@ -78,6 +80,7 @@ const CHART_SPECS: { key: string; kind: "bar" | "line"; color?: string }[] = [
 
 export default async function CompanyPage({ params }: Props) {
   const { locale, slug } = await params;
+  await requireUserPage(locale);
   setRequestLocale(locale);
 
   const company = getCompany(slug);

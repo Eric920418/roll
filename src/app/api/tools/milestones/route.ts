@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +12,8 @@ import {
 } from "@/lib/tools/checklist";
 
 export async function PATCH(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

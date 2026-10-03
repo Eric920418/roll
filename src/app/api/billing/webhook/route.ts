@@ -1,3 +1,4 @@
+import { logSecurityError } from "@/lib/security/log";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrder, verifyWebhookSignature } from "@/lib/billing/paypal";
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     // 對帳失敗：記 log 並回 500，讓 PayPal 重送（reconcile 為 idempotent，重送安全）
-    console.error("[paypal webhook] processing error:", error);
+    logSecurityError("[paypal webhook] processing error:", error);
     return NextResponse.json(
       { error: "Webhook processing failed; PayPal should retry.", code: "webhook_processing_failed" },
       { status: 500 },

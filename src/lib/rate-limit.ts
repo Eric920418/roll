@@ -1,4 +1,6 @@
 import "server-only";
+import { SecurityUnavailableError } from "./security/http";
+import { logSecurityError } from "./security/log";
 import { prisma } from "@/lib/prisma";
 
 // DB-based 固定視窗 rate limit。
@@ -33,15 +35,13 @@ export function clientIp(req: Request): string {
  * @param windowMs 視窗長度（毫秒）
  * @returns ok=false 代表已達上限；retryAfterMs 為建議重試等待毫秒
  *
- * 失敗策略：rate limit 只是「輔助護欄」，主要防線仍是 Pro-gate（copilot）與密碼雜湊（auth）。
- * 若計數 DB 本身出錯（例如尚未 `db:push` 建表、或連線抖動），一律 **fail-open**（放行 + 記 log），
- * 避免限流機制自身故障反而把登入 / copilot 弄掛。
+ * 預設 fail-closed：計數失敗丟出 SecurityUnavailableError，由 API 回 503。
  */
 export async function checkRateLimit(
   key: string,
   limit: number,
   windowMs: number,
-  failOpen = true,
+  failOpen = false,
 ): Promise<RateLimitResult> {
   try {
     const rows = await prisma.$queryRaw<{ count: number; windowStart: Date }[]>`
@@ -63,7 +63,7 @@ export async function checkRateLimit(
     `;
 
     const row = rows[0];
-    if (!row) return { ok: true, limit, remaining: limit - 1, retryAfterMs: 0 };
+    if (!row) throw new SecurityUnavailableError();
 
     const count = Number(row.count);
     if (count > limit) {
@@ -72,7 +72,8 @@ export async function checkRateLimit(
     }
     return { ok: true, limit, remaining: Math.max(0, limit - count), retryAfterMs: 0 };
   } catch (err) {
-    console.error(`[rate-limit] check failed, failing ${failOpen ? "open" : "closed"}:`, err);
+    logSecurityError("rate_limit.failed", err);
+    if (!failOpen) throw new SecurityUnavailableError();
     return {
       ok: failOpen,
       limit,

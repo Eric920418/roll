@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import { USER_SESSION_COOKIE } from "@/lib/auth/session";
@@ -5,7 +6,9 @@ import { ok, unauthorized, failFromError } from "@/lib/api";
 import { isPaypalConfigured, cancelSubscription } from "@/lib/billing/paypal";
 import { del } from "@vercel/blob";
 
-export async function POST() {
+export async function POST(req: Request) {
+  const blocked = browserMutationGuard(req, false);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

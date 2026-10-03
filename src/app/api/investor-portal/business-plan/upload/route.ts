@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -23,14 +24,16 @@ export async function POST(req: NextRequest) {
       request: req,
       body,
       onBeforeGenerateToken: async (pathname) => {
+        const blocked = browserMutationGuard(req);
+        if (blocked) throw new UploadRequestError(blocked);
         const account = await getCurrentAccount();
-        if (!account) throw new Error("未授權，請重新登入。");
+        if (!account) throw new UploadRequestError(fail("未授權，請重新登入。", 401));
         if (!planAtLeast(getEffectivePlan(account), "business")) {
-          throw new Error("Business Plan 上傳需要 Business 以上方案。");
+          throw new UploadRequestError(fail("Business Plan 上傳需要 Business 以上方案。", 403));
         }
         const portal = await getOrCreateOwnerPortal(account.id);
         if (!pathname.startsWith(`investor-business-plans/${portal.id}/`) || !pathname.endsWith(".pdf")) {
-          throw new Error("Business Plan 上傳路徑無效。");
+          throw new UploadRequestError(fail("Business Plan 上傳路徑無效。", 403));
         }
         return {
           allowedContentTypes: ["application/pdf"],
@@ -42,9 +45,9 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(response);
   } catch (error) {
-    if (error instanceof Error && /未授權|需要 Business|路徑無效/.test(error.message)) {
-      return fail(error.message, error.message.startsWith("未授權") ? 401 : 403);
-    }
+    if (error instanceof UploadRequestError) return error.response;
     return failFromError(error);
   }
 }
+
+class UploadRequestError extends Error { constructor(public response: Response) { super("Invalid upload request"); } }

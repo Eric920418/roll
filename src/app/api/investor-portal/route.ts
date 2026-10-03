@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
@@ -39,6 +40,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const access = await owner();
     if (!access.account) return access.response;
@@ -79,6 +82,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const access = await owner();
     if (!access.account) return access.response;

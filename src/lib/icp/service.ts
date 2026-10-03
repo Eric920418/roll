@@ -1,3 +1,4 @@
+import { logSecurityError } from "@/lib/security/log";
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -95,7 +96,7 @@ export async function runIcp(account: Account, input: { action: "answer" | "retr
         : "AI 暫時無法完成分析，回答已保留，請重試或手動編輯。 / AI analysis failed. Your answers are saved; retry or edit manually.",
       cause instanceof IcpAiError ? 422 : timeout ? 504 : 502,
     );
-    if (!(cause instanceof IcpError)) console.error("[icp] analysis failed", cause);
+    if (!(cause instanceof IcpError)) logSecurityError("[icp] analysis failed", cause);
     await prisma.icpWorkspace.updateMany({ where: { userId, pendingRequestId: input.requestId, revision: input.revision + 1 }, data: { pendingRequestId: null, pendingSince: null, usageId: null, lastError: error.message } });
     throw error;
   } finally {

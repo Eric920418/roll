@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { NextResponse, type NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +9,7 @@ import {
 } from "@/lib/auth/session";
 import { DUMMY_PASSWORD_HASH } from "@/lib/auth/password";
 import { checkRateLimit, clientIp, MINUTE_MS } from "@/lib/rate-limit";
-import { ok, failFromError } from "@/lib/api";
+import { ok, failFromError, rateLimited } from "@/lib/api";
 
 function bad(code: string, error: string, status: number) {
   return NextResponse.json({ error, code }, { status });
@@ -23,6 +24,8 @@ const cookieOptions = {
 };
 
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const body = await req.json();
     const emailRaw = typeof body.email === "string" ? body.email.trim() : "";
@@ -31,7 +34,10 @@ export async function POST(req: NextRequest) {
     if (!emailRaw || !password) {
       return bad("missingFields", "Please fill in all required fields.", 400);
     }
+    if (emailRaw.length > 254 || password.length > 1024) return bad("invalidCredentials", "Email or password is incorrect.", 401);
     const email = emailRaw.toLowerCase();
+    const ipLimit = await checkRateLimit(`login-ip:${clientIp(req)}`, 30, 15 * MINUTE_MS);
+    if (!ipLimit.ok) return rateLimited(ipLimit.retryAfterMs);
 
     // 暴力破解護欄：同 IP + email 15 分鐘內 10 次上限（含成功；額度寬鬆不影響正常使用）
     const rl = await checkRateLimit(
@@ -39,13 +45,7 @@ export async function POST(req: NextRequest) {
       10,
       15 * MINUTE_MS,
     );
-    if (!rl.ok) {
-      return bad(
-        "tooManyAttempts",
-        "Too many attempts. Please try again later.",
-        429,
-      );
-    }
+    if (!rl.ok) return rateLimited(rl.retryAfterMs);
 
     const user = await prisma.user.findUnique({ where: { email } });
     // 找不到、或 Google-only 帳號（無密碼）→ 一律回相同訊息，避免帳號列舉
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const token = await createUserSession(user.id, user.email);
+    const token = await createUserSession(user.id, user.email, user.sessionVersion);
     const res = ok({
       completed: user.completed,
       onboardingStep: user.onboardingStep,

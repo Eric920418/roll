@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { createHash, randomBytes } from "node:crypto";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
@@ -13,6 +14,8 @@ import { sendInvestorInvitation } from "@/lib/investor/email";
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
 export async function POST(req: Request) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const account = await getCurrentAccount();
     if (!account) return unauthorized();
@@ -74,10 +77,6 @@ export async function POST(req: Request) {
     });
     return ok({ id: invitation.id, email: invitation.invitedEmail, expiresAt: expiresAt.toISOString() }, 201);
   } catch (error) {
-    if (error instanceof Error && (error.message.startsWith("Resend") || error.message.includes("RESEND_"))) {
-      console.error("[investor invitation]", error);
-      return fail(`${error.message}\n請確認寄件網域已完成 SPF／DKIM 驗證後重試。`, 502);
-    }
     return failFromError(error);
   }
 }

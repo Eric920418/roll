@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import { pick } from "@/lib/quiz/locale";
 import JsonRecordsAdmin, {
@@ -31,6 +32,7 @@ const TEMPLATE = {
 };
 
 export default async function QuizQuestionsAdminPage() {
+  await requireAdminPage();
   const rows = await prisma.quizQuestion.findMany({ orderBy: { order: "asc" } });
   const records: AdminRecord[] = rows.map((q) => ({
     id: q.id,

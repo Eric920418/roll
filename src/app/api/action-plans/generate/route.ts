@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { z } from "zod";
 import { type NextRequest } from "next/server";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
@@ -14,6 +15,8 @@ export const maxDuration = 300;
 const DAILY_LIMIT = 10;
 
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
@@ -23,6 +24,8 @@ async function accountForOwner() {
 }
 
 export async function PATCH(req: Request, context: { params: Promise<{ kind: string; id: string }> }) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const access = await accountForOwner();
     if (!access.account) return access.response;
@@ -72,6 +75,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ kind: str
 }
 
 export async function DELETE(_req: Request, context: { params: Promise<{ kind: string; id: string }> }) {
+  const blocked = browserMutationGuard(_req, false);
+  if (blocked) return blocked;
   try {
     const access = await accountForOwner();
     if (!access.account) return access.response;

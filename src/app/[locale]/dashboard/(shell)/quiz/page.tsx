@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -15,6 +16,7 @@ type Props = { params: Promise<{ locale: string }> };
 
 // 「本期問答」：以會員註冊日為錨即時算第幾個雙週（不排程、不寄信）。全部段落題庫循環出題。
 export default async function PlaybookQuizPage({ params }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Dashboard.playbooks.quiz" });

@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -10,6 +11,7 @@ import { getCurrentAccount } from "@/lib/auth/account";
 type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ guide?: string }> };
 
 export default async function AccountPage({ params, searchParams }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Dashboard.account" });

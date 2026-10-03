@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { notFound } from "next/navigation";
 import { getResourceConfig } from "@/lib/cms/resource-fields";
 import ResourceForm from "@/components/admin/ResourceForm";
@@ -9,6 +10,7 @@ export default async function NewResourcePage({
 }: {
   params: Promise<{ resource: string }>;
 }) {
+  await requireAdminPage();
   const { resource } = await params;
   const config = getResourceConfig(resource);
   if (!config) notFound();

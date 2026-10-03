@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -10,6 +11,8 @@ import { assertDependencies, getActiveActionPlan, lockActivePlan, PlanWriteError
 import { legacyHoursForMinutes } from "@/lib/action-plan/time";
 
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

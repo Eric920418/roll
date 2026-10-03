@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import GettingStartedHint from "@/components/dashboard/GettingStartedHint";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
@@ -12,6 +13,7 @@ import { getActiveActionPlan } from "@/lib/action-plan/service";
 type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ guide?: string }> };
 
 export default async function AgendaPage({ params, searchParams }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;

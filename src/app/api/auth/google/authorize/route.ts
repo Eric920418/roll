@@ -1,3 +1,4 @@
+import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
 import { NextResponse, type NextRequest } from "next/server";
 import { buildAuthUrl, localePrefixFromNext } from "@/lib/auth/google";
 
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     // 多半是缺憑證；導回對應語系註冊頁並完整顯示錯誤
     const prefix = localePrefixFromNext(next);
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = publicErrorMessage(logSecurityError("oauth.authorize_failed", error));
     return NextResponse.redirect(
       new URL(`${prefix}/signup?error=${encodeURIComponent(msg)}`, req.url),
     );

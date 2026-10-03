@@ -64,7 +64,7 @@ test("Quiz rejects null, blank, string, boolean and missing choices before any a
     "@/lib/rewards/service": { rewardTransaction: async () => { transactions++; } },
   });
   for (const choice of [null, "", "0", false, undefined]) {
-    const response = await route.POST(new Request("https://example.test/api/playbooks/quiz/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: [{ questionId: "one", choice }] }) }) as never);
+    const response = await route.POST(new Request("https://example.test/api/playbooks/quiz/submit", { method: "POST", headers: { Origin: "https://example.test", "Content-Type": "application/json" }, body: JSON.stringify({ answers: [{ questionId: "one", choice }] }) }) as never);
     assert.equal(response.status, 400);
   }
   assert.equal(transactions, 0);

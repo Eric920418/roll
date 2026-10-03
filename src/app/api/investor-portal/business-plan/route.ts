@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { del, get } from "@vercel/blob";
 import { getBetaAccess, getCurrentAccount } from "@/lib/auth/account";
 import { getUserSession } from "@/lib/auth/guard";
@@ -27,6 +28,8 @@ async function ownerPortal() {
 }
 
 export async function POST(req: Request) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   let uploadedPath: string | null = null;
   try {
     const access = await ownerPortal();
@@ -111,7 +114,9 @@ export async function POST(req: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
+  const blocked = browserMutationGuard(req, false);
+  if (blocked) return blocked;
   try {
     const access = await ownerPortal();
     if (!access.portal) return access.response;

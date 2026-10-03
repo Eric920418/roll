@@ -1,3 +1,4 @@
+import { logSecurityError } from "@/lib/security/log";
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -96,7 +97,7 @@ export async function generateCheckIn(account: Account, input: Extract<CheckInRe
   } catch (cause) {
     const timeout = cause instanceof Error && /timeout|timed out/i.test(cause.name + cause.message);
     const error = cause instanceof PlanWriteError ? cause : new PlanWriteError(timeout ? "AI 逾時；回報及原排序已保留，請重試 / AI timed out; report and order are saved. Retry." : "AI 未產生有效週報；回報及原排序已保留，請重試 / Invalid AI weekly draft; report and order are saved. Retry.", timeout ? 504 : 422);
-    if (!(cause instanceof PlanWriteError)) console.error("[check-in] generation", cause);
+    if (!(cause instanceof PlanWriteError)) logSecurityError("[check-in] generation", cause);
     await prisma.weeklyCheckIn.updateMany({ where: { id: row.id, pendingRequestId: input.requestId, revision: input.revision + 1 }, data: { pendingRequestId: null, pendingSince: null, usageId: null, lastError: error.message } });
     throw error;
   } finally { if (usageId) await completeAiUsage(usageId, success); }

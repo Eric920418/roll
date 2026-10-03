@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { z } from "zod";
 import { unauthorized } from "@/lib/api";
 import { getUserSession } from "@/lib/auth/guard";
@@ -6,6 +7,8 @@ import { redeemReward, getRewardSummary, RewardError } from "@/lib/rewards/servi
 import { assertSameOrigin, privateRewardResponse, rewardFailure } from "@/lib/rewards/http";
 const schema = z.object({ requestId: z.string().uuid() }).strict();
 export async function POST(req: Request) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession(); if (!session) return unauthorized();
     assertSameOrigin(req);

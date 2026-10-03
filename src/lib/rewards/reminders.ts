@@ -1,3 +1,4 @@
+import { logSecurityError } from "@/lib/security/log";
 import "server-only";
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -139,7 +140,7 @@ export async function runRewardReminders(now = new Date()) {
       if (!response.id) throw new Error("Resend 未回傳寄送識別碼 / Missing Resend message ID");
       await finish({ status: "accepted", providerId: response.id, acceptedAt: new Date(), lastError: null }); result.accepted++;
     } catch (error) {
-      console.error("[reward-reminder] delivery failed", delivery.id, safeEmailError(error));
+      logSecurityError("reward_reminder.delivery_failed", error);
       // Read the committed count: pre-provider failures also consume an attempt.
       const current = await prisma.rewardDelivery.findUnique({ where: { id: delivery.id }, select: { attempts: true } });
       const attempts = Math.max(delivery.attempts + 1, current?.attempts ?? 0);

@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { createHash } from "node:crypto";
 import { getUserSession } from "@/lib/auth/guard";
 import { getBetaAccess } from "@/lib/auth/account";
@@ -6,6 +7,8 @@ import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 import { ownerHasInvestorAccess } from "@/lib/investor/portal";
 
 export async function POST(req: Request) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

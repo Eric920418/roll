@@ -1,3 +1,4 @@
+import { contentJsonPath } from "../security/content-path";
 // 公司情報資料層：一家公司 = 一個 content/companies/<slug>.json（由 ingest 本機產出）。
 // build 時用 fs 讀取 → 靜態生成。不經資料庫/CMS。
 import fs from "node:fs";
@@ -54,8 +55,8 @@ export function getAllCompanies(): Company[] {
 }
 
 export function getCompany(slug: string): Company | null {
-  const p = path.join(DIR, `${slug}.json`);
-  if (!fs.existsSync(p)) return null;
+  const p = contentJsonPath(DIR, slug);
+  if (!p) return null;
   return JSON.parse(fs.readFileSync(p, "utf-8")) as Company;
 }
 

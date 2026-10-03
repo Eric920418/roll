@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import ThisWeekCalendar from "@/components/dashboard/home/ThisWeekCalendar";
 import GettingStartedHome from "@/components/dashboard/GettingStartedHome";
 import { getGettingStarted } from "@/lib/getting-started/service";
@@ -22,6 +23,7 @@ type Props = { params: Promise<{ locale: string }> };
 const HUB_WAITLIST_MESSAGE = "Waitlist: Investor DD & Global Founder Hub — free trial";
 
 export default async function DashboardOverview({ params }: Props) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const l = locale as Locale;

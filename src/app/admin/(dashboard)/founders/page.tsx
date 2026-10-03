@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import { pick } from "@/lib/quiz/locale";
 import JsonRecordsAdmin, {
@@ -30,6 +31,7 @@ const TEMPLATE = {
 };
 
 export default async function FoundersAdminPage() {
+  await requireAdminPage();
   const rows = await prisma.founder.findMany({ orderBy: { order: "asc" } });
   const records: AdminRecord[] = rows.map((f) => ({
     id: f.id,

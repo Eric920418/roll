@@ -1,3 +1,5 @@
+import { logSecurityError } from "@/lib/security/log";
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
@@ -47,6 +49,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
@@ -145,13 +149,13 @@ export async function POST(req: NextRequest) {
           succeeded = true;
         } catch (err) {
           // 串流已 committed 200，後端保留完整證據，前端只收到穩定產品文案。
-          console.error("[copilot] upstream stream failed", err);
+          logSecurityError("[copilot] upstream stream failed", err);
           try { controller.enqueue(encoder.encode(`\n\n${publicCopilotFailureMessage(parsed.data.locale, err)}`)); } catch { /* client 已離開 */ }
         } finally {
           try {
             await completeAiUsage(usageId, succeeded);
           } catch (usageError) {
-            console.error("[copilot] allowance completion failed", usageError);
+            logSecurityError("[copilot] allowance completion failed", usageError);
           }
           try { controller.close(); } catch { /* client 已離開 */ }
         }

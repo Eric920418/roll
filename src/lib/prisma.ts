@@ -39,17 +39,17 @@ async function withReadRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> 
 
 function createPrismaClient() {
   const connectionString = requireDatabaseUrl(process.env.DATABASE_URL);
-  const localQa = process.env.NODE_ENV !== "production" && process.env.ROLL_LOCAL_POSTGRES === "true";
+  const localQa = process.env.ROLL_LOCAL_POSTGRES === "true";
   if (localQa) {
     const url = new URL(connectionString);
     if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) || !url.pathname.startsWith("/roll_rewards_qa")) throw new Error("Local rewards QA requires a loopback roll_rewards_qa database");
   }
   const adapter = localQa
-    ? new PrismaPg({ connectionString })
+    ? new PrismaPg({ connectionString, max: 2 })
     : new PrismaNeon({ connectionString });
   const base = new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: [], // API boundaries record only safe metadata; Prisma errors can embed SQL/credentials.
   });
   // 以 client extension 集中包裝：所有「讀取」自動重試，寫入維持單次。
   return base.$extends({

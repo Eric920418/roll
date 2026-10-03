@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PENDING_STATUSES } from "@/lib/dashboard/feedback";
@@ -14,6 +15,7 @@ const CARDS: { href: string; label: string; key: string }[] = [
 ];
 
 export default async function DashboardPage() {
+  await requireAdminPage();
   const [
     service,
     event,

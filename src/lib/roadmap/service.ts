@@ -1,3 +1,4 @@
+import { logSecurityError } from "@/lib/security/log";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -77,7 +78,7 @@ export async function runRoadmap(account: Account, input: z.infer<typeof roadmap
   } catch (cause) {
     const timeout = cause instanceof Error && /timeout|timed out/i.test(cause.name + cause.message);
     const error = cause instanceof PlanWriteError ? cause : new PlanWriteError(timeout ? "AI 規劃逾時，輸入與原草稿已保留，請重試。 / AI timed out; your input and previous draft are saved. Retry." : "AI 未能完成有效規劃，輸入與原草稿已保留，請重試。 / AI could not complete a valid roadmap. Your input and previous draft are saved; retry.", timeout ? 504 : 422);
-    if (!(cause instanceof PlanWriteError)) console.error("[roadmap] generation failed", cause);
+    if (!(cause instanceof PlanWriteError)) logSecurityError("[roadmap] generation failed", cause);
     await prisma.roadmapWorkspace.updateMany({ where: { userId, pendingRequestId: input.requestId, revision: input.revision + 1 }, data: { pendingRequestId: null, pendingSince: null, usageId: null, lastError: error.message } });
     throw error;
   } finally { if (usageId) await completeAiUsage(usageId, success); }
@@ -174,7 +175,7 @@ async function runCorrection(account: Account, input: Extract<z.infer<typeof roa
   } catch (cause) {
     const timeout = cause instanceof Error && /timeout|timed out/i.test(cause.name + cause.message);
     const error = cause instanceof PlanWriteError ? cause : new PlanWriteError(timeout ? "AI 檢查逾時；原任務保留，請重試 / Review timed out; tasks preserved. Retry." : "AI 未產生有效修正；原任務保留，請重試 / Invalid correction; tasks preserved. Retry.", timeout ? 504 : 422);
-    if (!(cause instanceof PlanWriteError)) console.error("[roadmap correction]", cause);
+    if (!(cause instanceof PlanWriteError)) logSecurityError("[roadmap correction]", cause);
     await prisma.roadmapWorkspace.updateMany({ where: { userId, revision: input.revision + 1, pendingRequestId: input.requestId }, data: { pendingRequestId: null, pendingSince: null, usageId: null, lastError: error.message } });
     throw error;
   } finally { if (usageId) await completeAiUsage(usageId, success); }

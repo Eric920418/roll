@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { getMessageOverride } from "@/lib/cms/messages";
 import { deepMerge } from "@/lib/cms/deep-merge";
 import { flatten } from "@/lib/cms/messages-tree";
@@ -9,6 +10,7 @@ import TranslationsEditor, {
 export const dynamic = "force-dynamic";
 
 export default async function TranslationsPage() {
+  await requireAdminPage();
   const [enOverride, zhOverride] = await Promise.all([
     getMessageOverride("en"),
     getMessageOverride("zh-tw"),

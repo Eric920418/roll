@@ -28,7 +28,7 @@ function routeHarness() {
     "@/lib/action-plan/ai": { generateActionCandidates: async () => { state.aiCalls++; if (state.aiError) throw state.aiError; return Array(5).fill({}); } },
     "@/lib/action-plan/service": { PlanWriteError: WriteError, getPlanByRequestId: async (uid: string, requestId: string) => { state.reads.push([uid, requestId]); return state.replay; }, getActiveActionPlan: async () => state.base, assertGenerationAllowance: async () => { if (state.successes >= 3) throw new WriteError("3 successful plans", 429); }, persistGeneratedPlan: async (input: unknown) => { if (state.writeError) throw state.writeError; state.saved.push(input); state.successes++; return { id: "new" }; } },
   });
-  return { state, post: (input: unknown = body) => route.POST({ json: async () => input }), get: (requestId = body.requestId) => route.GET({ nextUrl: { searchParams: new URLSearchParams({ requestId }) } }) };
+  return { state, post: (input: unknown = body) => route.POST({ url: "https://example.test/api/test", headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), json: async () => input }), get: (requestId = body.requestId) => route.GET({ nextUrl: { searchParams: new URLSearchParams({ requestId }) } }) };
 }
 
 test("Generation denies anonymous, insufficient-plan and invalid requests before AI or allowance", async () => {

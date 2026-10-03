@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +17,8 @@ import { runGroundedChat } from "@/lib/ai/run";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx) {
+  const blocked = browserMutationGuard(req, false);
+  if (blocked) return blocked;
   if (!(await requireAdmin())) return unauthorized();
   const { id } = await params;
   try {

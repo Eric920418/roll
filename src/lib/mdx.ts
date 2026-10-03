@@ -47,27 +47,23 @@ function contentDirForType(type: ContentType): string {
   }
 }
 
-function fileCandidates(type: ContentType, slug: string, locale: Locale): string[] {
-  const dir = contentDirForType(type);
-  return [
-    path.join(CONTENT_ROOT, dir, `${slug}.${locale}.mdx`),
-    path.join(CONTENT_ROOT, dir, `${slug}.en.mdx`),
-  ];
-}
-
 export async function loadContent(
   type: ContentType,
   slug: string,
   locale: Locale,
 ): Promise<MdxContent> {
-  const candidates = fileCandidates(type, slug, locale);
+  if (!["en", "zh-tw"].includes(locale) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 160) {
+    throw new ContentNotFoundError(type, slug, locale, []);
+  }
+  const dir = contentDirForType(type);
+  const candidates = [`${slug}.${locale}.mdx`, `${slug}.en.mdx`];
   let raw: string | null = null;
   const triedPaths: string[] = [];
 
-  for (const file of candidates) {
-    triedPaths.push(file);
+  for (const filename of candidates) {
+    triedPaths.push(path.join(CONTENT_ROOT, dir, filename));
     try {
-      raw = await readFile(file, "utf8");
+      raw = await readFile(path.join(process.cwd(), "content", dir, filename), "utf8");
       break;
     } catch {
       // try next candidate

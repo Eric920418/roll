@@ -1,9 +1,11 @@
+import { requireAdminPage } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import MessagesInbox, { type Message } from "@/components/admin/MessagesInbox";
 
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
+  await requireAdminPage();
   const rows = await prisma.contactMessage.findMany({
     orderBy: [{ isRead: "asc" }, { createdAt: "desc" }],
   });

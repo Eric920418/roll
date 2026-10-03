@@ -1,3 +1,4 @@
+import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForProfile, localePrefixFromNext } from "@/lib/auth/google";
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const oauthError = params.get("error");
-    if (oauthError) return redirectError(`Google 授權未完成：${oauthError}`);
+    if (oauthError) return redirectError("Google 授權未完成，請重新嘗試 / Google authorization was not completed");
 
     const code = params.get("code");
     const state = params.get("state");
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const token = await createUserSession(user.id, user.email);
+    const token = await createUserSession(user.id, user.email, user.sessionVersion);
     const dest =
       inviteNext ??
       destinationFor(
@@ -105,6 +106,6 @@ export async function GET(req: NextRequest) {
     res.cookies.set(GOOGLE_STATE_COOKIE, "", { path: "/", maxAge: 0 });
     return res;
   } catch (error) {
-    return redirectError(error instanceof Error ? error.message : String(error));
+    return redirectError(publicErrorMessage(logSecurityError("oauth.callback_failed", error)));
   }
 }

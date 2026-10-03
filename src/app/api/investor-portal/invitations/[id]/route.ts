@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
@@ -5,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 
 export async function DELETE(_req: Request, context: { params: Promise<{ id: string }> }) {
+  const blocked = browserMutationGuard(_req, false);
+  if (blocked) return blocked;
   try {
     const account = await getCurrentAccount();
     if (!account) return unauthorized();

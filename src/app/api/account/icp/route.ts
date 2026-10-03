@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
@@ -26,6 +27,8 @@ export async function GET(req: NextRequest) {
   } catch (error) { return failure(error); }
 }
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession(); if (!session) return unauthorized();
     const account = await requirePlan("pro"); if (!account) return fail("此功能需 Pro 以上方案 / Pro plan or above required", 403);
@@ -34,6 +37,8 @@ export async function POST(req: NextRequest) {
   } catch (error) { return failure(error); }
 }
 export async function PATCH(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession(); if (!session) return unauthorized();
     return response(await patchIcp(session.uid, patchSchema.parse(await req.json())));

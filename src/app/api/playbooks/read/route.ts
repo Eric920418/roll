@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
@@ -7,6 +8,8 @@ import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 // 標記某 playbook 段落已讀/未讀。登入即可（playbook 為登入會員內容，非 Pro-gate）。
 // 複製 api/tools/checklist 的「讀-合併-寫回 Json」模式；composite key = `<slug>:<segmentKey>`。
 export async function PATCH(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

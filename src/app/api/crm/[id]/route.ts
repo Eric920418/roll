@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
@@ -13,6 +14,8 @@ type Ctx = { params: Promise<{ id: string }> };
 
 // 更新聯絡人 — updateMany 以 { id, userId } 過濾，確保只能改自己的資料（count 0 → 404）。
 export async function PATCH(req: NextRequest, { params }: Ctx) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
@@ -46,6 +49,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
 // 刪除聯絡人 — deleteMany 以 { id, userId } 過濾（連到的 Deal.contactId 由 schema 的 SetNull 處理）。
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  const blocked = browserMutationGuard(_req, false);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

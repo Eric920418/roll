@@ -86,7 +86,7 @@ export default function BillingPanel({
       const json = await res.json();
       if (!res.ok) throw new Error(resolveErr(json.code, json.error));
       // 導向 PayPal 核准頁
-      window.location.href = json.data.approveUrl;
+      window.location.assign(json.data.approveUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
       setBusy(null);
@@ -199,7 +199,7 @@ export default function BillingPanel({
                   });
                   const json = await res.json();
                   if (!res.ok) throw new Error(json.error);
-                  window.location.href = json.data.approveUrl;
+                  window.location.assign(json.data.approveUrl);
                 } catch (err) {
                   setError(err instanceof Error ? err.message : "Error");
                   setBusy(null);

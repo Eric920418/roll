@@ -1,3 +1,4 @@
+import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +16,8 @@ import { validQuizAnswers } from "@/lib/rewards/policy";
 
 // 送出本期雙週問答。server 端以會員註冊日重算 periodIndex（不信前端）→ 挑同一批題 → 計分 → 每期存一筆。
 export async function POST(req: NextRequest) {
+  const blocked = browserMutationGuard(req, true);
+  if (blocked) return blocked;
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();

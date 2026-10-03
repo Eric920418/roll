@@ -1,3 +1,4 @@
+import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { requirePlan } from "@/lib/billing/gate";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,7 @@ import PlanPaywall from "@/components/dashboard/PlanPaywall";
 import type { Locale } from "@/i18n/routing";
 
 export default async function CustomerInsightsPage({ params }: { params: Promise<{ locale: string }> }) {
+  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Dashboard.insights" });
