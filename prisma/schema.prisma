@@ -154,10 +154,9 @@ model User {
   completed      Boolean   @default(false) // 全流程（含測驗）完成
   quizCompleted  Boolean   @default(false)
 
-  // Preserve additive onboarding columns already present in Production.
-  gettingStartedVersion Int?
-  gettingStartedCompletedAt DateTime?
+  gettingStartedVersion     Int?
   gettingStartedDismissedAt DateTime?
+  gettingStartedCompletedAt DateTime?
 
   // --- 計費 / 訂閱（全部 nullable 或有 default，純疊加；權威狀態由 webhook 對帳，此處為即時快取）---
   plan                 String    @default("free") // "free" | "pro" | "business" | "enterprise"

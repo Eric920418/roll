@@ -1,4 +1,3 @@
-import RewardsCard from "@/components/dashboard/rewards/RewardsCard";
 import GettingStartedHome from "@/components/dashboard/GettingStartedHome";
 import { getGettingStarted } from "@/lib/getting-started/service";
 import PlanRefresh from "@/components/dashboard/PlanRefresh";
@@ -12,6 +11,7 @@ import ActionPlanOverview from "@/components/dashboard/home/ActionPlanOverview";
 import InvestorHubCard from "@/components/dashboard/home/InvestorHubCard";
 import TutorialVideoCard from "@/components/dashboard/home/TutorialVideoCard";
 import UpcomingEventsRail from "@/components/dashboard/home/UpcomingEventsRail";
+import RewardsCard from "@/components/dashboard/rewards/RewardsCard";
 import CopilotPanel from "@/components/dashboard/home/CopilotPanel";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
 import type { Locale } from "@/i18n/routing";

@@ -33,7 +33,7 @@ export default async function DashboardLayout({ children, params }: Props) {
     account.email;
 
   return (
-    <RewardsProvider userId={account.id}><DashboardUserProvider userId={account.id}>
+    <DashboardUserProvider userId={account.id}><RewardsProvider userId={account.id}>
     <div
       className="nova-theme flex min-h-screen flex-col bg-light md:flex-row"
       data-brand="nova"
@@ -47,6 +47,6 @@ export default async function DashboardLayout({ children, params }: Props) {
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
     </div>
-    </DashboardUserProvider></RewardsProvider>
+    </RewardsProvider></DashboardUserProvider>
   );
 }

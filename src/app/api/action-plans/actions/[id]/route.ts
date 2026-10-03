@@ -73,8 +73,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         if (completed.length) throw new PlanWriteError(`請先取消後續任務的完成狀態：${completed.join("、")}`);
       }
       await tx.actionItem.update({ where: { id }, data: { done: parsed.data.done, completedAt: parsed.data.done ? (current.done ? undefined : new Date()) : null } });
-      if (!current.done && parsed.data.done) await awardReward(tx, session.uid, "action", id);
       if (!current.done && parsed.data.done) await completeGettingStarted(tx, session.uid);
+      if (!current.done && parsed.data.done) await awardReward(tx, session.uid, "action", id);
       return;
     }
 
@@ -125,8 +125,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
           ...(action.done == null ? {} : { done: action.done, completedAt: action.done ? (current.done ? undefined : new Date()) : null }),
         },
       });
-      if (!current.done && action.done) await awardReward(tx, session.uid, "action", id);
       if (!current.done && action.done) await completeGettingStarted(tx, session.uid);
+      if (!current.done && action.done) await awardReward(tx, session.uid, "action", id);
       await tx.actionDependency.deleteMany({ where: { actionId: id } });
       if (action.dependencyActionIds.length) {
         await tx.actionDependency.createMany({

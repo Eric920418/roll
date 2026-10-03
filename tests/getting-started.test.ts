@@ -70,10 +70,10 @@ import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 function loadGuide<T>(file: string, mocks: Record<string, unknown>): T {
-  const require = createRequire(import.meta.url), module = { exports: {} };
+  const require = createRequire(import.meta.url), loaded = { exports: {} };
   const code = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
-  runInNewContext(code, { module, exports: module.exports, Date, Error, SyntaxError, console, require: (id: string) => id in mocks ? mocks[id] : require(id) });
-  return module.exports as T;
+  runInNewContext(code, { module: loaded, exports: loaded.exports, Date, Error, SyntaxError, console, require: (id: string) => id in mocks ? mocks[id] : require(id) });
+  return loaded.exports as T;
 }
 test("Guide API rejects unauthenticated, forged completion and foreign-owner input; preferences always target session owner", async () => {
   let uid: string | null = null; const writes: unknown[] = [], reads: string[] = [];

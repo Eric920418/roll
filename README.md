@@ -1119,12 +1119,6 @@ Rewards 最終本機驗收：全專案 123 項測試通過（包含 22 項獎勵
 
 Legacy landing tasks 移除驗證：TypeScript 與正式建置通過；候選與公開 www.rollgrp.com 各通過 32 項中英文桌面／手機檢查，確認舊區塊消失、五項任務與鎖頭、Goal roadmap、Milestones、Weekly Check-in 保留，無橫向溢出及瀏覽器錯誤。40b7e02 已推送並上線 dpl_EEcAzBtTNBA8337yxXRS4QgUe27M；本轮專用帳號與關聯測試資料已清除。
 
-Rewards 發布整合檢查：AgendaBoard 以有條件的 render 狀態同步取代 effect 直接 setState，保留較新的任務 revision 並避免 lint 錯誤。移除只驗證已下架 Legacy landing 截止日期的過期測試；Billing 台北日期與 Roadmap 日期／週界線回歸仍保留。
-
-正式 Rewards schema 已僅套用 prisma/rewards.sql。前後比對 User 10 筆、OnboardingProfile 9 筆、AiAllowance 3 筆、ActionPlan 6 筆、ActionItem 103 筆與 PlaybookQuizAttempt 3 筆內容指紋均相同。後續差異檢查發現正式環境另有三個可空 gettingStarted 欄位；僅同步 Prisma 宣告以保留並行新欄位，沒有刪除、回填或更改其值。126 項含本機真實 PostgreSQL 的回歸通過，lint 0 errors／2 既有 warnings、pnpm build 通過。
-
-上線前輸入審核修正雙週測驗：原流程 Number(null)／Number(空字串) 會把空答案視為選項 0；改為嚴格 number/integer 驗證，不接受空值、字串、布林或缺值，再核對每題完整性。新增實際端點的空答案回歸，確保入帳交易前拒絕。
-
 ## 新使用者引導（2026-10-03）
 
 Home 以真實資料判斷三步：補充公司名稱／一句話介紹／公司階段／目前最需要 → 現有三題問答與人工診斷確認 → 生成五項任務並開啟第一項 Ready 任務。已有公司資料或啟用計畫不需重做；ICP 選填，Goal roadmap 是進階入口，不自動呼叫 AI、不新增必填阻擋或方案授權。尚無計畫時，Home 次要內容收進探索更多，Next steps 優先顯示建檔入口；建立計畫後 Next Three Moves 優先呈現。
@@ -1139,3 +1133,25 @@ ActionPlanBuilder 與伺服器共用三個不同題目。回答、未送出文�
 
 1544e7f、fcd3850 已推送 main；正式部署 dpl_B1JswCmALLo7MnENnxfFdQehnfZg（roll-9mozsion2-erics-projects-57e51613.vercel.app）已切換公開站。並行 Rewards 的本機修改與交易邏輯保留，未包含在此獨立部署中。
 
+2026-10-03 Rewards／Email 正式發布準備：以最新 origin/main 99fb7e5 為基底的隔離工作樹整合積分、AI 獎勵與提醒，保留已上線的 Weekly Check-in／任務鎖定與移除舊流程。寄件网域已 Verified；測試收件人已由使用者指定，金鑰限 rollgrp.com Sending access，提醒開放前完成真實收信及退訂驗收。會員 opt-in 預設關閉，發布不代替會員開啟提醒。
+
+Rewards 發布整合檢查：AgendaBoard 以有條件的 render 狀態同步取代 effect 直接 setState，保留較新的任務 revision 並避免 lint 錯誤。移除只驗證已下架 Legacy landing 截止日期的過期測試；Billing 台北日期與 Roadmap 日期／週界線回歸仍保留。
+
+正式 Rewards schema 已僅套用 prisma/rewards.sql。前後比對 User 10 筆、OnboardingProfile 9 筆、AiAllowance 3 筆、ActionPlan 6 筆、ActionItem 103 筆與 PlaybookQuizAttempt 3 筆內容指紋均相同。後續差異檢查發現正式環境另有三個可空 gettingStarted 欄位；僅同步 Prisma 宣告以保留並行新欄位，沒有刪除、回填或更改其值。126 項含本機真實 PostgreSQL 的回歸通過，lint 0 errors／2 既有 warnings、pnpm build 通過。
+
+本機 QA 資料庫同步新增相同三個可空 gettingStarted 欄位，供最新 Prisma Client 回歸；未修改既有值。
+
+2026-10-03 Rewards 整合最新 main 1544e7f 的新會員引導：保留 DashboardUserProvider、引導狀態及首次完成交易，任務完成同一交易亦入獎勵帳。積分卡在無計畫引導時仍可見；一般 Home 桌面左 Investor DD／Rewards、右 POLARIS，手機 Rewards 先於 POLARIS；不覆蓋 Getting Started 資料或功能。先前候選完成 51 項正式 API 檢查；合併後重新建置驗收，Email 保持關閉。
+上線前輸入審核修正雙週測驗：原流程 Number(null)／Number(空字串) 會把空答案視為選項 0；改為嚴格 number/integer 驗證，不接受空值、字串、布林或缺值，再核對每題完整性。新增實際端點的空答案回歸，確保入帳交易前拒絕。
+
+整合驗收：140 項回歸（含 12 項隔離 PostgreSQL 子測試）通過。全專案 lint 揭露新引導測試 fixture 的 module 區域變數命名違反 Next 規則，僅改名 loaded；不改測試行為或業務流程。
+
+Home 整合手機順序再確認：同一 grid 的 Rewards → POLARIS → 行動摘要 → Investor DD，桌面摘要仍在雙欄下方，避免引導元件整合後把 Investor DD 移到行動前方。
+
+整合候選手機驗收發現活動卡片的 auto grid track 被英文活動名稱撐到 438px；補上 grid-cols-1 的 minmax(0,1fr)，保持 390px 畫面寬度。正式發布前重新部署並核對中英文手機布局。
+
+Rewards 發布驗收結果：整合最新 main fcd3850 的引導偏好 keepalive，保留並行修改。140 項回歸、pnpm lint（零錯誤／兩個既有警告）、pnpm build 通過；候選 dpl_98JZ1QMPq3CxZenTDFcTr6rFwKwV／後續手機修正候選 roll-k5zhisyi4 完成 51 項原獎勵 API 檢查及 17 項引導／獎勵整合檢查。中英文桌面及 390px 手機、完成狀態／下期測驗、Rewards 紀錄與提醒不可用說明正常；手機 scrollWidth=390。實際 POLARIS 對話成功，付費／全站試用優先使用 included，includedUsed=1、rewardBalance=5 維持。免費僅可使用 reward、各來源退款及並行限制由真實隔離 PostgreSQL 回歸驗證。正式資料庫差異此前為 No difference detected，會員原始資料指紋保留。
+
+正式環境已新增 CRON_SECRET、RESEND_FROM_EMAIL=NOVA <reminders@rollgrp.com>、REWARD_EMAIL_ENABLED=false，排程 */15 * * * *；未變更 Preview。RESEND_API_KEY 尚待憑證建立的動作時授權，沒有寄出真實測試信。已指定驗收收件人 Vivian.lee@roll-grp.com；須驗收 Resend 接受／送達狀態與退訂後才能把全域開關設為 true。兩個本輪專用 QA 帳號以 example.invalid 隔離，提醒關閉，待 Email 驗收後清理；不替既有會員開啟提醒。
+
+2026-10-03 本機 main 同步：本機 Fix（df85452）與遠端 523b636 以 merge 保留雙方完整提交紀錄。重複功能採遠端已驗收版本，保留較新的 Rewards／引導整合、手機寬度與 lint 修正；未使用強制推送，未修改資料庫。本機同步前的提交另保留在 codex/main-before-sync-20261003。同步後程式碼與 origin/main 相同，僅 README 新增此紀錄；127 項測試通過，1 項需專用 PostgreSQL 環境的測試略過，沒有失敗。

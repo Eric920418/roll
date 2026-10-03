@@ -291,8 +291,6 @@ test("Billing reset date renders identically on UTC server and Taipei browser", 
   assert.match(render("UTC"), /Nov 2, 2026/);
 });
 
-
-
 test("Next steps 使用台北日期，不受伺服器或瀏覽器時區影響", () => {
   const require = createRequire(import.meta.url), { today } = require("../src/lib/roadmap/schema");
   const before = process.env.TZ;
