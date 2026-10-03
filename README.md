@@ -1019,3 +1019,5 @@ API：/api/action-plans/check-ins 提供讀取／保存／生成／草稿編輯�
 鎖頭 UX 本機驗證：22 項桌面／手機狀態與鍵盤檢查、101 項回歸測試、TypeScript 及相關元件 ESLint 通過；暫時驗收頁已移除。
 
 鎖頭 UX 已於 2026-10-03 推送 995b733 並上線 dpl_7qG5KqYRmCLkt932thkq5LEjKJ55；候選與公開 www.rollgrp.com 各通過 34 項真實桌面／手機檢查，包含三個任務入口的灰底鎖頭、前置完成解鎖、鍵盤勾選、計數同步、重整恢復及撤銷再鎖。此輪專用帳號及關聯資料已清除，未修改真實會員資料；未做資料庫結構更新。
+
+2026-10-03 Next steps 移除整個 Legacy landing tasks 舊流程區塊，包括舊期限提醒、Your next move、Landing progress、舊落地清單及空狀態導向；清除僅供該區塊使用的前端處理與伺服器查詢。Goal roadmap、目前任務、Weekly Check-in 與獨立里程碑保持正常。既有 LandingTask／checklistState 資料保留，不做資料庫刪除或結構更新。
