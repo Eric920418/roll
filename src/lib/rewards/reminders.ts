@@ -60,7 +60,7 @@ export function emailPayload(to: string, userId: string, version: string, locale
   const text = `${label} · +${points} ${zh ? "積分" : "points"}\n${cta}\n${zh ? "退訂每日提醒" : "Unsubscribe from daily reminders"}: ${unsubscribe}`;
   return {
     from: process.env.RESEND_FROM_EMAIL!, to: [to], subject, text,
-    html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;color:#111;padding:32px"><img src="${escape(new URL("/nova/logo-black.png", origin).href)}" width="180" height="34" alt="NOVA AI" style="display:block;width:180px;max-width:100%;height:auto;margin-bottom:28px" /><h1>${escape(label)}</h1><p>+${points} ${zh ? "積分，每一步都算數。" : "points. Every useful step counts."}</p><p><a style="display:inline-block;background:#000;color:white;padding:14px 24px;border-radius:12px" href="${escape(cta)}">${zh ? "回到 NOVA AI" : "Return to NOVA AI"}</a></p><hr><a href="${escape(unsubscribe)}">${zh ? "退訂每日提醒" : "Unsubscribe from daily reminders"}</a></div>`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;color:#111;background:#fff;padding:32px"><img src="${escape(new URL("/nova/logo-metal.png", origin).href)}" width="240" height="46" alt="NOVA AI" style="display:block;width:240px;max-width:100%;height:auto;margin-bottom:28px" /><h1>${escape(label)}</h1><p>+${points} ${zh ? "積分，每一步都算數。" : "points. Every useful step counts."}</p><p><a style="display:inline-block;background:#000;color:white;padding:14px 24px;border-radius:12px" href="${escape(cta)}">${zh ? "回到 NOVA AI" : "Return to NOVA AI"}</a></p><hr><a href="${escape(unsubscribe)}">${zh ? "退訂每日提醒" : "Unsubscribe from daily reminders"}</a></div>`,
     headers: { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
   };
 }

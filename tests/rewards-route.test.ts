@@ -97,7 +97,7 @@ test("Reminder branding uses the main absolute logo and keeps safe escaped links
     });
     for (const locale of ["en", "zh-tw"]) {
       const payload = reminders.emailPayload("test@example.invalid", "owner", "11111111-1111-4111-8111-111111111111", locale, "action", "/dashboard/agenda#action-test", 30);
-      assert.match(payload.html, /src="https:\/\/example\.test\/nova\/logo-black\.png"/);
+      assert.match(payload.html, /src="https:\/\/example\.test\/nova\/logo-metal\.png"/);
       assert.match(payload.html, /alt="NOVA AI"/);
       assert.doesNotMatch(payload.html, /letter-spacing:4px/);
       assert.match(payload.headers["List-Unsubscribe"], /example\.test\/api\/rewards\/unsubscribe/);

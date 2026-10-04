@@ -12,6 +12,10 @@ WeekCalendarItem 為純新增表；任務刪除只解除關聯並保留 action �
 
 ## 部署環境檢查
 
+2026-10-04 郵件主 LOGO：每日提醒改用 `https://www.rollgrp.com/nova/logo-metal.png` 的金屬 NOVA，顯示寬度 240px、維持原比例並放在白色內容區。已從使用者提供的 [Google Drive 原圖 nova logo-03.png](https://drive.google.com/file/d/1ztS8AnKQknj7PSTQAR--VGsMLtn0L9IG/view) 下載檢查，既有金屬資產與原圖 1443×278 的標誌區域逐像素一致，沿用既有檔案，不重新繪製或更動網站其他 LOGO。中英文模板仍保留原行動、積分、返回平台及退訂連結；既有發送佇列的 payload 保持不變以維持 Resend 冪等，後續新產生的提醒才使用新 LOGO。
+
+信件內容 LOGO 與收件匣寄件者頭像是不同機制。`rollgrp.com` 的公開 DMARC 為 `p=reject`，目前沒有 `default._bimi.rollgrp.com` 記錄；Gmail BIMI 尚需要符合 SVG Tiny-PS 的向量原稿及由 CA 核發的 VMC／CMC 與公開 HTTPS PEM 憑證。提供的 PNG 不等同 BIMI 向量原稿，不能用嵌入 PNG 的假 SVG 或不存在的 PEM 設定冒充驗證；沒有憑證前不發布不完整的 BIMI DNS，也不修改既有 DMARC、SPF 或 DKIM。收件匣頭像未完成，待提供向量檔與憑證／核准正式申請後才能設定及驗收。要求參見 [Google Set up BIMI](https://knowledge.workspace.google.com/admin/security/set-up-bimi)。
+
 2026-10-04：`codex/layout-refinement`／`286d53b` 的 Preview 因未配置 `DATABASE_URL` 而被設定檢查拒絕；同一 commit 的 main Production 為 READY。依「目前只維持正式站」的決定，已透過 Vercel 官方專案更新 API 將 roll 的 `previewDeploymentsDisabled` 設為 `true`，並再次讀取確認；正式分支仍為 `main`，正式部署 ID 與 READY 狀態在設定變更前後相同。採用專案層級設定，舊分支也受控，不需要逐一回補分支的 vercel.json。既有 Preview 的 ERROR 歷史紀錄會保留，關閉設定不會將失敗部署改成成功。
 
 本次僅調整自動預覽部署政策與本 README；沒有修改應用程式、DATABASE_URL 檢查、環境變數或資料庫。公開正式首頁回應 200；未登入的 `/api/week-plan` 回應 401，權限限制正常。由於沒有程式碼變更，未重跑完整程式測試。未來需要 Preview 時，先配置隔離的測試資料庫、AUTH_SECRET、站台網址與必要資料表，再將 `previewDeploymentsDisabled` 改回 `false`；不要將正式資料庫或寄信設定複製到 Preview。API 設定與復原方式參見 [Vercel Update an existing project](https://vercel.com/docs/rest-api/projects/update-an-existing-project)。
