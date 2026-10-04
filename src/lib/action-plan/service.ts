@@ -9,7 +9,7 @@ import { legacyHoursForMinutes } from "./time";
 
 const actionInclude = {
   dependencies: {
-    select: { dependsOn: { select: { id: true, clientKey: true, title: true, done: true } } },
+    select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, metricCurrent: true, metricUnit: true } } },
   },
 } as const;
 
@@ -57,7 +57,7 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
     nextMoves: actions.filter((action) => action.rank != null && action.rank <= 3),
     blockers: actions
       .filter((action) => !action.done && action.dependency.blocked)
-      .map((action) => ({ id: action.id, title: action.title, dependencies: action.dependency.actionRefs.filter(a => !a.done).map(taskReference), missingLink: action.dependency.missingLink })),
+      .map((action) => ({ id: action.id, title: action.title, dependencies: action.dependency.actionRefs.filter(a => !(a.resolved ?? a.done)).map(taskReference), missingLink: action.dependency.missingLink })),
   };
 }
 

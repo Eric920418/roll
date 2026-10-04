@@ -822,7 +822,7 @@
         "emptyTitle": "Diagnose your next moves with NOVA",
         "emptyBody": "Answer three focused questions about your bottleneck, progress, and goal. Confirm your diagnosis, then generate five actions.",
         "upgrade": "Upgrade to Pro",
-        "fewerBlocked": "Only the available moves are shown. {count} blocked actions cannot enter the Next 3 yet.",
+        "fewerBlocked": "{count} actions are waiting on prerequisites. Waiting cards are previews; only Ready actions can be started.",
         "fewerAvailable": "Only {count} executable moves remain in this plan."
       },
       "progress": {
@@ -1619,6 +1619,7 @@
       "profileDetail": "Company, industry, country, pitch, stage and primary need. Once per account."
     },
     "entry": {
+      "customer_stage": "Customer discovery stage completed",
       "visit": "Daily Home visit",
       "action": "Action completed",
       "quiz": "Knowledge quiz completed",

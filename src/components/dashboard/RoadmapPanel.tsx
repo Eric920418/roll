@@ -111,11 +111,11 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     finally { busyRef.current = false; setBusy(false); }
   }
   function updateDraft(next: RoadmapDraft) { setForm(next); if (next.mode === "new") setGoal(next.goal); store(next.mode === "new" ? next.goal : goal, deadline, next); }
-  async function changeTask(id: string, body: object, method = "PATCH") {
+  async function changeTask(id: string, body: object, method = "PATCH", propagate = false) {
     if (busyRef.current || !initialPlan) return false;
     busyRef.current = true; setBusy(true); setError("");
     try { const next: ActionPlanDto = await request(method, { revision: initialPlan.revision, ...body }, `/api/action-plans/actions/${id}`); onChanged(next); router.refresh(); return true; }
-    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); return false; }
+    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); if (propagate) throw cause; return false; }
     finally { busyRef.current = false; setBusy(false); }
   }
   function matches(a: ActionPlanActionDto) {
@@ -127,7 +127,8 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     return <div key={a.id} id={readOnly ? undefined : `action-${a.id}`} tabIndex={-1} className="scroll-mt-24">
       <ActionTaskRow action={a} compact featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
         onToggle={readOnly ? undefined : () => void changeTask(a.id, { done: !a.done })}
-        onMetric={readOnly ? undefined : metric => changeTask(a.id, metric)}
+        onMetric={readOnly ? undefined : metric => changeTask(a.id, metric, "PATCH", true)}
+        onDependencyChange={readOnly ? undefined : (dependencyThresholds, revision) => changeTask(a.id, { dependencyThresholds, revision: revision ?? initialPlan?.revision }, "PATCH", true)}
         onEdit={readOnly ? undefined : () => setEditing(a)}
         onDelete={readOnly ? undefined : () => { if (window.confirm(locale === "zh-tw" ? `刪除任務「${a.title}」？` : `Delete task “${a.title}”?`)) void changeTask(a.id, {}, "DELETE"); }} />
     </div>;

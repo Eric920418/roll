@@ -1,3 +1,5 @@
+import * as discovery from "../src/lib/icp/discovery";
+import * as insights from "../src/lib/customer-insights/schema";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -105,7 +107,7 @@ function harness() {
   let generate = async () => draft;
   let allowance = true;
   const db = {
-    icpWorkspace: table(workspaces, true), onboardingProfile: table(profiles),
+    icpWorkspace: table(workspaces, true), onboardingProfile: table(profiles), meetingNote: { findMany: async () => [] },
     async $transaction(fn: (tx: unknown) => Promise<void>) {
       const p = structuredClone(profiles), w = structuredClone(workspaces);
       try { await fn(db); } catch (error) { profiles.clear(); p.forEach((v,k) => profiles.set(k,v)); workspaces.clear(); w.forEach((v,k) => workspaces.set(k,v)); throw error; }
@@ -116,7 +118,7 @@ function harness() {
     runIcp(account: Account, input: object): Promise<unknown>;
     patchIcp(id: string, input: object): Promise<unknown>;
   }>("src/lib/icp/service.ts", {
-    "@/lib/prisma": { prisma: db }, "./schema": schema,
+    "@/lib/prisma": { prisma: db }, "./schema": schema, "./discovery": discovery, "@/lib/customer-insights/schema": insights, "./discovery-ai": { generateDiscovery: async () => ({ message: "Review this guess", question: "", candidates: [], guess: discovery.EMPTY_GUESS, patterns: [], unclear: [] }) },
     "@/lib/ai/allowance": { reserveAiUsage: async () => { reservations++; return allowance ? "usage" : null; }, completeAiUsage: async (_id: string, success: boolean) => { completions.push(success); } },
     "@/lib/rate-limit": { checkRateLimit: async () => ({ ok: true }), DAY_MS: 86400000 },
     "./ai": { generateIcp: () => generate(), IcpAiError: class extends Error {} },
@@ -296,4 +298,14 @@ test("Next steps 使用台北日期，不受伺服器或瀏覽器時區影響", 
   const before = process.env.TZ;
   try { for (const zone of ["UTC", "Asia/Taipei", "America/Los_Angeles"]) { process.env.TZ = zone; assert.equal(today(new Date("2026-11-16T17:00:00.000Z")), "2026-11-17"); } }
   finally { if (before === undefined) delete process.env.TZ; else process.env.TZ = before; }
+});
+
+test("Discovery suggestions preserve saved ICP, reuse workspace locks and bill a replay once", async () => {
+  const h = harness();
+  const input = { action: "discover", discovery: { mode: "sharpen", product: "", guess: { ...discovery.EMPTY_GUESS, customer: "Founders" } }, revision: 0, requestId: "discovery-one", locale: "en" };
+  await h.api.runIcp(user("a"), input); await h.api.runIcp(user("a"), input);
+  assert.equal(h.reservations(), 1); assert.deepEqual(h.completions, [true]);
+  assert.equal(h.profiles.get("a")!.icp, "Old ICP");
+  assert.equal((await h.api.getIcpWorkspace("b", "en")).draft, null);
+  await assert.rejects(h.api.patchIcp("a", { ...patch, action: "choose", draft: EMPTY_ICP, revision: 0, discovery: { path: "discovery" } }), /another tab/);
 });

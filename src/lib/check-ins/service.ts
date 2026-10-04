@@ -9,7 +9,7 @@ import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { taipeiWeek, taskSnapshot, weeklySummary, weeklyOutputSchema, type CheckInRequest } from "./schema";
 import { generateWeekly } from "./ai";
 const json = (value: unknown) => value as Prisma.InputJsonValue;
-const includes = { milestones: true, actions: { include: { dependencies: { select: { dependsOn: { select: { id: true, clientKey: true, title: true, done: true } } } } } } } as const;
+const includes = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
 const conflict = () => new PlanWriteError("計畫或週記已更新，請重新載入；輸入保留。 / Plan or check-in changed. Reload; your input is preserved.");
 const editable = (row: { weekStart: Date }, archived: Date | null) => {
   if (archived || row.weekStart.toISOString().slice(0, 10) !== taipeiWeek()) throw new PlanWriteError("歷史週記或封存計畫為唯讀 / Historical check-ins and archived plans are read-only");
@@ -48,10 +48,14 @@ export async function saveCheckIn(userId: string, input: Extract<CheckInRequest,
         const task = plan.actions.find(a => a.id === m.actionId);
         if (!task || (m.current != null && !task.metricUnit)) throw new PlanWriteError("請先確認數量目標與單位 / Confirm the metric target and unit first", 400);
         if (task.metricCurrent === m.current) continue;
+        const invalidated = plan.actions.filter(dependent => dependent.done && dependent.dependencies.some(edge => edge.dependsOn.id === task.id && edge.minimumCurrent != null && (m.current == null || m.current < edge.minimumCurrent)));
+        if (invalidated.length) throw new PlanWriteError(`請先撤銷後續任務完成 / Undo completed dependent tasks first: ${invalidated.map(a => a.title).join(", ")}`, 409);
         await guardActionMilestone(tx, plan.id, task.milestoneId, "edit");
         await tx.actionItem.update({ where: { id: m.actionId }, data: { metricCurrent: m.current } }); task.metricCurrent = m.current;
       }
       if (taipeiWeek() !== week) throw conflict();
+      // Dependencies in the loaded graph must reflect metric edits in this transaction.
+      for (const task of plan.actions) for (const edge of task.dependencies) { const updated = plan.actions.find(a => a.id === edge.dependsOn.id); if (updated) edge.dependsOn.metricCurrent = updated.metricCurrent; }
       const snapshot = taskSnapshot(serializePlan(plan));
       const data = { finding: input.finding, blockers: input.blockers, snapshot: json(snapshot), summary: weeklySummary(snapshot, week, input.finding, input.blockers), basePlanRevision: input.planRevision + 1, recommendations: Prisma.DbNull, investorDraft: null, lastRequestId: input.requestId, lastError: null };
       if (existing) {

@@ -1265,3 +1265,34 @@ Next Node.js OG RCE 的必要條件在目前 Edge OG route 不成立；仍完成
 正式發布紀錄：安全修補 commit `0480d68` 的 Production 候選 `dpl_HV52sSdVpkAgwLtEJSLhgokjWDT6`（roll-izf5i45l8）Ready，31 項候選安全檢查通過後已 promote 至 `https://www.rollgrp.com`；公開站另通過 32 項檢查。涵蓋真實網域 Origin／JSON、signup／login、固定舊 JWT 過渡、改密碼立即撤銷、刪帳號失效、公司／後台 RSC、付款訂單歸屬、偽造 PayPal webhook、Blob token 來源與登入、Google redirect 設定及錯誤安全化。測試僅用本輪新建 example.invalid 帳號，現已確認刪除；沒有操作既有會員憑證、真實扣款、上傳文件或寄信。
 
 正式中英文登入頁與字型 loaded，瀏覽器無錯誤；runtime error scan 只找到刻意注入壞 JSON 的一筆 api.unexpected／SyntaxError，requestId 與測試記錄一致，原始假密鑰／SQL 未出現在回應、URL 或日誌。Vercel 專案再次確認 previewDeploymentsDisabled=true、productionBranch=main、既有部署保護仍啟用、ROLL_LOCAL_POSTGRES 未設定，固定過渡截止已配置。Git 同步可能另觸發只有發布紀錄差異的 Production 建置，程式修補與固定截止時間不變。
+
+### Customer discovery UX（2026-10-04）
+
+- 依 2026-10-04 參考調整 Home：週行事曆置頂，Investor DD／Rewards 左側、POLARIS 右側，再接公司現況與 Next Three Moves。新手引導保留。
+- 側欄採 Inter／Noto Sans TC、240px、14px 選單、40px 桌面列高；手機維持 44px 操作區，Rewards 前加入分隔。
+- 數量進度不自動完成任務；只有明確設定門檻的依賴可按數量解鎖，其他仍需前置完成；階段建議不代表已完成成果；使用者確認新增 +50 規則後，以本人確認的成果及證據快照發放。
+- 任務數量增加可讀進度條與「+ Log progress」累計回報面板，沿用任務 API／計畫版本檢查；Home 可直接記錄與開啟行事曆排程。未知數量不當作零，未完成依賴不開放回報按鈕。
+- Customer Insights 以既有 MeetingNote 相容新增 insight JSON 欄位保存分階段訪談；ICP 工作區新增 discovery JSON。部署前套用 prisma/customer-discovery.sql，不刪除或回填舊資料。對話新增請求以 requestId 防止重送重複建檔。
+- Customer Insights 新增 Discover／MVP／First sales／Angel round 四種訪談表單、會員隔離本機草稿及真實對話紀錄。切換階段將未送出的欄位保留在原始筆記，不變更公司階段；聯絡人與既有筆記仍可展開查看。
+- ICP 候選／聚焦／訪談彙整沿用同一工作區的版本、防重送、AI 權限與配額；AI 草稿不直接更新 Profile。訪談彙整只讀本人客戶對話，至少五筆含內容，每個歸納模式要求至少兩筆不同對話的原文引證。
+- Profile + ICP 提供「有初步想法／不確定適合誰／還沒有想法」入口，四句灰色 placeholder 不預填資料。候選與訪談彙整先編輯、人工儲存；保留原六欄與對話編輯器。情境不寫入公司階段或客戶階段。
+- 依使用者確認新增 ActionDependency.minimumCurrent：可選數量門檻，空值仍要求前置任务完成；所有 DTO、行事曆、Home、週記排序共用判定。數量降低若使已完成後續任務失去前提則回 409；保留里程碑成果確認閘門。
+- 任務 Details 可設定每條現有依賴的數量門檻。修改一般任務／AI 階段修正時保留未移除依賴的門檻，避免重新編輯後靜默退回只看完成勾選。
+- 依使用者新確認，四階段改為真實達標獎勵：Discover 至少 10 位潛在客戶且確認 3 位同問題；MVP 至少 5 位週活躍、3 位願預付；First sales 至少 3 位付費客戶；Angel round 至少 20 位投資人對話。只計有內容的相應類型紀錄，同姓名＋公司去重；成果由本人確認、保留證據快照。每會員每階段一次 +50，與錢包同一交易，不修改其他獎勵規則。
+- 達標卡顯示真實對象數；MVP／First sales 的使用或付款數需本人填寫，未確認時不預填。領取需成果說明及確認框，累計達標不會自動變更公司階段。
+- Home 依新圖顯示可執行任務與灰色等待預覽卡（最多三張）；等待卡明確標示阻擋且不可 Log／排程，不加入後端 Ready／Next 3 集合。Header + Log 開啟第一個可執行任務的進度面板。
+
+- 門檻防護涵蓋任務 + Log 與 Weekly Check-in：降低累計值不能使已完成後續任務失去前提；存在門檻時不可直接換單位。週記快照在同一交易使用更新後依賴狀態。Log／門檻面板直接呈現完整安全錯誤，409 保留輸入。
+
+- 新分階段對話可重新編輯，依 updatedAt 比對防止雙分頁覆蓋；會員本機暫存同時保留編輯對象。原階段獎勵證據快照不隨後續筆記編輯改寫。
+- 回歸測試新增週記不可降低已完成後續任務所需門檻、Ready 與里程碑閘門共用判斷，以及非整數／零門檻拒絕。
+
+- Home 等待預覽卡加入與任務清單一致的灰色鎖頭；摘要保留三行並可展開完整文字。
+
+- 桌面實測 Home + Log 把 4/10 改為 5/10，Ready 由 1 增為 2、完成仍為 0；等待清單收合避免重複占版面，數量條統一黑色。
+
+- 舊 Notes 更新端點拒絕覆寫新的結構化訪談，避免摘要與分欄紀錄不一致。
+
+- 本輪驗收：180 項測試（含隔離 PostgreSQL）全部通過，TypeScript、production build 通過；lint 0 errors、14 個既有效能／依賴警告。真實 API 驗證數量門檻、週記降低數量保護、更換單位保護、雙分頁 409、帳號隔離與並行領獎僅一次 +50。
+- 真實 Anthropic 驗證候選、聚焦、訪談彙整；未確認草稿不覆蓋已儲存 ICP。桌面 1600px／手機 390px 驗證 Home + Log、門檻編輯、繁中階段表單保存／編輯、ICP 恢復、完整文字展開，無水平溢出或瀏覽器錯誤。測試資料均屬本輪專用帳號。
+- 正式相容遷移已套用 `prisma/customer-discovery.sql`，Repeatable Read 交易比對 45 張既有表的原欄位指紋與筆數不變；僅新增三個可空欄位及 CustomerStageOutcome。證明保存於 `/Users/eric/.codex/backups/roll/customer-discovery-schema-2026-10-04.json`。候選上線驗收中，尚未切換正式網域。

@@ -74,6 +74,8 @@ export const profilePatchSchema = z.object({
 }).strict();
 
 export type IcpWorkspaceView = {
+  customerConversationCount?: number;
+  discovery?: import("./discovery").DiscoveryState | null;
   revision: number; profileVersion: number; currentProfileVersion: number;
   messages: IcpMessage[]; draft: IcpDraft | null; saved: IcpDraft | null; legacy: string | null;
   pending: boolean; error: string | null;

@@ -16,7 +16,7 @@ import { z } from "zod";
 export const LOCK_MS = 360_000;
 const asJson = (value: unknown) => value as Prisma.InputJsonValue;
 const conflict = () => new PlanWriteError("草稿已被另一分頁更新，請重新載入；你的輸入仍保留。 / Draft changed in another tab. Reload; your input is preserved.");
-const includes = { milestones: true, actions: { include: { dependencies: { select: { dependsOn: { select: { id: true, clientKey: true, title: true, done: true } } } } } } } as const;
+const includes = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
 
 export async function getRoadmapHistory(userId: string, historyId: string) {
   const plan = await prisma.actionPlan.findFirst({ where: { id: historyId, userId }, include: includes });
@@ -199,8 +199,9 @@ async function patchCorrection(userId: string, input: Extract<z.infer<typeof roa
     // Validate the complete proposed graph before applying any edge changes.
     for (const change of input.correction.changes) {
       await tx.actionItem.update({ where: { id: change.actionId }, data: { title: change.title, expectedOutcome: change.expectedOutcome, bottleneckFitReason: change.whyNow, bottleneckFitEditedByUser: true, bottleneckFitConfidence: null, dependencyLevel: change.dependencyActionIds.length ? 1 : 0 } });
+      const thresholds = await tx.actionDependency.findMany({ where: { actionId: change.actionId }, select: { dependsOnId: true, minimumCurrent: true } });
       await tx.actionDependency.deleteMany({ where: { actionId: change.actionId } });
-      if (change.dependencyActionIds.length) await tx.actionDependency.createMany({ data: change.dependencyActionIds.map(dependsOnId => ({ actionId: change.actionId, dependsOnId })) });
+      if (change.dependencyActionIds.length) await tx.actionDependency.createMany({ data: change.dependencyActionIds.map(dependsOnId => ({ actionId: change.actionId, dependsOnId, minimumCurrent: thresholds.find(e => e.dependsOnId === dependsOnId)?.minimumCurrent ?? null })) });
     }
     await tx.roadmapWorkspace.update({ where: { userId }, data: { draft: Prisma.DbNull } });
   });

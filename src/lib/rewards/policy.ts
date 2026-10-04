@@ -1,4 +1,4 @@
-export const REWARD_RULES = { visit: 5, action: 30, quiz: 50, profile: 50, redemptionPoints: 100, redemptionCredits: 5, monthlyCredits: 20, dailyActions: 2 } as const;
+export const REWARD_RULES = { visit: 5, action: 30, quiz: 50, profile: 50, customer_stage: 50, redemptionPoints: 100, redemptionCredits: 5, monthlyCredits: 20, dailyActions: 2 } as const;
 export const REWARD_TIME_ZONE = "Asia/Taipei";
 export function rewardKeys(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: REWARD_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);

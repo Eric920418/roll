@@ -28,7 +28,7 @@ export default async function CompanyProfilePage({ params }: Props) {
       <Link href={pathForLocale("/dashboard/account#profile", l)} className="rounded-xl border border-dark/15 px-5 py-3 text-sm font-semibold text-dark hover:bg-dark/[0.03]">{t("profile.edit")}</Link>
     </div>
     <GettingStartedHint mode="profile" />
-    <div className="mt-7 grid items-start gap-5 lg:grid-cols-2">
+    <div className="mt-7 grid items-start gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
       <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6">
         <h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("icp.company")}</h2>
         <dl className="mt-4 divide-y divide-dark/10">

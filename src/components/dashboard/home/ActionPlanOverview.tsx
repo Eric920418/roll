@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import ActionTaskRow from "../ActionTaskRow";
+import NextMoveCard from "./NextMoveCard";
 import ActionPlanBuilder from "@/components/dashboard/ActionPlanBuilder";
 import type { Locale } from "@/i18n/routing";
 import {
@@ -168,10 +168,11 @@ export default async function ActionPlanOverview({
         </div>
 
         <div className="mt-4">
+          {plan && <p className="mt-3 text-xs text-dark/60">{locale === "zh-tw" ? `${plan.actions.length} 項任務 · ${plan.actions.filter(a => !a.done && !a.dependency.blocked).length} 項可執行 · ${plan.blockers.length} 項等待中 · ${plan.actions.filter(a => a.done).length} 項完成` : `${plan.actions.length} actions · ${plan.actions.filter(a => !a.done && !a.dependency.blocked).length} ready · ${plan.blockers.length} waiting · ${plan.actions.filter(a => a.done).length} done`}</p>}
           {plan && plan.nextMoves.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-3">
-              {plan.nextMoves.map((action) => (
-                <ActionTaskRow key={action.id} action={action} readOnly href={`${agendaHref}#action-${action.id}`} />
+              {[...plan.nextMoves, ...plan.actions.filter(a => !a.done && a.dependency.blocked)].slice(0, 3).map((action) => (
+                <NextMoveCard key={action.id} action={action} revision={plan.revision} href={`${agendaHref}#action-${action.id}`} />
               ))}
             </div>
           ) : plan ? (
@@ -225,15 +226,12 @@ export default async function ActionPlanOverview({
           )}
 
           {plan && plan.nextMoves.length > 0 && plan.nextMoves.length < 3 ? (
-            <div
-              role="status"
-              className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-            >
-              <p className="font-bold">
+            <details className="mt-3 rounded-xl border border-dark/10 px-4 py-2 text-sm text-dark/70">
+              <summary className="min-h-11 cursor-pointer content-center font-medium">
                 {plan.blockers.length > 0
                   ? t("next.fewerBlocked", { count: plan.blockers.length })
                   : t("next.fewerAvailable", { count: plan.nextMoves.length })}
-              </p>
+              </summary>
               {plan.blockers.length > 0 ? (
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   {plan.blockers.map((blocker) => (
@@ -243,7 +241,7 @@ export default async function ActionPlanOverview({
                   ))}
                 </ul>
               ) : null}
-            </div>
+            </details>
           ) : null}
         </div>
       </section>

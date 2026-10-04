@@ -1,5 +1,6 @@
 "use client";
 
+import IcpDiscovery from "./IcpDiscovery";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -140,6 +141,8 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
 
   return <>
     <section className="min-w-0 rounded-2xl border border-sky-300 bg-white p-6">
+      <IcpDiscovery userId={userId} canUseAi={canUseAi} onUpdated={setWorkspace} />
+      <details className="mt-5 border-t border-dark/10 pt-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">{locale === "zh-tw" ? "已儲存的 ICP 與原有編輯工具" : "Saved ICP and detailed editor"}</summary>
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("title")}</h2></div>
       <p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-lg font-bold text-dark">{current?.summary || workspace.legacy || legacy || t("notProvided")}</p>
       {rows(current || EMPTY_ICP, t("notProvided"))}
@@ -147,6 +150,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
         {canUseAi ? <button ref={trigger} type="button" className={`${button} flex-1`} onClick={() => void show()}>✧ {t("ask")}</button> : <Link className={`${button} flex-1 text-center`} href={pathForLocale("/dashboard/account#plan", locale)}>{t("upgrade")}</Link>}
         <button type="button" className={button} onClick={() => void show(true)}>{t("edit")}</button>
       </div>
+      </details>
     </section>
     <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6 lg:col-span-2">
       {children}

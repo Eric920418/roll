@@ -38,7 +38,7 @@ export async function prepareActionReward(tx: Prisma.TransactionClient, userId: 
   await lockRewardAccount(tx, userId);
   if (alreadyDone) await tx.rewardEntry.createMany({ data: [{ userId, eventKey: `action:${actionId}`, kind: "action", points: 0, dayKey: rewardKeys().day }], skipDuplicates: true });
 }
-export async function awardReward(tx: Prisma.TransactionClient, userId: string, kind: "visit" | "action" | "quiz" | "profile", source: string, now = new Date()) {
+export async function awardReward(tx: Prisma.TransactionClient, userId: string, kind: "visit" | "action" | "quiz" | "profile" | "customer_stage", source: string, now = new Date()) {
   await lockRewardAccount(tx, userId);
   const eventKey = `${kind}:${source}`, { day } = rewardKeys(now);
   if (await tx.rewardEntry.findUnique({ where: { userId_eventKey: { userId, eventKey } } })) return false;

@@ -196,6 +196,7 @@ model User {
   // 會員後台工具（CRM / 銷售管道 / 會議記錄）— 皆 1:many、刪帳號連帶清除
   contacts     Contact[]
   deals        Deal[]
+  customerStageOutcomes CustomerStageOutcome[]
   meetingNotes MeetingNote[]
   copilotTurns CopilotTurn[]
   icpWorkspace IcpWorkspace?
@@ -604,6 +605,7 @@ model WeekCalendarItem {
 
 /// 同一 Action Plan 內的有向依賴：action 必須等待 dependsOn。
 model ActionDependency {
+  minimumCurrent Float? // Optional cumulative prerequisite threshold; null requires task completion
   actionId    String
   dependsOnId String
   action      ActionItem @relation("ActionDependencies", fields: [actionId], references: [id], onDelete: Cascade)
@@ -749,6 +751,7 @@ model InvestorInvitation {
 
 /// 會議記錄
 model MeetingNote {
+  insight Json? // Structured customer conversation; legacy notes remain unchanged
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -850,6 +853,7 @@ model FeedbackReport {
 
 /// 每會員一份 ICP 工作區；草稿與已儲存的 Profile 分開，CAS 防跨分頁覆蓋。
 model IcpWorkspace {
+  discovery Json? // ICP entry path and unconfirmed candidate suggestions
   userId String @id
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages Json @default("[]")
@@ -990,4 +994,17 @@ model RewardDelivery {
   updatedAt DateTime @updatedAt
   @@unique([userId, dayKey])
   @@index([status, nextAttemptAt])
+}
+
+/// Member-confirmed stage evidence; one lifetime reward per stage.
+model CustomerStageOutcome {
+  userId String
+  stage String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  primaryCount Int
+  secondaryCount Int
+  note String
+  evidence Json
+  confirmedAt DateTime @default(now())
+  @@id([userId, stage])
 }

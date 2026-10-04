@@ -822,7 +822,7 @@
         "emptyTitle": "讓 NOVA 診斷你的下一步",
         "emptyBody": "逐題回答瓶頸、實際進展與目標，共三題；確認診斷後生成五項任務。",
         "upgrade": "升級 Pro",
-        "fewerBlocked": "目前只顯示可執行項目；另有 {count} 個受阻擋 Actions 尚不能進入 Next 3。",
+        "fewerBlocked": "另有 {count} 項任務等待前置條件。灰色卡片僅供預覽，只有可執行任務才能開始。",
         "fewerAvailable": "此計畫目前只剩 {count} 個可執行 Actions。"
       },
       "progress": {
@@ -1619,6 +1619,7 @@
       "profileDetail": "公司名稱、產業、所在地、一句話介紹、階段及主要需求；每帳號一次。"
     },
     "entry": {
+      "customer_stage": "完成客戶探索階段",
       "visit": "每日回訪 Home",
       "action": "完成行動任務",
       "quiz": "完成知識測驗",

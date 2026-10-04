@@ -38,7 +38,7 @@ export async function mutateWeekPlan(userId: string, canScheduleActions: boolean
     if (input.operation === "schedule") {
       if (!canScheduleActions) throw new CalendarError("安排 Action Plan 需有效 Pro 以上方案 / Active Pro plan required to schedule Action Plan tasks", 403, "plan_required");
       await tx.$queryRaw`SELECT "id" FROM "ActionPlan" WHERE "id" = ${input.planId} AND "userId" = ${userId} FOR UPDATE`;
-      const record = await tx.actionPlan.findFirst({ where: { id: input.planId, userId, activeKey: userId, archivedAt: null }, include: { actions: { include: { dependencies: { select: { dependsOn: { select: { id: true, clientKey: true, title: true, done: true } } } } } }, milestones: true } });
+      const record = await tx.actionPlan.findFirst({ where: { id: input.planId, userId, activeKey: userId, archivedAt: null }, include: { actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, metricCurrent: true, metricUnit: true } } } } } }, milestones: true } });
       if (!record) throw conflict();
       const task = serializePlan(record).actions.find(action => action.id === input.actionId);
       if (!task) throw new CalendarError("找不到你的任務 / Task not found", 404, "not_found");

@@ -1,3 +1,4 @@
+import { dependencySatisfied } from "@/lib/action-plan/dependency";
 import { browserMutationGuard } from "@/lib/security/http";
 import { completeGettingStarted } from "@/lib/getting-started/service";
 import { Prisma } from "@prisma/client";
@@ -41,9 +42,10 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         actionPlanId: true,
         done: true,
         milestoneId: true,
+        metricUnit: true,
         dependencyLevel: true,
-        dependencies: { select: { dependsOn: { select: { title: true, done: true } } } },
-        requiredBy: { select: { action: { select: { title: true, done: true } } } },
+        dependencies: { select: { dependsOnId: true, minimumCurrent: true, dependsOn: { select: { title: true, done: true, metricTarget: true, metricCurrent: true, metricUnit: true } } } },
+        requiredBy: { select: { minimumCurrent: true, action: { select: { title: true, done: true } } } },
         stageFit: true,
         stageFitReason: true,
         stageFitConfidence: true,
@@ -57,8 +59,25 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
     await prepareActionReward(tx, session.uid, id, current.done);
 
+    if ("dependencyThresholds" in parsed.data) {
+      await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
+      for (const [dependsOnId, minimumCurrent] of Object.entries(parsed.data.dependencyThresholds)) {
+        const edge = current.dependencies.find(e => e.dependsOnId === dependsOnId);
+        if (!edge) throw new PlanWriteError("前置任務不存在 / Prerequisite not found", 400);
+        if (minimumCurrent != null && (edge.dependsOn.metricTarget == null || !edge.dependsOn.metricUnit || minimumCurrent > edge.dependsOn.metricTarget)) throw new PlanWriteError("請先設定前置任務的數量目標與單位，門檻不得超過目標。 / Set the prerequisite target and unit first; threshold must not exceed the target.", 400);
+        if (current.done && !dependencySatisfied({ minimumCurrent, dependsOn: edge.dependsOn })) throw new PlanWriteError("已完成任務不能新增未達成的前提。 / Undo completion before adding an unmet prerequisite.", 409);
+        await tx.actionDependency.update({ where: { actionId_dependsOnId: { actionId: id, dependsOnId } }, data: { minimumCurrent } });
+      }
+      return;
+    }
     if ("metricTarget" in parsed.data) {
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
+      const metricCurrent = parsed.data.metricCurrent;
+      const invalidated = current.requiredBy.filter(e => e.action.done && e.minimumCurrent != null && (metricCurrent == null || metricCurrent < e.minimumCurrent));
+      if (invalidated.length) throw new PlanWriteError(`請先撤銷後續任務完成 / Undo completed dependent tasks first: ${invalidated.map(e => e.action.title).join(", ")}`, 409);
+      const largestThreshold = Math.max(0, ...current.requiredBy.map(e => e.minimumCurrent || 0));
+      if (largestThreshold > 0 && (parsed.data.metricTarget == null || parsed.data.metricTarget < largestThreshold || !parsed.data.metricUnit)) throw new PlanWriteError("數量目標不得低於現有依賴門檻，單位不可移除。 / Target must cover dependency thresholds and retain its unit.", 409);
+      if (largestThreshold > 0 && parsed.data.metricUnit !== current.metricUnit) throw new PlanWriteError("先移除相應依賴門檻，才能更換數量單位。 / Remove quantity dependency thresholds before changing units.", 409);
       await tx.actionItem.update({ where: { id }, data: parsed.data });
       return;
     }
@@ -69,10 +88,10 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         if (current.dependencyLevel > 0 && current.dependencies.length === 0) {
           throw new PlanWriteError("此任務尚未連結前置任務 ID，請先編輯依賴。");
         }
-        const unmet = current.dependencies.filter((edge) => !edge.dependsOn.done).map((edge) => edge.dependsOn.title);
+        const unmet = current.dependencies.filter(edge => !dependencySatisfied(edge)).map((edge) => edge.dependsOn.title);
         if (unmet.length) throw new PlanWriteError(`請先完成前置任務：${unmet.join("、")}`);
       } else {
-        const completed = current.requiredBy.filter((edge) => edge.action.done).map((edge) => edge.action.title);
+        const completed = current.requiredBy.filter(edge => edge.action.done && edge.minimumCurrent == null).map((edge) => edge.action.title);
         if (completed.length) throw new PlanWriteError(`請先取消後續任務的完成狀態：${completed.join("、")}`);
       }
       await tx.actionItem.update({ where: { id }, data: { done: parsed.data.done, completedAt: parsed.data.done ? (current.done ? undefined : new Date()) : null } });
@@ -84,17 +103,18 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     const action = parsed.data;
     if (!("dependencyActionIds" in action)) throw new PlanWriteError("Action 編輯資料不完整。", 400);
     await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, current.done && action.done === false ? "undo" : "edit");
-    if (current.done && action.done === false && current.requiredBy.some(edge => edge.action.done)) throw new PlanWriteError("請先取消後續任務的完成狀態 / Undo dependent tasks first");
+    if (current.done && action.done === false && current.requiredBy.some(edge => edge.action.done && edge.minimumCurrent == null)) throw new PlanWriteError("請先取消後續任務的完成狀態 / Undo dependent tasks first");
     const legacyActionTime = legacyHoursForMinutes(action.actionTime);
     const stageFitChanged = action.stageFit.score !== current.stageFit || action.stageFit.reason !== current.stageFitReason;
     const bottleneckFitChanged = action.bottleneckFit.score !== current.bottleneckFit || action.bottleneckFit.reason !== current.bottleneckFitReason;
     await assertDependencies({ userId: session.uid, planId: current.actionPlanId, actionId: id, dependencyIds: action.dependencyActionIds }, tx);
     if (current.done || action.done) {
       const unmet = await tx.actionItem.findMany({
-        where: { id: { in: action.dependencyActionIds }, actionPlanId: current.actionPlanId, done: false },
-        select: { title: true },
+        where: { id: { in: action.dependencyActionIds }, actionPlanId: current.actionPlanId },
+        select: { id: true, title: true, done: true, metricCurrent: true },
       });
-      if (unmet.length) throw new PlanWriteError(`請先完成前置任務：${unmet.map((item) => item.title).join("、")}`);
+      const unsatisfied = unmet.filter(dependsOn => !dependencySatisfied({ minimumCurrent: current.dependencies.find(e => e.dependsOnId === dependsOn.id)?.minimumCurrent, dependsOn }));
+      if (unsatisfied.length) throw new PlanWriteError(`請先完成前置任務：${unsatisfied.map((item) => item.title).join("、")}`);
     }
       await tx.actionItem.update({
         where: { id },
@@ -133,7 +153,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       await tx.actionDependency.deleteMany({ where: { actionId: id } });
       if (action.dependencyActionIds.length) {
         await tx.actionDependency.createMany({
-          data: action.dependencyActionIds.map((dependsOnId) => ({ actionId: id, dependsOnId })),
+          data: action.dependencyActionIds.map((dependsOnId) => ({ actionId: id, dependsOnId, minimumCurrent: current.dependencies.find(e => e.dependsOnId === dependsOnId)?.minimumCurrent ?? null })),
         });
       }
     });

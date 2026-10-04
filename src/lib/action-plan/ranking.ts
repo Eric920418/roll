@@ -1,3 +1,4 @@
+import { dependencySatisfied } from "./dependency";
 import { BOTTLENECKS, IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight } from "./constants";
 
 export type RankableAction = {
@@ -39,7 +40,8 @@ export type RankableAction = {
   bottleneckFitEditedByUser: boolean;
   createdAt: Date | string;
   dependencies: Array<{
-    dependsOn: { id: string; clientKey: string; title: string; done: boolean };
+    minimumCurrent?: number | null;
+    dependsOn: { id: string; clientKey: string; title: string; done: boolean; metricCurrent?: number | null; metricUnit?: string | null };
   }>;
 };
 
@@ -63,7 +65,7 @@ export type ActionPlanActionDto = {
     notes: string | null;
     actionIds: string[];
     actionTitles: string[];
-    actionRefs: Array<{ id?: string; clientKey: string; title: string; done: boolean; displayNumber?: number; milestonePosition?: number | null; crossMilestone?: boolean }>;
+    actionRefs: Array<{ id?: string; clientKey: string; title: string; done: boolean; displayNumber?: number; milestonePosition?: number | null; crossMilestone?: boolean; resolved?: boolean; minimumCurrent?: number | null; metricCurrent?: number | null; metricUnit?: string | null }>;
     missingLink: boolean;
     resolved: boolean;
     blocked: boolean;
@@ -114,10 +116,10 @@ export function humanizeActionText(text: string): string {
   }
   return text.replace(/\bicpDetails\b/g, "customer profile");
 }
-export function taskReference(task: { clientKey: string; title: string; displayNumber?: number; milestonePosition?: number | null; crossMilestone?: boolean }): string {
+export function taskReference(task: { clientKey: string; title: string; displayNumber?: number; milestonePosition?: number | null; crossMilestone?: boolean; minimumCurrent?: number | null; metricCurrent?: number | null; metricUnit?: string | null }): string {
   const number = task.displayNumber ?? Number(/^task_(\d+)$/.exec(task.clientKey)?.[1]);
   const prefix = task.crossMilestone && task.milestonePosition != null ? `Milestone ${task.milestonePosition + 1} · ` : "";
-  return `${prefix}${number ? `#${number} · ` : ""}${humanizeActionText(task.title)}`;
+  return `${prefix}${number ? `#${number} · ` : ""}${humanizeActionText(task.title)}${task.minimumCurrent != null ? ` (${task.metricCurrent ?? "?"}/${task.minimumCurrent} ${task.metricUnit || ""})` : ""}`;
 }
 /** Stable topological order: completion and priority labels never renumber tasks. */
 export function executionSequence<T extends Pick<RankableAction, "id" | "clientKey" | "milestoneId" | "executionOrder" | "createdAt" | "dependencies">>(actions: T[], positions = new Map<string, number>()): T[] {
@@ -142,8 +144,7 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
   const byId = new Map(actions.map(a => [a.id, a]));
   const rows = ordered.map((action) => {
     const unfinished = action.dependencies
-      .map((edge) => edge.dependsOn)
-      .filter((dependency) => !dependency.done);
+      .filter(edge => !dependencySatisfied(edge)).map(edge => edge.dependsOn);
     const missingLink = action.dependencyLevel > 0 && action.dependencies.length === 0;
     const milestoneTitle = action.milestoneId ? milestoneBlocks.get(action.milestoneId) : undefined;
     const resolved = unfinished.length === 0 && !missingLink && !milestoneTitle;
@@ -193,7 +194,7 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
         notes: action.dependencyNotes ? humanizeActionText(action.dependencyNotes) : null,
         actionIds: action.dependencies.map((edge) => edge.dependsOn.id),
         actionTitles: unfinished.map((dependency) => humanizeActionText(dependency.title)),
-        actionRefs: action.dependencies.map(({ dependsOn: d }) => ({ ...d, title: humanizeActionText(d.title), displayNumber: numbers.get(d.id), milestonePosition: positions.get(byId.get(d.id)?.milestoneId || "") ?? null, crossMilestone: byId.get(d.id)?.milestoneId !== action.milestoneId })),
+        actionRefs: action.dependencies.map(edge => ({ ...edge.dependsOn, resolved: dependencySatisfied(edge), minimumCurrent: edge.minimumCurrent, title: humanizeActionText(edge.dependsOn.title), displayNumber: numbers.get(edge.dependsOn.id), milestonePosition: positions.get(byId.get(edge.dependsOn.id)?.milestoneId || "") ?? null, crossMilestone: byId.get(edge.dependsOn.id)?.milestoneId !== action.milestoneId })),
         missingLink,
         resolved,
         blocked,

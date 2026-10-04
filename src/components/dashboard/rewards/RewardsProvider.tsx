@@ -49,5 +49,5 @@ export function RewardsProvider({ children, userId }: { children: React.ReactNod
 export function useRewards() { const context = useContext(RewardsContext); if (!context) throw new Error("RewardsProvider missing"); return context; }
 export function RewardBadge() {
   const { data, error } = useRewards();
-  return <span className="relative z-10 rounded-full bg-current/10 px-2 py-0.5 text-xs tabular-nums" title={error || undefined}>{data ? data.balance.toLocaleString() : "—"}</span>;
+  return <span className="relative z-10 rounded-full bg-current/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums" title={error || undefined}>{data ? data.balance.toLocaleString() : "—"}</span>;
 }

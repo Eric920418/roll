@@ -1,3 +1,6 @@
+import { generateDiscovery } from "./discovery-ai";
+import { discoveryStateSchema, type DiscoveryState, type DiscoveryInput } from "./discovery";
+import { insightSchema } from "@/lib/customer-insights/schema";
 import { logSecurityError } from "@/lib/security/log";
 import "server-only";
 import { Prisma } from "@prisma/client";
@@ -16,18 +19,21 @@ const LOCK_MS = 120_000;
 const json = (value: IcpDraft | IcpMessage[]) => value as unknown as Prisma.InputJsonValue;
 
 export async function getIcpWorkspace(userId: string, locale: "en" | "zh-tw"): Promise<IcpWorkspaceView> {
-  const [workspace, profile] = await Promise.all([
+  const [workspace, profile, notes] = await Promise.all([
     prisma.icpWorkspace.findUnique({ where: { userId } }),
     prisma.onboardingProfile.findUnique({ where: { userId }, select: { icp: true, icpDetails: true, icpVersion: true } }),
+    prisma.meetingNote.findMany({ where: { userId }, select: { insight: true } }),
   ]);
   const saved = readIcp(profile?.icpDetails);
   const draft = readIcp(workspace?.draft);
   const messages = workspace ? workspace.messages as IcpMessage[] : [nextIcpQuestion(null, [], locale)!];
   return {
+    customerConversationCount: notes.filter(n => { const p = insightSchema.safeParse(n.insight); return p.success && p.data.stage !== "angel_round" && !["Internal", "Mentor", "Industry expert", "Advisor"].includes(p.data.type) && (p.data.answers.some(Boolean) || p.data.notes); }).length,
     revision: workspace?.revision ?? 0, profileVersion: workspace?.profileVersion ?? profile?.icpVersion ?? 0,
     currentProfileVersion: profile?.icpVersion ?? 0, messages, draft, saved, legacy: profile?.icp ?? null,
     pending: Boolean(workspace?.pendingRequestId && workspace.pendingSince && Date.now() - workspace.pendingSince.getTime() < LOCK_MS),
     error: workspace?.lastError ?? null,
+    discovery: discoveryStateSchema.safeParse(workspace?.discovery).success ? discoveryStateSchema.parse(workspace?.discovery) : null,
   };
 }
 
@@ -48,7 +54,7 @@ async function expireAnalysis(workspace: Awaited<ReturnType<typeof ensureWorkspa
   return workspace;
 }
 
-export async function runIcp(account: Account, input: { action: "answer" | "retry"; text?: string; revision: number; requestId: string; locale: "en" | "zh-tw" }) {
+export async function runIcp(account: Account, input: { action: "answer" | "retry" | "discover"; discovery?: DiscoveryInput; text?: string; revision: number; requestId: string; locale: "en" | "zh-tw" }) {
   const userId = account.id;
   let workspace = await ensureWorkspace(userId, input.locale);
   if (workspace.lastRequestId === input.requestId) return getIcpWorkspace(userId, input.locale);
@@ -64,7 +70,7 @@ export async function runIcp(account: Account, input: { action: "answer" | "retr
   }
   const claimed = await prisma.icpWorkspace.updateMany({
     where: { userId, revision: input.revision, pendingRequestId: null },
-    data: { messages: json(messages), revision: { increment: 1 }, pendingRequestId: input.requestId, pendingSince: new Date(), lastError: null },
+    data: { ...(input.discovery ? { discovery: { path: input.discovery.mode === "suggest" ? "suggest" : input.discovery.mode === "synthesize" ? "discovery" : "guess", input: input.discovery, ...(discoveryStateSchema.safeParse(workspace.discovery).success ? { result: discoveryStateSchema.parse(workspace.discovery).result } : {}) } as unknown as Prisma.InputJsonValue } : {}), messages: json(messages), revision: { increment: 1 }, pendingRequestId: input.requestId, pendingSince: new Date(), lastError: null },
   });
   if (!claimed.count) throw conflict();
   let usageId: string | null = null;
@@ -76,6 +82,20 @@ export async function runIcp(account: Account, input: { action: "answer" | "retr
     if (!usageId) throw new IcpError("本月 AI 額度已用完，請前往 Account and plan 加購。 / AI allowance exhausted. Visit Account and plan.", 429);
     const attached = await prisma.icpWorkspace.updateMany({ where: { userId, pendingRequestId: input.requestId, revision: input.revision + 1 }, data: { usageId } });
     if (!attached.count) throw conflict();
+    if (input.action === "discover") {
+      if (!input.discovery) throw new IcpError("缺少 ICP 輸入 / Missing ICP input");
+      const stored = discoveryStateSchema.safeParse(workspace.discovery);
+      const excluded = stored.success ? stored.data.result?.candidates.map(c => c.name) || [] : [];
+      const notes = input.discovery.mode === "synthesize" ? await prisma.meetingNote.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, body: true, insight: true } }) : [];
+      const conversations = notes.filter(n => { const p = insightSchema.safeParse(n.insight); return p.success && p.data.stage !== "angel_round" && !["Internal", "Mentor", "Industry expert", "Advisor"].includes(p.data.type) && (p.data.answers.some(Boolean) || p.data.notes); }).slice(0, 20).map(n => ({ id: n.id, body: (n.body || "").slice(0, 6000) }));
+      if (input.discovery.mode === "synthesize" && conversations.length < 5) throw new IcpError("請先保存至少 5 次含筆記的客戶對話（不含內部／導師／投資人）。 / Save at least 5 customer conversations with notes first.");
+      const result = await generateDiscovery(account.profile, input.discovery, input.locale, conversations, excluded);
+      const discovery: DiscoveryState = { path: input.discovery.mode === "suggest" ? "suggest" : input.discovery.mode === "synthesize" ? "discovery" : "guess", input: input.discovery, guess: input.discovery.guess, result };
+      const committed = await prisma.icpWorkspace.updateMany({ where: { userId, pendingRequestId: input.requestId, revision: input.revision + 1 }, data: { discovery: discovery as unknown as Prisma.InputJsonValue, pendingRequestId: null, pendingSince: null, usageId: null, lastRequestId: input.requestId, lastError: null } });
+      if (!committed.count) throw conflict();
+      succeeded = true;
+      return await getIcpWorkspace(userId, input.locale);
+    }
     const draft = await generateIcp(account.profile, messages, input.locale);
     // A retry replaces an unanswered follow-up, never creates a fourth question.
     if (input.action === "retry" && messages.at(-1)?.role === "assistant") messages.pop();
@@ -104,8 +124,8 @@ export async function runIcp(account: Account, input: { action: "answer" | "retr
   }
 }
 
-export async function patchIcp(userId: string, input: { action: "edit" | "save"; draft: IcpDraft; revision: number; profileVersion: number; requestId: string; locale: "en" | "zh-tw" }) {
-  if (!hasIcp(input.draft)) throw new IcpError("請至少填寫一項 ICP 資訊。 / Enter at least one ICP field.");
+export async function patchIcp(userId: string, input: { action: "edit" | "save" | "choose"; discovery?: DiscoveryState; draft: IcpDraft; revision: number; profileVersion: number; requestId: string; locale: "en" | "zh-tw" }) {
+  if (input.action !== "choose" && !hasIcp(input.draft)) throw new IcpError("請至少填寫一項 ICP 資訊。 / Enter at least one ICP field.");
   await expireAnalysis(await ensureWorkspace(userId, input.locale), userId, input.locale);
   await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
@@ -114,7 +134,7 @@ export async function patchIcp(userId: string, input: { action: "edit" | "save";
     if (workspace.pendingRequestId) throw new IcpError("AI 正在分析，請稍候再編輯。 / Wait for the AI analysis to finish.", 409);
     if (workspace.revision !== input.revision) throw conflict();
     const changed = await tx.icpWorkspace.updateMany({ where: { userId, revision: input.revision, pendingRequestId: null }, data: {
-      draft: json(input.draft), revision: { increment: 1 }, lastRequestId: input.requestId, lastError: null,
+      ...(input.action !== "choose" ? { draft: json(input.draft) } : {}), ...(input.discovery ? { discovery: input.discovery as unknown as Prisma.InputJsonValue } : {}), revision: { increment: 1 }, lastRequestId: input.requestId, lastError: null,
     } });
     if (!changed.count) throw conflict();
     if (input.action === "save") {

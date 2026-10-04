@@ -25,6 +25,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const parsed = noteUpdateSchema.safeParse(await req.json());
     if (!parsed.success) return fail(zodMessage(parsed.error), 400);
     const d = parsed.data;
+    const existing = await prisma.meetingNote.findFirst({ where: { id, userId: session.uid }, select: { insight: true } });
+    if (!existing) return fail("找不到資料 / Not found", 404);
+    if (existing.insight != null) return fail("請使用 Customer insights 的編輯對話，避免覆蓋結構化紀錄。 / Edit this conversation in Customer insights to preserve structured fields.", 409);
 
     const data = {
       ...(d.title !== undefined && { title: d.title }),

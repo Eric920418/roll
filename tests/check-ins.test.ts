@@ -144,3 +144,31 @@ test("weekly simultaneous generation locks; changed plans reject late AI without
   h.active.revision = 1; release({ nextActionIds: ["t1"], rationale: "Old proposal", investorDraft: "Old private draft", metricSuggestions: [] });
   await assert.rejects(pending, /changed/); assert.equal(h.state.recommendations, null); assert.equal(h.state.finding, "Actual finding"); assert.deepEqual(h.billed, [false]);
 });
+
+test("weekly quantity edits cannot invalidate completed quantity-dependent tasks", async () => {
+  let writes = 0;
+  const rawPlan = { id: "p1", actions: [
+    { id: "t1", metricCurrent: 5, metricUnit: "interviews", milestoneId: "m1", done: false, dependencies: [] },
+    { id: "t2", done: true, dependencies: [{ minimumCurrent: 5, dependsOn: { id: "t1", metricCurrent: 5 } }] },
+  ] };
+  const tx = { weeklyCheckIn: { findUnique: async () => null }, actionPlan: { findUniqueOrThrow: async () => rawPlan }, actionItem: { update: async () => { writes++; } } };
+  const api = load<typeof import("../src/lib/check-ins/service")>("src/lib/check-ins/service.ts", {
+    "@/lib/prisma": { prisma: { $transaction: async (fn: (t: typeof tx) => unknown) => fn(tx) } },
+    "@/lib/action-plan/service": { PlanWriteError: class extends Error { status = 409; }, lockActivePlan: async () => {}, guardActionMilestone: async () => {} },
+    "@/lib/ai/allowance": {}, "@/lib/rate-limit": {}, "./schema": require("../src/lib/check-ins/schema"), "./ai": {},
+  });
+  await assert.rejects(api.saveCheckIn("owner", { action: "save", requestId: "e7e8a3fe-0d86-49be-b731-25b52bd9e3f9", planId: "p1", planRevision: 0, revision: 0, weekStart: taipeiWeek(), finding: "Actual finding", blockers: "", metrics: [{ actionId: "t1", current: 4 }] }), /Undo completed dependent tasks/);
+  assert.equal(writes, 0);
+});
+test("quantity unlocks are shared by ranking but never bypass a locked milestone", () => {
+  const first = { ...row("t1"), metricTarget: 10, metricCurrent: 5, metricUnit: "interviews" };
+  const next = row("t2", "m1", ["t1"]);
+  next.dependencies[0] = { ...next.dependencies[0], minimumCurrent: 5, dependsOn: { ...next.dependencies[0].dependsOn, metricCurrent: 5 } };
+  const ranked = rankActions([first, next]);
+  assert.equal(ranked[1].dependency.blocked, false); assert.equal(ranked[1].dependency.actionRefs[0].resolved, true);
+  assert.equal(first.done, false);
+  next.milestoneId = "m2";
+  assert.equal(rankActions([first, next], new Map([["m2", "Confirm previous outcome"]]))[1].dependency.blocked, true);
+  assert.equal(actionPatchSchema.safeParse({ dependencyThresholds: { t1: 0 } }).success, false);
+  assert.equal(actionPatchSchema.safeParse({ dependencyThresholds: { t1: 1.5 } }).success, false);
+});

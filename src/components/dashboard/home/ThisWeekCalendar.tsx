@@ -50,6 +50,17 @@ export default function ThisWeekCalendar() {
     window.addEventListener("focus", refresh); window.addEventListener("nova-plan-changed", refresh);
     return () => { invalidate(); clearInterval(timer); calendar?.close(); plans?.close(); window.removeEventListener("focus", refresh); window.removeEventListener("nova-plan-changed", refresh); };
   }, [reload, userId, invalidate]);
+  useEffect(() => {
+    const scheduleFromCard = async (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      const fresh = await reload();
+      const task = fresh?.tasks.find(item => item.id === id);
+      if (!fresh || !task || task.dependency.blocked) { setMutationError(t("taskChanged")); return; }
+      setChosenDate(task.scheduled?.date || fresh.today); setPanel({ kind: "schedule", taskId: id });
+    };
+    window.addEventListener("nova-schedule-task", scheduleFromCard);
+    return () => window.removeEventListener("nova-schedule-task", scheduleFromCard);
+  }, [reload, t]);
   useEffect(() => { if (panel && dialog.current && !dialog.current.open) dialog.current.showModal(); }, [panel]);
   const dateLabel = (date: string, full = false) => new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en", { timeZone: "UTC", month: "short", day: "numeric", ...(full ? { weekday: "long" } : {}) }).format(new Date(`${date}T00:00:00Z`));
   function openDay(date: string) { setDraft(newDraft(date)); setPanel({ kind: "day", date }); setNotice(""); }
@@ -59,7 +70,7 @@ export default function ThisWeekCalendar() {
     setPanel({ kind: "schedule", taskId: task.id }); setNotice("");
   }
   function waiting(task: CalendarTask) {
-    const refs = task.dependency.actionRefs.filter(ref => !ref.done).map(ref => `#${ref.displayNumber ?? ref.clientKey}`);
+    const refs = task.dependency.actionRefs.filter(ref => !(ref.resolved ?? ref.done)).map(ref => `#${ref.displayNumber ?? ref.clientKey}`);
     return refs.length ? t("waiting", { tasks: refs.join(", ") }) : task.dependency.milestoneTitle ? t("milestone", { title: task.dependency.milestoneTitle }) : t("missingLink");
   }
   async function write(input: WeekMutation) {
@@ -110,23 +121,23 @@ export default function ThisWeekCalendar() {
   const dayEntries = panel?.kind === "day" ? data?.entries.filter(entry => entry.date === panel.date) || [] : [];
   const selectedTask = panel?.kind === "schedule" ? data?.tasks.find(task => task.id === panel.taskId) : null;
   const agenda = pathForLocale("/dashboard/agenda", locale);
-  return <section id="this-week" aria-labelledby="this-week-title" className="min-w-0 rounded-3xl bg-[#111111] p-4 text-white sm:p-6">
+  return <section id="this-week" aria-labelledby="this-week-title" className="min-w-0 rounded-3xl bg-[#111111] p-4 text-white sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/50">{t("eyebrow")}</p><h2 id="this-week-title" className="mt-1 text-2xl font-bold tracking-tight font-[family-name:var(--font-heading)]">{t("title")}</h2></div>
       <button className={`${outline} border-white/30 bg-white/5 hover:bg-white/10`} disabled={!data || busy} onClick={() => { setPanel({ kind: "plan" }); setNotice(""); }}>{t("planWeek")} <span aria-hidden="true">↗</span></button></div>
-    <div className="mt-4 flex items-center justify-between gap-2 text-xs text-white/60"><span>{data ? `${dateLabel(data.weekStart)} – ${dateLabel(addCalendarDays(data.weekStart, 6))}` : t("loading")} · {t("timezone")}</span>
+    <div className="mt-1 flex items-center justify-between gap-2 text-xs text-white/60"><span>{data ? `${dateLabel(data.weekStart)} – ${dateLabel(addCalendarDays(data.weekStart, 6))}` : t("loading")} · {t("timezone")}</span>
       <div className="flex items-center gap-1"><button className="min-h-11 min-w-11 rounded-lg hover:bg-white/10" aria-label={t("previous")} disabled={!data || busy} onClick={() => setWeek(addCalendarDays(data!.weekStart, -7))}>←</button>{week && <button className="min-h-11 rounded-lg px-2 underline underline-offset-4" disabled={busy} onClick={() => setWeek("")}>{t("today")}</button>}<button className="min-h-11 min-w-11 rounded-lg hover:bg-white/10" aria-label={t("next")} disabled={!data || busy} onClick={() => setWeek(addCalendarDays(data!.weekStart, 7))}>→</button></div></div>
     {!data && !displayedError && <div className="mt-3 grid grid-cols-7 gap-1" aria-busy="true">{Array.from({ length: 7 }, (_, i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-white/5" />)}</div>}
     <div className="mt-2 overflow-x-auto"><div className="grid min-w-[308px] grid-cols-7 gap-0 sm:gap-2">{days.map((date, i) => {
       const entries = data!.entries.filter(entry => entry.date === date), isToday = date === data!.today;
       return <button key={date} type="button" data-calendar-date={date} disabled={busy} aria-current={isToday ? "date" : undefined} aria-label={t("dayLabel", { date: dateLabel(date, true), count: entries.length })}
         onClick={() => openDay(date)}
-        className={`relative flex min-h-28 min-w-0 flex-col items-center rounded-2xl border px-0.5 py-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-32 sm:px-2 ${isToday ? "border-white bg-white/10" : "border-transparent bg-white/[0.035] hover:bg-white/10"} ${over === date ? "ring-2 ring-white bg-white/20" : ""}`}>
+        className={`relative flex min-h-20 min-w-0 flex-col items-center rounded-2xl border px-0.5 py-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-20 sm:px-2 ${isToday ? "border-white bg-white/10" : "border-transparent bg-white/[0.035] hover:bg-white/10"} ${over === date ? "ring-2 ring-white bg-white/20" : ""}`}>
         <span className="text-[10px] font-semibold text-white/60 sm:text-xs">{t(`days.${i}`)}</span><span className="mt-2 text-lg font-semibold tabular-nums sm:text-2xl">{Number(date.slice(-2))}</span>
         {entries.length ? <span aria-hidden="true" className="mt-auto flex min-h-6 items-center justify-center gap-1">{entries.slice(0, 3).map(entry => <span key={entry.id} className={`h-1.5 w-1.5 rounded-full ${entry.done ? "border border-white/50" : entry.kind === "action" ? "bg-white" : "bg-white/50"}`} />)}{entries.length > 3 && <span className="text-[9px]">+{entries.length - 3}</span>}</span>
           : <span className="mt-auto pt-2 text-[10px] text-white/55 sm:text-xs">{t("addShort")}</span>}
       </button>;
     })}</div></div>
-    <div className="mt-5 border-t border-white/10 pt-5"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-white/70">{t("taskHeading")}</p><p className="text-xs text-white/55">{t(desktopDrag ? "dragHint" : "tapHint")}</p></div>
+    <div className="mt-3 border-t border-white/10 pt-3"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-white/70">{t("taskHeading")}</p><p className="text-xs text-white/55">{t(desktopDrag ? "dragHint" : "tapHint")}</p></div>
       {data && data.tasks.length ? <div className="grid gap-2 lg:grid-cols-3">{data.tasks.slice(0, 3).map(task => taskPill(task))}</div> : data && <p className="text-sm text-white/55">{data.planId ? t("allDone") : t("noPlan")}</p>}
       <p className="mt-3 text-[11px] leading-relaxed text-white/50">{t("pointsHint")}</p></div>
     {notice && !panel && <p role="status" className="mt-3 text-sm text-white/80">{notice}</p>}
