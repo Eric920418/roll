@@ -1297,8 +1297,17 @@ Next Node.js OG RCE 的必要條件在目前 Edge OG route 不成立；仍完成
 
 - 本輪驗收：180 項測試（含隔離 PostgreSQL）全部通過，TypeScript、production build 通過；lint 0 errors、14 個既有效能／依賴警告。真實 API 驗證數量門檻、週記降低數量保護、更換單位保護、雙分頁 409、帳號隔離與並行領獎僅一次 +50。
 - 真實 Anthropic 驗證候選、聚焦、訪談彙整；未確認草稿不覆蓋已儲存 ICP。桌面 1600px／手機 390px 驗證 Home + Log、門檻編輯、繁中階段表單保存／編輯、ICP 恢復、完整文字展開，無水平溢出或瀏覽器錯誤。測試資料均屬本輪專用帳號。
-- 正式相容遷移已套用 `prisma/customer-discovery.sql`，Repeatable Read 交易比對 45 張既有表的原欄位指紋與筆數不變；僅新增三個可空欄位及 CustomerStageOutcome。證明保存於 `/Users/eric/.codex/backups/roll/customer-discovery-schema-2026-10-04.json`。候選上線驗收中，尚未切換正式網域。
+- 正式相容遷移已套用 `prisma/customer-discovery.sql`，Repeatable Read 交易比對 45 張既有表的原欄位指紋與筆數不變；僅新增三個可空欄位及 CustomerStageOutcome。證明保存於 `/Users/eric/.codex/backups/roll/customer-discovery-schema-2026-10-04.json`。候選已通過驗收並切換正式網域，發布紀錄如下。
 
 - + Log 發生 409 時可在面板內載入最新版本並保留輸入；顯示最新已保存累計值，供使用者比對後再儲存。
 
 - 後端另拒絕在前置條件未達成時增加被阻擋任務的累計值，週記一次儲存多項數量時以整批新值驗證；避免繞過灰色 Log 按鈕。目標與單位仍可預先設定。
+
+#### 本輪正式發布與視覺验收
+
+- 正式程式版本 `4becc36`（包含 `bc6158d` 功能與 main 最新郵件紀錄），候選 `dpl_CsWrucEUc2ztvkhXSNBr59rKQXkc` / `roll-30a12znfe` 建置成功；受保護候選經 API 驗收後已 promote 至 `https://www.rollgrp.com`。
+- 候選驗證：數量解鎖但不自動完成、受阻擋不能直接增加進度、已完成後續的數量撤銷保護、同 requestId 防重建、並行領獎只有一次 50 分、未登入／不同帳號隔離、真實 AI 及成功重送。公開站另通過 18 項進度／衝突／ICP 恢復／獎勵重送檢查。
+- 正式瀏覽器使用本輪 example.invalid 帳號驗證登入、Home + Log、四階段與已領獎狀態；繁中手機 ICP 四欄 value 皆空白，範例只存在 placeholder，390px 無水平溢出。最後 30 分鐘候選 runtime error 查詢為 0 筆；Vercel 登入保護頁的 Google FedCM 錯誤不屬於 NOVA 頁面。
+- 依參考圖檢查區塊順序、側欄字級、進度條、鎖頭、灰色提示、桌面／手機及鍵盤焦點；發現的原生綠色 progress、重複展開的阻擋清單與面板 409 無重試入口均已修正。非強制首頁導覽與既有 Podcast／Events 仍依真實資料顯示。
+- 截圖保存於 `/Users/eric/.codex/backups/roll/customer-discovery-qa/`：`home-production.jpg`、`insights-production.jpg`、`icp-mobile-production.jpg`、`next-steps-desktop.jpg`。本機另實測面板衝突後保留累計值 6、載入伺服器值 5、人工再次儲存成功。
+- 兩個正式與兩個本機專用帳號及關聯測試資料已依具名 ID／email／公司資料檢查後清除；既有會員未變更。Preview 仍關閉，沒有啟用正式資料庫的 Preview 建置。外部 AI 仍可能逾時或回傳不合格內容，系統保留草稿／安全錯誤與重試；不宣稱永無故障。
