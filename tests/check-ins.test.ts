@@ -78,7 +78,7 @@ test("stage corrections cannot affect completed/later tasks and validate entire 
 });
 function load<T>(path: string, mocks: Record<string, unknown>) {
   const mod = { exports: {} };
-  runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { module: mod, exports: mod.exports, require: (id: string) => id === "server-only" ? {} : id in mocks ? mocks[id] : require(id), process: { env: {} }, Date, Set, Map, Error, console: { error() {}, warn() {} } });
+  runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { module: mod, exports: mod.exports, require: (id: string) => id === "server-only" ? {} : id === "@/lib/action-plan/dependency" ? require("../src/lib/action-plan/dependency") : id in mocks ? mocks[id] : require(id), process: { env: {} }, Date, Set, Map, Error, console: { error() {}, warn() {} } });
   return mod.exports as T;
 }
 test("weekly AI gets one format repair; missing known quantities are never manufactured by fallback", async () => {

@@ -1298,3 +1298,7 @@ Next Node.js OG RCE 的必要條件在目前 Edge OG route 不成立；仍完成
 - 本輪驗收：180 項測試（含隔離 PostgreSQL）全部通過，TypeScript、production build 通過；lint 0 errors、14 個既有效能／依賴警告。真實 API 驗證數量門檻、週記降低數量保護、更換單位保護、雙分頁 409、帳號隔離與並行領獎僅一次 +50。
 - 真實 Anthropic 驗證候選、聚焦、訪談彙整；未確認草稿不覆蓋已儲存 ICP。桌面 1600px／手機 390px 驗證 Home + Log、門檻編輯、繁中階段表單保存／編輯、ICP 恢復、完整文字展開，無水平溢出或瀏覽器錯誤。測試資料均屬本輪專用帳號。
 - 正式相容遷移已套用 `prisma/customer-discovery.sql`，Repeatable Read 交易比對 45 張既有表的原欄位指紋與筆數不變；僅新增三個可空欄位及 CustomerStageOutcome。證明保存於 `/Users/eric/.codex/backups/roll/customer-discovery-schema-2026-10-04.json`。候選上線驗收中，尚未切換正式網域。
+
+- + Log 發生 409 時可在面板內載入最新版本並保留輸入；顯示最新已保存累計值，供使用者比對後再儲存。
+
+- 後端另拒絕在前置條件未達成時增加被阻擋任務的累計值，週記一次儲存多項數量時以整批新值驗證；避免繞過灰色 Log 按鈕。目標與單位仍可預先設定。

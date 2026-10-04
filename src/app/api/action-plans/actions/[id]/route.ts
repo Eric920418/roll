@@ -43,6 +43,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         done: true,
         milestoneId: true,
         metricUnit: true,
+        metricCurrent: true,
         dependencyLevel: true,
         dependencies: { select: { dependsOnId: true, minimumCurrent: true, dependsOn: { select: { title: true, done: true, metricTarget: true, metricCurrent: true, metricUnit: true } } } },
         requiredBy: { select: { minimumCurrent: true, action: { select: { title: true, done: true } } } },
@@ -73,6 +74,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if ("metricTarget" in parsed.data) {
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
       const metricCurrent = parsed.data.metricCurrent;
+      if (metricCurrent != null && metricCurrent > (current.metricCurrent ?? -1) && ((current.dependencyLevel > 0 && current.dependencies.length === 0) || current.dependencies.some(edge => !dependencySatisfied(edge)))) throw new PlanWriteError("請先達成前置條件，再增加本任務進度。 / Resolve prerequisites before increasing this task’s progress.", 409);
       const invalidated = current.requiredBy.filter(e => e.action.done && e.minimumCurrent != null && (metricCurrent == null || metricCurrent < e.minimumCurrent));
       if (invalidated.length) throw new PlanWriteError(`請先撤銷後續任務完成 / Undo completed dependent tasks first: ${invalidated.map(e => e.action.title).join(", ")}`, 409);
       const largestThreshold = Math.max(0, ...current.requiredBy.map(e => e.minimumCurrent || 0));

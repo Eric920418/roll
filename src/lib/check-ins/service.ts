@@ -1,3 +1,4 @@
+import { dependencySatisfied } from "@/lib/action-plan/dependency";
 import { logSecurityError } from "@/lib/security/log";
 import "server-only";
 import { Prisma } from "@prisma/client";
@@ -48,6 +49,8 @@ export async function saveCheckIn(userId: string, input: Extract<CheckInRequest,
         const task = plan.actions.find(a => a.id === m.actionId);
         if (!task || (m.current != null && !task.metricUnit)) throw new PlanWriteError("請先確認數量目標與單位 / Confirm the metric target and unit first", 400);
         if (task.metricCurrent === m.current) continue;
+        const unresolved = task.dependencies.some(edge => !dependencySatisfied({ ...edge, dependsOn: { ...edge.dependsOn, metricCurrent: input.metrics.some(change => change.actionId === edge.dependsOn.id) ? input.metrics.find(change => change.actionId === edge.dependsOn.id)!.current : edge.dependsOn.metricCurrent } }));
+        if (m.current != null && m.current > (task.metricCurrent ?? -1) && (unresolved || (task.dependencyLevel > 0 && task.dependencies.length === 0))) throw new PlanWriteError("請先達成前置條件，再增加本任務進度。 / Resolve prerequisites before increasing this task’s progress.", 409);
         const invalidated = plan.actions.filter(dependent => dependent.done && dependent.dependencies.some(edge => edge.dependsOn.id === task.id && edge.minimumCurrent != null && (m.current == null || m.current < edge.minimumCurrent)));
         if (invalidated.length) throw new PlanWriteError(`請先撤銷後續任務完成 / Undo completed dependent tasks first: ${invalidated.map(a => a.title).join(", ")}`, 409);
         await guardActionMilestone(tx, plan.id, task.milestoneId, "edit");

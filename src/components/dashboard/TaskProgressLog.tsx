@@ -6,10 +6,11 @@ import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 type Metric = { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number };
 export default function TaskProgressLog({ action, revision, busy, onSave }: { action: ActionPlanActionDto; revision?: number; busy?: boolean; onSave: (metric: Metric) => Promise<boolean | void> }) {
   const zh = useLocale() === "zh-tw", dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null), sending = useRef(false);
+  const [latest, setLatest] = useState("");
   const [form, setForm] = useState({ target: "", unit: "", current: "", revision }), [error, setError] = useState(""), [saving, setSaving] = useState(false);
   const field = "mt-1 min-h-11 w-full rounded-lg border border-dark/20 bg-white p-3 text-dark";
   const button = "min-h-11 rounded-xl border border-dark/20 px-4 py-2 text-sm font-semibold disabled:opacity-50";
-  function open() { setForm({ target: String(action.metric?.target ?? ""), unit: action.metric?.unit || "", current: String(action.metric?.current ?? ""), revision }); setError(""); dialog.current?.showModal(); }
+  function open() { setForm({ target: String(action.metric?.target ?? ""), unit: action.metric?.unit || "", current: String(action.metric?.current ?? ""), revision }); setError(""); setLatest(""); dialog.current?.showModal(); }
   useEffect(() => {
     const show = (event: Event) => { if ((event as CustomEvent<string>).detail === action.id) trigger.current?.click(); };
     window.addEventListener("nova-log-task", show); return () => window.removeEventListener("nova-log-task", show);
@@ -22,7 +23,8 @@ export default function TaskProgressLog({ action, revision, busy, onSave }: { ac
         <label className="block text-sm">{zh ? "單位" : "Unit"}<input maxLength={80} value={form.unit} placeholder={zh ? "例如：次訪談" : "e.g. interviews"} onChange={e => setForm({ ...form, unit: e.target.value })} className={field} /></label>
         <label className="block text-sm">{zh ? "截至目前的累計值（未知請留白）" : "Total so far (leave blank if unknown)"}<input type="number" min="0" max="1000000000" step="1" value={form.current} onChange={e => setForm({ ...form, current: e.target.value })} className={field} /></label>
         <p className="text-sm text-dark/60">{zh ? "填累計總數，不是本次新增數量。數量門檻達標可解鎖相應任務，但不會自動勾選完成。" : "Enter the cumulative total, not an increment. Configured quantity thresholds can unlock dependent tasks, but never mark this task done."}</p>
-        {error && <p role="alert" className="whitespace-pre-wrap text-sm text-red-700">{error}</p>}
+        {error && <div role="alert" className="space-y-2"><p className="whitespace-pre-wrap text-sm text-red-700">{error}</p><button type="button" disabled={saving} className={button} onClick={async () => { setSaving(true); try { const res = await fetch("/api/action-plans/roadmap", { cache: "no-store" }); const json = await res.json(); if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`); const plan = json.data?.active; const task = plan?.actions.find((a: ActionPlanActionDto) => a.id === action.id); if (!task) throw new Error(zh ? "這個計畫已封存或任務已移除，請返回 Next steps。" : "This plan was archived or the task removed. Return to Next steps."); setForm(current => ({ ...current, revision: plan.revision })); setLatest(zh ? `伺服器目前累計：${task.metric?.current ?? "尚未回報"}。輸入已保留，請比對後再儲存。` : `Latest saved total: ${task.metric?.current ?? "Not reported"}. Your input is retained; review before saving.`); setError(""); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } finally { setSaving(false); } }}>{zh ? "載入最新版本（保留輸入）" : "Reload latest version (keep input)"}</button></div>}
+        {latest && <p role="status" className="text-sm">{latest}</p>}
         <div className="flex gap-3"><button disabled={saving || busy} className={`${button} bg-black text-white`}>{saving ? (zh ? "儲存中…" : "Saving…") : (zh ? "儲存進度" : "Save progress")}</button><button type="button" disabled={saving} className={button} onClick={() => dialog.current?.close()}>{zh ? "取消" : "Cancel"}</button></div>
       </form>
     </dialog></>;
