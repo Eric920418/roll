@@ -1,5 +1,17 @@
 # ROLL ON. 企業官網
 
+## Neon 成本調整（2026-10-06）
+
+公開 CMS 與首頁 ISR 的兜底從 60 秒延長為 3600 秒；所有 CMS 後台 mutation 仍以 tag 與 layout 失效，tag 改用 `{ expire: 0 }`，編輯後下一次讀取取得新內容。直接 SQL 修改不走失效，需要後台存檔或等兜底重新載入。
+
+提醒 cron 保留每 15 分鐘執行，先用 Next Data Cache 讀取「最早 enabled reminder / pending、processing outbox 工作時間」，未到期就不查資料庫；只快取時間、不快取收件人。設定／退訂成功，以及到期執行完成或失敗後立即失效；一小時 TTL 作外部改資料的兜底。既有 outbox、lease、重試、冪等寄送仍由原服務處理。Rewards 摘要保留首次載入、切回頁面、操作後更新及台北跨日刷新，移除同一天的每分鐘 API 輪詢。
+
+正式日誌已確認 `/api/cron/reward-reminders` 每 15 分鐘回 200；此調整減少無到期工作的 Neon 喚醒，實際節省需部署後新增 CU-hours 比較。沒有資料庫 migration 或會員資料變更。
+
+`tests/rewards-route.test.ts` 驗證多次空跑共用一次排程讀取、設定與退訂立即失效、到期 outbox 重試不被未到期 reminder 擋住、失敗後失效及停用寄信時不查資料庫；不寄送測試郵件或寫入正式 DB。
+
+驗證：`pnpm test` 154 通過、3 個隔離 DB 測試因未提供本機 QA DB 跳過；`pnpm exec tsc --noEmit`、異動檔案 ESLint 與 `git diff --check` 通過。Cron 日誌僅記錄 idle／run、下一工作時間及處理計數，不記錄收件人或憑證。
+
 ## Home This week（2026-10-03）
 
 新增週一到週日的安排，日期以 Asia/Taipei 計算。個人事項與 Action Plan 的安排獨立於任務完成／獎勵；排程本身不領分、不消耗 AI。GET /api/week-plan?weekStart=YYYY-MM-DD 只回本人資料，POST 接受 add／schedule／edit／remove，回應沿用 {data}／{error, code}。寫入驗證同源、登入、歸屬、日期、版本及每分鐘 40 次限制；Action Plan 排程沿用方案與前置任務／里程碑權限。個人事項支援備註與完成狀態；Action Plan 完成仍走 Next steps。每項任務只有一個安排，併發使用會員安排鎖與 revision，重送不建立重複事項，移除安排不移除任務或積分紀錄。
@@ -308,9 +320,9 @@ public/
 
 未啟用 `cacheComponents`，走 Previous Model：
 
-- 前台 getter（`src/lib/cms/content.ts`）用 `unstable_cache` + tag + `revalidate: 60`
-- mutation 後 `src/lib/cms/revalidate.ts` 的 `revalidateContent()` 呼叫 `revalidateTag(tag, "max")`（Next 16 雙參數）+ `revalidatePath("/", "layout")`
-- 首頁另設 `export const revalidate = 60` 作為兜底；編輯後前台最多 60 秒內更新（多數情況即時）
+- 前台 getter（`src/lib/cms/content.ts`）用 `unstable_cache` + tag + `revalidate: 3600`
+- mutation 後 `src/lib/cms/revalidate.ts` 的 `revalidateContent()` 呼叫 `revalidateTag(tag, { expire: 0 })` + `revalidatePath("/", "layout")`
+- 首頁另設 `export const revalidate = 3600` 作兜底；後台編輯後下一次讀取阻塞更新，不受一小時 TTL 限制
 
 ### Build 期間 DB 讀取重試（`src/lib/prisma.ts`）
 

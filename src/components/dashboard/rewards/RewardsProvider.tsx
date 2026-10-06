@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { RewardSummary } from "@/lib/rewards/service";
+import { rewardKeys } from "@/lib/rewards/policy";
 export async function rewardRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init });
   const raw = await response.text();
@@ -39,9 +40,12 @@ export function RewardsProvider({ children, userId }: { children: React.ReactNod
     let active = true;
     const currentRevision = revision.current;
     rewardRequest<RewardSummary>(summaryUrl()).then(summary => { if (active && currentRevision === revision.current) update(summary); }).catch(cause => { if (active && currentRevision === revision.current) { setError(cause instanceof Error ? cause.message : String(cause)); setLoading(false); } });
-    const focus = () => { if (document.visibilityState === "visible") void refresh(); };
+    let day = rewardKeys().day;
+    const focus = () => { if (document.visibilityState === "visible") { day = rewardKeys().day; void refresh(); } };
     window.addEventListener("focus", focus); document.addEventListener("visibilitychange", focus);
-    const timer = window.setInterval(focus, 60000);
+    // Writes update the provider directly; only a calendar change needs a
+    // background refresh. Returning to the page still refreshes the balance.
+    const timer = window.setInterval(() => { if (rewardKeys().day !== day) focus(); }, 60000);
     return () => { active = false; window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", focus); window.clearInterval(timer); };
   }, [refresh, update, summaryUrl]);
   return <RewardsContext.Provider value={{ data, error, loading, userId, refresh, update }}>{children}</RewardsContext.Provider>;

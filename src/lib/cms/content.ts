@@ -18,14 +18,14 @@ export const getSetting = (key: string) =>
         .findUnique({ where: { key } })
         .then((r) => (r?.value as Record<string, unknown> | undefined) ?? {}),
     ["setting", key],
-    { tags: [SETTINGS_TAG], revalidate: 60 },
+    { tags: [SETTINGS_TAG], revalidate: 3600 },
   )();
 
 // 前台用 getter：僅取 published，依 order 排序，包 unstable_cache + tag。
 // mutation 後由 admin API 呼叫 revalidateContent(TAGS.x) 失效。
 const opts = (tag: string): { tags: string[]; revalidate: number } => ({
   tags: [tag],
-  revalidate: 60,
+  revalidate: 3600,
 });
 
 export const getServices = (): Promise<Service[]> =>

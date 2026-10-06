@@ -10,9 +10,9 @@ import { rewardKeys, nextReminderAt, validReminderTime, validTimeZone } from "./
 import { rewardTransaction, rewardOpportunities, RewardError } from "./service";
 
 export const reminderSchema = z.object({ enabled: z.boolean(), time: z.string().refine(validReminderTime, "時間必須為每 15 分鐘的選項 / Select a 15-minute time slot"), timeZone: z.string().max(100).refine(validTimeZone, "無效時區 / Invalid time zone"), locale: z.enum(["en", "zh-tw"]) }).strict();
-function configured() { return process.env.REWARD_EMAIL_ENABLED === "true" && Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL && process.env.CRON_SECRET && process.env.AUTH_SECRET && process.env.NEXT_PUBLIC_APP_URL); }
+export function rewardEmailConfigured() { return process.env.REWARD_EMAIL_ENABLED === "true" && Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL && process.env.CRON_SECRET && process.env.AUTH_SECRET && process.env.NEXT_PUBLIC_APP_URL); }
 export async function saveReminder(userId: string, input: z.infer<typeof reminderSchema>, now = new Date()) {
-  if (input.enabled && !configured()) throw new RewardError("Email 提醒尚未開放，請稍後再啟用 / Email reminders are not available yet", 503, "email_unavailable");
+  if (input.enabled && !rewardEmailConfigured()) throw new RewardError("Email 提醒尚未開放，請稍後再啟用 / Email reminders are not available yet", 503, "email_unavailable");
   await rewardTransaction(async tx => {
     const previous = await tx.rewardReminder.findUnique({ where: { userId } });
     if (previous?.enabled && !input.enabled) await tx.rewardEntry.createMany({ data: [{ userId, eventKey: `unsubscribe:${previous.tokenVersion}`, kind: "unsubscribe", points: 0, dayKey: rewardKeys(now).day }], skipDuplicates: true });
@@ -78,7 +78,7 @@ export function canonicalEmailPayload(value: unknown): string {
   return JSON.stringify(canonical(value));
 }
 export async function runRewardReminders(now = new Date()) {
-  if (!configured()) return { disabled: true, accepted: 0, skipped: 0, failed: 0 };
+  if (!rewardEmailConfigured()) return { disabled: true, accepted: 0, skipped: 0, failed: 0 };
   const startedAt = Date.now();
   const scheduled = await prisma.rewardReminder.findMany({ where: { enabled: true, nextSendAt: { lte: now } }, orderBy: { nextSendAt: "asc" }, take: 100 });
   for (const reminder of scheduled) {
