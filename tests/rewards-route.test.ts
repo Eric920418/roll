@@ -15,17 +15,29 @@ function load<T>(path: string, mocks: Record<string, unknown>): T {
 }
 class RewardError extends Error { constructor(message:string, public status=409,public code="reward_conflict"){super(message);} }
 function harness() {
-  const state={uid:"owner" as string|null, limited:false, visits:[] as string[], redemptions:[] as {uid:string;requestId:string}[], reminders:[] as unknown[], cronCalls:0};
+  const state={uid:"owner" as string|null, limited:false, visits:[] as string[], redemptions:[] as {uid:string;requestId:string}[], reminders:[] as unknown[], cronCalls:0,
+    emailEnabled:true, nextReminderAt:new Date(0) as Date|null, nextAttemptAt:null as Date|null, scheduleReads:0, runFailure:false, invalidations:[] as string[]};
+  const cache = new Map<string, unknown>();
+  const cacheApi = {
+    unstable_cache: (fn: () => Promise<unknown>, keys: string[]) => async () => {
+      const key = keys.join(":"); if (!cache.has(key)) cache.set(key, await fn()); return cache.get(key);
+    },
+    revalidateTag: (tag: string, profile: { expire: number }) => { assert.equal(profile.expire, 0); state.invalidations.push(tag); cache.clear(); },
+  };
   const api={unauthorized:()=>Response.json({error:"Login required"},{status:401}),failFromError:()=>Response.json({error:"Safe server failure"},{status:500})};
   const service={RewardError,claimVisit:async(uid:string)=>{state.visits.push(uid);},getRewardSummary:async()=>({balance:5}),redeemReward:async(uid:string,requestId:string)=>{state.redemptions.push({uid,requestId});return{id:"redemption",credits:5};}};
   const http=load<typeof import("../src/lib/rewards/http")>("src/lib/rewards/http.ts",{"@/lib/rewards/service":service,"./service":service,"@/lib/api":api});
-  const mocks={"@/lib/api":api,"@/lib/auth/guard":{getUserSession:async()=>state.uid?{uid:state.uid}:null},"@/lib/rewards/service":service,"@/lib/rewards/http":http,"@/lib/rate-limit":{MINUTE_MS:60000,checkRateLimit:async()=>({ok:!state.limited})},"@/lib/rewards/reminders":{reminderSchema:z.object({enabled:z.boolean(),time:z.string().refine(validReminderTime),timeZone:z.string().refine(validTimeZone),locale:z.enum(["en","zh-tw"])}).strict(),saveReminder:async(uid:string,input:unknown)=>{state.reminders.push({uid,input});},runRewardReminders:async()=>{state.cronCalls++;return{disabled:true};}}};
+  const mocks={"next/cache":cacheApi,"@/lib/rewards/policy":rewardPolicy,"@/lib/prisma":{prisma:{
+    rewardReminder:{aggregate:async()=>{state.scheduleReads++;return{_min:{nextSendAt:state.nextReminderAt}};}},
+    rewardDelivery:{aggregate:async()=>{state.scheduleReads++;return{_min:{nextAttemptAt:state.nextAttemptAt}};}},
+  }},"@/lib/api":api,"@/lib/auth/guard":{getUserSession:async()=>state.uid?{uid:state.uid}:null},"@/lib/rewards/service":service,"@/lib/rewards/http":http,"@/lib/rate-limit":{MINUTE_MS:60000,checkRateLimit:async()=>({ok:!state.limited})},"@/lib/rewards/reminders":{reminderSchema:z.object({enabled:z.boolean(),time:z.string().refine(validReminderTime),timeZone:z.string().refine(validTimeZone),locale:z.enum(["en","zh-tw"])}).strict(),saveReminder:async(uid:string,input:unknown)=>{state.reminders.push({uid,input});state.nextReminderAt=new Date(0);},unsubscribeReminder:async()=>{state.nextReminderAt=null;state.nextAttemptAt=null;},rewardEmailConfigured:()=>state.emailEnabled,runRewardReminders:async()=>{state.cronCalls++;if(state.runFailure)throw new Error("Local test failure");state.nextReminderAt=new Date(Date.now()+86400000);state.nextAttemptAt=null;return{disabled:false,accepted:0,skipped:0,failed:0};}}};
   const visit=load<typeof import("../src/app/api/rewards/visit/route")>("src/app/api/rewards/visit/route.ts",mocks);
   const redeem=load<typeof import("../src/app/api/rewards/redeem/route")>("src/app/api/rewards/redeem/route.ts",mocks);
   const reminder=load<typeof import("../src/app/api/rewards/reminder/route")>("src/app/api/rewards/reminder/route.ts",mocks);
   const cron=load<typeof import("../src/app/api/cron/reward-reminders/route")>("src/app/api/cron/reward-reminders/route.ts",mocks);
+  const unsubscribe=load<typeof import("../src/app/api/rewards/unsubscribe/route")>("src/app/api/rewards/unsubscribe/route.ts",mocks);
   const request=(path:string,body?:unknown,origin:string|null="https://example.test")=>new Request(`https://example.test/api/rewards/${path}`,{method:path==="reminder"?"PATCH":"POST",headers:{...(origin?{Origin:origin}:{}),"Content-Type":"application/json"},...(body===undefined?{}:{body:JSON.stringify(body)})});
-  return {state,visit,redeem,reminder,cron,request};
+  return {state,visit,redeem,reminder,cron,unsubscribe,request};
 }
 test("Reward writes require a logged-in owner and same Origin before any mutation",async()=>{
   const h=harness();h.state.uid=null;assert.equal((await h.visit.POST(h.request("visit"))).status,401);
@@ -51,6 +63,33 @@ test("Cron fails closed without a secret, with wrong/Unicode tokens, and accepts
     for(const header of ["Bearer wrong","é".repeat("Bearer local-test-secret".length)])assert.equal((await h.cron.GET(new Request("https://example.test/api/cron/reward-reminders",{headers:{Authorization:header}}))).status,401);
     assert.equal(h.state.cronCalls,0);assert.equal((await h.cron.GET(new Request("https://example.test/api/cron/reward-reminders",{headers:{Authorization:"Bearer local-test-secret"}}))).status,200);assert.equal(h.state.cronCalls,1);
   }finally{if(original===undefined)delete process.env.CRON_SECRET;else process.env.CRON_SECRET=original;}
+});
+
+test("Idle reminder ticks reuse the cached empty schedule; settings and unsubscribe invalidate it",async()=>{
+  const h=harness(),original=process.env.CRON_SECRET;
+  const tick=()=>h.cron.GET(new Request("https://example.test/api/cron/reward-reminders",{headers:{Authorization:"Bearer local-test-secret"}}));
+  try {
+    process.env.CRON_SECRET="local-test-secret";h.state.nextReminderAt=null;
+    for(let i=0;i<4;i++){const response=await tick();assert.equal(response.status,200);assert.equal((await response.json()).data.idle,true);}
+    assert.equal(h.state.scheduleReads,2);assert.equal(h.state.cronCalls,0);
+    assert.equal((await h.reminder.PATCH(h.request("reminder",{enabled:true,time:"09:00",timeZone:"Asia/Taipei",locale:"en"}))).status,200);
+    await tick();assert.equal(h.state.cronCalls,1);assert.equal(h.state.scheduleReads,4);
+    await tick();await tick();assert.equal(h.state.scheduleReads,6);assert.equal(h.state.cronCalls,1);
+    assert.equal((await h.unsubscribe.POST(new Request("https://example.test/api/rewards/unsubscribe?token=local-test-token",{method:"POST"}))).status,200);
+    await tick();assert.equal(h.state.scheduleReads,8);assert.equal(h.state.cronCalls,1);
+    assert(h.state.invalidations.every(tag=>tag===rewardPolicy.REWARD_REMINDER_SCHEDULE_TAG));
+  } finally {if(original===undefined)delete process.env.CRON_SECRET;else process.env.CRON_SECRET=original;}
+});
+
+test("Due outbox retries run even when the next reminder is in the future; failed runs invalidate",async()=>{
+  const h=harness(),original=process.env.CRON_SECRET;
+  const tick=()=>h.cron.GET(new Request("https://example.test/api/cron/reward-reminders",{headers:{Authorization:"Bearer local-test-secret"}}));
+  try {
+    process.env.CRON_SECRET="local-test-secret";h.state.nextReminderAt=new Date(Date.now()+86400000);h.state.nextAttemptAt=new Date(0);h.state.runFailure=true;
+    assert.equal((await tick()).status,500);assert.equal(h.state.cronCalls,1);assert.equal(h.state.invalidations.length,1);
+    h.state.runFailure=false;assert.equal((await tick()).status,200);assert.equal(h.state.cronCalls,2);assert.equal(h.state.scheduleReads,4);
+    h.state.emailEnabled=false;await tick();assert.equal(h.state.scheduleReads,4);assert.equal(h.state.cronCalls,2);
+  } finally {if(original===undefined)delete process.env.CRON_SECRET;else process.env.CRON_SECRET=original;}
 });
 
 // Raw request validation must run before coercion: null/empty values are not choice zero.

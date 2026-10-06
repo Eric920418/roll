@@ -17,8 +17,8 @@ import { faqSchema, SITE_FAQS } from "@/lib/schema";
 import { SITE_URL, absoluteUrl } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
-// ISR 兜底：即使主動失效未觸發，最多 60 秒後內容自動更新
-export const revalidate = 60;
+// 一小時 ISR 兜底；後台編輯仍透過 tag/path 立即失效。
+export const revalidate = 3600;
 
 type Props = {
   params: Promise<{ locale: string }>;
