@@ -1,4 +1,5 @@
 import { browserMutationGuard } from "@/lib/security/http";
+import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { lockInterviewAction, refreshInterviewProgress } from "@/lib/customer-insights/service";
 import { insightSchema } from "@/lib/customer-insights/schema";
@@ -65,6 +66,10 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
       const tx = raw as unknown as Prisma.TransactionClient;
       const row = await tx.meetingNote.findFirst({ where: { id, userId: session.uid }, select: { insight: true, updatedAt: true } });
       if (!row) throw new PlanWriteError("找不到資料 / Not found", 404);
+      const version = new URL(_req.url).searchParams.get("updatedAt");
+      if (row.insight != null && !version) throw new PlanWriteError("請重新載入訪談紀錄後刪除 / Reload the conversation before deleting", 409);
+      if (version && !z.iso.datetime().safeParse(version).success) throw new PlanWriteError("無效紀錄版本 / Invalid conversation version", 400);
+      if (version && row.updatedAt.toISOString() !== version) throw new PlanWriteError("紀錄已更新，請重新載入後比對再刪除 / Conversation changed; reload and compare before deleting", 409);
       const actionId = insightSchema.safeParse(row.insight).data?.actionId;
       if (actionId) await lockInterviewAction(tx, session.uid, actionId);
       const deleted = await tx.meetingNote.deleteMany({ where: { id, userId: session.uid, updatedAt: row.updatedAt } });

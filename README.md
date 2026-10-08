@@ -1352,3 +1352,7 @@ Schema 預檢已確認只增加 `ActionItem.recordingMode TEXT NULL` 與 `Action
 完整驗收：189 項測試全部通過，包含真實 PostgreSQL 原子回滾、重送、同公司去重與越權。新增測試 loader 避免使用 Next 保留的 module 變數名；`pnpm build`、`pnpm exec tsc --noEmit` 通過；`pnpm lint` 為 0 errors、14 個既有 warnings。
 
 2026-10-08 正式 schema 已核對 Vercel Production 與專案設定為同一資料庫，只以交易新增兩個 nullable 欄位；交易內驗證 118 項任務、9 個計畫的既有完整內容指紋與數量不變。沒有重設、資料轉換或更新會員資料。二次 schema diff 為空。中英文桌面／390px 手機驗收包含同頁儲存、達標前拒絕、完成後 Insights 50%／50%、Escape 關閉、下一項突出、三題原始回答與 Customer Insights 共用資料；只使用隔離本機合成帳號，沒有寄信或消耗真實 AI。現有計畫缺少原始回答仍明示未保存，資源連結待提供。
+
+刪除版本保護：Customer Insights DELETE /api/notes/:id 帶 updatedAt 查詢參數；結構化訪談缺版本或版本已變更回 409，錯誤保留輸入並重載可比較的新紀錄；一般非結構化 Notes 維持相容。實際 DB 測試驗證撤銷完成後舊版本仍不可刪除、缺版本拒絕、最新版本才可刪除，避免舊分頁刪掉剛儲存的訪談。
+
+發布驗收：main 的 Vercel Production 已 READY，www.rollgrp.com 已使用新版 Next Steps；公開首頁回 200，未登入工作區回 307 導向登入，Customer Insights 與計畫 API 回 401。實際雙分頁訪談編輯回 409、保留輸入、顯示最新紀錄並確認比較後成功重試；舊計畫缺回答提示正常。隔離本機 QA 帳號已清理，私有 Production 環境暫存已移除；無新增套件／環境變數，沒有真實 AI 或郵件操作。

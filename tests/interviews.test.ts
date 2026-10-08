@@ -64,7 +64,8 @@ test("Interview transactions and completion in isolated PostgreSQL", { skip: !co
   const records = load<typeof import("../src/app/api/customer-insights/route")>("src/app/api/customer-insights/route.ts", mocks);
   const tasks = load<typeof import("../src/app/api/action-plans/actions/[id]/route")>("src/app/api/action-plans/actions/[id]/route.ts", mocks);
   const notes = load<typeof import("../src/app/api/notes/[id]/route")>("src/app/api/notes/[id]/route.ts", mocks);
-  const req = (body: unknown = {}) => ({ url: "https://example.test/api/test", headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), json: async () => body }) as never;
+  const req = (body: unknown = {}, url = "https://example.test/api/test") => ({ url, headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), json: async () => body }) as never;
+  const remove = async (id: string, version?: string) => notes.DELETE(req({}, `https://example.test/api/notes/${id}?updatedAt=${encodeURIComponent(version ?? (await db.meetingNote.findUniqueOrThrow({ where: { id } })).updatedAt.toISOString())}`), { params: Promise.resolve({ id }) });
   const diagnosis = { companyStage: "MVP", stageReason: "Real profile", stageConfidence: 80, bottleneckGroup: "Sales", bottleneckCode: "no_leads", bottleneckReason: "Real bottleneck", bottleneckConfidence: 80 };
   const plan = await db.actionPlan.create({ data: { userId: owner.id, activeKey: owner.id, locale: "en", requestId: randomUUID(), ...diagnosis } });
   const task = await db.actionItem.create({ data: { actionPlanId: plan.id, clientKey: "task_1", title: "Interview companies", impact: "High", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: diagnosis.companyStage, bottleneckGroup: diagnosis.bottleneckGroup, bottleneckCode: diagnosis.bottleneckCode, stageFit: 4, stageFitReason: "Fit", bottleneckFit: 4, bottleneckFitReason: "Fit", outcomeCategory: "customers", expectedOutcome: "Real feedback", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 } });
@@ -108,10 +109,12 @@ test("Interview transactions and completion in isolated PostgreSQL", { skip: !co
       assert.equal((await records.PATCH(req({ id: beta.id, updatedAt: beta.updatedAt.toISOString(), insight: { ...parsed, actionId: "another" } }))).status, 409);
       assert.equal((await records.PATCH(req({ id: beta.id, updatedAt: beta.updatedAt.toISOString(), insight: { ...parsed, challenge: "focus" } }))).status, 200);
       assert.equal((await records.PATCH(req({ id: beta.id, updatedAt: beta.updatedAt.toISOString(), insight: { ...parsed, challenge: "survival" } }))).status, 409);
-      assert.equal((await notes.DELETE(req(), { params: Promise.resolve({ id: beta.id }) })).status, 409);
+      assert.equal((await remove(beta.id)).status, 409);
       assert(await db.meetingNote.findUnique({ where: { id: beta.id } }));
       assert.equal((await patch({ done: false })).status, 200);
-      assert.equal((await notes.DELETE(req(), { params: Promise.resolve({ id: beta.id }) })).status, 200);
+      assert.equal((await remove(beta.id, beta.updatedAt.toISOString())).status, 409);
+      assert.equal((await notes.DELETE(req(), { params: Promise.resolve({ id: beta.id }) })).status, 409);
+      assert.equal((await remove(beta.id)).status, 200);
       assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })).metricCurrent, 1);
       assert(await db.meetingNote.findUnique({ where: { id: noteId } }));
     });
@@ -121,7 +124,7 @@ test("Interview transactions and completion in isolated PostgreSQL", { skip: !co
       const next = await db.actionItem.create({ data: { ...(await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })), id: randomUUID(), clientKey: "task_2", recordingMode: null, done: true, metricTarget: null, metricUnit: null, metricCurrent: null } });
       await db.actionDependency.create({ data: { actionId: next.id, dependsOnId: task.id, minimumCurrent: 3 } });
       const gamma = await db.meetingNote.findFirstOrThrow({ where: { userId: owner.id, insight: { path: ["company"], equals: "Gamma" } } });
-      assert.equal((await notes.DELETE(req(), { params: Promise.resolve({ id: gamma.id }) })).status, 409);
+      assert.equal((await remove(gamma.id)).status, 409);
       await db.actionItem.delete({ where: { id: next.id } });
       assert.equal((await tasks.DELETE(req({ revision: (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).revision }), context)).status, 200);
       assert.equal(await db.meetingNote.count({ where: { userId: owner.id } }), 4);
