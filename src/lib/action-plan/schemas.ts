@@ -269,6 +269,7 @@ export const actionInputSchema = z
   });
 
 export const actionPatchSchema = z.union([
+  z.object({ recordingMode: z.literal("interview"), metricTarget: z.number().int().positive().max(1000000000) }).strict(),
   z.object({ dependencyThresholds: z.record(z.string().min(1), z.number().int().positive().max(1000000000).nullable()) }).strict(),
   z.object({ done: z.boolean() }).strict(),
   actionInputSchema.extend({ done: z.boolean().optional() }),

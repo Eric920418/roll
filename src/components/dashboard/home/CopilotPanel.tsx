@@ -59,7 +59,7 @@ export default function CopilotPanel({
   }, [loadingHistory]);
 
   const shortcuts = [
-    ...(canBuildPlan ? [{ label: t("tools"), href: pathForLocale("/dashboard/agenda#milestones", locale) }] : []),
+    ...(canBuildPlan ? [{ label: t("tools"), href: pathForLocale("/dashboard/agenda#goal-roadmap", locale) }] : []),
     { label: t("profile"), href: pathForLocale("/dashboard/profile", locale) },
   ];
 

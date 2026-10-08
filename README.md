@@ -1323,3 +1323,32 @@ Next Node.js OG RCE 的必要條件在目前 Edge OG route 不成立；仍完成
 - 依參考圖檢查區塊順序、側欄字級、進度條、鎖頭、灰色提示、桌面／手機及鍵盤焦點；發現的原生綠色 progress、重複展開的阻擋清單與面板 409 無重試入口均已修正。非強制首頁導覽與既有 Podcast／Events 仍依真實資料顯示。
 - 截圖保存於 `/Users/eric/.codex/backups/roll/customer-discovery-qa/`：`home-production.jpg`、`insights-production.jpg`、`icp-mobile-production.jpg`、`next-steps-desktop.jpg`。本機另實測面板衝突後保留累計值 6、載入伺服器值 5、人工再次儲存成功。
 - 兩個正式與兩個本機專用帳號及關聯測試資料已依具名 ID／email／公司資料檢查後清除；既有會員未變更。Preview 仍關閉，沒有啟用正式資料庫的 Preview 建置。外部 AI 仍可能逾時或回傳不合格內容，系統保留草稿／安全錯誤與重試；不宣稱永無故障。
+# Next Steps 同頁訪談工作區（2026-10-08）
+
+驗收使用全新 loopback PostgreSQL `roll_rewards_qa_interviews_20261008`；`ROLL_REWARDS_TEST_DATABASE_URL` 可啟用 `tests/interviews.test.ts` 的真實交易測試，拒絕非本機或不以 roll_rewards_qa 開頭的資料庫。測試只建立／清理自己的合成帳戶，正式資料不參與測試。
+
+訪談工作區提供公司目標確認、空的 YouTube／Spotify 資源位置及同頁表格。Insights 使用本人儲存紀錄，支援鍵盤 dialog、載入／錯誤／重試及關閉後焦點恢復；本版不呼叫 AI，也不新增媒體管理後台。
+
+訪談統計以公司名稱 NFKC、整理空白及忽略大小寫後去重；同公司最新儲存的有效訪談決定主要挑戰。前三名只計市場／聚焦／生存，分母包含其他及未分類，零資料不產生百分比。任務完成會由伺服器重新計數；紀錄寫入共用計畫鎖，減少證據不得破壞已完成任務或後續依賴。
+
+新增 nullable `ActionPlan.diagnosticAnswers`、`ActionItem.recordingMode`，保存計畫建立時的三題回答及明確啟用的訪談模式。既有計畫不補造回答。Customer Insights JSON 新增可選 `actionId`、`challenge`；舊紀錄仍相容，任務訪談必須有公司及實際內容。完成驗證、原子統計與頁面改版已完成。正式 schema 已於 2026-10-08 新增下列兩欄，部署驗收結果見本節最後。
+
+訪談 API：`GET /api/customer-insights?actionId=...` 回傳本人任務紀錄與統計；POST／PATCH 延用原介面，linked 紀錄同交易更新公司數並回傳更新計畫。任務 PATCH 可用 `{recordingMode:"interview",metricTarget,revision}` 啟用／調整目標，完成時重驗證證據；人工數量與 Weekly Check-in 不得覆寫訪談累計。Notes 刪除亦使用同一計畫鎖與依賴保護。
+
+UI：Customer Discovery 同一元件支援任務範圍、草稿分隔、主要挑戰分類與受保護刪除；公司與內容驗證仍由伺服器執行。非訪談數量表單以 inline 模式沿用既有驗證及版本恢復；Home 維持原入口。Your Response 只顯示計畫自己的三題快照。
+
+Next Steps 現已移除計畫規劃入口、整體進度條、Weekly／Monthly 與 Weekly Check-in；任務列僅此頁隱藏 Ready／Critical 標籤並突出目前優先任務。保留 #action-、#action-plan-list、#goal-roadmap 錨點、里程碑成果確認、下一階段任務生成與歷史讀取。完成訪談成功後才開啟 Insights，Home Next Three Moves 未套用這些樣式改動。
+
+測試更新：既有 Next Steps 回歸改驗無進度條、單一突出任務且原依賴鎖仍生效；計畫持久化驗證原始回答快照，不修改歷史回答。
+
+Schema 預檢已確認只增加 `ActionItem.recordingMode TEXT NULL` 與 `ActionPlan.diagnosticAnswers JSONB NULL`，沒有刪表、欄位移除或資料轉換。
+
+相容修正：Customer Insights 編輯任務訪談時保留 actionId／分類與本機草稿；Home 頂部 Log 入口對訪談任務連到對應 Next Steps 表格，非訪談仍沿用原數量輸入。
+
+測試相依更新：週曆持久化載入回答驗證 schema；既有跨會員 Notes 測試加上「不得觸及訪談鎖或統計」斷言，訪談實際寫入由獨立 PostgreSQL 測試覆盖。
+
+相容與衝突驗收：移除 Home 已失效的 Weekly Check-in 連結，POLARIS／舊 tools 入口改到保留的 #goal-roadmap；訪談公司數只顯示一次，任務更多內容至少 44px。訪談編輯 409 保留草稿並讀取新資料，先展示最新紀錄供比較，使用者確認後才更新版本並重試，避免靜默覆蓋其他分頁。
+
+完整驗收：189 項測試全部通過，包含真實 PostgreSQL 原子回滾、重送、同公司去重與越權。新增測試 loader 避免使用 Next 保留的 module 變數名；`pnpm build`、`pnpm exec tsc --noEmit` 通過；`pnpm lint` 為 0 errors、14 個既有 warnings。
+
+2026-10-08 正式 schema 已核對 Vercel Production 與專案設定為同一資料庫，只以交易新增兩個 nullable 欄位；交易內驗證 118 項任務、9 個計畫的既有完整內容指紋與數量不變。沒有重設、資料轉換或更新會員資料。二次 schema diff 為空。中英文桌面／390px 手機驗收包含同頁儲存、達標前拒絕、完成後 Insights 50%／50%、Escape 關閉、下一項突出、三題原始回答與 Customer Insights 共用資料；只使用隔離本機合成帳號，沒有寄信或消耗真實 AI。現有計畫缺少原始回答仍明示未保存，資源連結待提供。

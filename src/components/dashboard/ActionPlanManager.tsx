@@ -12,11 +12,7 @@ export function ActionDiagnosis({ plan }: { plan: ActionPlanDto }) {
   return <details className="rounded-2xl border border-dark/10 bg-white p-5">
     <summary className="min-h-11 cursor-pointer text-lg font-bold">{t("diagnosis.eyebrow")}</summary>
     <div className="mt-3 space-y-4">
-      <p className="font-bold">{plan.diagnosis.companyStage} · {plan.diagnosis.bottleneckGroup}</p>
-      <dl className="grid gap-4 text-sm sm:grid-cols-2">
-        <div><dt className="font-semibold">{t("diagnosis.stage")}</dt><dd className="mt-2 whitespace-pre-wrap text-dark/65">{plan.diagnosis.stageReason}</dd></div>
-        <div><dt className="font-semibold">{t("diagnosis.bottleneck")}</dt><dd className="mt-2 whitespace-pre-wrap text-dark/65">{plan.diagnosis.bottleneckReason}</dd></div>
-      </dl>
+      {plan.diagnosticAnswers?.length === 3 ? <dl className="space-y-4 text-sm">{plan.diagnosticAnswers.map((row, i) => <div key={i}><dt className="font-semibold">{row.question}</dt><dd className="mt-2 whitespace-pre-wrap text-dark/65">{row.answer}</dd></div>)}</dl> : <p className="text-sm text-dark/60">{t("diagnosis.missingAnswers")}</p>}
       <ActionPlanBuilder variant="regenerate" />
     </div>
   </details>;

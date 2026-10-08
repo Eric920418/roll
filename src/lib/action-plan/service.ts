@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { milestoneViews } from "@/lib/roadmap/schema";
 import { prisma } from "@/lib/prisma";
-import type { Diagnosis, GeneratedAction } from "./schemas";
+import { generateBodySchema, type Diagnosis, type GeneratedAction } from "./schemas";
 import { rankActions, humanizeActionText, taskReference, wouldCreateCycle, type ActionPlanActionDto } from "./ranking";
 import { legacyHoursForMinutes } from "./time";
 
@@ -14,6 +14,7 @@ const actionInclude = {
 } as const;
 
 export type ActionPlanDto = {
+  diagnosticAnswers?: Array<{ question: string; answer: string }> | null;
   id: string;
   locale: string;
   diagnosis: Diagnosis;
@@ -39,6 +40,7 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
   const blocks = new Map(milestones.filter(m => m.status === "blocked").map(m => [m.id, m.title]));
   const actions = rankActions(plan.actions, blocks, new Map(milestones.map(m => [m.id, m.position])));
   return {
+    diagnosticAnswers: generateBodySchema.shape.answers.safeParse(plan.diagnosticAnswers).data ?? null,
     id: plan.id,
     revision: plan.revision,
     roadmap: plan.goal && plan.goalStartsAt && plan.goalDeadline ? { goal: plan.goal, startsAt: plan.goalStartsAt.toISOString().slice(0, 10), deadline: plan.goalDeadline.toISOString().slice(0, 10), assumptions: Array.isArray(plan.goalAssumptions) ? plan.goalAssumptions.filter((v): v is string => typeof v === "string") : [], milestones } : null,
@@ -85,6 +87,7 @@ export async function persistGeneratedPlan(input: {
   requestId: string;
   diagnosis: Diagnosis;
   actions: GeneratedAction[];
+  answers: Array<{ question: string; answer: string }>;
   basePlan: { id: string; revision: number } | null;
 }): Promise<ActionPlanDto> {
   const existing = await getPlanByRequestId(input.userId, input.requestId);
@@ -117,6 +120,7 @@ export async function persistGeneratedPlan(input: {
           userId: input.userId,
           locale: input.locale,
           ...input.diagnosis,
+          diagnosticAnswers: generateBodySchema.shape.answers.parse(input.answers),
           requestId: input.requestId,
           activeKey: input.userId,
           actions: {

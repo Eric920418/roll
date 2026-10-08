@@ -530,7 +530,7 @@ test("三題草稿在診斷失敗前保存，重試沿用三份回答，生成�
   assert.equal(cache.size, 0);
 });
 
-test("Next steps 五項任務只出現一次，一個進度條，只有首個 Ready 預設展開且可篩選", () => {
+test("Next steps 五項任務只出現一次，無進度條，只有首個可執行任務突出且可篩選", () => {
   const state: unknown[] = [];
   let cursor = 0;
   const require = createRequire(import.meta.url);
@@ -556,6 +556,7 @@ test("Next steps 五項任務只出現一次，一個進度條，只有首個 Re
       if (id.startsWith("@/lib/action-plan/")) return require(`../src/lib/action-plan/${id.split("/").at(-1)}`);
       if (id === "./ActionTaskRow") return { default: ({ action }: { action: ActionPlanActionDto }) => require("react/jsx-runtime").jsx("input", { type: "checkbox", disabled: !action.done && action.dependency.blocked }) };
       if (id === "./ActionPlanManager") return { ActionEditor: () => null };
+      if (id === "./InterviewWorkspace") return { default: () => null, InterviewInsights: () => null };
       if (id === "@/lib/roadmap/corrections") return require("../src/lib/roadmap/corrections");
       if (id === "@/lib/roadmap/schema") return require("../src/lib/roadmap/schema");
       return require(id);
@@ -573,7 +574,7 @@ test("Next steps 五項任務只出現一次，一個進度條，只有首個 Re
   assert.equal(list().length, 5);
   assert.equal(plan.nextMoves.length, 1);
   assert.equal(render().filter(n => n.props.disabled).length, 4, "受阻擋任務仍禁止完成");
-  assert.equal(render().filter(n => n.props.role === "progressbar").length, 1);
+  assert.equal(render().filter(n => n.props.role === "progressbar").length, 0);
   assert.equal(render().filter(n => n.props.featured).length, 1);
   render().find(n => n.type === "select")!.props.onChange!({ target: { value: "ready" } });
   assert.equal(list().length, 1);

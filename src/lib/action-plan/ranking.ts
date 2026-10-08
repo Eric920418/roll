@@ -2,6 +2,7 @@ import { dependencySatisfied } from "./dependency";
 import { BOTTLENECKS, IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight } from "./constants";
 
 export type RankableAction = {
+  recordingMode?: string | null;
   id: string;
   clientKey: string;
   milestoneId?: string | null;
@@ -46,6 +47,7 @@ export type RankableAction = {
 };
 
 export type ActionPlanActionDto = {
+  recordingMode?: "interview" | null;
   id: string;
   clientKey: string;
   milestoneId?: string | null;
@@ -176,6 +178,7 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
   return rows
     .map(({ action, score, impactWeight, urgencyWeight: urgency, resolved, blocked, unfinished, missingLink, milestoneTitle, actionTimeMinMinutes, actionTimeMaxMinutes }) => ({
       id: action.id,
+      recordingMode: action.recordingMode === "interview" ? "interview" : null,
       milestoneId: action.milestoneId,
       clientKey: action.clientKey,
       displayNumber: numbers.get(action.id),

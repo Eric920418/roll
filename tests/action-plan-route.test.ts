@@ -73,13 +73,13 @@ function serviceHarness() {
   };
   const db = { actionPlan: plan, actionDependency: { createMany: async () => {} }, $transaction: async (fn: (tx: unknown) => Promise<unknown>) => { const before = active; try { return await fn(db); } catch (e) { active = before; throw e; } } };
   const service = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts", {
-    "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/rate-limit": { DAY_MS: 86400000 },
+    "./schemas": { generateBodySchema }, "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/rate-limit": { DAY_MS: 86400000 },
     "@/lib/roadmap/schema": { milestoneViews: () => [] },
     "./ranking": { rankActions: () => [], humanizeActionText: (s: string) => s, taskReference: () => "", wouldCreateCycle: () => false }, "./time": { legacyHoursForMinutes: () => ({ minHours: 1, maxHours: 2 }) },
   });
   // Persistence uses generated fields only; schema/AI validation is tested separately.
   const task = { clientKey: "task_1", dependsOnKeys: [], actionTime: {}, stageFit: {}, bottleneckFit: {}, outcomeTime: {} };
-  const input = { userId: "owner", locale: "en", requestId: body.requestId, diagnosis, actions: Array.from({ length: 5 }, (_, i) => ({ ...task, clientKey: `task_${i + 1}` })), basePlan: { id: "base", revision: 2 } } as unknown as Parameters<typeof service.persistGeneratedPlan>[0];
+  const input = { userId: "owner", locale: "en", requestId: body.requestId, diagnosis, answers: body.answers, actions: Array.from({ length: 5 }, (_, i) => ({ ...task, clientKey: `task_${i + 1}` })), basePlan: { id: "base", revision: 2 } } as unknown as Parameters<typeof service.persistGeneratedPlan>[0];
   return { service, input, writes, active: () => active, update: (next: Record<string, unknown> | null) => { active = next; }, count: (n: number) => { count = n; } };
 }
 test("Persistence refuses stale revision, replaced plan and concurrent first-plan creation without archiving anything", async () => {
@@ -91,7 +91,7 @@ test("Persistence refuses stale revision, replaced plan and concurrent first-pla
 });
 test("Persistence checks allowance inside the transaction and successful replay never replaces a newer plan", async () => {
   const h = serviceHarness(); h.count(3); await assert.rejects(h.service.persistGeneratedPlan(h.input), /3 次成功/); assert.equal(h.writes.length, 0); assert.equal(h.active()?.revision, 2);
-  h.count(0); await h.service.persistGeneratedPlan(h.input); assert.equal(h.writes.length, 1); assert.equal((h.writes[0].actions as { create: unknown[] }).create.length, 5);
+  h.count(0); await h.service.persistGeneratedPlan(h.input); assert.equal(h.writes.length, 1); assert.deepEqual(JSON.parse(JSON.stringify(h.writes[0].diagnosticAnswers)), body.answers); assert.equal((h.writes[0].actions as { create: unknown[] }).create.length, 5);
   h.update({ id: "later", revision: 1, activeKey: "owner" }); await h.service.persistGeneratedPlan(h.input); assert.equal(h.writes.length, 1); assert.equal(h.active()?.id, "later");
 });
 

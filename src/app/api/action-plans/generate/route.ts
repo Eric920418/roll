@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       requestId: parsed.data.requestId,
       diagnosis: parsed.data.diagnosis,
       actions,
+      answers: parsed.data.answers,
       basePlan: basePlan ? { id: basePlan.id, revision: basePlan.revision! } : null,
     });
     return ok(plan, 201);

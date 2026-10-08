@@ -157,7 +157,7 @@ export default async function ActionPlanOverview({
               {t("next.title")}
             </h2>
           </div>
-          {plan ? (<><Link href={`${agendaHref}#weekly-check-in`} className="inline-flex min-h-11 items-center text-sm font-bold">Weekly Check-in →</Link>
+          {plan ? (<>
             <Link
               href={agendaHref}
               className="inline-flex min-h-11 items-center text-sm font-bold text-primary hover:text-primary-dark"

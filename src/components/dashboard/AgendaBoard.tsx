@@ -1,26 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import PlanRefresh, { notifyPlanChanged } from "./PlanRefresh";
-import WeeklyCheckIn from "./WeeklyCheckIn";
 import RoadmapPanel from "./RoadmapPanel";
 import ActionPlanManager, { ActionDiagnosis } from "@/components/dashboard/ActionPlanManager";
-import ChecklistTool from "@/components/dashboard/ChecklistTool";
-import type { MilestoneGroupView } from "@/lib/tools/checklist";
 
 type Props = {
   userId: string;
   guided?: boolean;
-  canShare?: boolean;
   actionPlan: ActionPlanDto | null;
-  milestoneGroups: MilestoneGroupView[];
 };
 
-export default function AgendaBoard({ userId, canShare = false, actionPlan, milestoneGroups, guided = false }: Props) {
-  const t = useTranslations("Dashboard.agenda");
-  const tGuide = useTranslations("Dashboard.gettingStarted");
+export default function AgendaBoard({ userId, actionPlan, guided = false }: Props) {
   const [planState, setPlanState] = useState({ source: actionPlan, current: actionPlan });
   if (planState.source !== actionPlan) {
     const current = planState.current;
@@ -36,16 +28,7 @@ export default function AgendaBoard({ userId, canShare = false, actionPlan, mile
     <div className="mt-7 flex flex-col gap-8">
       <PlanRefresh userId={userId} />
       {!currentPlan && <ActionPlanManager guided={guided} initialPlan={null} onChanged={acceptPlan} />}
-      {currentPlan ? <><RoadmapPanel userId={userId} initialPlan={currentPlan} onChanged={acceptPlan} />
-      <WeeklyCheckIn userId={userId} plan={currentPlan} canShare={canShare} onChanged={acceptPlan} />
-      <ActionDiagnosis plan={currentPlan} /></>
-      : <details className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{tGuide("optionalRoadmap")}</summary><RoadmapPanel userId={userId} initialPlan={null} onChanged={acceptPlan} /></details>}
-
-      <details id="milestones" className="scroll-mt-6 rounded-2xl border border-dark/10 bg-white p-5">
-        <summary className="min-h-11 cursor-pointer font-bold">{t("milestoneSection")}</summary>
-        <p className="mt-1 text-sm text-dark/55">{t("milestoneSectionBody")}</p>
-        <ChecklistTool key={JSON.stringify(milestoneGroups)} groups={milestoneGroups} hideProgress />
-      </details>
+      {currentPlan && <><RoadmapPanel userId={userId} initialPlan={currentPlan} onChanged={acceptPlan} /><ActionDiagnosis plan={currentPlan} /></>}
 
     </div>
   );

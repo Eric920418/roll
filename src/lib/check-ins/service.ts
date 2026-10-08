@@ -49,6 +49,7 @@ export async function saveCheckIn(userId: string, input: Extract<CheckInRequest,
         const task = plan.actions.find(a => a.id === m.actionId);
         if (!task || (m.current != null && !task.metricUnit)) throw new PlanWriteError("請先確認數量目標與單位 / Confirm the metric target and unit first", 400);
         if (task.metricCurrent === m.current) continue;
+        if (task.recordingMode === "interview") throw new PlanWriteError("訪談數量由實際紀錄計算 / Interview totals come from saved records", 409);
         const unresolved = task.dependencies.some(edge => !dependencySatisfied({ ...edge, dependsOn: { ...edge.dependsOn, metricCurrent: input.metrics.some(change => change.actionId === edge.dependsOn.id) ? input.metrics.find(change => change.actionId === edge.dependsOn.id)!.current : edge.dependsOn.metricCurrent } }));
         if (m.current != null && m.current > (task.metricCurrent ?? -1) && (unresolved || (task.dependencyLevel > 0 && task.dependencies.length === 0))) throw new PlanWriteError("請先達成前置條件，再增加本任務進度。 / Resolve prerequisites before increasing this task’s progress.", 409);
         const invalidated = plan.actions.filter(dependent => dependent.done && dependent.dependencies.some(edge => edge.dependsOn.id === task.id && edge.minimumCurrent != null && (m.current == null || m.current < edge.minimumCurrent)));

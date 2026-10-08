@@ -81,7 +81,7 @@ test("Concurrent double submission is locked; late responses cannot replace newe
 });
 test("Outcome reversal refuses completed later stages, while safe reversal invalidates confirmation",async()=>{
  let updates=0;const m=stages().map(row=>({...row,achievedAt:row.position===0?new Date():null,actions:[{done:row.position===1}]}));
- const service=load<typeof PlanService>("src/lib/action-plan/service.ts",{"@/lib/prisma":{prisma:{}},"@/lib/roadmap/schema":require("../src/lib/roadmap/schema"),"./ranking":require("../src/lib/action-plan/ranking"),"./time":require("../src/lib/action-plan/time")});
+ const service=load<typeof PlanService>("src/lib/action-plan/service.ts",{"./schemas":require("../src/lib/action-plan/schemas"),"@/lib/prisma":{prisma:{}},"@/lib/roadmap/schema":require("../src/lib/roadmap/schema"),"./ranking":require("../src/lib/action-plan/ranking"),"./time":require("../src/lib/action-plan/time")});
  const tx={planMilestone:{findMany:async()=>m,update:async()=>{updates++;m[0].achievedAt=null;}}} as unknown as Parameters<typeof service.guardActionMilestone>[0];await assert.rejects(service.guardActionMilestone(tx,"plan-a","m0","undo"),/Undo later stage/);assert.equal(updates,0);m[1].actions[0].done=false;await service.guardActionMilestone(tx,"plan-a","m0","undo");assert.equal(updates,1);await assert.rejects(service.guardActionMilestone(tx,"plan-a","m1","done"),/Confirm previous/);
 });
 test("Roadmap route rejects anonymous and non-Pro callers before parsing input",async()=>{

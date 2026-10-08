@@ -491,6 +491,7 @@ model LandingTask {
 /// NOVA Action Plan 的版本容器。
 /// activeKey 啟用時固定等於 userId，nullable unique 保證每位使用者至多一份 active plan。
 model ActionPlan {
+  diagnosticAnswers Json?
   id     String @id @default(cuid())
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -525,6 +526,7 @@ model ActionPlan {
 
 /// Action 的完整八維資料。priority score、rank、blocked 皆由 server 即時計算，不持久化。
 model ActionItem {
+  recordingMode String?
   id           String     @id @default(cuid())
   actionPlanId String
   actionPlan   ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)

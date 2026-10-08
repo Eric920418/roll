@@ -80,7 +80,7 @@ export default async function DashboardOverview({ params }: Props) {
       </h1>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-dark/60">{t("home.subtitle")}</p>
-        <div className="flex flex-wrap gap-2">{visibleActionPlan?.nextMoves[0] && <HomeLogButton taskId={visibleActionPlan.nextMoves[0].id} />}<a href={guide.visible && !guide.hasPlan ? "#getting-started" : "#next-three-moves"} className="inline-flex min-h-11 items-center rounded-xl bg-dark px-4 py-2 text-sm font-bold text-white hover:bg-dark/90">{guide.visible && !guide.hasPlan ? t("gettingStarted.title") : t("home.actionSummary.next.title")} ↓</a></div>
+        <div className="flex flex-wrap gap-2">{visibleActionPlan?.nextMoves[0] && <HomeLogButton taskId={visibleActionPlan.nextMoves[0].id} href={visibleActionPlan.nextMoves[0].recordingMode === "interview" ? `${agendaHref}#action-${visibleActionPlan.nextMoves[0].id}` : undefined} />}<a href={guide.visible && !guide.hasPlan ? "#getting-started" : "#next-three-moves"} className="inline-flex min-h-11 items-center rounded-xl bg-dark px-4 py-2 text-sm font-bold text-white hover:bg-dark/90">{guide.visible && !guide.hasPlan ? t("gettingStarted.title") : t("home.actionSummary.next.title")} ↓</a></div>
       </div>
 
       <GettingStartedHome initial={guide}

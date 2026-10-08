@@ -11,6 +11,8 @@ import { actionPatchSchema, planRevisionSchema } from "@/lib/action-plan/schemas
 import { assertDependencies, getActiveActionPlan, lockActivePlan, guardActionMilestone, PlanWriteError } from "@/lib/action-plan/service";
 import { legacyHoursForMinutes } from "@/lib/action-plan/time";
 
+import { assertInterviewComplete, interviewRows } from "@/lib/customer-insights/service";
+import { interviewSummary } from "@/lib/customer-insights/interviews";
 import { awardReward, prepareActionReward } from "@/lib/rewards/service";
 
 type Context = { params: Promise<{ id: string }> };
@@ -42,6 +44,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         actionPlanId: true,
         done: true,
         milestoneId: true,
+        recordingMode: true,
+        metricTarget: true,
         metricUnit: true,
         metricCurrent: true,
         dependencyLevel: true,
@@ -60,6 +64,17 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
     await prepareActionReward(tx, session.uid, id, current.done);
 
+    if ("recordingMode" in parsed.data) {
+      if (current.done) throw new PlanWriteError("請先撤銷完成再設定訪談模式 / Undo completion before configuring interviews", 409);
+      await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
+      const largestThreshold = Math.max(0, ...current.requiredBy.map(e => e.minimumCurrent || 0));
+      if (largestThreshold && (current.metricUnit !== "companies" || parsed.data.metricTarget < largestThreshold)) throw new PlanWriteError("先調整既有數量依賴，才能更換為公司計數 / Adjust quantity dependencies before switching to company counts", 409);
+      const count = interviewSummary(id, await interviewRows(tx, session.uid, id)).total;
+      if (current.requiredBy.some(e => e.action.done && e.minimumCurrent != null && count < e.minimumCurrent)) throw new PlanWriteError("請先撤銷後續任務完成 / Undo dependent completions first", 409);
+      await tx.actionItem.update({ where: { id }, data: { recordingMode: "interview", metricTarget: parsed.data.metricTarget, metricUnit: "companies", metricCurrent: count } });
+      return;
+    }
+
     if ("dependencyThresholds" in parsed.data) {
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
       for (const [dependsOnId, minimumCurrent] of Object.entries(parsed.data.dependencyThresholds)) {
@@ -72,6 +87,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       return;
     }
     if ("metricTarget" in parsed.data) {
+      if (current.recordingMode === "interview") throw new PlanWriteError("訪談數量由實際紀錄計算，請使用訪談設定 / Interview totals come from saved records; use interview settings", 409);
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
       const metricCurrent = parsed.data.metricCurrent;
       if (metricCurrent != null && metricCurrent > (current.metricCurrent ?? -1) && ((current.dependencyLevel > 0 && current.dependencies.length === 0) || current.dependencies.some(edge => !dependencySatisfied(edge)))) throw new PlanWriteError("請先達成前置條件，再增加本任務進度。 / Resolve prerequisites before increasing this task’s progress.", 409);
@@ -87,6 +103,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (Object.keys(parsed.data).length === 1 && "done" in parsed.data) {
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, parsed.data.done ? "done" : "undo");
       if (parsed.data.done) {
+        await assertInterviewComplete(tx, session.uid, current);
         if (current.dependencyLevel > 0 && current.dependencies.length === 0) {
           throw new PlanWriteError("此任務尚未連結前置任務 ID，請先編輯依賴。");
         }
@@ -106,6 +123,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!("dependencyActionIds" in action)) throw new PlanWriteError("Action 編輯資料不完整。", 400);
     await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, current.done && action.done === false ? "undo" : "edit");
     if (current.done && action.done === false && current.requiredBy.some(edge => edge.action.done && edge.minimumCurrent == null)) throw new PlanWriteError("請先取消後續任務的完成狀態 / Undo dependent tasks first");
+    if (action.done) await assertInterviewComplete(tx, session.uid, current);
     const legacyActionTime = legacyHoursForMinutes(action.actionTime);
     const stageFitChanged = action.stageFit.score !== current.stageFit || action.stageFit.reason !== current.stageFitReason;
     const bottleneckFitChanged = action.bottleneckFit.score !== current.bottleneckFit || action.bottleneckFit.reason !== current.bottleneckFitReason;

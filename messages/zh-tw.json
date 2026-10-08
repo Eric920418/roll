@@ -1143,7 +1143,8 @@
         "body": "逐題回答三題，確認公司階段與瓶頸後生成 5 個 Actions；分析約需 1 分鐘。"
       },
       "diagnosis": {
-        "eyebrow": "你的診斷",
+        "eyebrow": "你的回答",
+        "missingAnswers": "此計畫未保存原始回答。",
         "stage": "公司階段依據",
         "bottleneck": "目前瓶頸依據"
       },

@@ -1143,7 +1143,8 @@
         "body": "Answer three focused questions, confirm your stage and bottleneck, then generate five actions. Analysis usually takes about one minute."
       },
       "diagnosis": {
-        "eyebrow": "Your diagnosis",
+        "eyebrow": "Your Response",
+        "missingAnswers": "Original answers were not saved for this plan.",
         "stage": "Company stage evidence",
         "bottleneck": "Current bottleneck evidence"
       },
