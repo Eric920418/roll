@@ -41,6 +41,7 @@ export default async function AdminFeedbackPage() {
     userName:
       [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || null,
     userPlan: r.user.plan,
+    surveyAnswers: r.surveyAnswers,
   }));
 
   const pending = items.filter((i) =>

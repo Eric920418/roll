@@ -20,15 +20,17 @@ type NavKey =
   | "account"
   | "investors"
   | "feedback"
+  | "community"
   | "rewards";
 
 // 各 nav 項對應的 path（未加 locale 前綴）。新增頁面時在此擴充即可。
-// soon: 尚未上線的占位頁，側欄標「即將」小標，點進去是 coming-soon 頁。
+// soon: 尚未上線的項目，只顯示停用占位，不提供導頁連結。
 const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "overview", path: "/dashboard" },
   { key: "profile", path: "/dashboard/profile" },
   { key: "agenda", path: "/dashboard/agenda" },
   { key: "insights", path: "/dashboard/insights" },
+  { key: "community", path: "/dashboard/community", soon: true },
   { key: "investors", path: "/dashboard/investors" },
   { key: "rewards", path: "/dashboard/rewards" },
   { key: "account", path: "/dashboard/account" },
@@ -90,6 +92,7 @@ export default function DashboardSidebar({
       <nav className="flex gap-0 overflow-x-auto md:flex-col md:overflow-visible">
         {NAV.map(({ key, path, soon }) => {
           const active = isActive(path);
+          if (soon) return <span key={key} aria-disabled="true" className="flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-lg px-3 text-sm text-dark/40"><span>{t(`nav.${key}`)}</span><span className="rounded-full border border-dark/10 px-2 py-1 text-[10px]">{t("comingSoon.badge")}</span></span>;
           return (
             <Link
               key={key}
@@ -115,15 +118,6 @@ export default function DashboardSidebar({
               )}
               <span className="relative z-10">{t(`nav.${key}`)}</span>
               {key === "rewards" && <RewardBadge />}
-              {soon && (
-                <span
-                  className={`relative z-10 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${
-                    active ? "bg-white/20 text-white" : "bg-accent/20 text-accent"
-                  }`}
-                >
-                  {t("comingSoon.badge")}
-                </span>
-              )}
             </Link>
           );
         })}

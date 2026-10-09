@@ -225,6 +225,10 @@ function TrialControls({
           </button>
         )}
       </div>
+      <div className="flex gap-2">{[3, 7].map(days => <button key={days} type="button" disabled={disabled} className="min-h-11 rounded border border-neutral-300 px-3 text-xs disabled:opacity-50" onClick={() => {
+        const start = new Date(startsAt);
+        if (Number.isFinite(start.getTime())) setEndsAt(localInputValue(null, new Date(start.getTime() + days * 86_400_000)));
+      }}>{days} 天試用</button>)}</div>
       <label className="text-[11px] text-neutral-500">開始<input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className="ml-2 rounded border border-neutral-300 px-2 py-1" /></label>
       <label className="text-[11px] text-neutral-500">結束<input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className="ml-2 rounded border border-neutral-300 px-2 py-1" /></label>
     </div>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { trialAnswersSchema, trialFeedbackCsv } from "@/lib/dashboard/next-steps";
 import {
   FEEDBACK_STATUSES,
   PENDING_STATUSES,
@@ -27,6 +28,7 @@ export type FeedbackItem = {
   userEmail: string;
   userName: string | null;
   userPlan: string;
+  surveyAnswers?: unknown;
 };
 
 type Filter = "pending" | "all" | (typeof FEEDBACK_STATUSES)[number];
@@ -100,8 +102,19 @@ export default function FeedbackInbox({ items }: { items: FeedbackItem[] }) {
     return items.filter((i) => i.status === key).length;
   }
 
+  function exportSurvey() {
+    const rows = items.flatMap(item => {
+      const stored = item.surveyAnswers as { answers?: unknown } | null;
+      const parsed = trialAnswersSchema.safeParse(stored?.answers);
+      return parsed.success ? [{ email: item.userEmail, createdAt: item.createdAt, answers: parsed.data }] : [];
+    });
+    const url = URL.createObjectURL(new Blob(["\uFEFF", trialFeedbackCsv(rows)], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = "nova-trial-feedback.csv"; link.click(); URL.revokeObjectURL(url);
+  }
+
   return (
     <div>
+      <button type="button" className="mb-4 min-h-11 rounded-lg border border-neutral-300 px-4 text-sm disabled:opacity-50" disabled={!items.some(item => item.surveyAnswers)} onClick={exportSurvey}>匯出試用問卷 CSV</button>
       <div className="flex flex-wrap gap-1.5 mb-4">
         {FILTERS.map((f) => (
           <button

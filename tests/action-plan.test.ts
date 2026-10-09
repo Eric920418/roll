@@ -525,12 +525,22 @@ test("三題草稿在診斷失敗前保存，重試沿用三份回答，生成�
   assert(!render().some(n => n.props.children === "confirmDiagnosis"));
   await button("continue").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(payloads[3].answers.length, 3); assert(!render().some(n => n.type === "textarea"));
-  button("confirmDiagnosis").onClick(); await button("confirm").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
-  assert.deepEqual(payloads.at(-1)?.answers.map(a => a.answer), ["Enterprise buyers", "Ten interviews", "Five paid pilots"]);
+  button("correctDiagnosis").onClick();
+  assert.equal(JSON.parse(cache.get("nova:action-builder:qa")!).diagnosis, null, "修改回答不能沿用舊診斷");
+  assert.equal(render().filter(n => n.type === "textarea").length, 3);
+  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "" } });
+  assert(require("../src/lib/action-plan/builder-draft").readBuilderDraft(cache.get("nova:action-builder:qa")), "編輯中清空一題仍能恢復草稿");
+  assert.equal(button("continue").disabled, true);
+  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Updated enterprise buyers" } });
+  await button("continue").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
+  assert(!render().some(n => n.type === "textarea"));
+  assert(!payloads.some(p => "candidateCount" in p), "修改或分析回答不自動建立計畫");
+  await button("confirmDiagnosis").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(payloads.at(-1)?.answers.map(a => a.answer), ["Updated enterprise buyers", "Ten interviews", "Five paid pilots"]);
   assert.equal(cache.size, 0);
 });
 
-test("Next steps 五項任務只出現一次，無進度條，只有首個可執行任務突出且可篩選", () => {
+test("Next steps 五項任務只出現一次，不重複頂部進度條，只有首個可執行任務突出且可篩選", () => {
   const state: unknown[] = [];
   let cursor = 0;
   const require = createRequire(import.meta.url);

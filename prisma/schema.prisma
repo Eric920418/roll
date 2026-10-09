@@ -835,6 +835,8 @@ model FeedbackReport {
   type  String // bug / suggestion / other（app 端驗證，見 FEEDBACK_TYPES）
   title String
   body  String
+  surveyAnswers Json?
+  trialKey      String? @unique
 
   // --- 重現用診斷資訊（會員填/前端自動帶；userAgent 由 server 從 header 取，不信 client）---
   pageUrl   String? // 回報當下所在頁面

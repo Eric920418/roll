@@ -5,10 +5,24 @@ import { getUserSession } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { feedbackCreateSchema, zodMessage } from "@/lib/dashboard/schemas";
+import { trialWindow, trialSubmissionSchema } from "@/lib/dashboard/next-steps";
 import {
   FEEDBACK_LIMIT_PER_DAY,
   FEEDBACK_WINDOW_MS,
 } from "@/lib/dashboard/feedback";
+
+const trialSelect = { trialPlan: true, trialStartsAt: true, trialEndsAt: true } as const;
+export async function GET() {
+  try {
+    const session = await getUserSession();
+    if (!session) return unauthorized();
+    const user = await prisma.user.findUnique({ where: { id: session.uid }, select: trialSelect });
+    if (!user) return unauthorized();
+    const trial = trialWindow(user);
+    const report = trial ? await prisma.feedbackReport.findUnique({ where: { trialKey: `${session.uid}:${trial.startsAt}` }, select: { id: true } }) : null;
+    return ok({ trial, submitted: Boolean(report) });
+  } catch (error) { return failFromError(error); }
+}
 
 // 問題回報 — 會員送出。
 //
@@ -37,7 +51,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const parsed = feedbackCreateSchema.safeParse(await req.json());
+    const body = await req.json();
+    if (body?.action === "trialSurvey") {
+      const parsed = trialSubmissionSchema.safeParse(body);
+      if (!parsed.success) return fail(zodMessage(parsed.error), 400);
+      const d = parsed.data;
+      const result = await prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${session.uid} FOR UPDATE`;
+        const user = await tx.user.findUnique({ where: { id: session.uid }, select: trialSelect });
+        const trial = user && trialWindow(user);
+        if (!trial || trial.startsAt !== d.startsAt) return null;
+        const trialKey = `${session.uid}:${trial.startsAt}`;
+        const existing = await tx.feedbackReport.findUnique({ where: { trialKey }, select: { id: true, createdAt: true } });
+        if (existing) return existing;
+        if (!trial.due) return null;
+        const a = d.answers;
+        return tx.feedbackReport.create({ data: { userId: session.uid, type: "other", title: "NOVA trial feedback",
+          body: `1. Goal: ${a.goal}\nWhy: ${a.motivation}\n\n2. First step: ${a.firstStep}\n\n3. Continue using NOVA: ${a.continueUsing}\nReason: ${a.reason}\nUsage: ${a.usage || "—"}\n\n4. Biggest pain point: ${a.painPoint}\n\n5. Indispensable: ${a.indispensable}`,
+          surveyAnswers: { version: 1, startsAt: trial.startsAt, endsAt: trial.endsAt, answers: a }, trialKey,
+          pageUrl: "/dashboard/agenda", locale: d.locale, userAgent: req.headers.get("user-agent")?.slice(0, 500) || null,
+        }, select: { id: true, createdAt: true } });
+      });
+      return result ? ok(result) : fail("試用未滿 7 天或試用設定已變更，請重新載入 / Trial not yet seven days old or settings changed; reload", 409);
+    }
+
+    const parsed = feedbackCreateSchema.safeParse(body);
     if (!parsed.success) return fail(zodMessage(parsed.error), 400);
     const d = parsed.data;
 

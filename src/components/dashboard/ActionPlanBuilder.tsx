@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { BOTTLENECKS, COMPANY_STAGES, type BottleneckGroup } from "@/lib/action-plan/constants";
 import { diagnosisSchema, type Diagnosis } from "@/lib/action-plan/schemas";
 import { useDashboardUser } from "./DashboardUserProvider";
 import { notifyPlanChanged } from "./PlanRefresh";
@@ -50,7 +49,7 @@ export default function ActionPlanBuilder({
   const draftRef = useRef<BuilderDraft | null>(null), busyRef = useRef(false), alive = useRef(true), opened = useRef(false), automatic = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null), triggerRef = useRef<HTMLButtonElement>(null);
   const userId = useDashboardUser(), storageKey = userId ? builderStorageKey(userId) : null;
-  const [confirmed, setConfirmed] = useState(false), [correcting, setCorrecting] = useState(false);
+  const [correcting, setCorrecting] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [conflict, setConflict] = useState(false);
   const { question = "", answer = "", answers = [], diagnosis = null } = draft || {};
   const blocked = busy || conflict || Boolean(draft?.generatingAt);
@@ -67,7 +66,6 @@ export default function ActionPlanBuilder({
     return true;
   }
   function setAnswer(value: string) { writeChange({ answer: value }); }
-  function setDiagnosis(value: Diagnosis) { writeChange({ diagnosis: value }); }
   async function resultFor(requestId: string) {
     const res = await fetch(`/api/action-plans/generate?requestId=${encodeURIComponent(requestId)}`, { cache: "no-store" });
     const json = await readApiResponse<{ planId: string | null }>(res, t("genericError"));
@@ -96,9 +94,6 @@ export default function ActionPlanBuilder({
     window.addEventListener("storage", changed); return () => window.removeEventListener("storage", changed);
   }, [storageKey, tGuide]);
 
-  const group = (diagnosis?.bottleneckGroup ?? "Product") as BottleneckGroup;
-  const bottlenecks = useMemo(() => BOTTLENECKS[group], [group]);
-
   async function callDiagnose(nextAnswers: Answer[]) {
     if (busyRef.current || conflict || !draftRef.current) return;
     busyRef.current = true; setBusy(true); setError("");
@@ -112,18 +107,19 @@ export default function ActionPlanBuilder({
       if (!json.data || json.data.status === "ready" && nextAnswers.length !== 3 || json.data.status === "needs_input" && nextAnswers.length >= 3) throw new Error(t("answerAllThree"));
       if (!alive.current) return;
       if (json.data.status === "needs_input") writeChange({ question: json.data.question });
-      else { const checked = diagnosisSchema.safeParse(json.data.diagnosis); if (!checked.success) throw new Error(t("genericError")); writeChange({ question: "", diagnosis: checked.data }); setConfirmed(false); setCorrecting(false); }
+      else { const checked = diagnosisSchema.safeParse(json.data.diagnosis); if (!checked.success) throw new Error(t("genericError")); writeChange({ question: "", diagnosis: checked.data }); setCorrecting(false); }
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : t("genericError")); }
     finally { busyRef.current = false; if (alive.current) setBusy(false); }
   }
   async function begin() {
     if (busyRef.current || !storageKey) return;
-    setOpen(true); opened.current = true; setError(""); setNotice(""); setConflict(false); setConfirmed(false); setCorrecting(false);
+    setOpen(true); opened.current = true; setError(""); setNotice(""); setConflict(false); setCorrecting(false);
     let restored: BuilderDraft | null = null;
     try { restored = readBuilderDraft(localStorage.getItem(storageKey)); } catch { setNotice(tGuide("storageWarning")); }
     const next = restored || newBuilderDraft(locale, crypto.randomUUID(), messages);
     if (next.generatingAt && Date.now() - next.generatingAt >= 300000) next.generatingAt = null;
     draftRef.current = next; setDraft(next);
+    setCorrecting(next.answers.length === 3 && !next.diagnosis);
     try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { setNotice(tGuide("storageWarning")); }
     if (restored) {
       setNotice(tGuide(restored.diagnosis ? "diagnosisRestored" : "answersRestored"));
@@ -160,24 +156,8 @@ export default function ActionPlanBuilder({
     await callDiagnose([...answers, { question, answer: text }]);
   }
 
-  function changeStage(companyStage: Diagnosis["companyStage"]) {
-    if (!diagnosis) return;
-    setDiagnosis({ ...diagnosis, companyStage, stageReason: t("userAdjusted"), stageConfidence: 0 });
-  }
-
-  function changeGroup(bottleneckGroup: Diagnosis["bottleneckGroup"]) {
-    if (!diagnosis) return;
-    setDiagnosis({
-      ...diagnosis,
-      bottleneckGroup,
-      bottleneckCode: BOTTLENECKS[bottleneckGroup][0][0],
-      bottleneckReason: t("userAdjusted"),
-      bottleneckConfidence: 0,
-    });
-  }
-
   async function generate() {
-    if (busyRef.current || blocked || !diagnosis || !confirmed || !draftRef.current) return;
+    if (busyRef.current || blocked || !diagnosis || correcting || !draftRef.current) return;
     if (answers.length !== 3) { setError(t("answerAllThree")); return; }
     busyRef.current = true; setBusy(true); setError("");
     const requestId = draftRef.current.requestId; let received = false;
@@ -275,58 +255,20 @@ export default function ActionPlanBuilder({
               </form>
             )}
 
-            {diagnosis && (
+            {(diagnosis || correcting) && (
               <div className="mt-7">
                 <h3 className="text-lg font-bold text-dark">{t("yourDiagnosis")}</h3>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {diagnosis && !correcting && <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <Evidence title={t("stageEvidence")} reason={diagnosis.stageReason} />
                   <Evidence title={t("bottleneckEvidence")} reason={diagnosis.bottleneckReason} />
-                </div>
-                {correcting && <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <label className="text-sm font-bold text-dark">
-                    {t("stage")}
-                    <select
-                      disabled={blocked} value={diagnosis.companyStage}
-                      onChange={(event) => changeStage(event.target.value as Diagnosis["companyStage"])}
-                      className="mt-2 min-h-11 w-full rounded-xl border border-dark/15 bg-white px-3 text-sm font-normal"
-                    >
-                      {COMPANY_STAGES.map((stage) => <option key={stage}>{stage}</option>)}
-                    </select>
-                  </label>
-                  <label className="text-sm font-bold text-dark">
-                    {t("bottleneckGroup")}
-                    <select
-                      disabled={blocked} value={diagnosis.bottleneckGroup}
-                      onChange={(event) => changeGroup(event.target.value as Diagnosis["bottleneckGroup"])}
-                      className="mt-2 min-h-11 w-full rounded-xl border border-dark/15 bg-white px-3 text-sm font-normal"
-                    >
-                      {Object.keys(BOTTLENECKS).map((item) => <option key={item}>{item}</option>)}
-                    </select>
-                  </label>
-                  <label className="text-sm font-bold text-dark sm:col-span-2">
-                    {t("bottleneck")}
-                    <select
-                      disabled={blocked} value={diagnosis.bottleneckCode}
-                      onChange={(event) => setDiagnosis({ ...diagnosis, bottleneckCode: event.target.value, bottleneckReason: t("userAdjusted"), bottleneckConfidence: 0 })}
-                      className="mt-2 min-h-11 w-full rounded-xl border border-dark/15 bg-white px-3 text-sm font-normal"
-                    >
-                      {bottlenecks.map(([code, label]) => <option key={code} value={code}>{group} · {label}</option>)}
-                    </select>
-                  </label>
                 </div>}
-                {!confirmed && <div className="mt-5 flex flex-wrap gap-3">
-                  <button type="button" disabled={blocked} onClick={() => { setConfirmed(true); setCorrecting(false); }} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">{t("confirmDiagnosis")}</button>
-                  <button type="button" disabled={blocked} onClick={() => setCorrecting(true)} className="min-h-11 rounded-xl border border-dark/15 px-5 py-2.5 text-sm font-bold text-dark">{t("correctDiagnosis")}</button>
+                {correcting ? <div className="mt-5 space-y-4">
+                  {answers.map((row, index) => <label key={index} className="block text-sm font-semibold">{row.question}<textarea maxLength={4000} rows={4} disabled={blocked} value={row.answer} onChange={event => writeChange({ answers: answers.map((answer, i) => i === index ? { ...answer, answer: event.target.value } : answer), diagnosis: null })} className="mt-2 min-h-11 w-full rounded-xl border border-dark/15 p-3 font-normal" /></label>)}
+                  <button type="button" disabled={blocked || answers.some(row => !row.answer.trim())} onClick={() => void callDiagnose(answers)} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 font-bold text-white">{busy ? t("diagnosing") : t("continue")}</button>
+                </div> : <div className="mt-5 flex flex-wrap gap-3">
+                  <button type="button" disabled={blocked} onClick={() => void generate()} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">{busy ? t("generating") : t("confirmDiagnosis")}</button>
+                  <button type="button" disabled={blocked} onClick={() => { setCorrecting(true); writeChange({ diagnosis: null }); }} className="min-h-11 rounded-xl border border-dark/15 px-5 py-2.5 text-sm font-bold text-dark">{t("correctDiagnosis")}</button>
                 </div>}
-                {confirmed && <button
-                  type="button"
-                  onClick={generate}
-                  disabled={blocked}
-                  className="mt-5 min-h-11 w-full rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  {busy ? t("generating") : t("confirm")}
-                </button>}
-                {confirmed && <button type="button" disabled={blocked} onClick={() => { setConfirmed(false); setCorrecting(true); }} className="mt-3 text-sm font-semibold text-primary">{t("correctDiagnosis")}</button>}
               </div>
             )}
 

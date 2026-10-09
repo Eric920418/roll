@@ -15,10 +15,10 @@ export const DIAGNOSTIC_QUESTIONS = {
 export const builderDraftSchema = z.object({
   version: z.literal(1), revision: z.number().int().nonnegative(), requestId: z.string().uuid(),
   locale: z.enum(["en", "zh-tw"]), question: z.string().max(4000), answer: z.string().max(4000),
-  answers: z.array(z.object({ question: z.string().min(1).max(4000), answer: z.string().trim().min(1).max(4000) })).max(3),
+  answers: z.array(z.object({ question: z.string().min(1).max(4000), answer: z.string().max(4000) })).max(3),
   diagnosis: diagnosisSchema.nullable(), messages: z.array(conversationMessageSchema).max(30),
   generatingAt: z.number().nonnegative().nullable(),
-}).refine(d => !d.diagnosis || d.answers.length === 3, "Diagnosis requires three answers");
+}).refine(d => !d.diagnosis || d.answers.length === 3 && d.answers.every(row => row.answer.trim()), "Diagnosis requires three complete answers");
 export type BuilderDraft = z.infer<typeof builderDraftSchema>;
 export const builderStorageKey = (userId: string) => `nova:action-builder:${userId}`;
 export function readBuilderDraft(raw: string | null): BuilderDraft | null {
