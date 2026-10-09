@@ -1,5 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { pathForLocale } from "@/lib/routes";
+import type { Locale } from "@/i18n/routing";
 import { useLocale } from "next-intl";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
@@ -20,7 +23,7 @@ export default function InterviewWorkspace({ userId, action, busy, onConfigure, 
   onConfigure: (target: number) => Promise<boolean | void>;
   onChanged: (plan: ActionPlanDto | null) => void; onInsights: () => void;
 }) {
-  const zh = useLocale() === "zh-tw";
+  const locale = useLocale() as Locale, zh = locale === "zh-tw";
   const [target, setTarget] = useState(() => /^(companies|company|公司|間)$/i.test(action.metric?.unit || "") ? String(action.metric?.target ?? "") : "");
   const [rows, setRows] = useState<Array<InterviewRow & { updatedAt: string }> | null>(null);
   const [error, setError] = useState(""), [saving, setSaving] = useState(false);
@@ -51,14 +54,14 @@ export default function InterviewWorkspace({ userId, action, busy, onConfigure, 
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold">{action.metric?.current ?? 0}/{action.metric?.target ?? "?"} {zh ? "間不同公司" : "distinct companies"}</p><button type="button" onClick={onInsights} className={button}>{zh ? "查看 Insights" : "View Insights"}</button></div>
       {!rows && !error && <p role="status" className="text-sm">{zh ? "載入訪談紀錄…" : "Loading interviews…"}</p>}
       {rows && <CustomerDiscovery userId={userId} actionId={action.id} rows={rows} outcomes={[]} readOnly={busy || action.done || action.dependency.blocked} onSaved={plan => { void reload(plan); }} />}
-      <p className="text-sm text-dark/60">{zh ? "達到目標後，請確認完成任務。儲存訪談不會自動完成或發分。" : "After reaching the target, confirm task completion. Saving an interview does not complete the task or award points."}</p>
+      {action.done ? <div className="space-y-3 rounded-xl border border-dark/15 bg-white p-4"><h4 className="font-semibold">{zh ? "訪談任務已完成，下一步整理 ICP" : "Interviews complete. Next: review your ICP"}</h4><p className="text-sm text-dark/60">{zh ? "你可以用這些紀錄建立或更新 ICP；草稿需另行確認並儲存。" : "Use these conversations to create or update your ICP. Review and save the draft separately."}</p><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "建立或更新 ICP" : "Create or update ICP"} →</Link></div> : <p className="text-sm text-dark/60">{zh ? "達到目標後，請確認完成任務。儲存訪談不會自動完成或發分；完成任務也不會自動建立或更新 ICP。" : "After reaching the target, confirm task completion. Saving an interview does not complete the task or award points. Task completion does not automatically create or update your ICP."}</p>}
     </>}
     {error && <div role="alert" className="space-y-2 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p>{enabled && <button type="button" className={button} onClick={() => { void reload(); }}>{zh ? "重新載入（保留輸入）" : "Reload (keep input)"}</button>}</div>}
   </section>;
 }
 
 export function InterviewInsights({ actionId, title, onClose }: { actionId: string; title: string; onClose: () => void }) {
-  const zh = useLocale() === "zh-tw", dialog = useRef<HTMLDialogElement>(null);
+  const locale = useLocale() as Locale, zh = locale === "zh-tw", dialog = useRef<HTMLDialogElement>(null);
   const [summary, setSummary] = useState<InterviewSummary | null>(null), [error, setError] = useState("");
   async function load() { setError(""); try { setSummary((await readInterviews(actionId)).summary); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } }
   useEffect(() => {
@@ -79,6 +82,7 @@ export function InterviewInsights({ actionId, title, onClose }: { actionId: stri
       <h3 className="font-semibold">{zh ? "受訪公司名單" : "Interviewed companies"}</h3>
       {summary.companies.length ? <ul className="space-y-2">{summary.companies.map(company => <li key={company.recordId} className="break-words">{company.name} · {company.challenge === "unclassified" ? (zh ? "未分類" : "Unclassified") : CHALLENGES[company.challenge][zh ? 1 : 0]}</li>)}</ul> : <p>{zh ? "尚無有效訪談紀錄。" : "No valid interviews yet."}</p>}
     </div>}
+    {summary && summary.total > 0 && <div className="mt-6 space-y-3 border-t border-dark/10 pt-5"><h3 className="font-semibold">{zh ? "下一步：確認你的 ICP" : "Next: review your ICP"}</h3><p className="text-sm text-dark/60">{zh ? "Insights 是訪談統計。請到公司檔案整理 ICP 草稿，確認並儲存後才會更新已儲存的 ICP。" : "Insights summarises your interviews. Prepare an ICP draft in your company profile, then confirm and save it to update your saved ICP."}</p><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "建立或更新 ICP" : "Create or update ICP"} →</Link></div>}
     {error && <div role="alert" className="mt-5 space-y-3"><p className="whitespace-pre-wrap text-red-700">{error}</p><button type="button" className={button} onClick={() => { void load(); }}>{zh ? "重試" : "Retry"}</button></div>}
   </dialog>;
 }

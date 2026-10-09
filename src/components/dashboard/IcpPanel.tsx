@@ -128,7 +128,9 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
       try { const fresh = await request(); setWorkspace(fresh); reconcileInput(fresh); } catch { /* original error remains visible */ }
     } finally { busyRef.current = false; setBusy(false); }
   }
-  const current = workspace.saved || saved;
+  const current = workspace.currentProfileVersion > version ? workspace.saved : saved;
+  const currentLegacy = workspace.currentProfileVersion > version ? workspace.legacy : legacy;
+  const hasSaved = Boolean((current && hasIcp(current)) || currentLegacy?.trim());
   const awaitingAnswer = workspace.messages.at(-1)?.role === "assistant";
   const blocked = busy || workspace.pending || !loaded;
 
@@ -141,11 +143,12 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
 
   return <>
     <section className="min-w-0 rounded-2xl border border-sky-300 bg-white p-6">
-      <IcpDiscovery userId={userId} canUseAi={canUseAi} onUpdated={setWorkspace} />
-      <details className="mt-5 border-t border-dark/10 pt-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">{locale === "zh-tw" ? "已儲存的 ICP 與原有編輯工具" : "Saved ICP and detailed editor"}</summary>
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("title")}</h2></div>
-      <p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-lg font-bold text-dark">{current?.summary || workspace.legacy || legacy || t("notProvided")}</p>
-      {rows(current || EMPTY_ICP, t("notProvided"))}
+      <section id="icp-saved" aria-labelledby="saved-icp-title" className="scroll-mt-8 rounded-xl border border-dark/15 bg-dark/[0.02] p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="saved-icp-title" className="text-sm font-bold uppercase tracking-wider">{locale === "zh-tw" ? "已儲存的 ICP" : "Saved ICP"}</h2><span className={`rounded-full px-3 py-1 text-xs font-semibold ${hasSaved ? "bg-black text-white" : "bg-dark/5 text-dark/60"}`}>{hasSaved ? (locale === "zh-tw" ? "已儲存 · 待市場驗證" : "Saved · to validate") : (locale === "zh-tw" ? "尚未儲存" : "Not saved")}</span></div>
+        {hasSaved ? <><p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-lg font-bold">{current?.summary || currentLegacy || current?.who || t("notProvided")}</p>{current && rows(current, t("unknown"))}<p className="mt-3 text-sm text-dark/60">{locale === "zh-tw" ? "這是你已確認儲存的客戶假設，仍需用市場證據驗證。下方編輯草稿不會自動取代此版本。" : "This is your saved customer hypothesis. Validate it with market evidence. Editing the draft below does not replace this version."}</p></> : <p className="mt-3 text-sm text-dark/60">{workspace.draft && hasIcp(workspace.draft) ? (locale === "zh-tw" ? "你有一份草稿待確認；請編輯、確認並儲存 ICP。" : "You have a draft to review. Edit, confirm and save your ICP.") : (locale === "zh-tw" ? "尚未儲存 ICP。完成任務或訪談不會自動建立；請在下方填寫或整理草稿，再確認儲存。" : "No ICP saved yet. Completing tasks or interviews does not create one automatically. Write or prepare a draft below, then confirm and save.")}</p>}
+      </section>
+      <div className="mt-6"><IcpDiscovery key={`${userId}:${Math.max(version, workspace.currentProfileVersion)}`} userId={userId} canUseAi={canUseAi} onUpdated={setWorkspace} /></div>
+      <details className="mt-5 border-t border-dark/10 pt-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">{locale === "zh-tw" ? "更多 ICP 編輯工具" : "More ICP editing tools"}</summary>
       <div className="mt-4 flex flex-wrap gap-2">
         {canUseAi ? <button ref={trigger} type="button" className={`${button} flex-1`} onClick={() => void show()}>✧ {t("ask")}</button> : <Link className={`${button} flex-1 text-center`} href={pathForLocale("/dashboard/account#plan", locale)}>{t("upgrade")}</Link>}
         <button type="button" className={button} onClick={() => void show(true)}>{t("edit")}</button>

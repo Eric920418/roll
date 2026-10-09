@@ -309,3 +309,65 @@ test("Discovery suggestions preserve saved ICP, reuse workspace locks and bill a
   assert.equal((await h.api.getIcpWorkspace("b", "en")).draft, null);
   await assert.rejects(h.api.patchIcp("a", { ...patch, action: "choose", draft: EMPTY_ICP, revision: 0, discovery: { path: "discovery" } }), /another tab/);
 });
+
+test("Saved ICP remains visible outside tools and uses the newest saved profile version", () => {
+  const react = require("react") as typeof import("react");
+  type Node = import("react").ReactNode;
+  function render(saved: IcpDraft | null, version: number, workspace: Partial<IcpWorkspaceView> = {}, legacy: string | null = null) {
+    const panel = load<{ default(props: object): Node }>("src/components/dashboard/IcpPanel.tsx", {
+      "./IcpDiscovery": { default: () => null },
+      react: { useEffect() {}, useRef: () => ({ current: null }), useState: (initial: unknown) => [initial && typeof initial === "object" && "currentProfileVersion" in initial ? { ...initial, ...workspace } : initial, () => {}] },
+      "react-dom": { createPortal: (node: Node) => node },
+      "next/link": { default: "a" },
+      "next/navigation": { useRouter: () => ({ refresh() {} }) },
+      "next-intl": { useLocale: () => "en", useTranslations: () => (key: string) => key },
+      "@/lib/routes": require("../src/lib/routes"),
+      "@/lib/icp/schema": require("../src/lib/icp/schema"),
+    });
+    const visible: string[] = [], hidden: string[] = [];
+    function visit(node: Node, collapsed = false) {
+      react.Children.forEach(node, child => {
+        if (typeof child === "string") (collapsed ? hidden : visible).push(child);
+        else if (react.isValidElement<{ children?: Node }>(child)) visit(child.props.children, collapsed || child.type === "details");
+      });
+    }
+    visit(panel.default({ userId: "owner", saved, version, legacy, canUseAi: true, children: null }));
+    return { visible: visible.join(" "), hidden: hidden.join(" ") };
+  }
+  const saved = render(draft, 1);
+  assert.match(saved.visible, /Founders without paying customers/);
+  assert.match(saved.visible, /Saved · to validate/);
+  assert(!saved.hidden.includes(draft.summary));
+  assert.match(render({ ...draft, summary: "New server version" }, 2, { currentProfileVersion: 1, saved: draft }).visible, /New server version/);
+  assert.match(render(draft, 1, { currentProfileVersion: 2, saved: { ...draft, summary: "Just confirmed version" } }).visible, /Just confirmed version/);
+  const unsigned = render(null, 0, { draft });
+  assert.match(unsigned.visible, /Not saved/); assert.match(unsigned.visible, /draft to review/);
+  assert(!unsigned.visible.includes(draft.summary));
+  assert.match(render(null, 0, {}, "Legacy saved ICP").visible, /Legacy saved ICP/);
+});
+
+test("Interview handoff is explicit, localized and never offers an ICP action for empty evidence", () => {
+  const react = require("react") as typeof import("react");
+  type Node = import("react").ReactNode;
+  function render(locale: string, total: number) {
+    const summary = { total, top: [], counts: { other: 0, unclassified: total }, companies: [] };
+    const ui = load<{ InterviewInsights(props: object): Node }>("src/components/dashboard/InterviewWorkspace.tsx", {
+      "./CustomerDiscovery": { default: () => null },
+      react: { useEffect() {}, useRef: () => ({ current: null }), useState: (initial: unknown) => [initial === null ? summary : initial, () => {}] },
+      "next/link": { default: "a" }, "next-intl": { useLocale: () => locale },
+      "@/lib/routes": require("../src/lib/routes"), "@/lib/customer-insights/schema": insights,
+    });
+    const links: Array<{ href: string; className: string }> = [], text: string[] = [];
+    function visit(node: Node) {
+      react.Children.forEach(node, child => { if (typeof child === "string") text.push(child); else if (react.isValidElement<{ children?: Node; href?: string; className?: string }>(child)) { if (child.type === "a") links.push(child.props as { href: string; className: string }); visit(child.props.children); } });
+    }
+    visit(ui.InterviewInsights({ actionId: "interview", title: "Interviews", onClose() {} }));
+    return { links, text: text.join(" ") };
+  }
+  assert.equal(render("en", 0).links.length, 0);
+  const en = render("en", 2), zh = render("zh-tw", 2);
+  assert.equal(en.links[0].href, "/dashboard/profile#icp-start");
+  assert.equal(zh.links[0].href, "/zh-tw/dashboard/profile#icp-start");
+  assert.match(en.links[0].className, /min-h-11/);
+  assert.match(en.text, /confirm and save/); assert.match(zh.text, /確認並儲存/);
+});

@@ -1356,3 +1356,13 @@ Schema 預檢已確認只增加 `ActionItem.recordingMode TEXT NULL` 與 `Action
 刪除版本保護：Customer Insights DELETE /api/notes/:id 帶 updatedAt 查詢參數；結構化訪談缺版本或版本已變更回 409，錯誤保留輸入並重載可比較的新紀錄；一般非結構化 Notes 維持相容。實際 DB 測試驗證撤銷完成後舊版本仍不可刪除、缺版本拒絕、最新版本才可刪除，避免舊分頁刪掉剛儲存的訪談。
 
 發布驗收：main 的 Vercel Production 已 READY，www.rollgrp.com 已使用新版 Next Steps；公開首頁回 200，未登入工作區回 307 導向登入，Customer Insights 與計畫 API 回 401。實際雙分頁訪談編輯回 409、保留輸入、顯示最新紀錄並確認比較後成功重試；舊計畫缺回答提示正常。隔離本機 QA 帳號已清理，私有 Production 環境暫存已移除；無新增套件／環境變數，沒有真實 AI 或郵件操作。
+
+## 訪談完成至 ICP 的 UX（2026-10-09）
+
+Next Steps 已完成訪談與 Insights 統計視窗提供「建立或更新 ICP」連結，前往既有 Profile #icp-start；明示完成任務只更新完成與積分，ICP 草稿仍由使用者確認並儲存。Profile 把已儲存 ICP 摘要與六欄移到預設可見的區塊，提供已儲存／尚未儲存狀態；只有詳細編輯工具收合。草稿區明確標示未儲存，主要按鈕改為「確認並儲存 ICP」。
+
+顯示選擇使用較新的 Profile 版本，避免 router.refresh 後舊工作區遮住最新已儲存內容；保存版本更新後恢復探索元件的伺服器狀態及既有本機草稿。沿用現有 ICP 儲存、版次、人工確認、AI 權限與配額，不自動分析、扣額或改寫會員 ICP；沒有 schema、套件或環境變數變更。
+
+UX 回歸測試：已儲存／尚未儲存／待確認草稿／舊版 ICP 顯示、較新 Profile 與剛儲存工作區的版本選擇；Insights 中英文連結、44px 點擊區及零紀錄不提示 ICP 後續行動。
+
+驗收：隔離 PostgreSQL 的 191 項測試全數通過；`pnpm lint` 0 errors、14 個既有 warnings，`pnpm exec tsc --noEmit` 與建置通過。合成帳號實際驗證訪談入口、草稿未儲存提示、確認保存、重載持久化、詳細編輯後立即更新、中英文與 390px 手機無水平溢出，以及主要按鈕 44px／鍵盤操作。測試帳號已清理，本機伺服器已停止；沒有真實 AI／郵件操作或正式會員資料修改。發布沿用 main 的 Production 自動部署，無新增 schema 或設定。
