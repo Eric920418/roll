@@ -352,7 +352,7 @@ test("Interview handoff is explicit, localized and never offers an ICP action fo
   function render(locale: string, total: number) {
     const summary = { total, top: [], counts: { other: 0, unclassified: total }, companies: [] };
     const ui = load<{ InterviewInsights(props: object): Node }>("src/components/dashboard/InterviewWorkspace.tsx", {
-      "./CustomerDiscovery": { default: () => null },
+      "./CustomerDiscovery": { default: () => null }, "./LearningResources": { default: () => null },
       react: { useEffect() {}, useRef: () => ({ current: null }), useState: (initial: unknown) => [initial === null ? summary : initial, () => {}] },
       "next/link": { default: "a" }, "next-intl": { useLocale: () => locale },
       "@/lib/routes": require("../src/lib/routes"), "@/lib/customer-insights/schema": insights,

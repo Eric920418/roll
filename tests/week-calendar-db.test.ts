@@ -56,12 +56,12 @@ test("This week integration in isolated PostgreSQL", { skip: !connectionString }
       assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: first.id } })).done, false);
       assert.equal(await db.rewardEntry.count({ where: { userId: user.id } }), 0);
     });
-    await t.test("Paid entitlement and actual prerequisites are enforced; metrics and waiting references are real", async () => {
+    await t.test("Paid entitlement and actual prerequisites are enforced; manual interview totals are not evidence and waiting references are real", async () => {
       await assert.rejects(service.mutateWeekPlan(user.id, false, schedule()), /Pro/);
       await assert.rejects(service.mutateWeekPlan(other.id, true, schedule()), /changed/);
       await assert.rejects(service.mutateWeekPlan(user.id, true, schedule(second.id)), /locked/);
       const view = await service.getWeekPlan(user.id, true, "2026-09-28");
-      assert.deepEqual(JSON.parse(JSON.stringify(view.tasks[0].metric)), { target: 10, unit: "buyers", current: 3 });
+      assert.deepEqual(JSON.parse(JSON.stringify(view.tasks[0].metric)), { target: 10, unit: "companies", current: 0 });
       assert.equal(view.tasks[1].dependency.blocked, true); assert.equal(view.tasks[1].dependency.actionRefs[0].displayNumber, 1);
     });
     await t.test("Parallel scheduling has one winner, drag replay is safe, moves require current revision", async () => {

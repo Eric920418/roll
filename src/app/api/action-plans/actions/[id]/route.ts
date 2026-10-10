@@ -14,6 +14,11 @@ import { legacyHoursForMinutes } from "@/lib/action-plan/time";
 import { assertInterviewComplete, interviewRows } from "@/lib/customer-insights/service";
 import { interviewSummary } from "@/lib/customer-insights/interviews";
 import { awardReward, prepareActionReward } from "@/lib/rewards/service";
+import { z } from "zod";
+import { workspaceKind, storedFindingSchema } from "@/lib/action-plan/workspace";
+import { planWorkspaceEvidence, validateWorkspaceLinks, workspaceMetric, assertTaskWorkspaceComplete, generateTaskFinding } from "@/lib/action-plan/workspace-service";
+
+export const maxDuration = 120;
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -41,6 +46,9 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } },
       select: {
         id: true,
+        title: true,
+        taskWorkspace: true,
+        taskFinding: true,
         actionPlanId: true,
         done: true,
         milestoneId: true,
@@ -63,6 +71,27 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     });
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
     await prepareActionReward(tx, session.uid, id, current.done);
+
+    if ("taskWorkspace" in parsed.data || "finding" in parsed.data) {
+      const pending = storedFindingSchema.safeParse(current.taskFinding).data?.pending;
+      if (pending && Date.now() - Date.parse(pending.since) < 120_000) throw new PlanWriteError("請等 AI 分析完成後再編輯 / Wait for analysis before editing", 409);
+      if ("finding" in parsed.data) {
+        if (!current.done) throw new PlanWriteError("完成任務後才可編輯分析 / Complete the task before editing findings", 409);
+        await tx.actionItem.update({ where: { id }, data: { taskFinding: { result: parsed.data.finding, source: "user", generatedAt: new Date().toISOString() } } });
+        return;
+      }
+      if (current.done) throw new PlanWriteError("請先撤銷完成，再編輯任務紀錄 / Undo completion before editing task records", 409);
+      await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
+      const workspace = parsed.data.taskWorkspace;
+      if (workspaceKind(current) !== workspace.kind) throw new PlanWriteError("表單不符合本任務類型 / Form does not match this task", 400);
+      validateWorkspaceLinks(workspace, await planWorkspaceEvidence(tx, session.uid, current.actionPlanId));
+      const metric = workspaceMetric(workspace);
+      if (metric.metricCurrent > (current.metricCurrent ?? 0) && ((current.dependencyLevel > 0 && !current.dependencies.length) || current.dependencies.some(e => !dependencySatisfied(e)))) throw new PlanWriteError("請先完成前置任務 / Resolve prerequisites first", 409);
+      if (current.requiredBy.some(e => e.minimumCurrent != null && (metric.metricTarget < e.minimumCurrent || current.metricUnit !== metric.metricUnit))) throw new PlanWriteError("先調整既有數量依賴，才能使用新工作區 / Adjust existing quantity dependencies before using this workspace", 409);
+      if (current.requiredBy.some(e => e.action.done && e.minimumCurrent != null && metric.metricCurrent < e.minimumCurrent)) throw new PlanWriteError("請先撤銷後續任務完成 / Undo dependent completions first", 409);
+      await tx.actionItem.update({ where: { id }, data: { taskWorkspace: workspace as Prisma.InputJsonValue, ...metric, taskFinding: Prisma.DbNull } });
+      return;
+    }
 
     if ("recordingMode" in parsed.data) {
       if (current.done) throw new PlanWriteError("請先撤銷完成再設定訪談模式 / Undo completion before configuring interviews", 409);
@@ -87,7 +116,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       return;
     }
     if ("metricTarget" in parsed.data) {
-      if (current.recordingMode === "interview") throw new PlanWriteError("訪談數量由實際紀錄計算，請使用訪談設定 / Interview totals come from saved records; use interview settings", 409);
+      if (current.recordingMode === "interview" || current.taskWorkspace) throw new PlanWriteError("進度由已存紀錄計算，請在 Next Steps 編輯紀錄 / Progress comes from saved records; edit them in Next Steps", 409);
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
       const metricCurrent = parsed.data.metricCurrent;
       if (metricCurrent != null && metricCurrent > (current.metricCurrent ?? -1) && ((current.dependencyLevel > 0 && current.dependencies.length === 0) || current.dependencies.some(edge => !dependencySatisfied(edge)))) throw new PlanWriteError("請先達成前置條件，再增加本任務進度。 / Resolve prerequisites before increasing this task’s progress.", 409);
@@ -103,6 +132,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (Object.keys(parsed.data).length === 1 && "done" in parsed.data) {
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, parsed.data.done ? "done" : "undo");
       if (parsed.data.done) {
+        if (!current.done) await assertTaskWorkspaceComplete(tx, session.uid, current);
         await assertInterviewComplete(tx, session.uid, current);
         if (current.dependencyLevel > 0 && current.dependencies.length === 0) {
           throw new PlanWriteError("此任務尚未連結前置任務 ID，請先編輯依賴。");
@@ -123,7 +153,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!("dependencyActionIds" in action)) throw new PlanWriteError("Action 編輯資料不完整。", 400);
     await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, current.done && action.done === false ? "undo" : "edit");
     if (current.done && action.done === false && current.requiredBy.some(edge => edge.action.done && edge.minimumCurrent == null)) throw new PlanWriteError("請先取消後續任務的完成狀態 / Undo dependent tasks first");
-    if (action.done) await assertInterviewComplete(tx, session.uid, current);
+    if (action.done) { if (!current.done) await assertTaskWorkspaceComplete(tx, session.uid, current); await assertInterviewComplete(tx, session.uid, current); }
     const legacyActionTime = legacyHoursForMinutes(action.actionTime);
     const stageFitChanged = action.stageFit.score !== current.stageFit || action.stageFit.reason !== current.stageFitReason;
     const bottleneckFitChanged = action.bottleneckFit.score !== current.bottleneckFit || action.bottleneckFit.reason !== current.bottleneckFitReason;
@@ -183,6 +213,21 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (error instanceof Error && /依賴|循環|自己/.test(error.message)) return fail(error.message, 400);
     if (error instanceof SyntaxError) return fail("無效 JSON / Invalid JSON", 400);
     if (error instanceof Error && error.name === "ZodError") return fail(error.message, 400);
+    return failFromError(error);
+  }
+}
+
+export async function POST(req: NextRequest, { params }: Context) {
+  const blocked = browserMutationGuard(req, true); if (blocked) return blocked;
+  try {
+    const session = await getUserSession(); if (!session) return unauthorized();
+    const account = await requirePlan("pro"); if (!account) return fail("此功能需 Pro 以上方案 / Pro plan required", 403);
+    const input = z.object({ requestId: z.string().uuid(), revision: z.number().int().nonnegative(), locale: z.enum(["en", "zh-tw"]) }).strict().parse(await req.json());
+    return ok(await generateTaskFinding(account, (await params).id, input));
+  } catch (error) {
+    if (error instanceof PlanWriteError) return fail(error.message, error.status);
+    if (error instanceof z.ZodError) return fail(error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; "), 400);
+    if (error instanceof SyntaxError) return fail("無效 JSON / Invalid JSON", 400);
     return failFromError(error);
   }
 }

@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { PlanWriteError, lockActivePlan, guardActionMilestone } from "@/lib/action-plan/service";
 import { dependencySatisfied } from "@/lib/action-plan/dependency";
 import { interviewSummary } from "./interviews";
+import { workspaceKind, interviewTarget } from "@/lib/action-plan/workspace";
 
 export async function interviewRows(tx: Pick<Prisma.TransactionClient, "meetingNote">, userId: string, actionId: string) {
   return tx.meetingNote.findMany({ where: { userId, insight: { path: ["actionId"], equals: actionId } }, select: { id: true, updatedAt: true, insight: true }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
@@ -15,8 +16,18 @@ export async function lockInterviewAction(tx: Prisma.TransactionClient, userId: 
     return; // Deleted tasks retain their owned conversations.
   }
   const active = action.actionPlan.activeKey === userId && !action.actionPlan.archivedAt;
-  if (creating && (!active || action.recordingMode !== "interview")) throw new PlanWriteError("請先啟用目前任務的訪談紀錄 / Enable interviews on an active task first", 409);
+  if (creating && (!active || workspaceKind(action) !== "interview")) throw new PlanWriteError("請使用目前的訪談任務 / Use an active interview task", 409);
   if (active) await lockActivePlan(tx, userId, action.actionPlanId);
+  if (creating && action.recordingMode !== "interview") {
+    const target = interviewTarget(action);
+    if (!target) throw new PlanWriteError("此任務尚無訪談目標，請先編輯任務名稱加入明確訪談數量 / Edit the task title to specify an interview count first", 409);
+    if (action.done) throw new PlanWriteError("請先撤銷完成再新增訪談 / Undo completion before adding interviews", 409);
+    await guardActionMilestone(tx, action.actionPlanId, action.milestoneId, "edit");
+    const required = await tx.actionDependency.findMany({ where: { dependsOnId: actionId }, include: { action: true } });
+    const count = interviewSummary(actionId, await interviewRows(tx, userId, actionId)).total;
+    if (required.some(e => e.minimumCurrent != null && (action.metricUnit !== "companies" || target < e.minimumCurrent || (e.action.done && count < e.minimumCurrent)))) throw new PlanWriteError("先調整既有數量依賴再使用訪談紀錄 / Adjust quantity dependencies before using interview records", 409);
+    await tx.actionItem.update({ where: { id: actionId }, data: { recordingMode: "interview", metricTarget: target, metricUnit: "companies", metricCurrent: count } });
+  }
 }
 
 export async function refreshInterviewProgress(tx: Prisma.TransactionClient, userId: string, actionId: string) {

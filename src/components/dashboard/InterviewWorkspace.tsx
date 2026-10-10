@@ -6,9 +6,11 @@ import type { Locale } from "@/i18n/routing";
 import { useLocale } from "next-intl";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
-import type { InterviewRow, InterviewSummary } from "@/lib/customer-insights/interviews";
+import { interviewSummary, type InterviewRow, type InterviewSummary } from "@/lib/customer-insights/interviews";
 import { CHALLENGES } from "@/lib/customer-insights/schema";
 import CustomerDiscovery from "./CustomerDiscovery";
+import { interviewTarget } from "@/lib/action-plan/workspace";
+import LearningResources from "./LearningResources";
 
 const button = "min-h-11 rounded-xl border border-dark/20 px-4 py-2 text-sm font-semibold disabled:opacity-50";
 async function readInterviews(actionId: string) {
@@ -18,45 +20,35 @@ async function readInterviews(actionId: string) {
   return json.data as { rows: Array<InterviewRow & { updatedAt: string }>; summary: InterviewSummary; plan: ActionPlanDto | null };
 }
 
-export default function InterviewWorkspace({ userId, action, busy, onConfigure, onChanged, onInsights }: {
+export default function InterviewWorkspace({ userId, action, busy, onChanged, onInsights }: {
   userId: string; action: ActionPlanActionDto; busy: boolean;
-  onConfigure: (target: number) => Promise<boolean | void>;
   onChanged: (plan: ActionPlanDto | null) => void; onInsights: () => void;
 }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw";
-  const [target, setTarget] = useState(() => /^(companies|company|公司|間)$/i.test(action.metric?.unit || "") ? String(action.metric?.target ?? "") : "");
   const [rows, setRows] = useState<Array<InterviewRow & { updatedAt: string }> | null>(null);
-  const [error, setError] = useState(""), [saving, setSaving] = useState(false);
-  const enabled = action.recordingMode === "interview";
+  const [error, setError] = useState("");
+  const target = interviewTarget(action);
   useEffect(() => {
-    if (!enabled) return;
     let alive = true;
     void readInterviews(action.id).then(data => { if (alive) { setRows(data.rows); setError(""); } }).catch(cause => { if (alive) setError(cause instanceof Error ? cause.message : String(cause)); });
     return () => { alive = false; };
-  }, [enabled, action.id]);
+  }, [action.id]);
   async function reload(plan?: ActionPlanDto) {
     if (plan) onChanged(plan);
     try { const data = await readInterviews(action.id); setRows(data.rows); onChanged(data.plan); setError(""); }
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
   }
   return <section className="mt-5 space-y-5 border-t border-dark/10 pt-5">
-    <section className="rounded-xl bg-dark/[0.03] p-4" aria-label={zh ? "學習資源" : "Learning resources"}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-dark/60">{zh ? "學習資源" : "Learning resources"}</p>
-      <h4 className="mt-2 font-bold">{zh ? "如何進行訪談？" : "How do you interview people?"}</h4>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">{["YouTube", "Spotify"].map(platform => <div key={platform} className="rounded-lg border border-dark/10 bg-white p-3"><p className="font-semibold">{platform}</p><p className="mt-1 text-sm text-dark/60">{zh ? "學習資源待補上" : "Learning resource coming soon"}</p></div>)}</div>
-    </section>
-    {!enabled && !action.done && <form className="space-y-3" onSubmit={async e => { e.preventDefault(); if (saving) return; setSaving(true); setError(""); try { const saved = await onConfigure(Number(target)); if (saved === false) throw new Error(zh ? "未儲存成功，請查看頁面錯誤並重試。" : "Not saved. Review the page error and retry."); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } finally { setSaving(false); } }}>
-      <label className="block text-sm font-semibold">{zh ? "訪談公司數目標" : "Target number of companies"}<input required type="number" min="1" max="1000000000" step="1" value={target} onChange={e => setTarget(e.target.value)} disabled={busy || saving || action.dependency.blocked} className="mt-2 min-h-11 w-full rounded-xl border border-dark/20 px-3 sm:max-w-xs" /></label>
-      <p className="text-sm text-dark/60">{zh ? "啟用後改用實際紀錄計算公司數；同公司多人或多次訪談只算一間，不沿用人工填寫的累計值。" : "Enabling interviews replaces manual totals with saved evidence. Multiple conversations at the same company count once."}</p>
-      <button disabled={busy || saving || action.dependency.blocked} className={button}>{saving ? (zh ? "儲存中…" : "Saving…") : (zh ? "啟用訪談紀錄" : "Enable interview records")}</button>
-    </form>}
-    {enabled && <>
-      <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold">{action.metric?.current ?? 0}/{action.metric?.target ?? "?"} {zh ? "間不同公司" : "distinct companies"}</p><button type="button" onClick={onInsights} className={button}>{zh ? "查看 Insights" : "View Insights"}</button></div>
+    <LearningResources question={zh ? "如何進行訪談？" : "How to run an interview?"} />
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold">{zh ? "已記錄訪談" : "Interviews logged"} · {rows ? interviewSummary(action.id, rows).total : "…"}/{target ?? "?"} {zh ? "間不同公司" : "distinct companies"}</p><button type="button" onClick={onInsights} className={button}>{zh ? "查看 Insights" : "View Insights"}</button></div>
+      <progress aria-label={zh ? "有效訪談進度" : "Valid interview progress"} className="mt-3 h-2 w-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" value={action.recordingMode === "interview" ? Math.min(action.metric?.current ?? 0, target ?? 1) : 0} max={target ?? 1} />
+      <p className="mt-2 text-xs text-dark/60">{zh ? "以實際訪談計算，不沿用手動總數。同公司重訪只計一次。" : "Saved interviews count; manual totals do not. Repeat company conversations count once."}</p>
+    </div>
       {!rows && !error && <p role="status" className="text-sm">{zh ? "載入訪談紀錄…" : "Loading interviews…"}</p>}
       {rows && <CustomerDiscovery userId={userId} actionId={action.id} rows={rows} outcomes={[]} readOnly={busy || action.done || action.dependency.blocked} onSaved={plan => { void reload(plan); }} />}
       {action.done ? <div className="space-y-3 rounded-xl border border-dark/15 bg-white p-4"><h4 className="font-semibold">{zh ? "訪談任務已完成，下一步整理 ICP" : "Interviews complete. Next: review your ICP"}</h4><p className="text-sm text-dark/60">{zh ? "你可以用這些紀錄建立或更新 ICP；草稿需另行確認並儲存。" : "Use these conversations to create or update your ICP. Review and save the draft separately."}</p><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "建立或更新 ICP" : "Create or update ICP"} →</Link></div> : <p className="text-sm text-dark/60">{zh ? "達到目標後，請確認完成任務。儲存訪談不會自動完成或發分；完成任務也不會自動建立或更新 ICP。" : "After reaching the target, confirm task completion. Saving an interview does not complete the task or award points. Task completion does not automatically create or update your ICP."}</p>}
-    </>}
-    {error && <div role="alert" className="space-y-2 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p>{enabled && <button type="button" className={button} onClick={() => { void reload(); }}>{zh ? "重新載入（保留輸入）" : "Reload (keep input)"}</button>}</div>}
+    {error && <div role="alert" className="space-y-2 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p>{<button type="button" className={button} onClick={() => { void reload(); }}>{zh ? "重新載入（保留輸入）" : "Reload (keep input)"}</button>}</div>}
   </section>;
 }
 

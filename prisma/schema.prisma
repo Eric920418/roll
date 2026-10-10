@@ -562,6 +562,8 @@ model ActionItem {
   outcomeTimeMinDays Int
   outcomeTimeMaxDays Int
 
+  taskWorkspace Json?
+  taskFinding Json?
   executionOrder Int?
   completedAt DateTime?
   metricTarget Int?

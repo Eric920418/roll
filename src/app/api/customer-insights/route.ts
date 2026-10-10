@@ -10,6 +10,7 @@ import { insightSchema, insightBody, type Insight } from "@/lib/customer-insight
 import { interviewSummary } from "@/lib/customer-insights/interviews";
 import { interviewRows, lockInterviewAction, refreshInterviewProgress } from "@/lib/customer-insights/service";
 import { PlanWriteError, getActiveActionPlan } from "@/lib/action-plan/service";
+import { planWorkspaceEvidence } from "@/lib/action-plan/workspace-service";
 
 const create = z.object({ requestId: z.string().uuid(), insight: insightSchema }).strict();
 const edit = z.object({ id: z.string().min(1), updatedAt: z.iso.datetime(), insight: insightSchema }).strict();
@@ -29,8 +30,12 @@ export async function GET(req: NextRequest) {
     const session = await getUserSession(); if (!session) return unauthorized();
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案 / Pro plan required", 403);
     const actionId = z.string().min(1).max(200).parse(req.nextUrl.searchParams.get("actionId"));
-    const action = await prisma.actionItem.findFirst({ where: { id: actionId, actionPlan: { userId: session.uid } }, select: { id: true } });
+    const action = await prisma.actionItem.findFirst({ where: { id: actionId, actionPlan: { userId: session.uid } }, select: { id: true, actionPlanId: true } });
     if (!action) return fail("找不到任務 / Task not found", 404);
+    if (req.nextUrl.searchParams.get("scope") === "plan") {
+      const evidence = await planWorkspaceEvidence(prisma as unknown as Prisma.TransactionClient, session.uid, action.actionPlanId);
+      return ok({ leads: evidence.leads, scorecards: evidence.scorecards });
+    }
     const rows = await interviewRows(prisma as unknown as Prisma.TransactionClient, session.uid, actionId);
     return ok({ rows: rows.map(r => ({ ...r, updatedAt: r.updatedAt.toISOString() })), summary: interviewSummary(actionId, rows), plan: await getActiveActionPlan(session.uid) });
   } catch (error) { return errorResponse(error); }

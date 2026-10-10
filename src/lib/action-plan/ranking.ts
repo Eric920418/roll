@@ -1,7 +1,10 @@
 import { dependencySatisfied } from "./dependency";
+import { workspaceSchema, storedFindingSchema, type TaskWorkspace, type TaskFinding, workspaceKind, interviewTarget } from "./workspace";
 import { BOTTLENECKS, IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight } from "./constants";
 
 export type RankableAction = {
+  taskWorkspace?: unknown;
+  taskFinding?: unknown;
   recordingMode?: string | null;
   id: string;
   clientKey: string;
@@ -47,6 +50,8 @@ export type RankableAction = {
 };
 
 export type ActionPlanActionDto = {
+  taskWorkspace?: TaskWorkspace | null;
+  taskFinding?: { result: TaskFinding["result"]; source?: "ai" | "user"; generatedAt?: string; pending: boolean; error?: string } | null;
   recordingMode?: "interview" | null;
   id: string;
   clientKey: string;
@@ -178,13 +183,15 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
   return rows
     .map(({ action, score, impactWeight, urgencyWeight: urgency, resolved, blocked, unfinished, missingLink, milestoneTitle, actionTimeMinMinutes, actionTimeMaxMinutes }) => ({
       id: action.id,
+      taskWorkspace: workspaceSchema.safeParse(action.taskWorkspace).data ?? null,
+      taskFinding: (() => { const f = storedFindingSchema.safeParse(action.taskFinding).data; return f ? { result: f.result, source: f.source, generatedAt: f.generatedAt, pending: Boolean(f.pending), error: f.error } : null; })(),
       recordingMode: action.recordingMode === "interview" ? "interview" : null,
       milestoneId: action.milestoneId,
       clientKey: action.clientKey,
       displayNumber: numbers.get(action.id),
       milestonePosition: positions.get(action.milestoneId || "") ?? null,
       completedAt: action.completedAt ? new Date(action.completedAt).toISOString() : null,
-      metric: { target: action.metricTarget ?? null, unit: action.metricUnit ?? null, current: action.metricCurrent ?? null },
+      metric: workspaceKind(action) === "interview" && action.recordingMode !== "interview" ? { target: interviewTarget(action), unit: "companies", current: 0 } : { target: action.metricTarget ?? null, unit: action.metricUnit ?? null, current: action.metricCurrent ?? null },
       title: humanizeActionText(action.title),
       impact: { label: action.impact, weight: impactWeight },
       urgency: {

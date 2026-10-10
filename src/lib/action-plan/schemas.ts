@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { workspaceSchema, findingSchema } from "./workspace";
 import {
   BOTTLENECKS,
   COMPANY_STAGES,
@@ -269,6 +270,8 @@ export const actionInputSchema = z
   });
 
 export const actionPatchSchema = z.union([
+  z.object({ taskWorkspace: workspaceSchema }).strict(),
+  z.object({ finding: findingSchema }).strict(),
   z.object({ recordingMode: z.literal("interview"), metricTarget: z.number().int().positive().max(1000000000) }).strict(),
   z.object({ dependencyThresholds: z.record(z.string().min(1), z.number().int().positive().max(1000000000).nullable()) }).strict(),
   z.object({ done: z.boolean() }).strict(),

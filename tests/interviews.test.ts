@@ -56,7 +56,11 @@ test("Interview transactions and completion in isolated PostgreSQL", { skip: !co
     "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({ error: "Unauthorized" }, { status: 401 }), failFromError: (error: unknown) => { console.error(error); return Response.json({ error: "Safe error" }, { status: 500 }); } },
   };
   const plans = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts", mocks);
-  mocks["@/lib/action-plan/service"] = plans;
+  mocks["@/lib/action-plan/service"] = plans; mocks["./service"] = plans;
+  mocks["@/lib/action-plan/workspace"] = await import("../src/lib/action-plan/workspace");
+  mocks["@/lib/ai/allowance"] = {};
+  const workspaces = load<typeof import("../src/lib/action-plan/workspace-service")>("src/lib/action-plan/workspace-service.ts", { ...mocks, "@/lib/rate-limit": {}, "@/lib/security/log": {} });
+  mocks["@/lib/action-plan/workspace-service"] = workspaces;
   const evidence = load<typeof import("../src/lib/customer-insights/service")>("src/lib/customer-insights/service.ts", mocks);
   mocks["@/lib/customer-insights/service"] = evidence;
   const rewards = load<typeof import("../src/lib/rewards/service")>("src/lib/rewards/service.ts", mocks);
@@ -121,7 +125,7 @@ test("Interview transactions and completion in isolated PostgreSQL", { skip: !co
     await t.test("Concurrent distinct companies count exactly; completed dependents protect thresholds; task deletion keeps interviews", async () => {
       assert((await Promise.all([save("Gamma"), save("Delta")])).every(r => r.status === 201));
       assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })).metricCurrent, 3);
-      const next = await db.actionItem.create({ data: { ...(await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })), id: randomUUID(), clientKey: "task_2", recordingMode: null, done: true, metricTarget: null, metricUnit: null, metricCurrent: null } });
+      const next = await db.actionItem.create({ data: { ...(await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })), taskWorkspace: undefined, taskFinding: undefined, id: randomUUID(), clientKey: "task_2", recordingMode: null, done: true, metricTarget: null, metricUnit: null, metricCurrent: null } });
       await db.actionDependency.create({ data: { actionId: next.id, dependsOnId: task.id, minimumCurrent: 3 } });
       const gamma = await db.meetingNote.findFirstOrThrow({ where: { userId: owner.id, insight: { path: ["company"], equals: "Gamma" } } });
       assert.equal((await remove(gamma.id)).status, 409);
