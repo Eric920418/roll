@@ -1464,3 +1464,11 @@ Community／社群縮為 12px，Coming soon／即將推出維持 10px 提示字�
 瀏覽器驗收：七天試用剩三天／Day 4 倒數正確，試用中主動填答成功；三天到期會自動彈出，關閉及重載後不重複打擾，可由側欄重開。Yes／No 切換保留各自草稿，空答案阻擋、返回修改及重載恢復正常；送出後顯示收件確認，到期會員仍受既有 Pro 權限限制。英文桌面與 390px 手機、繁中手機無橫向溢出，長內容下操作列可見；無試用會員顯示說明並可正常進入獨立問題回報頁。兩筆問卷各只存一次，會員方案與 3／7 天期限不變；三個合成本機 QA 帳號已清理，伺服器已停止，沒有操作正式會員、付款、AI 或郵件。
 
 最終檢查：隔離 PostgreSQL 的 `pnpm test` 全部 212 項通過、無略過；`pnpm lint` 無 errors、14 個既有 warnings；`pnpm exec tsc --noEmit`、`pnpm build` 與 `git diff --check` 通過。沿用 main 自動 Production 發布；無 schema、套件或環境變數異動，無須資料庫遷移。
+
+## Goal Roadmap 草稿任務明細簡化（2026-10-10）
+
+移除圖片所示「Next-stage tasks／下一階段任務」草稿清單，包含各項 Title、Expected outcome、Estimated date、Why now 與 Prerequisites。草稿保留目標、期限、假設與里程碑，保存／啟用／加入下一階段的原有操作及驗證不變。內部草稿任務仍隨既有交易啟用，啟用後在 Next Steps 查看與編輯，不再於草稿重複展開；已存任務、歷史紀錄、Home Next Three Moves、階段修正及資料庫皆不變。
+
+本機合成帳號驗收英文桌面及 390px 繁中手機：草稿不顯示任務明細，里程碑直接銜接保存／啟用，手機無橫向溢出。儲存後核對五項內部草稿任務及六項既有執行任務完整保留；測試帳號已清理、伺服器停止，未呼叫真實 AI 或寫入正式資料。
+
+驗證：`pnpm exec tsx --test tests/action-plan.test.ts tests/roadmap.test.ts` 39 項全通過；RoadmapPanel 的 ESLint 無 errors、兩個既有 effect warnings；`pnpm build`、`git diff --check` 通過。本次僅刪除草稿 JSX 區塊與同步 README，不新增測試或重跑無關全套測試；沿用 main 自動 Production 發布，不需 schema 遷移。
