@@ -93,6 +93,7 @@ export default function DashboardSidebar({
         {NAV.map(({ key, path, soon }) => {
           const active = isActive(path);
           if (soon) return <span key={key} aria-disabled="true" className="flex min-h-11 shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] text-dark/40"><span>{t(`nav.${key}`)}</span><span className="shrink-0 whitespace-nowrap rounded-full border border-dark/10 px-2 py-1 text-[10px] leading-none">{t("comingSoon.badge")}</span></span>;
+          if (key === "feedback") return <button key={key} type="button" onClick={() => (document.getElementById("trial-feedback-dialog") as HTMLDialogElement | null)?.showModal()} className="flex min-h-11 shrink-0 items-center rounded-lg px-3 text-left text-[14px] font-medium text-[#55554F] transition-colors hover:bg-dark/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-10">{t("nav.feedback")}</button>;
           return (
             <Link
               key={key}

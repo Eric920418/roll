@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
         const trialKey = `${session.uid}:${trial.startsAt}`;
         const existing = await tx.feedbackReport.findUnique({ where: { trialKey }, select: { id: true, createdAt: true } });
         if (existing) return existing;
-        if (!trial.due) return null;
+        if (!trial.available) return null;
         const a = d.answers;
         return tx.feedbackReport.create({ data: { userId: session.uid, type: "other", title: "NOVA trial feedback",
           body: `1. Goal: ${a.goal}\nWhy: ${a.motivation}\n\n2. First step: ${a.firstStep}\n\n3. Continue using NOVA: ${a.continueUsing}\nReason: ${a.reason}\nUsage: ${a.usage || "—"}\n\n4. Biggest pain point: ${a.painPoint}\n\n5. Indispensable: ${a.indispensable}`,
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
           pageUrl: "/dashboard/agenda", locale: d.locale, userAgent: req.headers.get("user-agent")?.slice(0, 500) || null,
         }, select: { id: true, createdAt: true } });
       });
-      return result ? ok(result) : fail("試用未滿 7 天或試用設定已變更，請重新載入 / Trial not yet seven days old or settings changed; reload", 409);
+      return result ? ok(result) : fail("試用尚未開始或設定已變更，請重新載入 / Trial has not started or settings changed; reload", 409);
     }
 
     const parsed = feedbackCreateSchema.safeParse(body);

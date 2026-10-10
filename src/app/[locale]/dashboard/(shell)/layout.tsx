@@ -2,6 +2,7 @@ import DashboardUserProvider from "@/components/dashboard/DashboardUserProvider"
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
+import TrialFeedback from "@/components/dashboard/TrialFeedback";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
@@ -44,7 +45,7 @@ export default async function DashboardLayout({ children, params }: Props) {
         userLabel={userLabel}
       />
       <main className="nova-page-enter min-w-0 flex-1 px-5 py-8 md:px-8">
-        <div className="mx-auto w-full max-w-7xl">{children}</div>
+        <div className="mx-auto w-full max-w-7xl"><TrialFeedback key={account.id} userId={account.id} />{children}</div>
       </main>
     </div>
     </RewardsProvider></DashboardUserProvider>

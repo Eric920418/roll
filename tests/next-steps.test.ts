@@ -24,16 +24,22 @@ test("Progress counts recorded steps, clamps invalid data, and needs confirmed t
   assert.equal(policy.actionProgress([{ done: false, metric: { target: 0, current: 20 } }, { done: false, metric: { target: 20, current: -1 } }, { done: false, metric: { target: 20, current: NaN } }]), 0);
   assert.equal(policy.actionProgress([{ done: false, metric: { target: 2, current: 500 } }]), 99);
 });
-test("Trial countdown and seventh-day feedback include expired three-day trials, never regular members", () => {
+test("Trial feedback is voluntary during the trial and due at the actual three/seven-day expiry", () => {
   const starts = new Date("2026-10-01T01:00:00Z"), ends = new Date("2026-10-04T01:00:00Z");
   const user = { trialPlan: "pro", trialStartsAt: starts, trialEndsAt: ends };
   assert.equal(policy.trialWindow({ ...user, trialPlan: null }), null);
   assert.equal(policy.trialWindow({ ...user, trialEndsAt: starts }), null);
-  assert.equal(policy.trialWindow(user, new Date("2026-09-30"))!.active, false);
-  assert.equal(policy.trialWindow(user, starts)!.daysRemaining, 3);
-  assert.equal(policy.trialWindow(user, ends)!.active, false);
-  assert.equal(policy.trialWindow(user, new Date("2026-10-08T00:59:59Z"))!.due, false);
-  assert.equal(policy.trialWindow(user, new Date("2026-10-08T01:00:00Z"))!.due, true);
+  assert.equal(policy.trialWindow(user, new Date("2026-09-30"))!.available, false);
+  const first = policy.trialWindow(user, starts)!;
+  assert.equal(first.active, true); assert.equal(first.available, true); assert.equal(first.daysRemaining, 3); assert.equal(first.totalDays, 3); assert.equal(first.day, 1); assert.equal(first.elapsedPercent, 0);
+  assert.equal(policy.trialWindow(user, new Date(ends.getTime() - 1))!.due, false);
+  const expired = policy.trialWindow(user, ends)!;
+  assert.equal(expired.active, false); assert.equal(expired.due, true); assert.equal(expired.available, true); assert.equal(expired.daysRemaining, 0); assert.equal(expired.elapsedPercent, 100);
+  const week = { ...user, trialEndsAt: new Date(starts.getTime() + 7 * 86400000) };
+  const dayFour = policy.trialWindow(week, new Date(starts.getTime() + 4 * 86400000))!;
+  assert.equal(policy.trialWindow(week, new Date(starts.getTime() + 4.5 * 86400000))!.day, 4);
+  assert.equal(dayFour.daysRemaining, 3); assert.equal(dayFour.day, 4); assert.equal(dayFour.totalDays, 7); assert.equal(dayFour.due, false);
+  assert.equal(policy.trialWindow(week, week.trialEndsAt)!.due, true);
 });
 test("Survey requires every question and Yes usage; No clears stale conditional usage", () => {
   assert(policy.trialAnswersSchema.safeParse(answers).success);
@@ -41,7 +47,8 @@ test("Survey requires every question and Yes usage; No clears stale conditional 
   assert.equal(policy.trialAnswersSchema.parse({ ...answers, continueUsing: "no", usage: "" }).usage, "");
   assert.equal(policy.trialAnswersSchema.parse({ ...answers, continueUsing: "no", usage: "Hidden old Yes answer" }).usage, "");
   assert.equal(policy.trialAnswersSchema.safeParse({ ...answers, goal: "a".repeat(2001) }).success, false);
-  assert(policy.trialDraftSchema.safeParse({ ...answers, goal: "", continueUsing: "" }).success);
+  assert(policy.trialDraftSchema.safeParse({ ...answers, goal: "", continueUsing: "", yesReason: "Need it", noReason: "Not yet" }).success);
+  assert.equal("yesReason" in policy.trialAnswersSchema.parse({ ...answers, yesReason: "Draft only", noReason: "Draft only" }), false);
 });
 test("Survey CSV keeps stable columns, quotes newlines and rejects spreadsheet formula injection", () => {
   const csv = policy.trialFeedbackCsv([{ email: "qa@example.invalid", createdAt: "2026-10-10", answers: { ...answers, goal: '  =HYPERLINK("bad")', painPoint: "Two\nlines" } }]);
@@ -115,14 +122,22 @@ test("Trial feedback API in isolated PostgreSQL: eligibility, ownership, concurr
       assert.equal((await (await api.GET()).json()).data.submitted, true);
       uid = b.id; assert.equal((await (await api.GET()).json()).data.submitted, false);
     });
-    await t.test("New trial settings reject stale submissions and enforce day seven", async () => {
+    await t.test("Future or changed trials reject submissions; active trials can submit without changing access", async () => {
       uid = b.id;
-      const now = new Date(); await db.user.update({ where: { id: b.id }, data: { trialPlan: "pro", trialStartsAt: now, trialEndsAt: new Date(now.getTime() + 7 * 86_400_000) } });
-      assert.equal((await post({ ...body, startsAt: now.toISOString() })).status, 409);
+      const future = new Date(Date.now() + 86400000);
+      await db.user.update({ where: { id: b.id }, data: { trialPlan: "pro", trialStartsAt: future, trialEndsAt: new Date(future.getTime() + 7 * 86400000) } });
+      assert.equal((await post({ ...body, startsAt: future.toISOString() })).status, 409);
       assert.equal(await db.feedbackReport.count({ where: { userId: b.id } }), 0);
-      // PostgreSQL aborts all writes on failure, including the unique trial-key insert.
+      const now = new Date(), end = new Date(now.getTime() + 7 * 86400000);
+      await db.user.update({ where: { id: b.id }, data: { trialStartsAt: now, trialEndsAt: end } });
+      assert.equal((await post({ ...body, startsAt: future.toISOString() })).status, 409);
+      const before = await db.user.findUniqueOrThrow({ where: { id: b.id } });
+      assert.equal((await post({ ...body, startsAt: now.toISOString() })).status, 200);
+      const after = await db.user.findUniqueOrThrow({ where: { id: b.id } });
+      assert.equal(after.plan, before.plan); assert.equal(after.trialEndsAt!.getTime(), end.getTime()); assert.equal(after.trialStartsAt!.getTime(), now.getTime());
+      assert.equal((await (await api.GET()).json()).data.submitted, true);
       await assert.rejects(db.$transaction(async tx => { await tx.feedbackReport.create({ data: { userId: b.id, type: "other", title: "Rollback", body: "QA", trialKey: `rollback:${b.id}` } }); throw new Error("QA rollback"); }));
-      assert.equal(await db.feedbackReport.count({ where: { userId: b.id } }), 0);
+      assert.equal(await db.feedbackReport.count({ where: { userId: b.id } }), 1);
     });
   } finally { await db.user.deleteMany({ where: { id: { in: ids } } }); await db.$disconnect(); }
 });

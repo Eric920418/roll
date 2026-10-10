@@ -17,7 +17,11 @@ export function trialWindow(user: { trialPlan: string | null; trialStartsAt: Dat
   return { startsAt: user.trialStartsAt!.toISOString(), endsAt: user.trialEndsAt!.toISOString(),
     active: now.getTime() >= start! && now.getTime() < end!,
     daysRemaining: Math.max(0, Math.ceil((end! - now.getTime()) / DAY)),
-    due: now.getTime() >= start! + 7 * DAY };
+    due: now.getTime() >= end!,
+    available: now.getTime() >= start!,
+    totalDays: Math.ceil((end! - start!) / DAY),
+    day: Math.max(1, Math.min(Math.ceil((end! - start!) / DAY), Math.floor((now.getTime() - start!) / DAY))),
+    elapsedPercent: Math.max(0, Math.min(100, (now.getTime() - start!) / (end! - start!) * 100)) };
 }
 
 const answer = z.string().trim().min(1, "請完整回答 / Please answer this question").max(2000);
@@ -25,8 +29,9 @@ export const trialDraftSchema = z.object({
   goal: z.string().max(2000), motivation: z.string().max(2000), firstStep: z.string().max(2000),
   continueUsing: z.enum(["", "yes", "no"]), reason: z.string().max(2000), usage: z.string().max(2000),
   painPoint: z.string().max(2000), indispensable: z.string().max(2000),
+  yesReason: z.string().max(2000).optional(), noReason: z.string().max(2000).optional(),
 });
-export const trialAnswersSchema = trialDraftSchema.extend({
+export const trialAnswersSchema = trialDraftSchema.omit({ yesReason: true, noReason: true }).extend({
   goal: answer, motivation: answer, firstStep: answer,
   continueUsing: z.enum(["yes", "no"]), reason: answer, usage: z.string().trim().max(2000),
   painPoint: answer, indispensable: answer,

@@ -19,7 +19,7 @@ export default async function FeedbackPage({ params }: Props) {
   const account = await getCurrentAccount();
   const rows = account
     ? await prisma.feedbackReport.findMany({
-        where: { userId: account.id },
+        where: { userId: account.id, trialKey: null },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
