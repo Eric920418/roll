@@ -1432,3 +1432,13 @@ AI 人工修改草稿允許暫時清空欄位以保留其他輸入，正式保�
 驗收：隔離 PostgreSQL 全部 212 項測試通過（無略過），`pnpm lint` 無 errors、14 個既有 warnings，`pnpm exec tsc --noEmit` 與 `pnpm build` 通過。合成帳號完成六種表單保存／重載、分數依勾選權重 3/15、完成後 AI 失敗仍保留成果、Customer Insights 共用同筆紀錄、中英文與 390px 手機無溢出；測試帳號已清理，本機伺服器停止。學習資源尚待正式連結；AI 品質使用替代回應驗證流程，未呼叫真實 AI／寄送郵件。
 
 正式 schema 已核對 Vercel roll Production 同一資料庫，只交易新增兩個 nullable JSON 欄位；123 筆既有任務原欄位指紋及數量不變，二次 schema diff 為空。沿用 main 自動 Production 部署，不啟用 Preview、無新增套件或環境變數。
+
+## Community 側欄字級微調（2026-10-10）
+
+Community／社群縮為 12px，Coming soon／即將推出維持 10px 提示字級；整列及膠囊強制單行，膠囊不被 flex 壓縮，避免 Coming soon 換行。只調整停用占位的樣式，無資料庫、方案或功能變更。
+
+字級使用明確 px 而非 rem，避免站台基準字級放大後 Community 超出預期；Coming soon 保留單行、不壓縮與原本停用狀態。
+
+瀏覽器驗收確認實際 Community 12px／Coming soon 10px，整列 nowrap、膠囊 flex-shrink: 0；英文桌面及 390px 手機、中文手機保持單行。合成 QA 帳號清理、本機伺服器停止；此為局部 CSS 調整，不重跑全套功能測試。
+
+本次 `pnpm exec eslint src/components/dashboard/DashboardSidebar.tsx` 與 `pnpm build` 通過，沿用 main 的正式站自動發布。
