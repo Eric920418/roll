@@ -66,8 +66,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
     !!account.paypalSubscriptionId &&
     (status === "ACTIVE" || status === "SUSPENDED");
 
-  const usage =
-    effectivePlan === "free" ? undefined : (await getAiUsageSummary(account)) ?? undefined;
+  const usage = (await getAiUsageSummary(account)) ?? undefined;
   const now = new Date();
   const trialLabel =
     account.trialPlan &&

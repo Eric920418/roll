@@ -286,11 +286,50 @@ test("Billing reset date renders identically on UTC server and Taipei browser", 
       react: { useState: (value: unknown) => [value, () => {}] },
       "next/navigation": { useRouter: () => ({ refresh() {} }) },
       "next-intl": { useTranslations: () => (key: string, values?: { date?: string }) => key === "aiUsageDetail" ? values?.date : key },
+      "./rewards/RewardsProvider": { useRewards: () => ({ data: null }) },
     }, { Intl: { DateTimeFormat: function(locale: string, options: Intl.DateTimeFormatOptions) { return new Intl.DateTimeFormat(locale, { timeZone: fallback, ...options }); } } });
-    return JSON.stringify(panel.default({ locale: "en", currentPlan: "enterprise", statusLabel: "Testing", hasActiveSub: false, betaAccess: true, usage: { included: 150, used: 3, remaining: 147, bonusRemaining: 0, resetsAt: "2026-11-01T18:30:00.000Z" } }));
+    return JSON.stringify(panel.default({ locale: "en", currentPlan: "enterprise", statusLabel: "Testing", hasActiveSub: false, betaAccess: true, usage: { included: 150, used: 3, remaining: 147, bonusRemaining: 0, rewardRemaining: 0, resetsAt: "2026-11-01T18:30:00.000Z" } }));
   };
   assert.equal(render("UTC"), render("Asia/Taipei"));
   assert.match(render("UTC"), /Nov 2, 2026/);
+});
+
+test("Billing answers include redeemed rewards for Free and paid members, including live balance updates", () => {
+  let rewards: { rewardRemaining: number } | null = null;
+  const panel = load<{ default(props: object): unknown }>("src/components/dashboard/BillingPanel.tsx", {
+    react: { useState: (value: unknown) => [value, () => {}] },
+    "next/navigation": { useRouter: () => ({ refresh() {} }) },
+    "next-intl": { useTranslations: () => (key: string, values?: object) => `${key}:${JSON.stringify(values ?? {})}` },
+    "./rewards/RewardsProvider": { useRewards: () => ({ data: rewards }) },
+  });
+  const render = (plan: string, remaining: number, bonus: number) => JSON.stringify(panel.default({
+    locale: "en", currentPlan: plan, statusLabel: "Testing", hasActiveSub: false, betaAccess: true,
+    usage: { included: remaining ? 150 : 0, used: remaining ? 3 : 0, remaining, bonusRemaining: bonus, rewardRemaining: 10, resetsAt: remaining ? "2026-11-01T18:30:00.000Z" : null },
+  }));
+  assert.ok(render("free", 0, 0).includes('aiUsageRemaining:{\\"count\\":10}'));
+  assert.ok(render("free", 0, 0).includes('aiRewardUsageDetail:{\\"reward\\":10}'));
+  assert.equal(render("free", 0, 0).includes("buyCredits"), false);
+  assert.ok(render("pro", 147, 7).includes('aiUsageRemaining:{\\"count\\":164}'));
+  assert.ok(render("pro", 147, 7).includes("buyCredits"));
+  rewards = { rewardRemaining: 15 };
+  assert.ok(render("free", 0, 0).includes('aiUsageRemaining:{\\"count\\":15}'));
+  rewards = { rewardRemaining: 0 };
+  assert.ok(render("free", 0, 0).includes('aiUsageRemaining:{\\"count\\":0}'));
+});
+
+test("Billing overview loads reward allowance even when the effective plan is Free", async () => {
+  const usage = { included: 0, used: 0, remaining: 0, bonusRemaining: 0, rewardRemaining: 10, resetsAt: null };
+  let calls = 0;
+  const overview = load<{ default(props: object): Promise<unknown> }>("src/components/dashboard/BillingOverview.tsx", {
+    "next-intl/server": { getTranslations: async () => (key: string) => key },
+    "@/components/dashboard/BillingPanel": { default: () => null },
+    "@/lib/auth/account": { getCurrentAccount: async () => ({ id: "free-member" }) },
+    "@/lib/billing/gate": { getEffectivePlan: () => "free", suspendedGraceActive: () => false },
+    "@/lib/billing/paypal": {}, "@/lib/prisma": { prisma: {} },
+    "@/lib/ai/allowance": { getAiUsageSummary: async (account: { id: string }) => { assert.equal(account.id, "free-member"); calls++; return usage; } },
+  });
+  assert.ok(JSON.stringify(await overview.default({ locale: "en" })).includes('"rewardRemaining":10'));
+  assert.equal(calls, 1);
 });
 
 test("Next steps 使用台北日期，不受伺服器或瀏覽器時區影響", () => {

@@ -1472,3 +1472,13 @@ Community／社群縮為 12px，Coming soon／即將推出維持 10px 提示字�
 本機合成帳號驗收英文桌面及 390px 繁中手機：草稿不顯示任務明細，里程碑直接銜接保存／啟用，手機無橫向溢出。儲存後核對五項內部草稿任務及六項既有執行任務完整保留；測試帳號已清理、伺服器停止，未呼叫真實 AI 或寫入正式資料。
 
 驗證：`pnpm exec tsx --test tests/action-plan.test.ts tests/roadmap.test.ts` 39 項全通過；RoadmapPanel 的 ESLint 無 errors、兩個既有 effect warnings；`pnpm build`、`git diff --check` 通過。本次僅刪除草稿 JSX 區塊與同步 README，不新增測試或重跑無關全套測試；沿用 main 自動 Production 發布，不需 schema 遷移。
+
+## 帳號頁獎勵回答額度顯示修正（2026-10-11）
+
+Account／Billing 的 answers remaining 改為基本剩餘＋獎勵剩餘＋加購剩餘，明列各來源；免費會員也顯示獎勵回答卡，無每月額度與重置日期、不提供付費加購入口，計畫生成與 ICP 授權不放寬。獎勵來源沿用 Dashboard 的 RewardsProvider，兌換後返回已快取的帳號頁或多分頁回到前景時同步最新餘額，初始載入使用伺服器額度。修正僅呈現既有已入帳額度，不補發次數或修改會員資料；無 schema、套件、API 或環境變數異動。
+
+回歸測試涵蓋免費會員 10 次獎勵、付費會員三種來源總數、即時兌換更新、獎勵歸零及免費會員伺服器摘要不可被隱藏；既有台北重置日期測試補上獎勵 fixture。
+
+本機合成會員驗收：免費帳號先顯示 10 次，兌換後返回原快取帳號頁立即顯示 15 次；付費帳號 150 次基本＋10 次獎勵＋7 次加購共 167 次，三種來源明細一致。繁中 390px 手機無橫向溢出、前端無 console errors，兌換只存一次且扣分／加額正確；測試帳號已清理、伺服器停止，未消耗真實 AI 或修改正式會員餘額。
+
+驗證：隔離 PostgreSQL 的 `pnpm test` 全部 214 項通過、無略過；`pnpm lint` 無 errors、14 個既有 warnings；`pnpm exec tsc --noEmit`、`pnpm build` 通過。沿用 main 自動 Production 發布，無須資料庫遷移。

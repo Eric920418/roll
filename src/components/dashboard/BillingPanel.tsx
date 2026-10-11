@@ -12,6 +12,8 @@ import {
   type BillingInterval,
 } from "@/lib/billing/plans";
 import type { Locale } from "@/i18n/routing";
+import type { AiUsageSummary } from "@/lib/ai/allowance";
+import { useRewards } from "./rewards/RewardsProvider";
 
 // 自助付費方案（free 不需購買；enterprise 走 contact sales）
 const PAID_PLANS = ["pro", "business"] as const;
@@ -43,13 +45,7 @@ export default function BillingPanel({
   hasActiveSub: boolean;
   /** 扣款失敗且仍在寬限期內時提供；deadline 為已格式化的降級時刻 */
   suspendedNotice?: { deadline: string; manageUrl: string };
-  usage?: {
-    included: number;
-    used: number;
-    remaining: number;
-    bonusRemaining: number;
-    resetsAt: string | null;
-  };
+  usage?: AiUsageSummary;
   trialLabel?: string;
   currentInterval?: BillingInterval;
   betaAccess?: boolean;
@@ -59,6 +55,8 @@ export default function BillingPanel({
   const tPricing = useTranslations("Product.pricing");
   const tErr = useTranslations("Billing.errors");
   const router = useRouter();
+  const { data: rewards } = useRewards();
+  const rewardRemaining = rewards?.rewardRemaining ?? usage?.rewardRemaining ?? 0;
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -169,12 +167,13 @@ export default function BillingPanel({
                 {t("aiUsageTitle")}
               </p>
               <p className="mt-2 text-2xl font-extrabold text-dark font-[family-name:var(--font-heading)]">
-                {t("aiUsageRemaining", { count: usage.remaining })}
+                {t("aiUsageRemaining", { count: usage.remaining + rewardRemaining + usage.bonusRemaining })}
               </p>
               <p className="mt-1 text-sm text-dark/60">
-                {t("aiUsageDetail", {
+                {currentPlan === "free" ? t("aiRewardUsageDetail", { reward: rewardRemaining }) : t("aiUsageDetail", {
                   used: usage.used,
                   included: usage.included,
+                  reward: rewardRemaining,
                   bonus: usage.bonusRemaining,
                   date: usage.resetsAt ? new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", {
                     dateStyle: "medium",
@@ -183,7 +182,7 @@ export default function BillingPanel({
                 })}
               </p>
             </div>
-            <button
+            {currentPlan !== "free" && <button
               type="button"
               onClick={async () => {
                 setError("");
@@ -209,7 +208,7 @@ export default function BillingPanel({
               className="min-h-11 rounded-xl bg-dark px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-dark/85 disabled:opacity-60"
             >
               {busy === "credits" ? t("processing") : t("buyCredits")}
-            </button>
+            </button>}
           </div>
         </div>
       )}
