@@ -1482,3 +1482,37 @@ Account／Billing 的 answers remaining 改為基本剩餘＋獎勵剩餘＋加�
 本機合成會員驗收：免費帳號先顯示 10 次，兌換後返回原快取帳號頁立即顯示 15 次；付費帳號 150 次基本＋10 次獎勵＋7 次加購共 167 次，三種來源明細一致。繁中 390px 手機無橫向溢出、前端無 console errors，兌換只存一次且扣分／加額正確；測試帳號已清理、伺服器停止，未消耗真實 AI 或修改正式會員餘額。
 
 驗證：隔離 PostgreSQL 的 `pnpm test` 全部 214 項通過、無略過；`pnpm lint` 無 errors、14 個既有 warnings；`pnpm exec tsc --noEmit`、`pnpm build` 通過。沿用 main 自動 Production 發布，無須資料庫遷移。
+
+## Home 訪談與每日排程改版（2026-10-11）
+
+依新稿將 Home 重心移至每週日曆、當日事項及同頁訪談紀錄；保留週一到週日與下方 Next Three Moves。WeekCalendarItem 僅新增 nullable startsAt／endsAt UTC 欄位，舊全天資料不補造時間；部署前核對差異並套用 `prisma/week-calendar-times.sql`，禁止 reset、覆寫資料或 accept-data-loss。既有 `/api/week-plan` add／edit／schedule 可選提供一對 ISO 開始／結束時間，開始須在所選台北日期、結束較晚且最多 24 小時，支援跨午夜；未提供時間的舊客戶端保留原時段並隨日期平移。排程、時間變更、匯出及記錄訪談都不完成任務或發分。
+
+GET `/api/week-plan` 回傳時段、訪談事項標記及目前可執行訪談任務的真實公司數／目標。付費承諾採目前計畫已存的 paid pilot 工作區：有有效訪談名單、報價內容、agreed 回應及原因的不同公司，去重後計算；不是已收款數。Free 仍只能取得自己的個人事項。Google Calendar 逐項開啟預填事件供會員確認，Apple Calendar 下載本週可用事項的 `.ics`；時段以 UTC、全天以 DATE 匯出，使用穩定 UID、跳脫文字並按 75 UTF-8 octets 摺行。不建立公開行事曆網址、不要求 OAuth、不做外部日曆同步或自動邀請。
+
+Home 右上統一為 Log interview，開啟既有 InterviewWorkspace／CustomerDiscovery 的同頁 dialog，仍由 `/api/customer-insights` 驗證 Pro、資料歸屬與有效公司，與 Customer Insights 共用紀錄；無目標時先確認公司數。日曆 Log it 共用此入口，不發分或自動完成。Weekly check-in 提示重用既有問答、版次與人工套用流程，只在有可見計畫時提供；每會員／台北週保存關閉狀態，下週重新提示，關閉後保留細小的重開入口。與到期試用 Feedback 問卷互相獨立。
+
+- Home 行事曆改為選日後顯示事項卡；只有已設定結束時間且已結束的可用訪談顯示「How did it go? / Log it」。個人事項可勾選完成，任務仍須在 Next Steps 驗證完成。保留 Plan my week、收合的可拖曳任務膠囊、中英文錯誤與日期／時間驗證。Google 選單逐項開啟草稿，Apple 下載目前週的可用事項。
+
+- Home 的 POLARIS 縮為輸入框與兩個 Pro 快捷入口；歷史對話保留於同頁視窗，傳送後開啟視窗，錯誤保留輸入供重試。Rewards 保留每日回訪 POST 與兌換頁入口，Investor DD 保留候補加入與錯誤回報。既有會員的操作指引移到主要內容後；新會員仍保留首次設定流程，Home 下方 Next Three Moves 不移除。
+
+- POLARIS 的原有歷史載入、串流及獎勵額度刷新完整沿用；收合版面僅改呈現位置，保留 AbortController 清理與失敗時的重試草稿。
+
+- 新增時間配對／台北日期／跨午夜／Log it 邊界、Google 預填、ICS 全天結束與 UTF-8 摺行測試；隔離資料庫測試覆蓋原有日期移動保留時段、重送衝突、清除時間、會員隔離，以及不同公司訪談／付費承諾去重。
+
+- 訪談底部進度直接從該任務的有效紀錄即時計算，不以歷史手填總數代替。測試匯出注入內容只按獨立 VEVENT 行判斷，跳脫後的文字不會變成事件。
+
+時間與匯出專項測試 15 項通過；準備合成本機會員驗收，僅使用 loopback 的 roll_rewards_qa 資料庫，不呼叫 AI、付款或郵件。
+
+- 候補名單回歸測試依新小字狀態列更新：已加入會員不再顯示加入按鈕，未加入者仍有失敗重試與防重送。桌面事項卡採可換列的彈性欄寬，新增入口縮小；英文付費承諾使用單複數。
+
+本機流程確認：Log it 同頁新增訪談後 3/10→4/10，不完成任務、不發分；舊 POLARIS 對話仍可查看；個人事項完成統計分母一致。週回報沿用原服務儲存成功，Apple 匯出已下載並核對 CRLF 與實際時段。載入狀態不顯示假的 Today；空日 + Add 直接開啟新增表單。
+
+- 原生時間欄位使用 input 事件即時更新，確保時間選擇器與鍵盤輸入皆進入同一份表單值，再由共用 schema 驗證。
+
+本機中英文 390px 首頁與訪談視窗沒有橫向頁面溢出，Escape 可關閉並返回原操作；同一筆 Home 訪談已在 Customer Insights 出現。時間／日期選擇器即時取值，無效時段保留表單；新操作不沿用前次成功或驗證通知。
+
+本機資料核對：4 筆訪談、任務未完成、任務積分 0、1 筆週回報；免費會員自己的 13:00–14:00 時段保存正確，沒有建檔／里程碑快捷入口。兩個合成帳號已清理，瀏覽器 console errors 為 0，測試分頁與伺服器已關閉。
+
+- API 的無效 ISO 時間會回傳輸入驗證錯誤；跨欄位檢查先排除無法解析的時間，避免日期格式化拋例外。補上無效開始／結束時間回歸案例。
+
+驗收：隔離 PostgreSQL `pnpm test` 全部 219 項通過、無略過；`pnpm lint` 無 errors、14 個既有 warnings；`pnpm exec tsc --noEmit`、`pnpm build` 與 `git diff --check` 通過。正式站核對 Vercel roll Production 同一資料庫，交易只新增 startsAt／endsAt 兩個 nullable 欄位；3 筆既有行事曆紀錄原欄位指紋與數量不變，二次 schema diff 為空。沿用 main 自動 Production 發布，維持 Preview 不配置，無新增套件或環境變數。Google／Apple 僅驗證預填網址與實際下載內容，未寫入外部帳戶行事曆，也未呼叫真實 AI、付款或寄信。

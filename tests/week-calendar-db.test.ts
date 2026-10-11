@@ -10,6 +10,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import * as roadmap from "../src/lib/roadmap/schema";
 import * as ranking from "../src/lib/action-plan/ranking";
 import * as time from "../src/lib/action-plan/time";
+import * as workspace from "../src/lib/action-plan/workspace";
+import * as interviews from "../src/lib/customer-insights/interviews";
+import { emptyInsight } from "../src/lib/customer-insights/schema";
 import * as schema from "../src/lib/week-plan/schema";
 
 function load<T>(path: string, mocks: Record<string, unknown>): T {
@@ -26,7 +29,7 @@ test("This week integration in isolated PostgreSQL", { skip: !connectionString }
   const ids: string[] = [];
   const mocks = { "./schemas": createRequire(import.meta.url)("../src/lib/action-plan/schemas"), "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/roadmap/schema": roadmap, "./ranking": ranking, "./time": time };
   const plans = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts", mocks);
-  const service = load<typeof import("../src/lib/week-plan/service")>("src/lib/week-plan/service.ts", { ...mocks, "@/lib/action-plan/service": plans, "./schema": schema });
+  const service = load<typeof import("../src/lib/week-plan/service")>("src/lib/week-plan/service.ts", { ...mocks, "@/lib/action-plan/service": plans, "./schema": schema, "@/lib/action-plan/workspace": workspace, "@/lib/customer-insights/interviews": interviews });
   const createUser = async () => { const user = await db.user.create({ data: { email: `${randomUUID()}@week.invalid` } }); ids.push(user.id); return user; };
   try {
     const user = await createUser(), other = await createUser();
@@ -34,7 +37,7 @@ test("This week integration in isolated PostgreSQL", { skip: !connectionString }
     const taskData = { actionPlanId: plan.id, impact: "revenue", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: "MVP", stageFit: 1, stageFitReason: "QA", bottleneckGroup: "Sales", bottleneckCode: "no_leads", bottleneckFit: 1, bottleneckFitReason: "QA", outcomeCategory: "customers", expectedOutcome: "QA", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 1 };
     const first = await db.actionItem.create({ data: { ...taskData, clientKey: "task_1", title: "Interview 10 buyers", executionOrder: 0, metricTarget: 10, metricCurrent: 3, metricUnit: "buyers" } });
     const second = await db.actionItem.create({ data: { ...taskData, clientKey: "task_2", title: "Confirm demand", executionOrder: 1, dependencies: { create: { dependsOnId: first.id } } } });
-    const schedule = (actionId = first.id, date = "2026-10-03", entryRevision: number | null = null, planRevision = 0): schema.WeekMutation => ({ operation: "schedule", requestId: randomUUID(), actionId, planId: plan.id, planRevision, date, entryRevision });
+    const schedule = (actionId = first.id, date = "2026-10-03", entryRevision: number | null = null, planRevision = 0): Extract<schema.WeekMutation, { operation: "schedule" }> => ({ operation: "schedule", requestId: randomUUID(), actionId, planId: plan.id, planRevision, date, entryRevision });
     let personalId = "", scheduledId = "";
     await t.test("Concurrent additions and late retries after removal never duplicate or resurrect personal items", async () => {
       const input = schema.weekMutationSchema.parse({ operation: "add", requestId: randomUUID(), date: "2026-10-03", title: "Personal appointment", note: "Keep details here" });
@@ -81,11 +84,43 @@ test("This week integration in isolated PostgreSQL", { skip: !connectionString }
       assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: first.id } })).metricCurrent, 3);
       await assert.rejects(service.mutateWeekPlan(user.id, true, { operation: "edit", id: scheduledId, revision: 3, title: "Fake completion", note: "", date: "2026-10-03", done: true }), /Next steps/);
     });
+    await t.test("Times survive date-only drag/legacy edits; explicit clearing and parallel updates use the same revision guard", async () => {
+      const timed = { ...schedule(first.id, "2026-10-03", 3), ...schema.calendarTimes("2026-10-03", "23:00", "01:00") };
+      await service.mutateWeekPlan(user.id, true, timed);
+      assert.equal(await service.mutateWeekPlan(user.id, true, timed), scheduledId);
+      const move = schedule(first.id, "2026-10-04", 4);
+      await service.mutateWeekPlan(user.id, true, move);
+      let row = await db.weekCalendarItem.findUniqueOrThrow({ where: { id: scheduledId } });
+      assert.equal(row.startsAt?.toISOString(), "2026-10-04T15:00:00.000Z"); assert.equal(row.endsAt?.toISOString(), "2026-10-04T17:00:00.000Z");
+      await assert.rejects(service.mutateWeekPlan(user.id, true, { ...timed, entryRevision: 4 }), /changed/);
+      await service.mutateWeekPlan(user.id, true, { ...schedule(first.id, "2026-10-03", 5), startsAt: null, endsAt: null });
+      row = await db.weekCalendarItem.findUniqueOrThrow({ where: { id: scheduledId } }); assert.equal(row.startsAt, null); assert.equal(row.endsAt, null);
+      const input = schema.weekMutationSchema.parse({ operation: "add", requestId: randomUUID(), date: "2026-10-03", title: "Timed personal", note: "", ...schema.calendarTimes("2026-10-03", "10:00", "11:00") });
+      const id = await service.mutateWeekPlan(user.id, false, input);
+      await assert.rejects(service.mutateWeekPlan(user.id, false, { ...input, ...schema.calendarTimes("2026-10-03", "11:00", "12:00") }), /different content/);
+      await service.mutateWeekPlan(user.id, false, { operation: "edit", id, revision: 0, date: "2026-10-04", title: "Timed personal", note: "", done: true });
+      assert.equal((await db.weekCalendarItem.findUniqueOrThrow({ where: { id } })).startsAt?.toISOString(), "2026-10-04T02:00:00.000Z");
+      assert.equal(await db.rewardEntry.count({ where: { userId: user.id } }), 0);
+    });
+    await t.test("Interview progress and paid commitments use valid owned evidence and distinct normalized companies", async () => {
+      const lead = await db.meetingNote.create({ data: { userId: user.id, title: "Lead", insight: { ...emptyInsight("discover"), actionId: first.id, name: "Founder", company: " ＡＣＭＥ  Company ", answers: ["Pain", "", "", ""] } } });
+      const secondLead = await db.meetingNote.create({ data: { userId: user.id, title: "Other contact", insight: { ...emptyInsight("discover"), actionId: first.id, name: "Buyer", company: "acme company", notes: "Needs a pilot" } } });
+      const outsider = await db.meetingNote.create({ data: { userId: other.id, title: "Private", insight: { ...emptyInsight("discover"), actionId: first.id, name: "Other member", company: "Private", notes: "Must not leak" } } });
+      const prospects = [lead.id, secondLead.id, outsider.id, "deleted"].map(leadId => ({ leadId, offer: "Paid pilot", response: "agreed", reason: "Accepted" }));
+      const pilot = await db.actionItem.create({ data: { ...taskData, clientKey: "task_pilot", title: "Run paid pilot", executionOrder: 2, taskWorkspace: { kind: "pilot", prospects } } });
+      const view = await service.getWeekPlan(user.id, true, "2026-09-28");
+      assert.equal(view.interviewProgress?.current, 1); assert.equal(view.interviewProgress?.target, 10); assert.equal(view.interviewProgress?.commitments, 1);
+      assert.equal(view.entries.find(entry => entry.id === scheduledId)?.interview, true);
+      assert.equal((await service.getWeekPlan(user.id, false)).interviewProgress, null);
+      await db.actionItem.update({ where: { id: pilot.id }, data: { taskWorkspace: { kind: "pilot", prospects: [{ ...prospects[0], response: "thinking" }, { ...prospects[1], reason: "" }] } } });
+      assert.equal((await service.getWeekPlan(user.id, true)).interviewProgress?.commitments, 0);
+      await db.meetingNote.deleteMany({ where: { id: { in: [lead.id, secondLead.id] } } }); await db.actionItem.delete({ where: { id: pilot.id } });
+    });
     await t.test("Completion under a plan lock is checked again before accepting a queued schedule", async () => {
       let locked!: () => void, release!: () => void;
       const acquired = new Promise<void>(resolve => { locked = resolve; }), proceed = new Promise<void>(resolve => { release = resolve; });
       const completion = db.$transaction(async tx => { await tx.$queryRaw`SELECT "id" FROM "ActionPlan" WHERE "id" = ${plan.id} FOR UPDATE`; locked(); await proceed; await tx.actionItem.update({ where: { id: first.id }, data: { done: true } }); await tx.actionPlan.update({ where: { id: plan.id }, data: { revision: { increment: 1 } } }); });
-      await acquired; const queued = assert.rejects(service.mutateWeekPlan(user.id, true, schedule(first.id, "2026-10-04", 3)), /locked/); release(); await completion;
+      await acquired; const queued = assert.rejects(service.mutateWeekPlan(user.id, true, schedule(first.id, "2026-10-04", 6)), /locked/); release(); await completion;
       await queued;
       assert.equal((await db.weekCalendarItem.findUniqueOrThrow({ where: { id: scheduledId } })).date.toISOString().slice(0, 10), "2026-10-03");
       assert.equal((await service.getWeekPlan(user.id, true, "2026-09-28")).tasks.find(task => task.id === second.id)?.dependency.blocked, false);

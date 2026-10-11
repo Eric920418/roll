@@ -32,6 +32,9 @@ export default function CopilotPanel({
   const [streaming, setStreaming] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState("");
+  const [opened, setOpened] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => { if (opened && dialogRef.current && !dialogRef.current.open) dialogRef.current.showModal(); }, [opened]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,15 +61,11 @@ export default function CopilotPanel({
     if (!loadingHistory) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [loadingHistory]);
 
-  const shortcuts = [
-    ...(canBuildPlan ? [{ label: t("tools"), href: pathForLocale("/dashboard/agenda#goal-roadmap", locale) }] : []),
-    { label: t("profile"), href: pathForLocale("/dashboard/profile", locale) },
-  ];
-
   async function send(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
     if (!text || streaming || loadingHistory) return;
+    setOpened(true);
     const history = [...messages, { role: "user" as const, content: text }];
     setMessages(history);
     setInput("");
@@ -100,6 +99,7 @@ export default function CopilotPanel({
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
       }
     } catch (err) {
+      setInput(text);
       setError(err instanceof Error ? err.message : t("error"));
     } finally {
       setStreaming(false);
@@ -107,118 +107,24 @@ export default function CopilotPanel({
     }
   }
 
-  return (
-    <div className="nova-dashboard-card flex h-full min-w-0 flex-col rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-white">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3Z" fill="currentColor" />
-          </svg>
-        </span>
-        <h2 className="text-sm font-bold text-dark font-[family-name:var(--font-heading)]">
-          {t("polarisTitle")}
-        </h2>
+  const inputForm = <form onSubmit={send} className="mt-3 flex gap-2">
+    <input aria-label={t("placeholder")} value={input} onChange={e => setInput(e.target.value)} placeholder={t("placeholder")} disabled={streaming || loadingHistory} className="min-h-11 min-w-0 flex-1 rounded-full border border-dark/20 bg-white px-4 py-2 text-sm text-dark outline-none focus:ring-2 focus:ring-dark/30 disabled:opacity-60" />
+    <button type="submit" disabled={streaming || loadingHistory || !input.trim()} className="min-h-11 shrink-0 rounded-full bg-dark px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{streaming ? t("thinking") : t("send")}</button>
+  </form>;
+  return <section className="nova-dashboard-card flex h-full min-w-0 flex-col rounded-2xl border border-dark/10 bg-white p-5">
+    <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold text-dark">{t("polarisTitle")}</h2>{canUse && <button className="min-h-11 text-xs text-dark/60 underline" onClick={() => setOpened(true)}>{t("viewConversation")}</button>}</div>
+    {rewards.loading && !paidAccess ? <p role="status" className="text-xs text-dark/55">{rewardText("loading")}</p> : canUse ? <>
+      {inputForm}
+      {canBuildPlan ? <div className="mt-3 flex flex-wrap items-center gap-2"><ActionPlanBuilder messages={messages} /><Link href={pathForLocale("/dashboard/agenda#goal-roadmap", locale)} className="inline-flex min-h-11 items-center rounded-full border border-dark/10 px-4 text-xs font-semibold">{t("tools")}</Link></div> : <p className="mt-3 text-xs text-dark/55">{t("rewardAccess", { count: rewards.data?.rewardRemaining ?? 0 })}</p>}
+    </> : <div className="mt-3 text-sm"><p className="font-semibold">{t("upsell.title")}</p><p className="mt-1 text-xs text-dark/60">{t("upsell.body")}</p><div className="mt-3 flex flex-wrap gap-2"><Link href={pathForLocale("/dashboard/rewards", locale)} className="inline-flex min-h-11 items-center rounded-full border border-dark/15 px-4 text-xs font-semibold">{t("rewardCta")}</Link><Link href={pathForLocale("/dashboard/account#plan", locale)} className="inline-flex min-h-11 items-center rounded-full bg-dark px-4 text-xs font-semibold text-white">{t("upsell.cta")}</Link></div></div>}
+    {error && <p role="alert" className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-red-50 p-3 text-xs text-red-700">{error}</p>}
+    <dialog ref={dialogRef} onClose={() => setOpened(false)} aria-labelledby="polaris-dialog-title" className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-3xl bg-white p-5 text-dark shadow-xl backdrop:bg-black/60">
+      <div className="flex items-center justify-between gap-3"><h3 id="polaris-dialog-title" className="text-lg font-bold">{t("polarisTitle")}</h3><button autoFocus aria-label={t("closeConversation")} className="min-h-11 min-w-11 rounded-full hover:bg-dark/5" onClick={() => dialogRef.current?.close()}>×</button></div>
+      <div ref={scrollRef} className="mt-4 max-h-[55dvh] overflow-y-auto rounded-xl bg-dark/[0.025] p-3">
+        {loadingHistory ? <p role="status" className="py-4 text-center text-sm text-dark/50">{t("loadingHistory")}</p> : !messages.length ? <p className="py-4 text-center text-sm text-dark/50">{t("emptyHint")}</p> : <div className="flex flex-col gap-3">{messages.map((message, i) => message.role === "user" ? <p key={i} className="ml-auto max-w-[85%] whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-2xl bg-dark px-3 py-2 text-sm text-white">{message.content}</p> : <div key={i} className="prose-copilot max-w-[92%] break-words [overflow-wrap:anywhere] rounded-2xl bg-dark/5 px-3 py-2 text-sm">{message.content ? <ReactMarkdown>{message.content}</ReactMarkdown> : <span className="text-dark/40">{t("thinking")}</span>}</div>)}</div>}
       </div>
-
-      {/* 快捷連結 */}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {shortcuts.map((s) => (
-          <Link
-            key={s.href}
-            href={s.href}
-            className="inline-flex min-h-11 items-center rounded-full border border-primary/15 bg-white px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 font-[family-name:var(--font-heading)]"
-          >
-            {s.label}
-          </Link>
-        ))}
-      </div>
-
-      {rewards.loading && !paidAccess ? <p role="status" className="mt-4 text-xs text-dark/55">{rewardText("loading")}</p> : canUse ? (
-        <>
-          {canBuildPlan ? <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-white/80 p-3">
-            <p className="text-xs leading-5 text-dark/60">{t("actionPlanHint")}</p>
-            <ActionPlanBuilder messages={messages} />
-          </div>
-          : <p className="mt-3 text-xs leading-5 text-dark/55">{t("rewardAccess", { count: rewards.data?.rewardRemaining ?? 0 })}</p>}
-          {/* 對話 */}
-          <div
-            ref={scrollRef}
-            className="mt-3 max-h-72 min-h-20 flex-1 overflow-y-auto rounded-xl bg-white/70 p-3"
-          >
-            {loadingHistory ? (
-              <p className="py-4 text-center text-xs text-dark/50">{t("loadingHistory")}</p>
-            ) : messages.length === 0 ? (
-              <p className="py-4 text-center text-xs text-dark/50">{t("emptyHint")}</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {messages.map((m, i) =>
-                  m.role === "user" ? (
-                    <p
-                      key={i}
-                      className="ml-auto max-w-[85%] break-words [overflow-wrap:anywhere] rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white"
-                    >
-                      {m.content}
-                    </p>
-                  ) : (
-                    <div
-                      key={i}
-                      className="prose-copilot max-w-[92%] break-words [overflow-wrap:anywhere] rounded-xl rounded-bl-sm bg-dark/[0.04] px-3 py-2 text-sm text-dark/85"
-                    >
-                      {m.content ? (
-                        <ReactMarkdown>{m.content}</ReactMarkdown>
-                      ) : (
-                        <span className="text-dark/40">{t("thinking")}</span>
-                      )}
-                    </div>
-                  ),
-                )}
-              </div>
-            )}
-          </div>
-
-          {error && (
-            <p role="alert" className="mt-2 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-              {error}
-            </p>
-          )}
-
-          {/* 輸入 */}
-          <form onSubmit={send} className="mt-2 flex gap-2 lg:mt-auto lg:pt-2">
-            <input
-              aria-label={t("placeholder")}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={t("placeholder")}
-              disabled={streaming || loadingHistory}
-              className="min-h-11 min-w-0 flex-1 rounded-xl border border-dark/10 bg-white px-3 py-2 text-sm text-dark outline-none transition placeholder:text-dark/35 focus:border-primary focus:ring-1 focus:ring-primary/40 disabled:opacity-60 font-[family-name:var(--font-body)]"
-            />
-            <button
-              type="submit"
-              disabled={streaming || loadingHistory || !input.trim()}
-              className="min-h-11 shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 font-[family-name:var(--font-heading)]"
-            >
-              {streaming ? t("thinking") : t("send")}
-            </button>
-          </form>
-        </>
-      ) : (
-        /* 無對話額度：提供積分兌換與方案入口。 */
-        <div className="mt-3 rounded-xl bg-white/70 p-4 text-center">
-          <p className="text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
-            {t("upsell.title")}
-          </p>
-          <p className="mt-1.5 text-xs leading-relaxed text-dark/60">
-            {t("upsell.body")}
-          </p>
-          <Link href={pathForLocale("/dashboard/rewards", locale)} className="mt-3 flex min-h-11 items-center justify-center rounded-xl border border-dark/15 px-4 py-2 text-sm font-semibold">{t("rewardCta")}</Link>
-          <Link
-            href={pathForLocale("/dashboard/account#plan", locale)}
-            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 font-[family-name:var(--font-heading)]"
-          >
-            {t("upsell.cta")}
-          </Link>
-        </div>
-      )}
-    </div>
-  );
+      {error && <p role="alert" className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-red-50 p-3 text-xs text-red-700">{error}</p>}
+      {canUse ? inputForm : <Link href={pathForLocale("/dashboard/rewards", locale)} className="inline-flex min-h-11 items-center text-sm underline">{t("rewardCta")}</Link>}
+    </dialog>
+  </section>;
 }

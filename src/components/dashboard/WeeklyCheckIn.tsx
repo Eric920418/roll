@@ -6,18 +6,23 @@ import { useLocale } from "next-intl";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import type { CheckInView } from "@/lib/check-ins/service";
 import type { TaskSnapshot } from "@/lib/check-ins/schema";
+import { taipeiWeek } from "@/lib/check-ins/schema";
+import { notifyPlanChanged } from "./PlanRefresh";
 import { taskReference } from "@/lib/action-plan/ranking";
 import { pathForLocale } from "@/lib/routes";
 
 const button = "min-h-11 rounded-xl border border-dark/15 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50";
 const input = "mt-1 w-full rounded-xl border border-dark/15 bg-white p-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
-export default function WeeklyCheckIn({ userId, plan, canShare, onChanged }: { userId: string; plan: ActionPlanDto | null; canShare: boolean; onChanged: (plan: ActionPlanDto | null) => void }) {
+export default function WeeklyCheckIn({ userId, plan, canShare, onChanged, compact = false }: { userId: string; plan: ActionPlanDto | null; canShare: boolean; compact?: boolean; onChanged: (plan: ActionPlanDto | null) => void }) {
   const locale = useLocale() === "zh-tw" ? "zh-tw" : "en", zh = locale === "zh-tw";
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLElement | null>(null), busyRef = useRef(false), editVersion = useRef<{ planRevision: number; revision: number } | null>(null);
   const [mounted, setMounted] = useState(false), [opened, setOpened] = useState(false), [busy, setBusy] = useState(false), [view, setView] = useState<CheckInView | null>(null);
   const [finding, setFinding] = useState(""), [blockers, setBlockers] = useState(""), [metrics, setMetrics] = useState<Record<string, string>>({}), [investorDraft, setInvestorDraft] = useState("");
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [historyPlan, setHistoryPlan] = useState("");
   const [historyOptions, setHistoryOptions] = useState<Array<{ id: string; goal: string | null; createdAt: string }>>([]);
+  const [week, setWeek] = useState(taipeiWeek), [dismissedWeek, setDismissedWeek] = useState<string | null>(null);
+  useEffect(() => { const initial = setTimeout(() => { try { setDismissedWeek(localStorage.getItem(`nova:weekly-dismissed:${userId}`)); } catch { /* The banner remains visible. */ } }, 0); const timer = setInterval(() => setWeek(taipeiWeek()), 60000); return () => { clearTimeout(initial); clearInterval(timer); }; }, [userId]);
+  function dismiss() { setDismissedWeek(week); try { localStorage.setItem(`nova:weekly-dismissed:${userId}`, week); } catch { setNotice(zh ? "本機暫存不可用，下次開啟仍會顯示提醒。" : "Local storage unavailable; the reminder may reappear."); } }
   const cacheKey = `nova:check-in:${userId}:${plan?.id || "none"}`;
   useEffect(() => setMounted(true), []);
   function cache(next = { finding, blockers, metrics, investorDraft }) { if (!editVersion.current && view) editVersion.current = { planRevision: plan?.revision || 0, revision: view.current?.revision || 0 }; try { localStorage.setItem(cacheKey, JSON.stringify({ ...next, weekStart: view?.weekStart, version: editVersion.current })); } catch { setNotice(zh ? "本機暫存不可用，請先儲存回報。" : "Local storage unavailable. Save your report first."); } }
@@ -82,8 +87,10 @@ export default function WeeklyCheckIn({ userId, plan, canShare, onChanged }: { u
     finally { busyRef.current = false; setBusy(false); }
   }
   const row = view?.current, disabled = busy || Boolean(row?.pending) || !view || view.readOnly;
-  return <section id="weekly-check-in" className="rounded-2xl border border-dark/15 bg-white p-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Weekly Check-in</h2><p className="mt-1 text-sm text-dark/60">{zh ? "約 2 分鐘：完成任務、重要發現、卡住的地方。" : "About 2 minutes: completed tasks, one key finding, and blockers."}</p></div><button type="button" disabled={!plan} className={button} onClick={() => void open()}>{zh ? "填寫本週回報" : "Check in this week"}</button></div>
+  return <section id="weekly-check-in" className={compact ? "min-w-0" : "rounded-2xl border border-dark/15 bg-white p-5"}>
+    {compact ? dismissedWeek === week ? <div className="flex justify-end"><button type="button" className="min-h-11 text-xs font-semibold text-dark/55 underline" disabled={!plan} onClick={() => void open()}>{zh ? "開啟本週回報" : "Open weekly check-in"}</button></div> : <div className="flex items-center gap-3 rounded-2xl border border-dark/10 bg-white px-5 py-3"><p className="min-w-0 flex-1 text-sm font-bold sm:text-base">{zh ? "本週回報 · 約 2 分鐘" : "Weekly check-in · about 2 min"}</p><button type="button" className="min-h-11 px-2 text-sm font-semibold" disabled={!plan} onClick={() => void open()}>{zh ? "開始" : "Start"}</button><button type="button" aria-label={zh ? "關閉本週提醒" : "Dismiss this week's reminder"} className="min-h-11 min-w-11 text-xl text-dark/50" onClick={dismiss}>×</button></div>
+      : <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Weekly Check-in</h2><p className="mt-1 text-sm text-dark/60">{zh ? "約 2 分鐘：完成任務、重要發現、卡住的地方。" : "About 2 minutes: completed tasks, one key finding, and blockers."}</p></div><button type="button" disabled={!plan} className={button} onClick={() => void open()}>{zh ? "填寫本週回報" : "Check in this week"}</button></div>}
+    {notice && !opened && <p role="status" className="mt-2 text-xs text-dark/60">{notice}</p>}
     {mounted && createPortal(<dialog ref={dialog} aria-labelledby="weekly-title" onClose={() => { setOpened(false); if (trigger.current?.isConnected) trigger.current.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[920px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-5"><h2 id="weekly-title" className="text-xl font-bold">Weekly Check-in</h2><button type="button" className={button} onClick={() => dialog.current?.close()}>{zh ? "關閉" : "Close"}</button></header>
       <div className="space-y-5 p-5 sm:p-8">
@@ -110,4 +117,10 @@ export default function WeeklyCheckIn({ userId, plan, canShare, onChanged }: { u
       </div>
     </dialog>, document.body)}
   </section>;
+}
+
+export function HomeWeeklyCheckIn({ initial, userId, canShare }: { initial: ActionPlanDto; userId: string; canShare: boolean }) {
+  const [plan, setPlan] = useState<ActionPlanDto | null>(initial);
+  const current = plan?.id === initial.id && (plan.revision ?? 0) >= (initial.revision ?? 0) ? plan : initial;
+  return <WeeklyCheckIn compact userId={userId} plan={current} canShare={canShare} onChanged={next => { setPlan(next); notifyPlanChanged(userId); }} />;
 }

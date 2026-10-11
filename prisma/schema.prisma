@@ -594,6 +594,8 @@ model WeekCalendarItem {
   action ActionItem? @relation(fields: [actionId], references: [id], onDelete: SetNull)
   kind String @default("personal")
   date DateTime @db.Date
+  startsAt DateTime?
+  endsAt DateTime?
   title String
   note String @default("")
   done Boolean @default(false)

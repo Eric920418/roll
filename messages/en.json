@@ -939,7 +939,9 @@
           "cta": "Upgrade to Pro"
         },
         "rewardAccess": "{count} reward conversations remaining · action plan creation requires Pro",
-        "rewardCta": "Earn points for AI conversations"
+        "rewardCta": "Earn points for AI conversations",
+        "viewConversation": "View conversation",
+        "closeConversation": "Close conversation"
       }
     },
     "profile": {
@@ -1380,7 +1382,26 @@
       "cancelEdit": "Cancel edit",
       "markDone": "Mark personal item complete",
       "save": "Save changes",
-      "tapHint": "Tap a task to choose its date"
+      "tapHint": "Tap a task to choose its date",
+      "itemCount": "{count} items · {done} of {count} done",
+      "anyTime": "Any time",
+      "ended": "ended",
+      "completeItem": "Complete {title}",
+      "howDidItGo": "How did it go?",
+      "logIt": "Log it",
+      "logInterview": "Log interview",
+      "details": "Details for {title}",
+      "viewDetails": "Details",
+      "interviewProgress": "{current} of {target} interviews",
+      "interviewCount": "{current} interviews",
+      "commitments": "{count, plural, one {# paid commitment} other {# paid commitments}}",
+      "commitmentHint": "Distinct companies with a saved pilot offer, agreement and reason. This is not a count of received payments.",
+      "googleCalendar": "Add to Google Calendar",
+      "appleCalendar": "Add to Apple Calendar",
+      "exportHint": "Choose an item to add. Google opens a draft; Apple downloads this week as an .ics file. Changes are not synced automatically.",
+      "startTime": "Start time (optional)",
+      "endTime": "End time (optional)",
+      "timeHint": "Asia/Taipei. Leave both empty for any time. An earlier end time means the following day, up to 24 hours."
     }
   },
   "InvestorView": {

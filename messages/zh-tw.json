@@ -939,7 +939,9 @@
           "cta": "升級 Pro"
         },
         "rewardAccess": "剩餘 {count} 次獎勵對話，建立行動計畫仍需 Pro",
-        "rewardCta": "累積積分換 AI 對話"
+        "rewardCta": "累積積分換 AI 對話",
+        "viewConversation": "查看對話",
+        "closeConversation": "關閉對話"
       }
     },
     "profile": {
@@ -1380,7 +1382,26 @@
       "cancelEdit": "取消編輯",
       "markDone": "將自己的事項標記完成",
       "save": "儲存變更",
-      "tapHint": "點一下任務即可選擇日期"
+      "tapHint": "點一下任務即可選擇日期",
+      "itemCount": "{count} 項事項 · 已完成 {done}/{count}",
+      "anyTime": "不限時間",
+      "ended": "已結束",
+      "completeItem": "完成「{title}」",
+      "howDidItGo": "訪談進行得如何？",
+      "logIt": "填寫紀錄",
+      "logInterview": "記錄訪談",
+      "details": "「{title}」的詳細內容",
+      "viewDetails": "詳細內容",
+      "interviewProgress": "已訪談 {current}/{target} 間公司",
+      "interviewCount": "已訪談 {current} 間公司",
+      "commitments": "{count} 間公司同意付費試點",
+      "commitmentHint": "計算已保存試點提案、同意回覆與原因的不同公司，並非已收款數。",
+      "googleCalendar": "加入 Google 行事曆",
+      "appleCalendar": "加入 Apple 行事曆",
+      "exportHint": "選擇要加入的事項。Google 開啟草稿；Apple 下載本週 .ics 檔案。後續修改不會自動同步。",
+      "startTime": "開始時間（選填）",
+      "endTime": "結束時間（選填）",
+      "timeHint": "以台北時間排程。兩欄留空表示不限時間；結束早於開始時表示隔日，最多 24 小時。"
     }
   },
   "InvestorView": {

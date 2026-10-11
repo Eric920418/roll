@@ -32,8 +32,8 @@ export function useGettingStarted(initial: GettingStartedView | null = null) {
 }
 const button = "inline-flex min-h-11 items-center justify-center rounded-xl bg-dark px-5 py-3 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
-export default function GettingStartedHome({ initial, overview, copilot, investor, events, podcast, rewards, calendar }: {
-  initial: GettingStartedView; overview: ReactNode; copilot: ReactNode; investor: ReactNode; events: ReactNode; podcast: ReactNode; rewards?: ReactNode; calendar?: ReactNode;
+export default function GettingStartedHome({ initial, overview, copilot, investor, events, podcast, rewards, calendar, weekly }: {
+  initial: GettingStartedView; overview: ReactNode; copilot: ReactNode; investor: ReactNode; events: ReactNode; podcast: ReactNode; rewards?: ReactNode; calendar?: ReactNode; weekly?: ReactNode;
 }) {
   const { view: state, setView, error, setError, reload } = useGettingStarted(initial);
   const view = state || initial, t = useTranslations("Dashboard.gettingStarted"), locale = useLocale() as Locale;
@@ -63,19 +63,15 @@ export default function GettingStartedHome({ initial, overview, copilot, investo
   const primaryLabel = !view.canGenerate && view.currentStep !== 1 ? t("viewPlanOptions") : view.currentStep === 1 ? t("completeProfile")
     : view.currentStep === 2 ? t("buildPlan") : view.nextTask ? t("openFirstTask") : t("resolveBlocker");
   const extras = <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">{investor}{events}{podcast}</div>;
-  const daily = <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-2">
-    <div className="order-1 min-w-0 lg:col-span-2 lg:row-start-1">{calendar}</div>
-    <div className="order-2 min-w-0 lg:col-start-1 lg:row-start-2">{investor}</div>
-    <div className="order-3 min-w-0 lg:col-start-1 lg:row-start-3">{rewards}</div>
-    <div className="order-4 min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:self-stretch">{copilot}</div>
-    <div className="order-5 min-w-0 lg:col-span-2 lg:row-start-4">{overview}</div>
+  const daily = <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
+    <div className="min-w-0 lg:col-span-2">{weekly}</div>
+    <div className="min-w-0 lg:col-span-2">{calendar}</div>
+    <div className="min-w-0 lg:row-span-2 lg:self-stretch">{copilot}</div>
+    <div className="min-w-0">{rewards}</div>
+    <div className="min-w-0">{investor}</div>
+    <div className="min-w-0 lg:col-span-2">{overview}</div>
   </div>;
-  return <div className="mt-5 space-y-6">
-    <div className="flex justify-end"><button className="min-h-11 rounded-xl px-3 text-sm font-semibold underline underline-offset-4 disabled:opacity-50" disabled={busy} onClick={() => void preference(view.visible ? "dismiss" : "reopen")}>{view.visible ? t("later") : t("reopen")}</button></div>
-    {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={() => void reload()} className="ml-3 min-h-11 underline">{t("retry")}</button></div>}
-    {storageWarning && <p role="status" className="text-sm text-amber-800">{t("storageWarning")}</p>}
-    {toast && <div role="status" className="flex items-center justify-between gap-3 rounded-xl bg-green-50 p-4 text-sm text-green-900"><p>{t("firstTaskComplete")}</p><button className="min-h-11 min-w-11" aria-label={t("close")} onClick={() => setToast(false)}>×</button></div>}
-    {view.visible && <section id="getting-started" aria-labelledby="getting-started-title" className="min-w-0 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7">
+  const guide = view.visible && <section id="getting-started" aria-labelledby="getting-started-title" className="min-w-0 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-wider text-sky-800">{t("eyebrow")}</p>{!view.hasPlan && <span className="text-xs text-dark/60">{t("progress", { done: view.missingFields.length ? 0 : 1, total: 3 })}</span>}</div>
       <h2 id="getting-started-title" className="mt-2 text-2xl font-extrabold">{view.hasPlan ? t("firstMoveTitle") : t("title")}</h2>
       <p className="mt-2 text-sm text-dark/65">{view.hasPlan ? t("firstMoveBody") : t("intro")}</p>
@@ -89,8 +85,14 @@ export default function GettingStartedHome({ initial, overview, copilot, investo
       {!view.canGenerate && <p className="mt-4 text-sm text-dark/65">{t("accessHint")}</p>}
       <div className="mt-5 flex flex-wrap items-center gap-4"><Link className={button} href={primaryHref}>{primaryLabel} →</Link>{view.currentStep === 1 && <Link href={view.canGenerate ? build : pathForLocale("/dashboard/account#plan", locale)} className="inline-flex min-h-11 items-center text-sm underline">{t("startWithoutProfile")}</Link>}</div>
       <Link href={pathForLocale("/dashboard/profile", locale)} className="mt-3 inline-flex min-h-11 items-center text-sm text-dark/60 underline">{t("optionalIcp")}</Link>
-    </section>}
-    {view.visible && !view.hasPlan ? <>{rewards}<details className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{t("optionalPolaris")}</summary>{copilot}</details>{calendar}<details id="explore-more" className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{t("explore")}</summary><div className="mt-4">{extras}</div></details></>
-      : <>{daily}<div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">{events}{podcast}</div></>}
+    </section>;
+  return <div className="mt-5 space-y-5">
+    {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={() => void reload()} className="ml-3 min-h-11 underline">{t("retry")}</button></div>}
+    {storageWarning && <p role="status" className="text-sm text-amber-800">{t("storageWarning")}</p>}
+    {toast && <div role="status" className="flex items-center justify-between gap-3 rounded-xl bg-green-50 p-4 text-sm text-green-900"><p>{t("firstTaskComplete")}</p><button className="min-h-11 min-w-11" aria-label={t("close")} onClick={() => setToast(false)}>×</button></div>}
+    {!view.hasPlan && guide}
+    {view.visible && !view.hasPlan ? <>{weekly}{calendar}{rewards}<details className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{t("optionalPolaris")}</summary>{copilot}</details><details id="explore-more" className="rounded-2xl border border-dark/10 p-4"><summary className="min-h-11 cursor-pointer font-semibold">{t("explore")}</summary><div className="mt-4">{extras}</div></details></>
+      : <>{daily}{view.hasPlan && guide}<div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">{events}{podcast}</div></>}
+    <div className="flex justify-end"><button className="min-h-11 rounded-xl px-3 text-sm font-semibold underline underline-offset-4 disabled:opacity-50" disabled={busy} onClick={() => void preference(view.visible ? "dismiss" : "reopen")}>{view.visible ? t("later") : t("reopen")}</button></div>
   </div>;
 }

@@ -39,17 +39,11 @@ export default function InvestorHubCard({ name, email, message, joined }: {
     }
   }
 
-  return (
-    <div className="nova-dashboard-card flex flex-col items-start gap-3 rounded-2xl border border-dark/10 bg-white p-5">
-      <div className="min-w-0">
-        <h2 className="text-base font-bold text-dark font-[family-name:var(--font-heading)]">{t("title")}</h2>
-        <p className="mt-1 text-xs font-medium text-dark/50">{t("comingSoon")}</p>
-      </div>
-      <button type="button" onClick={join} disabled={pending || registered} className="min-h-11 shrink-0 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60">
-        {registered ? t("joined") : pending ? t("joining") : t("join")}
-      </button>
-      {registered && <p role="status" className="mt-3 text-sm text-dark/60">{t("success")}</p>}
-      {error && <p role="alert" className="mt-3 whitespace-pre-wrap break-words text-sm text-red-600">{error}</p>}
+  return <section className="nova-dashboard-card min-w-0 rounded-2xl border border-dark/10 bg-white px-5 py-3">
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <h2 className="text-base font-bold text-dark">{t("title")}</h2>
+      {registered ? <p role="status" className="text-xs text-dark/60">{t("comingSoon")} · {t("joined")}</p> : <div className="flex items-center gap-3"><span className="text-xs text-dark/50">{t("comingSoon")}</span><button type="button" onClick={join} disabled={pending} className="min-h-11 rounded-full border border-dark/15 px-4 text-xs font-semibold hover:bg-dark/5 disabled:opacity-60">{pending ? t("joining") : t("join")}</button></div>}
     </div>
-  );
+    {error && <p role="alert" className="mt-2 whitespace-pre-wrap break-words text-sm text-red-600">{error}</p>}
+  </section>;
 }

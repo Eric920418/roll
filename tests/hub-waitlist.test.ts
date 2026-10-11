@@ -55,13 +55,10 @@ test("Hub 候補失敗可重試，成功與既有登記不重送，登記沿用�
   assert.equal(render().find(node => node.props.role === "alert")!.props.children, "HTTP 503: Temporary outage");
   success = true;
   await button().onClick!();
-  assert.equal(button().disabled, true);
+  assert.equal(render().find(node => node.type === "button"), undefined);
   assert.ok(render().find(node => node.props.role === "status"));
-  await button().onClick!();
   assert.equal(calls, 2);
   state.length = 0;
-  const existing = render(true).find(node => node.type === "button")!.props;
-  assert.equal(existing.disabled, true);
-  await existing.onClick!();
+  assert.equal(render(true).find(node => node.type === "button"), undefined);
   assert.equal(calls, 2);
 });
