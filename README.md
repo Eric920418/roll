@@ -1550,3 +1550,5 @@ Next Steps／Home 的訪談表格隨計畫版次重新載入，確保另一頁�
 領取寄信處理鎖時也再次檢查重試時間，避免重疊排程持有舊清單而提前重試。測試另確認三次嘗試上限／兩小時補寄期限即使任務仍未開始也會停止。
 
 正式 schema 已核對並以單一交易套用 `prisma/calendar-task-alerts.sql`；5 筆既有行事曆紀錄數量與原欄位指紋完全相同，新增 4 欄皆 nullable／歷史值皆空，新提醒表零紀錄，套用後 schema diff 為空。沿用 roll Production 原有寄送開關、金鑰與 15 分鐘 cron；`RESEND_API_KEY`／`CRON_SECRET` 為 Vercel sensitive 變數，本機 pull 留空並不代表正式執行環境缺少設定，不重建或替換金鑰。Preview 繼續不配置，無新增套件。
+
+發布驗收：功能 commit `58f5a4924ec1ee5cf514587d17d5f4dc8bab9c11` 已推至 main。Git 推送未建立新部署，這次以已連結 roll 專案的 `pnpm exec vercel deploy --prod --yes --archive=tgz` 發布同一份乾淨程式；部署 `dpl_EU9CjHQSNzSYB8234KZARUGYhyEw` 為 READY，`www.rollgrp.com` 與該部署 ID 完全相同。首頁、英／中退訂確認頁 HTTP 200，未登入 Dashboard 307、會員 API 與未授權 cron 401。既有正式 cron 最近一小時有四次正常 idle 紀錄，寄送啟用設定可於執行環境使用；未手動觸發正式寄信。唯讀差異檢查與暫存 Production env 已清除，正式資料保留；部署期間沒有修改方案、積分餘額或會員提醒偏好。
