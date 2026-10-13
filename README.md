@@ -1566,3 +1566,5 @@ Learning Resources 依既有工作區種類對應使用者提供的影片：訪�
 通用任務卡的後備學習區也傳入既有工作區分類；未辨識種類保持待補狀態，舊任務未啟用記錄時亦可使用已對應影片。
 
 驗收：229 項測試、TypeScript、build 與 diff check 通過；lint 無錯誤（14 項既有警告）。隔離會員的 Next Steps 桌面／390px 手機、中英文均核對三個 href、TED／YouTube 來源標示與 66px 點擊區；以鍵盤 Enter 實際開啟付費試用影片、點擊開啟 TED，新分頁網址正確且原填寫頁保留。已核對影片頁可開啟，未完整觀看影片。測試沒有完成任務、呼叫 AI 或寄信，本機驗收會員已清除。
+
+正式發布：功能 commit `b5308e30d590162b10f577052bae39dd325a7cf1` 已推至 main，自動 Production 發布成功；另一次同版本 CLI 發布亦成功。最後核對 `www.rollgrp.com` 指向 READY 部署 `dpl_8sXVcVgQ7W3CUJSBjQXLuEBchUVq`，其來源 SHA 與功能 commit 相同。首頁 HTTP 200、未登入 Next Steps 307、會員 API 401。無 schema、環境變數或正式會員資料異動；會員重新整理頁面即可載入新版影片入口。
