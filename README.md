@@ -1552,3 +1552,9 @@ Next Steps／Home 的訪談表格隨計畫版次重新載入，確保另一頁�
 正式 schema 已核對並以單一交易套用 `prisma/calendar-task-alerts.sql`；5 筆既有行事曆紀錄數量與原欄位指紋完全相同，新增 4 欄皆 nullable／歷史值皆空，新提醒表零紀錄，套用後 schema diff 為空。沿用 roll Production 原有寄送開關、金鑰與 15 分鐘 cron；`RESEND_API_KEY`／`CRON_SECRET` 為 Vercel sensitive 變數，本機 pull 留空並不代表正式執行環境缺少設定，不重建或替換金鑰。Preview 繼續不配置，無新增套件。
 
 發布驗收：功能 commit `58f5a4924ec1ee5cf514587d17d5f4dc8bab9c11` 已推至 main。Git 推送未建立新部署，這次以已連結 roll 專案的 `pnpm exec vercel deploy --prod --yes --archive=tgz` 發布同一份乾淨程式；部署 `dpl_EU9CjHQSNzSYB8234KZARUGYhyEw` 為 READY，`www.rollgrp.com` 與該部署 ID 完全相同。首頁、英／中退訂確認頁 HTTP 200，未登入 Dashboard 307、會員 API 與未授權 cron 401。既有正式 cron 最近一小時有四次正常 idle 紀錄，寄送啟用設定可於執行環境使用；未手動觸發正式寄信。唯讀差異檢查與暫存 Production env 已清除，正式資料保留；部署期間沒有修改方案、積分餘額或會員提醒偏好。
+
+### 任務提醒實寄與正式退訂驗收（2026-10-13）
+
+使用者另行授權後，僅對指定驗收信箱實寄一封 `[TEST] NOVA：你的任務即將開始`。沿用正式站的既有排程與 Resend sensitive 金鑰，沒有讀出、重建或替換寄信金鑰，也沒有臨時新增寄信端點。台北時間 13:00 正式 cron 紀錄為 `taskAlerts: {accepted: 1, skipped: 0, failed: 0}`；DB 在 13:00:28 記錄 accepted、attempts = 1，Resend 同一訊息 `01a133a2-2a60-7901-ba59-02be83a7240f` 顯示 sent／delivered。實際 Delivered 已確認；未代替收件者查看信箱或判定已閱讀。
+
+先用獨立測試帳號驗證正式退訂確認頁 GET 不異動、確認 POST 取消目前任務提醒、每日提醒仍啟用；一鍵退訂 POST 200、重複 POST 200、偽造簽章 400。再從實寄信預覽取得真實退訂連結，確認收件會員只有驗收任務開啟提醒，GET 仍不異動，確認後才關閉該驗收任務。原有任務、每日提醒偏好、積分帳戶及 AI allowance 在測試前後的指紋相同；僅刪除本次建立且 ID／requestId／驗收標記皆核對的暫時任務與測試帳號。稽核結果留於工作區外受限備份，暫存 env／簽章 token 已清除。本次沒有應用程式或 schema 變更，故不重跑先前已通過的 229 項完整測試。
