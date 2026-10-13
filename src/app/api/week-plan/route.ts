@@ -1,3 +1,5 @@
+import { revalidateTag } from "next/cache";
+import { REWARD_REMINDER_SCHEDULE_TAG } from "@/lib/rewards/policy";
 import { browserMutationGuard } from "@/lib/security/http";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -29,6 +31,8 @@ export async function POST(req: Request) {
     if (req.headers.get("origin") !== new URL(req.url).origin) throw new CalendarError("請從平台頁面提交 / Submit from the platform", 403, "invalid_origin");
     const input = weekMutationSchema.parse(await req.json());
     if (!(await checkRateLimit(`week-plan:${account.id}`, 40, MINUTE_MS, false)).ok) throw new CalendarError("操作過於頻繁，請稍後重試 / Too many requests; retry shortly", 429, "rate_limit");
-    return response({ id: await mutateWeekPlan(account.id, getEffectivePlan(account) !== "free", input) });
+    const id = await mutateWeekPlan(account.id, getEffectivePlan(account) !== "free", input);
+    revalidateTag(REWARD_REMINDER_SCHEDULE_TAG, { expire: 0 });
+    return response({ id });
   } catch (error) { return failure(error); }
 }

@@ -1,3 +1,4 @@
+import { runTaskAlerts } from "@/lib/week-plan/alerts";
 import { timingSafeEqual } from "node:crypto";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -8,13 +9,14 @@ import { privateRewardResponse, rewardFailure } from "@/lib/rewards/http";
 // Cache only the next work time, never email payloads or user data. Settings
 // writes and completed/failed runs invalidate it; hourly expiry is a fallback.
 const nextWorkAt = unstable_cache(async () => {
-  const [reminder, delivery] = await Promise.all([
+  const [reminder, taskAlert, delivery] = await Promise.all([
     prisma.rewardReminder.aggregate({ where: { enabled: true }, _min: { nextSendAt: true } }),
+    prisma.calendarTaskAlert.aggregate({ where: { status: { in: ["pending", "processing"] } }, _min: { nextAttemptAt: true } }),
     prisma.rewardDelivery.aggregate({ where: { status: { in: ["pending", "processing"] } }, _min: { nextAttemptAt: true } }),
   ]);
-  const dates = [reminder._min.nextSendAt, delivery._min.nextAttemptAt].filter((value): value is Date => value !== null);
+  const dates = [reminder._min.nextSendAt, delivery._min.nextAttemptAt, taskAlert._min.nextAttemptAt].filter((value): value is Date => value !== null);
   return dates.length ? new Date(Math.min(...dates.map(value => value.getTime()))).toISOString() : null;
-}, ["reward-reminder-next-work-v1"], { tags: [REWARD_REMINDER_SCHEDULE_TAG], revalidate: 3600 });
+}, ["reward-reminder-next-work-v2"], { tags: [REWARD_REMINDER_SCHEDULE_TAG], revalidate: 3600 });
 
 export const maxDuration = 300;
 export async function GET(req: Request) {
@@ -29,7 +31,9 @@ export async function GET(req: Request) {
       return privateRewardResponse({ disabled: false, idle: true, accepted: 0, skipped: 0, failed: 0 });
     }
     try {
-      const result = await runRewardReminders();
+      const started = Date.now();
+      const taskAlerts = await runTaskAlerts();
+      const result = { ...await runRewardReminders(undefined, Math.max(5000, 250000 - (Date.now() - started))), taskAlerts };
       console.info({ event: "reward_reminder.cron_run", ...result });
       return privateRewardResponse(result);
     }

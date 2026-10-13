@@ -29,7 +29,7 @@ test("This week integration in isolated PostgreSQL", { skip: !connectionString }
   const ids: string[] = [];
   const mocks = { "./schemas": createRequire(import.meta.url)("../src/lib/action-plan/schemas"), "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/roadmap/schema": roadmap, "./ranking": ranking, "./time": time };
   const plans = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts", mocks);
-  const service = load<typeof import("../src/lib/week-plan/service")>("src/lib/week-plan/service.ts", { ...mocks, "@/lib/action-plan/service": plans, "./schema": schema, "@/lib/action-plan/workspace": workspace, "@/lib/customer-insights/interviews": interviews });
+  const service = load<typeof import("../src/lib/week-plan/service")>("src/lib/week-plan/service.ts", { ...mocks, "@/lib/action-plan/service": plans, "@/lib/rewards/reminders": { rewardEmailConfigured: () => false }, "./schema": schema, "@/lib/action-plan/workspace": workspace, "@/lib/customer-insights/interviews": interviews });
   const createUser = async () => { const user = await db.user.create({ data: { email: `${randomUUID()}@week.invalid` } }); ids.push(user.id); return user; };
   try {
     const user = await createUser(), other = await createUser();

@@ -122,6 +122,25 @@ test("Interview transactions and completion in isolated PostgreSQL", { skip: !co
       assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })).metricCurrent, 1);
       assert(await db.meetingNote.findUnique({ where: { id: noteId } }));
     });
+    await t.test("An explicitly selected unlinked historical record joins the task once; stale, foreign, empty and completed links are rejected", async () => {
+      const value = { ...interview("History Company"), actionId: undefined };
+      const history = await db.meetingNote.create({ data: { userId: owner.id, title: "Historical interview", insight: JSON.parse(JSON.stringify(value)) } });
+      const foreign = await db.meetingNote.create({ data: { userId: stranger.id, title: "Foreign", insight: JSON.parse(JSON.stringify(value)) } });
+      const attach = (id: string, updatedAt: string, insight = { ...value, actionId: task.id }) => records.PATCH(req({ id, updatedAt, insight }));
+      assert.equal((await attach(foreign.id, foreign.updatedAt.toISOString())).status, 404);
+      assert.equal((await attach(history.id, history.updatedAt.toISOString(), { ...value, actionId: task.id, answers: ["", "", "", ""] })).status, 400);
+      assert.equal((await attach(history.id, history.updatedAt.toISOString())).status, 200);
+      assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })).metricCurrent, 2);
+      assert.equal((await attach(history.id, history.updatedAt.toISOString())).status, 409);
+      const saved = await db.meetingNote.findUniqueOrThrow({ where: { id: history.id } });
+      assert.equal((saved.insight as { actionId: string }).actionId, task.id);
+      await remove(history.id);
+      const late = await db.meetingNote.create({ data: { userId: owner.id, title: "Late", insight: JSON.parse(JSON.stringify(value)) } });
+      await db.actionItem.update({ where: { id: task.id }, data: { done: true } });
+      assert.equal((await attach(late.id, late.updatedAt.toISOString())).status, 409);
+      assert.equal((await db.meetingNote.findUniqueOrThrow({ where: { id: late.id } })).insight && (await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })).metricCurrent, 1);
+      await db.actionItem.update({ where: { id: task.id }, data: { done: false } }); await db.meetingNote.delete({ where: { id: late.id } });
+    });
     await t.test("Concurrent distinct companies count exactly; completed dependents protect thresholds; task deletion keeps interviews", async () => {
       assert((await Promise.all([save("Gamma"), save("Delta")])).every(r => r.status === 201));
       assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })).metricCurrent, 3);

@@ -77,7 +77,7 @@ export function canonicalEmailPayload(value: unknown): string {
   const canonical = (item: unknown): unknown => Array.isArray(item) ? item.map(canonical) : item && typeof item === "object" ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)).map(([key, child]) => [key, canonical(child)])) : item;
   return JSON.stringify(canonical(value));
 }
-export async function runRewardReminders(now = new Date()) {
+export async function runRewardReminders(now = new Date(), budgetMs = 250000) {
   if (!rewardEmailConfigured()) return { disabled: true, accepted: 0, skipped: 0, failed: 0 };
   const startedAt = Date.now();
   const scheduled = await prisma.rewardReminder.findMany({ where: { enabled: true, nextSendAt: { lte: now } }, orderBy: { nextSendAt: "asc" }, take: 100 });
@@ -93,7 +93,7 @@ export async function runRewardReminders(now = new Date()) {
   const result = { disabled: false, accepted: 0, skipped: 0, failed: 0 };
   const betaAccess = await getBetaAccess();
   for (const delivery of due) {
-    if (Date.now() - startedAt > 250000) break;
+    if (Date.now() - startedAt > budgetMs) break;
     const leaseToken = randomUUID();
     const claimed = await prisma.rewardDelivery.updateMany({ where: { id: delivery.id, status: { in: ["pending", "processing"] }, OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }] }, data: { status: "processing", leaseToken, leaseUntil: new Date(now.getTime() + 5 * 60000) } });
     if (!claimed.count) continue;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
-import { calendarDate, calendarWeekStart, calendarWeek, addCalendarDays, weekMutationSchema, calendarTimes, calendarTime, interviewEnded, type CalendarEntry } from "../src/lib/week-plan/schema";
+import { calendarDate, calendarWeekStart, calendarWeek, addCalendarDays, weekMutationSchema, calendarTimes, calendarTime, interviewEnded, durationTimes, savedDuration, type CalendarEntry } from "../src/lib/week-plan/schema";
 
 import { calendarIcs, googleCalendarUrl } from "../src/lib/week-plan/export";
 
@@ -42,7 +42,7 @@ test("Log-it appears only for an available, unfinished interview after its actua
   for (const change of [{ interview: false }, { available: false }, { done: true }, { endsAt: null }]) assert(!interviewEnded({ ...entry, ...change }, now));
 });
 test("Calendar exports preserve local times and exclusive all-day ends, escape content and fold UTF-8 safely", () => {
-  const entry: CalendarEntry = { id: "item_1", kind: "personal", date: "2026-10-11", startsAt: null, endsAt: null, title: "Company, A;B\\C", note: "Line 1\nBEGIN:VEVENT", done: false, revision: 0, actionId: null, available: true, interview: false };
+  const entry: CalendarEntry = { id: "item_1", kind: "personal", date: "2026-10-11", startsAt: null, endsAt: null, title: "Company, A;B\\C", note: "Line 1\nBEGIN:VEVENT", done: false, revision: 0, actionId: null, available: true, interview: false, durationMinutes: null, alert: { enabled: false, status: null, acceptedAt: null, error: null } };
   const timed = { ...entry, id: "item_2", ...calendarTimes(entry.date, "23:00", "01:00"), title: "中文訪談".repeat(40) };
   const ics = calendarIcs([entry, timed, { ...entry, id: "blocked", available: false }], new Date("2026-10-11T00:00:00Z"));
   const unfolded = ics.replace(/\r\n /g, "");
@@ -58,4 +58,15 @@ test("Calendar exports preserve local times and exclusive all-day ends, escape c
   assert.equal(google.searchParams.get("dates"), "20261011T150000Z/20261011T170000Z");
   assert.equal(google.searchParams.get("text"), timed.title); assert.equal(google.searchParams.get("details"), entry.note);
   assert.equal(new URL(googleCalendarUrl(entry)).searchParams.get("dates"), "20261011/20261012");
+});
+
+test("Duration supports half-hour choices, overnight and 24-hour ends; old custom time ranges remain readable", () => {
+  const half = durationTimes("2026-10-13", "23:45", 30);
+  assert.equal(half.endsAt, "2026-10-13T16:15:00.000Z"); assert.equal(savedDuration({ ...half, durationMinutes: null }), 30);
+  const full = durationTimes("2026-10-13", "09:00", 1440);
+  assert.equal(full.endsAt, "2026-10-14T01:00:00.000Z");
+  assert.deepEqual(durationTimes("2026-10-13", "", 120), { startsAt: null, endsAt: null });
+  assert.equal(savedDuration({ startsAt: null, endsAt: null, durationMinutes: 120 }), 120);
+  const item = { operation: "add", requestId: randomUUID(), date: "2026-10-13", title: "Task", note: "", ...half, durationMinutes: 30 };
+  assert(weekMutationSchema.safeParse(item).success); assert(!weekMutationSchema.safeParse({ ...item, durationMinutes: 60 }).success);
 });

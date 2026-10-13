@@ -16,7 +16,7 @@ const questions = {
 
 export default function TaskWorkspace({ userId, action, plan, busy, onChanged, onInsights, onAnalyze }: { userId: string; action: ActionPlanActionDto; plan: ActionPlanDto; busy: boolean; onChanged: (plan: ActionPlanDto | null) => void; onInsights: () => void; onAnalyze: () => void }) {
   const kind = workspaceKind(action);
-  return <>{kind === "interview" ? <InterviewWorkspace userId={userId} action={action} busy={busy} onChanged={onChanged} onInsights={onInsights} /> : kind ? <WorkspaceForm key={action.id} userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} /> : null}
+  return <>{kind === "interview" ? <InterviewWorkspace revision={plan.revision} userId={userId} action={action} busy={busy} onChanged={onChanged} onInsights={onInsights} /> : kind ? <WorkspaceForm key={action.id} userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} /> : null}
     {kind && <TaskFinding userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} onAnalyze={onAnalyze} />}
   </>;
 }

@@ -10,19 +10,29 @@ export async function interviewRows(tx: Pick<Prisma.TransactionClient, "meetingN
 }
 
 export async function lockInterviewAction(tx: Prisma.TransactionClient, userId: string, actionId: string, creating = false) {
-  const action = await tx.actionItem.findFirst({ where: { id: actionId, actionPlan: { userId } }, include: { actionPlan: { select: { activeKey: true, archivedAt: true } } } });
-  if (!action) {
+  const initial = await tx.actionItem.findFirst({ where: { id: actionId, actionPlan: { userId } }, include: { actionPlan: { select: { activeKey: true, archivedAt: true } } } });
+  if (!initial) {
     if (creating || await tx.actionItem.count({ where: { id: actionId } })) throw new PlanWriteError("找不到訪談任務 / Interview task not found", 404);
     return; // Deleted tasks retain their owned conversations.
   }
+  let action = initial;
   const active = action.actionPlan.activeKey === userId && !action.actionPlan.archivedAt;
   if (creating && (!active || workspaceKind(action) !== "interview")) throw new PlanWriteError("請使用目前的訪談任務 / Use an active interview task", 409);
-  if (active) await lockActivePlan(tx, userId, action.actionPlanId);
+  if (active) {
+    await lockActivePlan(tx, userId, action.actionPlanId);
+    const fresh = await tx.actionItem.findFirst({ where: { id: actionId, actionPlan: { userId } }, include: { actionPlan: { select: { activeKey: true, archivedAt: true } } } });
+    if (!fresh) throw new PlanWriteError("找不到訪談任務 / Interview task not found", 404);
+    action = fresh;
+  }
+  if (creating) {
+    if (action.done) throw new PlanWriteError("已完成任務不可新增訪談 / Cannot add interviews to a completed task", 409);
+    await guardActionMilestone(tx, action.actionPlanId, action.milestoneId, "edit");
+    const dependencies = await tx.actionDependency.findMany({ where: { actionId }, include: { dependsOn: true } });
+    if ((action.dependencyLevel > 0 && !dependencies.length) || dependencies.some(edge => !dependencySatisfied(edge))) throw new PlanWriteError("請先達成前置條件 / Resolve prerequisites before adding interviews", 409);
+  }
   if (creating && action.recordingMode !== "interview") {
     const target = interviewTarget(action);
     if (!target) throw new PlanWriteError("此任務尚無訪談目標，請先編輯任務名稱加入明確訪談數量 / Edit the task title to specify an interview count first", 409);
-    if (action.done) throw new PlanWriteError("請先撤銷完成再新增訪談 / Undo completion before adding interviews", 409);
-    await guardActionMilestone(tx, action.actionPlanId, action.milestoneId, "edit");
     const required = await tx.actionDependency.findMany({ where: { dependsOnId: actionId }, include: { action: true } });
     const count = interviewSummary(actionId, await interviewRows(tx, userId, actionId)).total;
     if (required.some(e => e.minimumCurrent != null && (action.metricUnit !== "companies" || target < e.minimumCurrent || (e.action.done && count < e.minimumCurrent)))) throw new PlanWriteError("先調整既有數量依賴再使用訪談紀錄 / Adjust quantity dependencies before using interview records", 409);

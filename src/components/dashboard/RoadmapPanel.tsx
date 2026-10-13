@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { correctionSchema, type StageCorrection } from "@/lib/roadmap/corrections";
-import { InterviewInsights } from "./InterviewWorkspace";
+import { InterviewInsights, CompletedTaskInsights } from "./InterviewWorkspace";
 import TaskWorkspace from "./TaskWorkspace";
 import { workspaceKind } from "@/lib/action-plan/workspace";
 import ActionTaskRow from "./ActionTaskRow";
@@ -146,8 +146,10 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
       (filter === "all" || (filter === "done" ? a.done : filter === "blocked" ? !a.done && a.dependency.blocked : !a.done && !a.dependency.blocked));
   }
   const featuredId = initialPlan?.nextMoves[0]?.id ?? initialPlan?.actions.find(a => !a.done)?.id;
+  const completedReferences = initialPlan?.actions.filter(action => action.done && (workspaceKind(action) || action.taskFinding?.result)).sort((a, b) => (a.milestonePosition ?? 0) - (b.milestonePosition ?? 0) || (a.displayNumber ?? 0) - (b.displayNumber ?? 0)) ?? [];
   function taskRow(a: ActionPlanActionDto, readOnly = false) {
     return <div key={a.id} id={readOnly ? undefined : `action-${a.id}`} tabIndex={-1} className="scroll-mt-24">
+      {!readOnly && a.id === featuredId && completedReferences.length > 0 && <div>{completedReferences.map((action, i) => i === completedReferences.length - 1 ? <CompletedTaskInsights key={action.id} action={action} revision={initialPlan?.revision} /> : <details key={action.id} className="mb-3"><summary className="min-h-11 cursor-pointer py-3 text-sm text-dark/60">Insights · #{action.displayNumber} · {action.title}</summary><CompletedTaskInsights action={action} revision={initialPlan?.revision} /></details>)}</div>}
       <ActionTaskRow action={a} compact focusMode featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
         onToggle={readOnly ? undefined : () => { void changeTask(a.id, { done: !a.done }).then(saved => { if (saved && !a.done && a.recordingMode === "interview") setInsights({ id: a.id, title: a.title }); }); }}
         onMetric={readOnly ? undefined : metric => changeTask(a.id, metric, "PATCH", true)}

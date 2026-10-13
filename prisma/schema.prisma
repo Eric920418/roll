@@ -222,6 +222,7 @@ model User {
   rewardReminder RewardReminder?
   rewardDeliveries RewardDelivery[]
   weekCalendarItems WeekCalendarItem[]
+  calendarAlerts CalendarTaskAlert[]
 
 }
 
@@ -596,6 +597,11 @@ model WeekCalendarItem {
   date DateTime @db.Date
   startsAt DateTime?
   endsAt DateTime?
+  durationMinutes Int?
+  alertAt DateTime?
+  alertVersion String?
+  alertLocale String?
+  alerts CalendarTaskAlert[]
   title String
   note String @default("")
   done Boolean @default(false)
@@ -607,6 +613,31 @@ model WeekCalendarItem {
 
   @@unique([userId, requestId])
   @@index([userId, date, deletedAt])
+}
+
+/// 每次安排一筆提醒；取消或改時間會保留旧發送紀錄。
+model CalendarTaskAlert {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarItemId String
+  calendarItem WeekCalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+  version String
+  scheduledAt DateTime
+  nextAttemptAt DateTime
+  status String @default("pending")
+  attempts Int @default(0)
+  leaseToken String?
+  leaseUntil DateTime?
+  payload Json?
+  providerId String?
+  acceptedAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+
+  @@unique([calendarItemId, version])
+  @@index([status, nextAttemptAt])
+  @@index([userId, createdAt])
 }
 
 /// 同一 Action Plan 內的有向依賴：action 必須等待 dependsOn。

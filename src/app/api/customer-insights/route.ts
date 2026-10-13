@@ -80,11 +80,11 @@ export async function PATCH(req: NextRequest) {
       const row = await tx.meetingNote.findFirst({ where: { id: input.id, userId: session.uid }, select: { insight: true } });
       const old = insightSchema.safeParse(row?.insight);
       if (!row || !old.success) throw new PlanWriteError("找不到對話 / Conversation not found", 404);
-      if (old.data.actionId !== input.insight.actionId) throw new PlanWriteError("不可移除或轉移訪談的任務關聯 / Cannot remove or transfer the interview task link", 409);
-      if (old.data.actionId) await lockInterviewAction(tx, session.uid, old.data.actionId);
+      if (old.data.actionId && old.data.actionId !== input.insight.actionId) throw new PlanWriteError("不可移除或轉移訪談的任務關聯 / Cannot remove or transfer the interview task link", 409);
+      if (input.insight.actionId) await lockInterviewAction(tx, session.uid, input.insight.actionId, !old.data.actionId);
       const updated = await tx.meetingNote.updateMany({ where: { id: input.id, userId: session.uid, updatedAt: new Date(input.updatedAt) }, data: noteData(input.insight) });
       if (!updated.count) throw new PlanWriteError("紀錄已由其他分頁更新；輸入保留，請重新載入後比對 / Conversation changed in another tab; reload and compare", 409);
-      if (old.data.actionId) await refreshInterviewProgress(tx, session.uid, old.data.actionId);
+      if (input.insight.actionId) await refreshInterviewProgress(tx, session.uid, input.insight.actionId);
     });
     return ok({ id: input.id, ...(input.insight.actionId ? { plan: await getActiveActionPlan(session.uid) } : {}) });
   } catch (error) { return errorResponse(error); }
