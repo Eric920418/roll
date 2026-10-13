@@ -1558,3 +1558,11 @@ Next Steps／Home 的訪談表格隨計畫版次重新載入，確保另一頁�
 使用者另行授權後，僅對指定驗收信箱實寄一封 `[TEST] NOVA：你的任務即將開始`。沿用正式站的既有排程與 Resend sensitive 金鑰，沒有讀出、重建或替換寄信金鑰，也沒有臨時新增寄信端點。台北時間 13:00 正式 cron 紀錄為 `taskAlerts: {accepted: 1, skipped: 0, failed: 0}`；DB 在 13:00:28 記錄 accepted、attempts = 1，Resend 同一訊息 `01a133a2-2a60-7901-ba59-02be83a7240f` 顯示 sent／delivered。實際 Delivered 已確認；未代替收件者查看信箱或判定已閱讀。
 
 先用獨立測試帳號驗證正式退訂確認頁 GET 不異動、確認 POST 取消目前任務提醒、每日提醒仍啟用；一鍵退訂 POST 200、重複 POST 200、偽造簽章 400。再從實寄信預覽取得真實退訂連結，確認收件會員只有驗收任務開啟提醒，GET 仍不異動，確認後才關閉該驗收任務。原有任務、每日提醒偏好、積分帳戶及 AI allowance 在測試前後的指紋相同；僅刪除本次建立且 ID／requestId／驗收標記皆核對的暫時任務與測試帳號。稽核結果留於工作區外受限備份，暫存 env／簽章 token 已清除。本次沒有應用程式或 schema 變更，故不重跑先前已通過的 229 項完整測試。
+
+### 任務學習影片（2026-10-13）
+
+Learning Resources 依既有工作區種類對應使用者提供的影片：訪談使用 [YouTube 訪談影片](https://www.youtube.com/watch?v=z1iF1c8w5Lg)，付費試用使用 [YouTube 付費試用影片](https://www.youtube.com/watch?v=w7g08dVTwaE)，定位句使用 [Simon Sinek 的 TED 演講](https://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action)。第三個來源正確標示 TED。連結以新分頁開啟，保留鍵盤焦點、至少 44px 點擊區及中英文觀看文字；Spotify 與尚未提供影片的其他工作區保留純文字待補狀態。Next Steps 與 Home 同頁訪談共用此元件，不以英文完整任務標題／固定訪談數量綁定連結。沒有新增套件、API、schema 或會員資料異動，觀看不會儲存紀錄、完成任務、發分或扣 AI 次數。
+
+通用任務卡的後備學習區也傳入既有工作區分類；未辨識種類保持待補狀態，舊任務未啟用記錄時亦可使用已對應影片。
+
+驗收：229 項測試、TypeScript、build 與 diff check 通過；lint 無錯誤（14 項既有警告）。隔離會員的 Next Steps 桌面／390px 手機、中英文均核對三個 href、TED／YouTube 來源標示與 66px 點擊區；以鍵盤 Enter 實際開啟付費試用影片、點擊開啟 TED，新分頁網址正確且原填寫頁保留。已核對影片頁可開啟，未完整觀看影片。測試沒有完成任務、呼叫 AI 或寄信，本機驗收會員已清除。

@@ -5,6 +5,7 @@ import TaskProgressLog from "./TaskProgressLog";
 import { useLocale } from "next-intl";
 import TaskCheckbox from "./TaskCheckbox";
 import LearningResources from "./LearningResources";
+import { workspaceKind } from "@/lib/action-plan/workspace";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { taskReference, priorityTier } from "@/lib/action-plan/ranking";
 import { formatActionTime } from "@/lib/action-plan/time";
@@ -43,7 +44,7 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
           <span aria-hidden="true" className="shrink-0 text-dark/50 group-open/task:rotate-180">⌄</span>
           <span className="sr-only">{zh ? "展開或收合任務" : "Expand or collapse task"}</span>
         </summary>
-        {badges}<p className="mt-3 line-clamp-3 text-sm leading-6 text-dark/65">{action.expectedOutcome.text}</p>{focusMode && !workspace && <div className="mt-5"><LearningResources question={action.title} /></div>}{metric}{workspace}{fullDetails}
+        {badges}<p className="mt-3 line-clamp-3 text-sm leading-6 text-dark/65">{action.expectedOutcome.text}</p>{focusMode && !workspace && <div className="mt-5"><LearningResources kind={workspaceKind(action)} question={action.title} /></div>}{metric}{workspace}{fullDetails}
       </details>
     </div>
   </article>;

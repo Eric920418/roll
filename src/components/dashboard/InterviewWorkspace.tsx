@@ -39,7 +39,7 @@ export default function InterviewWorkspace({ userId, action, busy, onChanged, on
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
   }
   return <section className="mt-5 space-y-5 border-t border-dark/10 pt-5">
-    <LearningResources question={zh ? "如何進行訪談？" : "How to run an interview?"} />
+    <LearningResources kind="interview" question={zh ? "如何進行訪談？" : "How to run an interview?"} />
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold">{zh ? "已記錄訪談" : "Interviews logged"} · {rows ? interviewSummary(action.id, rows).total : "…"}/{target ?? "?"} {zh ? "間不同公司" : "distinct companies"}</p><button type="button" onClick={onInsights} className={button}>{zh ? "查看 Insights" : "View Insights"}</button></div>
       <progress aria-label={zh ? "有效訪談進度" : "Valid interview progress"} className="mt-3 h-2 w-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" value={action.recordingMode === "interview" ? Math.min(action.metric?.current ?? 0, target ?? 1) : 0} max={target ?? 1} />
