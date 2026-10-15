@@ -39,6 +39,9 @@ export interface Account {
   trialPlan: PlanKey | null;
   trialStartsAt: Date | null;
   trialEndsAt: Date | null;
+  trialPolicy?: string | null;
+  founderStartedAt?: Date | null;
+  founderEndsAt?: Date | null;
   /** 註冊日 = 落地起點 anchor，落地待辦據此推算各任務建議完成日（見 dashboard/agenda.ts） */
   createdAt: Date;
   profile: {
@@ -108,6 +111,9 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     trialPlan: user.trialPlan ? toPlanKey(user.trialPlan) : null,
     trialStartsAt: user.trialStartsAt,
     trialEndsAt: user.trialEndsAt,
+    trialPolicy: user.trialPolicy,
+    founderStartedAt: user.founderStartedAt,
+    founderEndsAt: user.founderEndsAt,
     createdAt: user.createdAt,
     profile: user.profile
       ? {

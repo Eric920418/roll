@@ -8,6 +8,7 @@ import {
 } from "@/lib/billing/gate";
 import { paypalManagePaymentUrl } from "@/lib/billing/paypal";
 import { getAiUsageSummary } from "@/lib/ai/allowance";
+import { isDiscoveryMember } from "@/lib/discovery/policy";
 import { prisma } from "@/lib/prisma";
 import type { Locale } from "@/i18n/routing";
 
@@ -24,7 +25,8 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   const effectivePlan = getEffectivePlan(account);
   const status = account.subscriptionStatus;
 
-  const statusLabel = account.betaAccess && !status
+  const founderActive = !!account.founderStartedAt && account.founderStartedAt <= new Date() && !!account.founderEndsAt && account.founderEndsAt > new Date();
+  const statusLabel = founderActive ? (l === "zh-tw" ? "創始會員年費（一次付款）" : "Founding membership · prepaid year") : account.betaAccess && !isDiscoveryMember(account) && !status
     ? t("betaAccess")
     : !status
     ? t("noSubscription")
@@ -69,7 +71,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   const usage = (await getAiUsageSummary(account)) ?? undefined;
   const now = new Date();
   const trialLabel =
-    account.trialPlan &&
+    !founderActive && account.trialPlan &&
     account.trialStartsAt &&
     account.trialEndsAt &&
     account.trialStartsAt <= now &&
@@ -100,7 +102,8 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
         usage={usage}
         trialLabel={trialLabel}
         currentInterval={currentInterval}
-        betaAccess={account.betaAccess}
+        betaAccess={account.betaAccess && !isDiscoveryMember(account)}
+        founderUntil={founderActive ? dateFmt.format(account.founderEndsAt!) : undefined}
       />
     </section>
   );

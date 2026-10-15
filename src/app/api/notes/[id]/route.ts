@@ -59,13 +59,16 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
-    if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
+    const paid = Boolean(await requirePlan("pro"));
     const { id } = await params;
 
     await prisma.$transaction(async raw => {
       const tx = raw as unknown as Prisma.TransactionClient;
       const row = await tx.meetingNote.findFirst({ where: { id, userId: session.uid }, select: { insight: true, updatedAt: true } });
       if (!row) throw new PlanWriteError("找不到資料 / Not found", 404);
+      const journeyId = insightSchema.safeParse(row.insight).data?.journeyId;
+      if (!paid && !journeyId) throw new PlanWriteError("此功能需 Pro 以上方案 / Pro plan required", 403);
+      if (journeyId) await (await import("@/lib/discovery/service")).lockDiscoveryWrite(tx, session.uid, journeyId);
       const version = new URL(_req.url).searchParams.get("updatedAt");
       if (row.insight != null && !version) throw new PlanWriteError("請重新載入訪談紀錄後刪除 / Reload the conversation before deleting", 409);
       if (version && !z.iso.datetime().safeParse(version).success) throw new PlanWriteError("無效紀錄版本 / Invalid conversation version", 400);
@@ -75,6 +78,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
       const deleted = await tx.meetingNote.deleteMany({ where: { id, userId: session.uid, updatedAt: row.updatedAt } });
       if (!deleted.count) throw new PlanWriteError("紀錄已更新，請重新載入 / Conversation changed; reload", 409);
       if (actionId) await refreshInterviewProgress(tx, session.uid, actionId);
+      if (journeyId) await (await import("@/lib/discovery/service")).invalidateDiscovery(tx, journeyId);
     });
     return ok({ deleted: true });
   } catch (error) {

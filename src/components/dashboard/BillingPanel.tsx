@@ -37,6 +37,7 @@ export default function BillingPanel({
   trialLabel,
   currentInterval,
   betaAccess = false,
+  founderUntil,
 }: {
   locale: Locale;
   currentPlan: string;
@@ -49,6 +50,7 @@ export default function BillingPanel({
   trialLabel?: string;
   currentInterval?: BillingInterval;
   betaAccess?: boolean;
+  founderUntil?: string;
 }) {
   const t = useTranslations("Billing");
   const tPlans = useTranslations("Dashboard.plans");
@@ -143,6 +145,7 @@ export default function BillingPanel({
               {statusLabel}
               {renewsLabel ? ` · ${renewsLabel}` : ""}
             </p>
+            {founderUntil && <p className="mt-2 text-sm text-dark/70">{locale === "zh-tw" ? `US$348 一次付款，12 個月使用權，有效至 ${founderUntil}。不自動續扣。` : `US$348 paid once for 12 months, until ${founderUntil}. No automatic renewal.`}</p>}
             {trialLabel && <p className="mt-1 text-sm text-primary">{trialLabel}</p>}
             {betaAccess && <p role="status" className="mt-2 text-sm text-primary">{t("betaNotice", { plan: tPlans("enterprise") })}</p>}
           </div>
@@ -220,7 +223,7 @@ export default function BillingPanel({
       )}
 
       {/* 方案選擇 */}
-      {!betaAccess && <div>
+      {!betaAccess && !founderUntil && <div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
             {t("choosePlan")}

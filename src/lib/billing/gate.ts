@@ -17,6 +17,9 @@ export type BillingAccount = Pick<
   | "trialPlan"
   | "trialStartsAt"
   | "trialEndsAt"
+  | "trialPolicy"
+  | "founderStartedAt"
+  | "founderEndsAt"
 >;
 
 // 方案 gating。權限一律即時計算（不信 JWT 內的 plan），且套「寬限期」：
@@ -74,6 +77,7 @@ export function suspendedGraceActive(
  * - pro/business → ACTIVE/CANCELLED 需本期未過期；SUSPENDED 走 1 天寬限期；其餘退回 free
  */
 function activeTrialPlan(account: BillingAccount, now: Date): PlanKey {
+  if (account.trialPolicy === "interviews-3-v1") return "free";
   if (
     !account.trialPlan ||
     account.trialPlan === "free" ||
@@ -114,10 +118,18 @@ export function getEffectivePlan(
   now = new Date(),
 ): PlanKey {
   if (!account) return "free";
-  if (account.betaAccess === true) return "enterprise";
-  const paid = paidPlan(account, now);
+  const paid = getPaidPlan(account, now);
   const trial = activeTrialPlan(account, now);
   return PLAN_RANK[trial] > PLAN_RANK[paid] ? trial : paid;
+}
+
+/** True paid/legacy entitlement, separate from the new discovery trial. */
+export function getPaidPlan(account: BillingAccount | null, now = new Date()): PlanKey {
+  if (!account) return "free";
+  if (account.betaAccess === true && account.trialPolicy !== "interviews-3-v1") return "enterprise";
+  const paid = paidPlan(account, now);
+  const founder = account.founderStartedAt && account.founderEndsAt && account.founderStartedAt <= now && account.founderEndsAt > now;
+  return founder && PLAN_RANK[paid] < PLAN_RANK.pro ? "pro" : paid;
 }
 
 export function hasActiveTrial(account: BillingAccount | null, now = new Date()): boolean {

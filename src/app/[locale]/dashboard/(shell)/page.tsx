@@ -18,6 +18,8 @@ import UpcomingEventsRail from "@/components/dashboard/home/UpcomingEventsRail";
 import RewardsCard from "@/components/dashboard/rewards/RewardsCard";
 import CopilotPanel from "@/components/dashboard/home/CopilotPanel";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
+import Link from "next/link";
+import { isDiscoveryMember } from "@/lib/discovery/policy";
 import type { Locale } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -77,9 +79,10 @@ export default async function DashboardOverview({ params }: Props) {
       <PlanRefresh userId={account.id} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("overview.title")}{firstName ? `, ${firstName}` : ""}</h1>
-        <HomeLogButton canRecord={isPaying} />
+        <HomeLogButton canRecord={isPaying} discovery={isDiscoveryMember(account)} />
       </div>
 
+      {isDiscoveryMember(account) && <Link href={`${agendaHref}#discovery`} className="mt-6 block rounded-2xl border-2 border-dark bg-white p-5 font-semibold">{l === "zh-tw" ? "你的訪談里程碑 → 前往 Next Steps，記錄訪談與查看分析" : "Your interview milestone → open Next Steps to log interviews and review evidence"}</Link>}
       <GettingStartedHome initial={guide}
         weekly={visibleActionPlan ? <HomeWeeklyCheckIn key={visibleActionPlan.id} initial={visibleActionPlan} userId={account.id} canShare={effectivePlan === "business" || effectivePlan === "enterprise"} /> : null}
         calendar={<ThisWeekCalendar />}

@@ -15,13 +15,15 @@ export const STAGE_CONFIG = {
 } as const;
 export const insightSchema = z.object({
   actionId: z.string().trim().min(1).max(200).optional(),
+  journeyId: z.string().trim().min(1).max(200).optional(),
   challenge: z.enum(["market", "focus", "survival", "other"]).optional(),
   stage: z.enum(INSIGHT_STAGES), name: z.string().trim().min(1).max(200), company: z.string().trim().max(200), role: z.string().trim().max(200),
   type: z.string().max(40), fit: z.enum(["unknown", "yes", "partly", "no"]),
   answers: z.array(z.string().trim().max(4000)).length(4), notes: z.string().trim().max(8000),
   region: z.string().trim().max(200), industry: z.string().trim().max(200), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")),
 }).strict().superRefine((v, ctx) => {
-  if (v.actionId && (!v.company || !(v.answers.some(Boolean) || v.notes))) ctx.addIssue({ code: "custom", path: ["company"], message: "任務訪談須填公司及至少一項回答或筆記 / Task interviews require a company and an answer or notes" });
+  if ((v.actionId || v.journeyId) && (!v.company || !(v.answers.some(Boolean) || v.notes))) ctx.addIssue({ code: "custom", path: ["company"], message: "任務訪談須填公司及至少一項回答或筆記 / Task interviews require a company and an answer or notes" });
+  if (v.actionId && v.journeyId) ctx.addIssue({ code: "custom", path: ["journeyId"], message: "訪談不可同時關聯兩個工作區 / A conversation cannot link to two workspaces" });
   if (!(STAGE_CONFIG[v.stage].types as readonly string[]).includes(v.type)) ctx.addIssue({ code: "custom", path: ["type"], message: "Invalid conversation type for this stage" });
   if (v.date && (Number.isNaN(Date.parse(v.date)) || new Date(v.date).toISOString().slice(0, 10) !== v.date)) ctx.addIssue({ code: "custom", path: ["date"], message: "Invalid date" });
 });
