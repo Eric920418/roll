@@ -1619,51 +1619,35 @@ QA 比對結果：字體沿用 Hero New／Noto Sans TC，編輯標題 24px、內
 
 ### 新會員 14 天／3 次訪談試用與創始年費（2026-10-16）
 
-新註冊會員由 `DISCOVERY_TRIAL_ENABLED=true` 啟用新試用政策，舊會員的試用、付款與資料不變。試用以三間不同公司的有效紀錄為里程碑，同公司重訪仍計一次；付費後繼續累積十間公司，解鎖完整痛點分析、可列印的投資人證據報告與後續行動。三次結果只顯示真實重複訊號，不保證再七次就能證明市場需求。分析引用需匹配原訪談，沒有重複證據就明示尚無一致訊號，不固定寫成 2/3。
+新註冊會員採 `interviews-3-v1` 政策：14 天內先完成三間不同公司的有效訪談，第 3 間保存後自動產生一份免費初步訊號，新增訪談停在這個里程碑；升級後沿用原紀錄繼續到十間。既有會員的方案、試用、全站 beta 與歷史資料皆保留，不回填新政策。Email／Google 只有建立新帳號時才套用；回來登入不會重設試用。試用到期仍可閱讀原紀錄，未達三間可查看一般付費方案。
 
-依使用者確認，創始價是一次收 US$348、使用 12 個月、不自動續扣，US$29/月僅作年費換算；限前十個實際付款名額，暫留訂單逾期釋放，已付款席位不因到期或退款而重新出售。沿用 PayPal Orders 與既有登入／方案／記錄服務，`FOUNDER_OFFER_ENABLED` 控制正式結帳顯示。Schema 僅新增 User nullable 欄位與新資料表，先核對 SQL diff，禁止 reset、覆寫會員與 accept-data-loss。正式新增 schema 已套用；新註冊試用開關待 Production 驗收後才啟用。
+公司名稱須填寫，並至少有一項回答或原始筆記；Unicode／空白／大小寫正規化後去重，同公司採最近儲存紀錄。試用三間、付費十間限制在同一交易的工作區列鎖內檢查，編輯後再驗證公司總數，避免用改名繞過上限。保留原紀錄、版本衝突與冪等提交，不複製資料。新增、編輯、刪除會使舊分析失效；跨會員操作與工作區轉移遭拒絕。
 
-新試用政策不授予一般 Pro API／全站 beta 的付費功能；獨立訪談工作區提供三次試用，真實年費付款才給十二個月 Pro 權益，AI 月額度以實際付款日起算。舊會員／既有 trial 保持原授權流程。Email 與 Google 新註冊共用同一份 14 天設定。純政策測試覆蓋開關、十四天、閏年十二個月、公司去重、跨工作區排除及引用驗證，避免憑空聲稱 2/3 一致。
+Home 訪談入口、Next Steps 與 Customer Insights 開啟同一份工作區。前台提供中英文、14 天倒數、不同公司進度、現有學習資源及訪談表格。達標後收起空白新增表單，仍可展開、編輯既有紀錄；錯誤保留輸入並可重試。原試用回饋問卷保留選填入口，新流程不重複顯示舊試用轉換卡，付費創始會員不因舊試用到期自動跳出購買問卷。
 
-訪談摘要重用既有公司去重函式，僅在記憶體建立其所需的關聯形狀，不改寫、複製或轉移資料庫紀錄。
+初步訊號最多一項，必須有至少兩間公司的原文引用；沒有共同證據就明示尚未形成一致訊號，不固定寫成 2/3。再七次訪談可增加證據，不宣稱必然證明市場需求。付費且完成十間後，可明確確認使用一個 AI 次數，產生最多三大痛點、比例、引用與下一步建議；相同來源版本重試使用快取，不再扣次數。原子分析租約防並行，分析途中來源或權限變動拒絕保存；AI 失敗、逾時或版本衝突退回原使用來源。每會員每天 preview／full 各最多三次嘗試。依 [Claude 官方 schema 限制](https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations)，送出 strict tool 不使用 maxItems，回應的項數、字數與引用仍在伺服器以 Zod 驗證。
 
-新增 `/api/discovery` 讀取／開始端點；訪談沿用 `/api/customer-insights` 與同一筆 MeetingNote JSON，僅新增可選 journeyId，與 actionId 互斥。所有新增在工作區列鎖內重算名額，試用三間／付費十間，過期試用保留讀取、停止新增修改；版本更新使舊分析失效。跨會員與工作區轉移被拒絕，其他 Pro 訪談與既有依賴流程保持原樣。
+完整報告只允許本人有效付費且完成十間時存取，可列印／另存 PDF，附原文引用、分母與樣本限制；不預設公開受訪者姓名、公司名，也不代表投資人背書或 PMF 證明，對外分享前應移除不宜公開引用。後續計畫生成會結合本人現有分析與原三題回答；試用工作區不開放一般 Pro API、Action Plan 上下文或完整報告。
 
-工作區訪談刪除沿用 notes 的 updatedAt 版本保護，在同一工作區交易鎖內刪除並使分析失效；新試用不因此取得一般筆記、CRM 或其他 Pro API 存取權。
+創始會員限定前十個付款席位：**一次收 US$348、使用 12 個月、不自動續扣**，US$29／月僅是本次年費的換算。付款解鎖 Pro 工具、150 次／月 AI 額度、十次完整分析／報告及後續行動計畫；AI 月週期以實際付款日為基準。年費期間阻擋再建立一般訂閱，帳務頁顯示一次付款與到期日。一般方案價格、舊訂閱、獎勵及加購餘額皆不變。
 
-`POST /api/discovery/analyse` 提供 preview／full；原子分析租約防並行，來源版本改變拒絕保存舊分析，讀取不觸發 AI。預覽只顯示一個有至少兩間公司實際引用的訊號；完整分析須付費且十間公司，成功使用一個既有 AI 額度，失敗／逾時退回原來源。相同版本重試重用結果，不再次扣次數；每日各至多三次分析嘗試。所有未知服務錯誤沿用安全錯誤碼，不回傳憑證或供應商回應全文。
+PayPal 使用一次性 Orders，沒有建立自動續訂。會員確認一次性年費且已記錄三間公司後才建立訂單；DB advisory lock、唯一 seat／requestId／provider order／capture ID 防多分頁與第十一席。暫留 20 分鐘，未付款過期釋放；付款不明狀態保留席位並使用穩定冪等鍵核對。取消結帳或返回頁遺失可恢復原訂單，最後一位不會被自己的暫留席位擋住。僅核實 USD348、本人本地訂單與單一 completed capture 後，才在同一交易入帳十二個月權益；重送不延長期限，權益寫入失敗整筆回滾。
 
-創始年費沿用 PayPal 一次性 Orders，不建立自動續訂。DB advisory lock 與唯一 seat 防止第十一位／多分頁重複佔位；必須先有三間有效訪談才能開始結帳。20 分鐘暫留逾期釋放，capture 不明狀態保留名額並以穩定冪等鍵重試，不提早釋放已可能付款的席位。只有供應商核實的 USD348／本地訂單 ID／單一 completed capture 才在交易內開放十二個月，重送不延長期限；舊訂閱、加購及獎勵餘額皆不動。刪除會員時已付款訂單匿名留存，避免靠刪帳號重開促銷名額。
+退款／撤回沿用已驗章 webhook，查詢固定走 PayPal 網域，不跟隨外部連結。全額退款只撤回該次創始權益；其他方案不動，已付款席位不因退款、到期或刪除帳號重新出售，刪除會員後付費歷史匿名保留。`scripts/paypal-create-webhook.mjs` 已加入 PAYMENT.CAPTURE.REFUNDED／REVERSED；商家 webhook 應包含完成、退款與撤回事件。排程每日再次核對完整退款，補足 webhook 漏送；尚未進行真實收費／退款／撤回驗收。
 
-新增 `/api/billing/founder/orders` 與 `/capture`，會員需明確確認一次性年費，伺服器限制頻率／驗證歸屬。已驗章 PayPal webhook 沿用原審計流程，同樣能原子入帳；全額退款或撤銷時撤回本次創始權益，保留其他方案與歷史席位，遲到的 completed 事件不重新給權益。Webhook 提供的連結只用來取 capture ID，實際查詢固定走 PayPal API 網域，避免任意連結請求。
+API 沿用登入、安全錯誤與原有訪談接口：
 
-已產出 `prisma/discovery-growth.sql` 並核對差異：僅 User 三個 nullable 欄位、兩張新表與索引／新表外鍵；沒有 DROP、既有欄位型別變更或會員資料 UPDATE。另建立全新本機 `roll_rewards_qa_discovery_20261016` 驗收資料庫，不使用或重置其他工作的測試資料庫；正式 schema 後續以單一交易套用，見本節驗收紀錄。
+- `GET /api/discovery` 只讀本人進度；`POST /api/discovery` 明確開始工作區。
+- `POST /api/discovery/analyse` 接受 preview／full 與語系；免費不回傳完整分析。
+- `/api/customer-insights` POST／PATCH 與 `/api/notes/[id]` DELETE 支援 MeetingNote.insight 可選 journeyId，與 actionId 互斥；保留原 Pro 任務流程及後續依賴保護。
+- `/api/billing/founder/orders` GET 回實際可用名額及本人未完成訂單，POST 驗證一次性年費確認與請求識別碼；`/capture` 只確認本人原訂單。
+- `/dashboard/discovery-report` 為登入、資料歸屬及有效付費保護的列印頁，不提供公開分享連結。
+- `/api/cron/founder-payments` 每 15 分鐘處理最多五筆逾時確認，另分批核對已付款退款狀態；獨立於 Email 啟用開關，使用既有 CRON_SECRET，失敗保留席位並留下安全統計。
 
-新里程碑介面共用 CustomerDiscovery 訪談表格與原筆記，不建立另一套儲存 API；journeyId 分開本機草稿，禁止無關的階段／任務切換。第三間保存後自動要求一次免費初步分析，失敗可明確重試；完整分析需會員按鈕確認使用一個 AI 次數。試用達三間停用新增、保留已存訪談及編輯入口；付款後同一份資料繼續到十間。創始年費卡片明示一次付款／不續扣與實際可結帳名額，確認條款後才建立 PayPal 訂單，不用固定假數字或假倒數。
+環境變數僅新增 Production 的 `DISCOVERY_TRIAL_ENABLED=true`（只決定新註冊分群）與 `FOUNDER_OFFER_ENABLED=true`（創始結帳）。沿用既有 PayPal Live、AI 與 CRON_SECRET，沒有重建或讀出敏感金鑰。關閉新註冊開關不會撤銷既有新政策會員或付款權益；關閉結帳仍保留已發起付款的核對與恢復流程。環境值修改後須重新部署才生效。
 
-Next Steps 與 Customer Insights 對新政策帳號顯示同一個里程碑，舊帳號維持原頁。付款返回頁只重試原訂單，不另建付款；已付年費禁止再建立一般訂閱以免重複扣款。`/dashboard/discovery-report` 僅本人有效付費且已產生十次完整分析才能存取，提供列印／另存 PDF、原文引用、比例分母及樣本限制，不公開訪談姓名或公司名、不宣稱投資人背書。三次預覽僅在恰好三間公司時生成；增加或改動證據後舊預覽失效，避免把新資料硬湊成最初的 2/3。
+Schema 只新增 User 的 nullable trialPolicy／founderStartedAt／founderEndsAt 及 DiscoveryJourney、FounderOrder 表；`prisma/discovery-growth.sql` 沒有 DROP、既有欄位型別變更或會員 UPDATE。正式套用於單一交易前後，47 張既有表的筆數與完整內容指紋一致，17 位原會員均維持原分群。沒有 reset、覆寫資料或 accept-data-loss。隔離驗收使用新建 `roll_rewards_qa_discovery_20261016`，不使用其他工作的測試庫。
 
-付款測試在獨立本機 PostgreSQL 以替代 PayPal 回應驗證十一位並行僅十席、重複分頁、暫留逾期、歸屬、並行 capture／webhook、防延長一年、供應商已扣款但回應逾時、權益寫入失敗回滾、退款與遲到事件、刪帳號後席位匿名保留。測試不呼叫真實付款服務、不收取任何款項。
+驗收結果：253 項完整回歸全數通過（含真實隔離 PostgreSQL）、TypeScript／build／diff check 通過；lint 0 errors、14 個既有 warnings。覆蓋並行三次限制、重複公司／編輯繞過、歸屬、冪等、版本衝突、舊會員授權、AI 租約／引用／快取／失敗退款、十一位搶十席、訂單逾時、交易回滾、重複 webhook、不延長一年、退款及刪帳號匿名留席。桌面／繁中 390px 手機實際保存第 3 間、自動顯示有引用的 2／3 訊號、跨頁共用資料、第四間停用、付費報告與帳務到期日已驗收；手機 scrollWidth=390。三個本機專用帳號與範例紀錄已清理。
 
-- 補齊創始年費帳務摘要（US$348 一次收取、到期日、不自動續扣），有效年費期間阻擋重複訂閱；Home 訪談入口直接通往同一工作區。
-- 除了新增紀錄上限，也在交易內驗證編輯後的不同公司總數，避免改名繞過 3／10 間限制；初步分析自動觸發與付款返回頁加入重送保護。
-
-- 增加 `/api/cron/founder-payments` 每 15 分鐘核對最多 5 筆已發起、但確認逾時的付款，與寄信開關分離，使用 `CRON_SECRET`。只有 provider 已確認作廢才釋放不確定名額；已完成訂單補齊原子入帳，已核准訂單沿用原擷取識別碼。尚未確定的訂單保留名額並記錄安全的異常統計，避免超賣／重複收費。
-
-- 付費後產生的下一步行動計畫會讀取同帳號現有訪談分析作為不可信來源資料，結合原三題回答規劃；免費試用仍無法呼叫 Pro 計畫 API。新會員可在 Home／Next Steps／Customer Insights 進入同一份訪談資料。
-
-- 新增獨立 PostgreSQL 整合驗收：14 天權益／舊會員相容、不同公司去重、並行第 4 次拒絕、編輯繞過限制、AI 引用與快取、逾時／版本變動退款、同時分析鎖；付款測試僅用 mock provider，未向真人收費。
-
-- 新訪談試用以里程碑的 14 天倒數為主，原試用回饋保留選填入口，不再重複顯示舊方案轉換卡；已付費創始會員不因舊試用到期自動跳出購買導向問卷。
-
-- 結帳取消或付款確認逾時後，可重用本人原訂單；最後一個暫留名額的會員仍能恢復結帳，不會被自己的佔位鎖死。已達訪談上限時收起空白新增表單，保留紀錄與編輯入口。
-
-- 驗收進度：獨立 PostgreSQL 的完整回歸 253／253 通過；lint 0 errors、14 個既有 warnings；首次 production build 通過。瀏覽器實際保存第 3 筆並自動顯示有引用的 2／3 訊號，Customer Insights 看到同一筆，新增第 4 筆停用；繁中 390px scrollWidth=390。付費 10 間樣本可開啟證據報告與列印入口，尚未真人扣款。Production schema 只讀差異核對僅三個 nullable User 欄位與兩張新表，未含既有資料更新／刪除。
-
-- 依 [Claude Structured Outputs 官方限制](https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations)，送往 strict tool 的 schema 不含不支援的 maxItems；實際項數、字數、來源引用仍由伺服器 Zod 驗證。
-
-- FounderOrder 增加可空 paymentCheckedAt，排程每天向 PayPal 重新核對已付年費的完整退款，補足 webhook 漏送；只撤銷該次創始權益，保留其他訂閱與歷史名額。Webhook 設定腳本增加 CAPTURE.REFUNDED／REVERSED，正式商家 webhook 應訂閱完成、退款與撤回事件。
-
-- 正式 schema 已以單一交易套用新增欄位／表，遷移前後全體既有資料表筆數與內容指紋一致；既有會員 trialPolicy／創始年費欄位均維持 null，沒有回填或覆寫。新帳號開關暫不開啟，先驗證 Production 的 AI 與 PayPal 建單（不核准、不扣款）。
-
-正式 schema 遷移驗收：47 張既有表的筆數／完整內容指紋於同一交易前後一致，17 位會員皆未被重新分群。FOUNDER_OFFER_ENABLED 已加入 Production，DISCOVERY_TRIAL_ENABLED 尚未啟用；先發布可驗收版本，新註冊會員仍沿用目前流程。最新 253 項回歸與 build 通過，TypeScript／diff check 通過；無真實收費、寄信或修改既有會員權益。
+功能 commit `403e0281bcf90d8baddd5e2105e15c14b1dbcd1f` 的 Production `dpl_FQLj5vDXCm2rmBB7xcuD12q5Wysp` 已 READY，正式網域指向同一版本。以一個新建專用 QA 帳號實際驗證 14 天／3 次、三筆訪談寫入、真實 AI 原文分析（兩間公司共同提及開發合格潛在客戶困難）、第 4 次與免費完整分析回 402，並成功建立 **PayPal Live** 年費訂單；未核准、未擷取、未扣款。測試帳號、其訪談與未付款暫留席位已清除，沒有寄信或變更既有會員。Production 新註冊開關在這些驗收完成後才開啟，隨本次發布生效。
