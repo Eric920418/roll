@@ -1614,3 +1614,5 @@ QA 比對結果：字體沿用 Hero New／Noto Sans TC，編輯標題 24px、內
 232 項完整測試全數通過（含隔離 PostgreSQL），最後的編輯器兩項回歸與 TypeScript 通過；lint 無錯誤，14 項既有警告。本次兩個隔離會員與其範例筆記已依 ID／專屬 Email 尾碼核對後清除，正式會員、筆記與訪談資料沒有異動。
 
 最終 `pnpm build` 與 diff check 通過，僅新增 Heroicons 套件及前端／中英文文案變更；無 API、schema、環境變數、寄信或 AI 用量變更。
+
+正式發布：功能 commit `0d175846aed401d7bec61aea4a2b2e028fd67878` 已推 main，Git 自動部署 `dpl_5SMXpCBAp6swbDPyEiH7vBrBDpnZ` 為 Production READY，核對 `www.rollgrp.com` 為同一部署 ID。產品頁 HTTP 200，未登入 Customer Insights 與 notes 頁 307；notes API 既有 GET 為 405（僅接受寫入方法）。正式站未登入會員、未執行筆記資料寫入。
