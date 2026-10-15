@@ -67,8 +67,8 @@ export async function POST(req: NextRequest) {
         if (!trial.available) return null;
         const a = d.answers;
         return tx.feedbackReport.create({ data: { userId: session.uid, type: "other", title: "NOVA trial feedback",
-          body: `1. Goal: ${a.goal}\nWhy: ${a.motivation}\n\n2. First step: ${a.firstStep}\n\n3. Continue using NOVA: ${a.continueUsing}\nReason: ${a.reason}\nUsage: ${a.usage || "—"}\n\n4. Biggest pain point: ${a.painPoint}\n\n5. Indispensable: ${a.indispensable}`,
-          surveyAnswers: { version: 1, startsAt: trial.startsAt, endsAt: trial.endsAt, answers: a }, trialKey,
+          body: `1. Goal: ${a.goal}\nWhy: ${a.motivation}\n\n2. First step: ${a.firstStep}\n\n3. Continue using NOVA: ${a.continueUsing}\nReason: ${a.reason}\nUsage: ${a.usage || "—"}\n\n4. Biggest pain point: ${a.painPoint}\n\n5. Indispensable: ${a.indispensable}${a.continueUsing === "yes" ? `\n\nOptional LinkedIn sharing willingness: ${a.linkedinSharing || "Not answered"}${a.linkedinDraft ? `\nDraft (not proof of publication):\n${a.linkedinDraft}` : ""}` : ""}`,
+          surveyAnswers: { version: 2, startsAt: trial.startsAt, endsAt: trial.endsAt, answers: a }, trialKey,
           pageUrl: "/dashboard/agenda", locale: d.locale, userAgent: req.headers.get("user-agent")?.slice(0, 500) || null,
         }, select: { id: true, createdAt: true } });
       });

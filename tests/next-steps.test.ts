@@ -51,10 +51,38 @@ test("Survey requires every question and Yes usage; No clears stale conditional 
   assert.equal("yesReason" in policy.trialAnswersSchema.parse({ ...answers, yesReason: "Draft only", noReason: "Draft only" }), false);
 });
 test("Survey CSV keeps stable columns, quotes newlines and rejects spreadsheet formula injection", () => {
-  const csv = policy.trialFeedbackCsv([{ email: "qa@example.invalid", createdAt: "2026-10-10", answers: { ...answers, goal: '  =HYPERLINK("bad")', painPoint: "Two\nlines" } }]);
-  assert(csv.startsWith("email,submitted_at,goal,motivation,first_step,continue_using,reason,usage,pain_point,indispensable\r\n"));
-  assert(csv.includes('"\'  =HYPERLINK(""bad"")"'));
+  const csv = policy.trialFeedbackCsv([{ email: "qa@example.invalid", createdAt: "2026-10-10", answers: policy.trialAnswersSchema.parse({ ...answers, goal: '  =HYPERLINK("bad")', painPoint: "Two\nlines", linkedinSharing: "yes", linkedinDraft: "@Nova AI\nMy own words" }) }]);
+  assert(csv.startsWith("email,submitted_at,goal,motivation,first_step,continue_using,reason,usage,pain_point,indispensable,linkedin_sharing_willingness,linkedin_draft\r\n"));
+  assert(csv.includes('"\'=HYPERLINK(""bad"")"'));
   assert(csv.includes('"Two\nlines"'));
+  assert(csv.includes('"yes","\'@Nova AI\nMy own words"'));
+});
+
+test("LinkedIn sharing is optional, keeps legacy feedback readable and clears inactive drafts", () => {
+  const legacy = policy.trialAnswersSchema.parse(answers);
+  assert.equal(legacy.linkedinSharing, ""); assert.equal(legacy.linkedinDraft, "");
+  for (const linkedinSharing of ["", "no"]) {
+    const skipped = policy.trialAnswersSchema.parse({ ...answers, linkedinSharing, linkedinDraft: "Private old draft" });
+    assert.equal(skipped.linkedinSharing, linkedinSharing); assert.equal(skipped.linkedinDraft, "");
+  }
+  const no = policy.trialAnswersSchema.parse({ ...answers, continueUsing: "no", linkedinSharing: "yes", linkedinDraft: "Old Yes draft" });
+  assert.equal(no.linkedinSharing, ""); assert.equal(no.linkedinDraft, "");
+  assert.equal(policy.trialAnswersSchema.safeParse({ ...answers, linkedinSharing: "yes", linkedinDraft: " " }).success, false);
+  assert.equal(policy.trialAnswersSchema.safeParse({ ...answers, linkedinSharing: "yes", linkedinDraft: "a".repeat(3001) }).success, false);
+  assert.equal(policy.trialAnswersSchema.safeParse({ ...answers, linkedinSharing: "published", linkedinDraft: "Draft" }).success, false);
+  const shared = policy.trialAnswersSchema.parse({ ...answers, linkedinSharing: "yes", linkedinDraft: " My edited words " });
+  assert.equal(shared.linkedinDraft, "My edited words");
+});
+
+test("LinkedIn draft quotes only reason and usage, preserves edits and fits the post limit", () => {
+  for (const locale of ["en", "zh-tw"]) {
+    const draft = policy.trialLinkedInDraft(answers, locale);
+    assert(draft.includes(answers.reason)); assert(draft.includes(answers.usage)); assert(draft.includes("@Nova AI"));
+    assert(!draft.includes(answers.painPoint)); assert(!draft.includes(answers.goal)); assert(draft.endsWith("https://www.rollgrp.com/product"));
+    const long = policy.trialLinkedInDraft({ reason: "a".repeat(2000), usage: "b".repeat(2000) }, locale);
+    assert(long.length <= 3000); assert(long.includes("…")); assert(long.includes("b".repeat(1199)));
+  }
+  assert.equal(policy.trialDraftSchema.parse({ ...answers, linkedinSharing: "yes", linkedinDraft: "Custom edited draft" }).linkedinDraft, "Custom edited draft");
 });
 
 test("Admin 3/7-day shortcuts change the form only; explicit save keeps the chosen duration", () => {
@@ -96,7 +124,7 @@ test("Trial feedback API in isolated PostgreSQL: eligibility, ownership, concurr
   const api = loaded.exports as { GET(): Promise<Response>; POST(req: Request): Promise<Response> };
   const startsAt = new Date(Date.now() - 8 * 86_400_000);
   const post = (body: unknown) => api.POST(new Request("http://localhost/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
-  const body = { action: "trialSurvey", startsAt: startsAt.toISOString(), locale: "en", answers };
+  const body = { action: "trialSurvey", startsAt: startsAt.toISOString(), locale: "en", answers: { ...answers, linkedinSharing: "yes", linkedinDraft: "My edited draft @Nova AI" } };
   try {
     const a = await db.user.create({ data: { email: `${randomUUID()}@example.invalid`, trialPlan: "pro", trialStartsAt: startsAt, trialEndsAt: new Date(startsAt.getTime() + 3 * 86_400_000) } }); ids.push(a.id);
     const b = await db.user.create({ data: { email: `${randomUUID()}@example.invalid` } }); ids.push(b.id);
@@ -119,6 +147,9 @@ test("Trial feedback API in isolated PostgreSQL: eligibility, ownership, concurr
       await post({ ...body, answers: { ...answers, goal: "Attempted overwrite" } });
       const reports = await db.feedbackReport.findMany({ where: { userId: a.id } }); assert.equal(reports.length, 1);
       assert.equal((reports[0].surveyAnswers as { answers: policy.TrialAnswers }).answers.goal, answers.goal);
+      assert.equal((reports[0].surveyAnswers as { version: number }).version, 2);
+      assert.equal((reports[0].surveyAnswers as { answers: policy.TrialAnswers }).answers.linkedinDraft, body.answers.linkedinDraft);
+      assert(reports[0].body.includes("Draft (not proof of publication)"));
       assert.equal((await (await api.GET()).json()).data.submitted, true);
       uid = b.id; assert.equal((await (await api.GET()).json()).data.submitted, false);
     });

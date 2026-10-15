@@ -30,6 +30,7 @@ export const trialDraftSchema = z.object({
   continueUsing: z.enum(["", "yes", "no"]), reason: z.string().max(2000), usage: z.string().max(2000),
   painPoint: z.string().max(2000), indispensable: z.string().max(2000),
   yesReason: z.string().max(2000).optional(), noReason: z.string().max(2000).optional(),
+  linkedinSharing: z.enum(["", "yes", "no"]).optional(), linkedinDraft: z.string().max(3000).optional(),
 });
 export const trialAnswersSchema = trialDraftSchema.omit({ yesReason: true, noReason: true }).extend({
   goal: answer, motivation: answer, firstStep: answer,
@@ -37,11 +38,22 @@ export const trialAnswersSchema = trialDraftSchema.omit({ yesReason: true, noRea
   painPoint: answer, indispensable: answer,
 }).superRefine((data, context) => {
   if (data.continueUsing === "yes" && !data.usage) context.addIssue({ code: "custom", path: ["usage"], message: "請說明如何使用 / Describe how you will use NOVA" });
-}).transform(data => ({ ...data, usage: data.continueUsing === "no" ? "" : data.usage }));
+  if (data.continueUsing === "yes" && data.linkedinSharing === "yes" && !data.linkedinDraft?.trim()) context.addIssue({ code: "custom", path: ["linkedinDraft"], message: "請確認分享草稿，或選擇暫時不要 / Review your sharing draft or choose Not now" });
+}).transform(data => ({ ...data, usage: data.continueUsing === "no" ? "" : data.usage,
+  linkedinSharing: data.continueUsing === "yes" ? data.linkedinSharing || "" : "",
+  linkedinDraft: data.continueUsing === "yes" && data.linkedinSharing === "yes" ? data.linkedinDraft!.trim() : "",
+}));
 export type TrialAnswers = z.output<typeof trialAnswersSchema>;
 export const trialSubmissionSchema = z.object({ startsAt: z.iso.datetime(), locale: z.enum(["en", "zh-tw"]), answers: trialAnswersSchema });
 
+export function trialLinkedInDraft(answers: { reason: string; usage: string }, locale: string) {
+  const excerpt = (value: string) => value.trim().length > 1200 ? `${value.trim().slice(0, 1199)}…` : value.trim();
+  return locale === "zh-tw"
+    ? `我正在試用 @Nova AI。\n\n我想繼續使用的原因：\n${excerpt(answers.reason)}\n\n接下來我打算這樣用：\n${excerpt(answers.usage)}\n\nhttps://www.rollgrp.com/product`
+    : `I've been trying @Nova AI.\n\nWhy I want to keep using it:\n${excerpt(answers.reason)}\n\nHow I plan to use it:\n${excerpt(answers.usage)}\n\nhttps://www.rollgrp.com/product`;
+}
+
 export function trialFeedbackCsv(rows: Array<{ email: string; createdAt: string; answers: TrialAnswers }>) {
   const cell = (value: string) => `"${(/^[\s]*[=+@-]/.test(value) ? "'" : "") + value.replaceAll('"', '""')}"`;
-  return ["email,submitted_at,goal,motivation,first_step,continue_using,reason,usage,pain_point,indispensable", ...rows.map(row => [row.email, row.createdAt, ...(["goal", "motivation", "firstStep", "continueUsing", "reason", "usage", "painPoint", "indispensable"] as const).map(key => row.answers[key])].map(cell).join(","))].join("\r\n");
+  return ["email,submitted_at,goal,motivation,first_step,continue_using,reason,usage,pain_point,indispensable,linkedin_sharing_willingness,linkedin_draft", ...rows.map(row => [row.email, row.createdAt, ...(["goal", "motivation", "firstStep", "continueUsing", "reason", "usage", "painPoint", "indispensable", "linkedinSharing", "linkedinDraft"] as const).map(key => row.answers[key] || "")].map(cell).join(","))].join("\r\n");
 }
