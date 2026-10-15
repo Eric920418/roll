@@ -1078,7 +1078,22 @@
       "types": { "client": "Client", "investor": "Investor", "partner": "Partner", "internal": "Internal", "other": "Other" },
       "empty": "No notes yet. Add your first one.",
       "count": "{count} notes",
-      "discardChanges": "You have unsaved changes. Discard them?"
+      "discardChanges": "You have unsaved changes. Discard them?",
+      "search": "Search notes",
+      "searchCount": "{count} of {total} notes",
+      "unclassified": "Unclassified",
+      "noMatches": "No matching notes. Try another search.",
+      "previous": "Previous note",
+      "next": "Next note",
+      "position": "{index} of {total}",
+      "expand": "Expand note editor",
+      "collapse": "Restore note editor",
+      "close": "Close note editor",
+      "unsavedChanges": "Unsaved changes",
+      "noChanges": "No unsaved changes",
+      "saved": "Note saved.",
+      "deleted": "Note deleted.",
+      "bodyPlaceholder": "Write your conversation notes…"
     },
     "agenda": {
       "title": "Next steps",

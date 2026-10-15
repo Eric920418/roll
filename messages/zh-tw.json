@@ -1078,7 +1078,22 @@
       "types": { "client": "客戶", "investor": "投資人", "partner": "合作夥伴", "internal": "內部", "other": "其他" },
       "empty": "尚無記錄，新增第一筆吧。",
       "count": "{count} 筆記錄",
-      "discardChanges": "目前有尚未儲存的內容，確定放棄這些變更嗎？"
+      "discardChanges": "目前有尚未儲存的內容，確定放棄這些變更嗎？",
+      "search": "搜尋筆記",
+      "searchCount": "顯示 {count} / {total} 筆記錄",
+      "unclassified": "未分類",
+      "noMatches": "沒有符合的筆記，請試試其他關鍵字。",
+      "previous": "上一筆筆記",
+      "next": "下一筆筆記",
+      "position": "第 {index} / {total} 筆",
+      "expand": "放大筆記編輯器",
+      "collapse": "還原筆記編輯器",
+      "close": "關閉筆記編輯器",
+      "unsavedChanges": "尚未儲存變更",
+      "noChanges": "沒有未儲存的變更",
+      "saved": "筆記已儲存。",
+      "deleted": "筆記已刪除。",
+      "bodyPlaceholder": "記錄這次對話…"
     },
     "agenda": {
       "title": "下一步",

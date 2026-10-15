@@ -20,11 +20,11 @@ export default async function NotesPage({ params }: Props) {
     ? await prisma.meetingNote.findMany({
         where: { userId: account.id },
         orderBy: { createdAt: "desc" },
-        select: { id: true, title: true, body: true, meetingAt: true, meetingType: true },
+        select: { id: true, title: true, body: true, meetingAt: true, meetingType: true, insight: true },
       })
     : [];
   // Date → ISO 字串（傳給 client 元件）
-  const notes = rows.map((n) => ({
+  const notes = rows.filter(n => !n.insight).map((n) => ({
     ...n,
     meetingAt: n.meetingAt ? n.meetingAt.toISOString() : null,
   }));
