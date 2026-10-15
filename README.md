@@ -1588,3 +1588,5 @@ CSV 驗收使用伺服器實際正規化後的答案，確認 trim 後以公式�
 隔離本機驗收：桌面與 390px 手機、中英文、鍵盤 Enter、44px 操作區、返回修改、No 保留五題／不顯示分享、暫時不要仍可繼續、舊草稿恢復、手動編輯保留及明確重新產生均通過。實際複製核對剪貼簿文字，LinkedIn 以新分頁開啟且未帶回答參數，未代發貼文。實際提交兩個測試會員，確認 Yes 保存手改草稿、No 清除舊分享資料且各一份回報；測試會員與資料已清除，未動正式會員，無 AI 呼叫或寄信。
 
 發布前驗證：`pnpm test` 231 項全數通過（含隔離 PostgreSQL）、TypeScript、`pnpm build` 與 diff check 通過；`pnpm lint` 無錯誤，14 項既有警告。剪貼簿拒絕時的手動複製分支已實作，未實際強制瀏覽器拒絕權限；未驗證真正公開貼文或公司 mention，官方 LinkedIn 公司頁仍待提供。
+
+正式發布：功能 commit `9ec745a5247af1e42d84a72093bf08fc824d0785` 已推 main，Git 自動 Production 部署 `dpl_B1vMx251at9CowBYPzA8JBHzbqEz` 為 READY，`www.rollgrp.com` 核對為相同部署 ID。產品頁 HTTP 200、未登入 Next Steps 307、問卷 API 401；沒有手動重複部署、schema／環境變數修改或正式帳號測試發文。
