@@ -1684,5 +1684,606 @@
       "skipped": "Skipped — no reminder needed",
       "cancelled": "Cancelled"
     }
+  },
+  "HomeV10": {
+    "nav": {
+      "home": "Home",
+      "approach": "Approach",
+      "cases": "Case studies",
+      "taiwan": "Taiwan",
+      "about": "About",
+      "book": "Book a call",
+      "open": "Open menu",
+      "close": "Close menu",
+      "label": "Main navigation"
+    },
+    "hero": {
+      "eyebrow": "FROM VISIONS TO BIG IMPACTS",
+      "title": "We are here to\nchange the\ngame.",
+      "description": "Roll On is a consulting and execution firm. We take brands from vision to big impact through sales in Taiwan and across Asia.",
+      "work": "See our work",
+      "imageAlt": "Taipei skyline with Taipei 101"
+    },
+    "trusted": {
+      "eyebrow": "TRUSTED BY",
+      "also": "Also: Unicorn Tutor AI · R.co · RYS Ventura"
+    },
+    "lead": {
+      "eyebrow": "WHERE WE LEAD",
+      "title": "Brand and sales, under one\nroof.",
+      "brand": {
+        "eyebrow": "01 BRAND",
+        "title": "Global brand\nbuilding.",
+        "description": "Positioning, identity and localization for brands entering Asia.",
+        "metric": "3",
+        "caption": "major global brands won in six months"
+      },
+      "sales": {
+        "eyebrow": "02 SALES",
+        "title": "Sales that close.",
+        "description": "Pipeline, distributors and key accounts, built by people who sell.",
+        "metric": "100+",
+        "caption": "key accounts won in nine months"
+      }
+    },
+    "approach": {
+      "eyebrow": "CONSULTING + EXECUTION",
+      "title": "Think. Execute. Land.",
+      "think": {
+        "title": "Think.",
+        "description": "We roll up our sleeves first. We study the product, the buyer and the market before we advise.",
+        "link": "How we think →"
+      },
+      "execute": {
+        "title": "Execute.",
+        "description": "Sales, partners and investors on the ground, from the first call to the signed deal.",
+        "link": "What we do →"
+      },
+      "land": {
+        "title": "Land.",
+        "description": "Taiwan is Asia’s hub, between Southeast Asia, Northeast Asia and China.",
+        "link": "Why Taiwan →"
+      }
+    },
+    "case": {
+      "eyebrow": "CASE STUDY",
+      "title": "Medix: from a US start-up to\nan Asia HQ in Taiwan.",
+      "description": "We opened Taiwan and secured exclusive distribution across Asia and beyond, before US certification.",
+      "link": "Read the full case",
+      "imageAlt": "Medix team and partners at a trade show booth"
+    },
+    "belief": {
+      "eyebrow": "OUR CORE BELIEF",
+      "title": "Ideas are everywhere.\nExecution is rare."
+    },
+    "contact": {
+      "title": "Bring your\nproduct to Asia.",
+      "name": "NAME",
+      "email": "EMAIL",
+      "message": "WHAT ARE YOU BUILDING?",
+      "send": "Send message",
+      "sending": "Sending…",
+      "success": "Thank you. Your message has been sent.",
+      "error": "Your message could not be sent. Please try again."
+    },
+    "footer": {
+      "tagline": "From visions to big impacts.",
+      "since": "Since March 2025 · Taipei, Taiwan",
+      "language": "Language"
+    }
+  },
+  "ApproachV10": {
+    "meta": {
+      "title": "Our Approach",
+      "description": "Consulting and execution, from market entry strategy to signed deals and APAC expansion."
+    },
+    "hero": {
+      "eyebrow": "OUR APPROACH",
+      "title": "Creative that sells. Strategy\nthat’s tested.",
+      "description": "We roll up our sleeves, walk the market ourselves, and only\nthen bring you in."
+    },
+    "think": {
+      "eyebrow": "HOW WE THINK",
+      "title": "Know the whole car.",
+      "description": "If your product were a car, we would learn every part of it, and how every kind of person\nsees it."
+    },
+    "principles": {
+      "1": {
+        "title": "Know the product and its people",
+        "description": "Every part of it. How buyers think. How non-buyers think."
+      },
+      "2": {
+        "title": "Compare everything",
+        "description": "Direct rivals, indirect rivals, and doing nothing at all."
+      },
+      "3": {
+        "title": "Know who decides",
+        "description": "Who we pitch, who signs, and what each person needs from every meeting. Hidden costs included."
+      },
+      "4": {
+        "title": "Test before you land",
+        "description": "We walk the market ourselves, with distributors and first-line customers. We confirm there is a market before we bring you to Taiwan."
+      },
+      "5": {
+        "title": "Sell with a story",
+        "description": "Good sales needs good marketing. We build both together, so the creative can actually sell."
+      }
+    },
+    "services": {
+      "eyebrow": "WHAT WE DO",
+      "title": "Consult. Execute.",
+      "description": "One team from first strategy to signed deal.",
+      "consult": "CONSULT",
+      "consultTitle": "Strategy you can act on.",
+      "execute": "EXECUTE",
+      "executeTitle": "Results you can count.",
+      "beyond": "BEYOND ADVICE",
+      "beyondTitle": "A place to land."
+    },
+    "serviceNames": {
+      "1": "Market Entry\nStrategy",
+      "2": "Go-to-Market\nPlanning",
+      "3": "Positioning &\nPricing",
+      "4": "Fundraising &\nInvestor\nReadiness",
+      "5": "Marketing\nLocalization",
+      "6": "Local Sales &\nBusiness\nDevelopment",
+      "7": "Distributor\nSourcing & KPI\nManagement",
+      "8": "Talent & Partner\nIntroductions",
+      "9": "Manufacturing &\nSupply Chain\nSupport",
+      "10": "Customer\nSuccess\nManagement"
+    },
+    "beyond": {
+      "1": {
+        "title": "Co-working space",
+        "description": "A place to work while you launch in Taiwan."
+      },
+      "2": {
+        "title": "Partner workshops",
+        "description": "Hands-on sessions with our partners."
+      },
+      "3": {
+        "title": "Nova AI →",
+        "description": "Connects founders’ fundraising with investors’ due diligence."
+      }
+    },
+    "phases": {
+      "eyebrow": "HOW IT RUNS",
+      "title": "Three phases to APAC.",
+      "description": "Fixed fee for the first two phases. Equity for the third.",
+      "includes": "INCLUDES",
+      "time": "TIME",
+      "fee": "FEE",
+      "1": {
+        "label": "Phase 1",
+        "title": "Business plan",
+        "items": "Market entry, ICP, PMF\nMarket size\nRoadmap and opportunity\nOne sales pitch\nBranding: 3 approaches for the market\nChannel recommendations",
+        "time": "4 hours a day, 7 days",
+        "fee": "US$5,020",
+        "note": "Before tax. US$160 per hour, plus 7 cups of Starbucks Americano."
+      },
+      "2": {
+        "label": "Phase 2",
+        "title": "Sales strategy",
+        "items": "Sales strategy\n3 channel profiles\nCustom sales pitch\nOne goal, broken down\nWeekly one-hour advisor session\nFull creative branding",
+        "time": "4 hours a day, 14 days",
+        "fee": "US$8,970",
+        "note": "Before tax. US$160 per hour, plus 7 cups of Starbucks Americano and one dinner."
+      },
+      "3": {
+        "label": "Phase 3",
+        "title": "APAC expansion",
+        "items": "Expand sales across APAC\nEquity partnership",
+        "fee": "Equity",
+        "note": "VC and family office: contact us."
+      }
+    },
+    "comparison": {
+      "eyebrow": "WHY ROLL ON",
+      "title": "Local execution, not just\nadvice.",
+      "label": "Compare ways to enter the market",
+      "columns": {
+        "1": "Consulting / agency",
+        "2": "Build in-house",
+        "3": "Traditional distributor",
+        "4": "Roll On"
+      },
+      "rows": {
+        "1": {
+          "label": "Time to market",
+          "1": "6–12 months",
+          "2": "12–24 months",
+          "3": "6–12 months",
+          "4": "6–9 months"
+        },
+        "2": {
+          "label": "Local sales execution",
+          "1": "Not included",
+          "2": "Hire and manage yourself",
+          "3": "Limited",
+          "4": "Included"
+        },
+        "3": {
+          "label": "Local network",
+          "1": "Limited",
+          "2": "Build from scratch",
+          "3": "Limited",
+          "4": "Extensive"
+        },
+        "4": {
+          "label": "Equity partnership",
+          "1": "Limited",
+          "2": "No",
+          "3": "No",
+          "4": "Yes"
+        },
+        "5": {
+          "label": "Fundraising",
+          "1": "Advisory only",
+          "2": "No",
+          "3": "No",
+          "4": "Included"
+        }
+      }
+    }
+  },
+  "CasesV10": {
+    "meta": {
+      "title": "Case Studies",
+      "description": "Proof from the field: Medix’s Asia launch, market expansion, and Roll On’s local partnerships."
+    },
+    "hero": {
+      "eyebrow": "RESULTS",
+      "title": "Proof from the field.",
+      "description": "How we help brands and founders enter Taiwan and Asia."
+    },
+    "medix": {
+      "fundingValue": "3",
+      "countriesValue": "5",
+      "eyebrow": "CASE STUDY",
+      "title": "Medix: US MedTech, now with\nits Asia HQ in Taiwan.",
+      "challengeLabel": "CHALLENGE",
+      "challenge": "FDA clearance, manufacturing, distributors and marketing all at once, with no clear priorities or go-to-market plan. VCs would not invest before FDA clearance, and cash was running low.",
+      "workLabel": "WHAT WE DID",
+      "work": "Closed the early funding round in Taiwan within three months. Signed exclusive distribution before U.S. certification. Unlocked an enterprise contract in Vietnam.",
+      "resultLabel": "RESULT",
+      "result": "Taiwan is now Medix's Asia HQ.",
+      "cta": "Plan a similar launch",
+      "funding": "months to close early\nfunding in Taiwan",
+      "countries": "countries signed in 10\nmonths",
+      "markets": "MARKETS SECURED",
+      "marketNames": {
+        "1": "Taiwan",
+        "2": "Turkey",
+        "3": "Vietnam",
+        "4": "Africa",
+        "5": "Cambodia"
+      }
+    },
+    "gallery": {
+      "1": {
+        "location": "UNITED STATES",
+        "title": "Global Pet Expo, Florida",
+        "description": ""
+      },
+      "2": {
+        "location": "UNITED STATES",
+        "title": "Florida trip",
+        "description": ""
+      },
+      "3": {
+        "location": "TAIWAN",
+        "title": "2026 Taipei Pet Supply Expo",
+        "description": "Our booth, C027."
+      },
+      "4": {
+        "location": "TAIWAN",
+        "title": "2026 Taipei Pet Supply Expo",
+        "description": "Visitors at the booth."
+      },
+      "5": {
+        "location": "VIETNAM",
+        "title": "Market opened",
+        "description": "US$450K order."
+      },
+      "6": {
+        "location": "VIETNAM",
+        "title": "Channel visit",
+        "description": "Retail pharmacy."
+      },
+      "7": {
+        "location": "VIETNAM",
+        "title": "Channel visit",
+        "description": "Hospital."
+      },
+      "8": {
+        "location": "HONG KONG",
+        "title": "Medical and Healthcare Fair 2026",
+        "description": "Invited by the HKTDC to attend."
+      },
+      "9": {
+        "location": "CAMBODIA",
+        "title": "Market opened",
+        "description": ""
+      },
+      "10": {
+        "location": "TURKEY",
+        "title": "Market opened",
+        "description": ""
+      },
+      "11": {
+        "location": "GIVING BACK",
+        "title": "Sponsored Taiwan SPCA",
+        "description": ""
+      },
+      "12": {
+        "location": "GIVING BACK",
+        "title": "Sponsored StrayKind",
+        "description": ""
+      }
+    },
+    "ecosystem": {
+      "eyebrow": "ON THE GROUND",
+      "title": "Active across the\necosystem.",
+      "partners": "PARTNERS"
+    },
+    "events": {
+      "1": {
+        "eyebrow": "ROLL ON TAIWAN",
+        "title": "Partnership with Enspyre",
+        "description": ""
+      },
+      "2": {
+        "eyebrow": "WITH STARTUP TERRACE",
+        "title": "Co-hosted at TAI-ONE",
+        "description": "Taipei World Trade Center."
+      },
+      "3": {
+        "eyebrow": "IEAT",
+        "title": "International medical-device\nagent matching",
+        "description": "By invitation, at Regent Taipei."
+      },
+      "4": {
+        "eyebrow": "TAIWAN DIGITAL FESTIVAL 2026",
+        "title": "Speaker session",
+        "description": "Strategic partnerships when resources are limited."
+      },
+      "5": {
+        "eyebrow": "SHARK TANK TAIWAN",
+        "title": "2026 selection round",
+        "description": ""
+      },
+      "6": {
+        "eyebrow": "PROCHILE",
+        "title": "Chile office in Taiwan",
+        "description": ""
+      }
+    }
+  },
+  "TaiwanV10": {
+    "meta": {
+      "title": "Taiwan, Asia’s Hub",
+      "description": "Start in Taiwan: local talent, technology, market opportunity, and a network that opens doors."
+    },
+    "hero": {
+      "eyebrow": "TAIWAN",
+      "title": "Taiwan is Asia’s hub.",
+      "description": "Between Southeast Asia, Northeast Asia and China, with\nthe talent and technology to back it."
+    },
+    "hub": {
+      "eyebrow": "WHY A HUB",
+      "title": "Four reasons to start here."
+    },
+    "reasons": {
+      "1": {
+        "eyebrow": "LOCATION",
+        "title": "At the crossroads",
+        "description": "An island between Southeast Asia, Northeast Asia and China, with strong shipping and sea freight."
+      },
+      "2": {
+        "eyebrow": "TECHNOLOGY",
+        "title": "World-class depth",
+        "description": "Leading in medical devices, semiconductors and textiles."
+      },
+      "3": {
+        "eyebrow": "VALUE",
+        "title": "Room to move",
+        "description": "More affordable than Singapore, with fewer competitors, many open gaps and strong market-entry incentives."
+      },
+      "4": {
+        "eyebrow": "DELIVERY",
+        "title": "Quality you can rely on",
+        "description": "Responsible, careful work, and a base outside mainland China’s geopolitical complications."
+      }
+    },
+    "now": {
+      "eyebrow": "WHY NOW",
+      "title": "Now is the time.",
+      "1": {
+        "value": "US$320B",
+        "caption": "record foreign investment in Taiwan, 2025"
+      },
+      "2": {
+        "value": "20,000",
+        "caption": "foreign companies already here"
+      },
+      "3": {
+        "value": "6–9",
+        "caption": "months, typical time to market with Roll On"
+      }
+    },
+    "value": {
+      "eyebrow": "FOR TAIWAN",
+      "title": "Bring the world in. Build\nvalue, not just volume."
+    },
+    "contributions": {
+      "1": {
+        "title": "Inward investment",
+        "description": "Foreign companies bring capital, customers and know-how."
+      },
+      "2": {
+        "title": "Talent transformation",
+        "description": "Local teams learn global ways of working."
+      },
+      "3": {
+        "title": "Innovation hub",
+        "description": "Taiwan becomes the place where new ideas start."
+      }
+    },
+    "community": {
+      "eyebrow": "COMMUNITY",
+      "title": "A network that opens doors."
+    },
+    "communities": {
+      "1": {
+        "title": "Asia Founders Club",
+        "description": "Casual networking for founders and investors."
+      },
+      "2": {
+        "title": "Golden Ticket podcast",
+        "description": "Founders and investors on their biggest decisions."
+      }
+    }
+  },
+  "AboutV10": {
+    "meta": {
+      "title": "About Roll On",
+      "description": "Founded in Taipei in March 2025. Meet the operators behind Roll On, our story, principles and roadmap."
+    },
+    "hero": {
+      "eyebrow": "ABOUT ROLL ON",
+      "title": "Built by people who roll up their\nsleeves.",
+      "description": "Founded in Taipei in March 2025."
+    },
+    "story": {
+      "eyebrow": "OUR STORY",
+      "title": "Why we started\nRoll On.",
+      "1": "World-class products can be built anywhere now. Reaching customers in Asia still takes people on the ground.",
+      "2": "Too many good products arrive with no local network, no trust and no one to sell them. We started Roll On in Taipei in March 2025 to be that team.",
+      "3": "We think like consultants and work like operators. Every story has a reason behind it, and so does every launch."
+    },
+    "thinking": {
+      "eyebrow": "WHERE OUR THINKING COMES FROM",
+      "title": "Great brands are great\nstories.",
+      "description": "We love stories, and we believe every one has a principle behind it."
+    },
+    "stories": {
+      "1": {
+        "title": "Make it cool, and\npeople follow.",
+        "description": "A quirky little car became a movie star, and everyone wanted one."
+      },
+      "2": {
+        "title": "One detail can carry\nthe story.",
+        "description": "A luxury car sold on the sound of its own clock."
+      },
+      "3": {
+        "title": "Second place tries\nharder.",
+        "description": "Being number two is a reason to work harder."
+      },
+      "4": {
+        "title": "Enjoy the failure.",
+        "description": "We learn by doing. Failing is part of the work."
+      }
+    },
+    "philosophy": {
+      "eyebrow": "THE ROLL ON PHILOSOPHY",
+      "title": "A rolling ball never stops.\nNeither do we.",
+      "1": {
+        "title": "ROLL ON.",
+        "description": "Maintain relentless momentum."
+      },
+      "2": {
+        "title": "ROLL UP.",
+        "description": "Stay hands-on and deeply involved."
+      },
+      "3": {
+        "title": "Impact.",
+        "description": "Compete through strength, not price."
+      }
+    },
+    "way": {
+      "eyebrow": "THE ROLL ON WAY",
+      "title": "How we work, and who we\nwork with.",
+      "closing": "We don’t follow others."
+    },
+    "values": {
+      "1": {
+        "title": "Curious by default",
+        "description": "We explore, create, discover and improve."
+      },
+      "2": {
+        "title": "Always ready",
+        "description": "Prepared for the next challenge, at the pace clients expect."
+      },
+      "3": {
+        "title": "Bold on conviction",
+        "description": "We act on firm belief, even before it can be proven."
+      },
+      "4": {
+        "title": "Fully committed",
+        "description": "We keep people who are dedicated and love to collaborate."
+      },
+      "5": {
+        "title": "Character counts",
+        "description": "We value ability, performance and personal character."
+      },
+      "6": {
+        "title": "Room to grow",
+        "description": "We respect individuality and bring out each team’s potential."
+      }
+    },
+    "roadmap": {
+      "eyebrow": "ROADMAP",
+      "title": "Rolling forward.",
+      "1": {
+        "eyebrow": "YEAR 1",
+        "title": "Launch Asia Founders Club",
+        "description": "A founders network that unlocks new sectors and markets."
+      },
+      "2": {
+        "eyebrow": "YEAR 3",
+        "title": "Systemize & scale",
+        "description": "Our proven model, ready to repeat globally."
+      },
+      "3": {
+        "eyebrow": "YEAR 5",
+        "title": "Regional expansion",
+        "description": "The Roll On model in multiple countries, powered by Taiwan."
+      }
+    },
+    "sustainability": {
+      "eyebrow": "SUSTAINABILITY",
+      "title": "Built to last.",
+      "1": {
+        "title": "Environment",
+        "description": "Manufacturing in Taiwan shortens supply chains and cuts carbon."
+      },
+      "2": {
+        "title": "Social",
+        "description": "Local jobs, talent and cross-border exchange."
+      },
+      "3": {
+        "title": "Governance",
+        "description": "Transparent equity and institutional-grade compliance, with Deloitte."
+      }
+    },
+    "team": {
+      "eyebrow": "TEAM",
+      "title": "Operators, not just\nadvisors.",
+      "1": {
+        "name": "Vivian Lee",
+        "role": "Founder & CEO",
+        "description": "Led the Taiwan launch of a global streaming brand."
+      },
+      "2": {
+        "name": "Vincent",
+        "role": "Business Advisor",
+        "description": "Partner, Taipei Angels Investment."
+      },
+      "3": {
+        "name": "Iris",
+        "role": "Creative Designer",
+        "description": ""
+      }
+    }
   }
 }

@@ -1,17 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { readAdminResponse } from "@/lib/cms/admin-response";
+import { useMemo, useRef, useState } from "react";
 
 export type TransItem = { path: string; en: string; zh: string };
 export type TransGroup = { namespace: string; items: TransItem[] };
 
-export default function TranslationsEditor({ groups }: { groups: TransGroup[] }) {
+export default function TranslationsEditor({ groups, initialNamespace }: { groups: TransGroup[]; initialNamespace?: string }) {
+  const router = useRouter();
+  const pending = useRef(false);
+  const [saved, setSaved] = useState<Record<string, { en: string; zh: string }>>({});
   // edits: path -> { en, zh }
   const [edits, setEdits] = useState<Record<string, { en: string; zh: string }>>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [activeNs, setActiveNs] = useState(groups[0]?.namespace ?? "");
+  const [activeNs, setActiveNs] = useState(initialNamespace && groups.some(g => g.namespace === initialNamespace) ? initialNamespace : groups[0]?.namespace ?? "");
 
   const dirtyCount = Object.keys(edits).length;
 
@@ -21,19 +26,21 @@ export default function TranslationsEditor({ groups }: { groups: TransGroup[] })
   );
 
   function val(item: TransItem, locale: "en" | "zh") {
-    const edit = edits[item.path];
+    const edit = edits[item.path] ?? saved[item.path];
     if (edit) return locale === "en" ? edit.en : edit.zh;
     return locale === "en" ? item.en : item.zh;
   }
 
   function update(item: TransItem, locale: "en" | "zh", value: string) {
     setEdits((prev) => {
-      const base = prev[item.path] ?? { en: item.en, zh: item.zh };
+      const base = prev[item.path] ?? saved[item.path] ?? { en: item.en, zh: item.zh };
       return { ...prev, [item.path]: { ...base, [locale]: value } };
     });
   }
 
   async function handleSave() {
+    if (pending.current) return;
+    pending.current = true;
     setSaving(true);
     setError("");
     setMessage("");
@@ -48,13 +55,15 @@ export default function TranslationsEditor({ groups }: { groups: TransGroup[] })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entries }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `儲存失敗（HTTP ${res.status}）`);
+      await readAdminResponse(res);
+      setSaved(previous => ({ ...previous, ...edits }));
+      router.refresh();
       setMessage(`已儲存 ${entries.length} 筆，前台將即時更新`);
       setEdits({});
     } catch (err) {
       setError(err instanceof Error ? err.message : "儲存失敗");
     } finally {
+      pending.current = false;
       setSaving(false);
     }
   }
@@ -93,6 +102,8 @@ export default function TranslationsEditor({ groups }: { groups: TransGroup[] })
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-neutral-400">English</span>
                   <textarea
+                    disabled={saving}
+                    aria-label={`${item.path} English`}
                     rows={2}
                     value={val(item, "en")}
                     onChange={(e) => update(item, "en", e.target.value)}
@@ -102,6 +113,8 @@ export default function TranslationsEditor({ groups }: { groups: TransGroup[] })
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-neutral-400">繁體中文</span>
                   <textarea
+                    disabled={saving}
+                    aria-label={`${item.path} 繁體中文`}
                     rows={2}
                     value={val(item, "zh")}
                     onChange={(e) => update(item, "zh", e.target.value)}
@@ -123,7 +136,7 @@ export default function TranslationsEditor({ groups }: { groups: TransGroup[] })
             <span className="text-neutral-400">無變更</span>
           )}
           {message && <span className="ml-3 text-green-600">{message}</span>}
-          {error && <span className="ml-3 text-red-600 whitespace-pre-wrap">{error}</span>}
+          {error && <span role="alert" className="ml-3 text-red-600 whitespace-pre-wrap">{error}</span>}
         </div>
         <button
           onClick={handleSave}

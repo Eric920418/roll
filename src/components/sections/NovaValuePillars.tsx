@@ -29,7 +29,7 @@ export default async function NovaValuePillars() {
           </div>
           <div className="mt-5 flex flex-wrap gap-3 md:mt-0">
             <a href="https://www.youtube.com/@GOLDENTICKET-rollon" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-primary">{t("podcast")}</a>
-            <a href={`${home}#events`} className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{t("events")}</a>
+            <a href={pathForLocale("/cases#ecosystem", locale)} className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{t("events")}</a>
             <a href={`${home}#contact`} className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{t("contact")}</a>
           </div>
         </div>

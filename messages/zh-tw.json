@@ -1684,5 +1684,606 @@
       "skipped": "已跳過，無需提醒",
       "cancelled": "已取消"
     }
+  },
+  "HomeV10": {
+    "nav": {
+      "home": "首頁",
+      "approach": "合作方式",
+      "cases": "成功案例",
+      "taiwan": "台灣",
+      "about": "關於我們",
+      "book": "預約洽談",
+      "open": "開啟選單",
+      "close": "關閉選單",
+      "label": "主要導覽"
+    },
+    "hero": {
+      "eyebrow": "從願景到深遠影響",
+      "title": "我們為改變\n市場格局\n而來。",
+      "description": "ROLL ON 結合顧問策略與實際執行，透過台灣與亞洲的業務拓展，讓品牌從願景走向實質影響力。",
+      "work": "查看我們的成果",
+      "imageAlt": "台北城市天際線與台北 101"
+    },
+    "trusted": {
+      "eyebrow": "深受品牌信賴",
+      "also": "其他合作夥伴：Unicorn Tutor AI · R.co · RYS Ventura"
+    },
+    "lead": {
+      "eyebrow": "我們的專長",
+      "title": "品牌與業務，\n在此整合。",
+      "brand": {
+        "eyebrow": "01 品牌",
+        "title": "打造品牌，\n走向全球。",
+        "description": "為進入亞洲市場的品牌，建立定位、品牌識別與在地化策略。",
+        "metric": "3",
+        "caption": "六個月內贏得三大全球品牌合作"
+      },
+      "sales": {
+        "eyebrow": "02 業務",
+        "title": "讓業務\n真正成交。",
+        "description": "由親自跑業務的團隊，建立商機管道、經銷網絡與關鍵客戶關係。",
+        "metric": "100+",
+        "caption": "九個月內贏得超過百家關鍵客戶"
+      }
+    },
+    "approach": {
+      "eyebrow": "顧問策略 + 實際執行",
+      "title": "思考。執行。落地。",
+      "think": {
+        "title": "思考。",
+        "description": "我們先捲起袖子，深入了解產品、買家與市場，再提出建議。",
+        "link": "我們如何思考 →"
+      },
+      "execute": {
+        "title": "執行。",
+        "description": "從第一通電話到簽約成交，我們在第一線拓展業務、夥伴與投資人。",
+        "link": "我們如何執行 →"
+      },
+      "land": {
+        "title": "落地。",
+        "description": "台灣位處東南亞、東北亞與中國之間，是進入亞洲市場的樞紐。",
+        "link": "為什麼選擇台灣 →"
+      }
+    },
+    "case": {
+      "eyebrow": "成功案例",
+      "title": "Medix：從美國新創，\n到在台設立亞洲總部。",
+      "description": "在取得美國認證前，我們已協助開拓台灣市場，並取得涵蓋亞洲及其他地區的獨家經銷權。",
+      "link": "閱讀完整案例",
+      "imageAlt": "Medix 團隊與合作夥伴在展會攤位合照"
+    },
+    "belief": {
+      "eyebrow": "我們的核心信念",
+      "title": "想法無所不在。\n執行力才是關鍵。"
+    },
+    "contact": {
+      "title": "讓你的產品\n走進亞洲。",
+      "name": "姓名",
+      "email": "電子郵件",
+      "message": "你正在打造什麼？",
+      "send": "送出訊息",
+      "sending": "傳送中…",
+      "success": "感謝來訊，你的訊息已成功送出。",
+      "error": "訊息無法送出，請再試一次。"
+    },
+    "footer": {
+      "tagline": "從願景到深遠影響。",
+      "since": "2025 年 3 月創立 · 台灣台北",
+      "language": "語言"
+    }
+  },
+  "ApproachV10": {
+    "meta": {
+      "title": "我們的方法",
+      "description": "從市場進入策略、業務成交到亞太拓展，顧問與執行由同一團隊完成。"
+    },
+    "hero": {
+      "eyebrow": "我們的方法",
+      "title": "創意帶動銷售。\n策略經得起驗證。",
+      "description": "我們捲起袖子，親自走進市場，\n確認機會後，再帶你進場。"
+    },
+    "think": {
+      "eyebrow": "我們如何思考",
+      "title": "看懂整台車。",
+      "description": "如果你的產品是一台車，我們會了解每一個零件，\n也了解不同的人如何看待它。"
+    },
+    "principles": {
+      "1": {
+        "title": "了解產品與它面對的人",
+        "description": "了解每個細節，理解買家如何思考，也理解不購買的人如何思考。"
+      },
+      "2": {
+        "title": "比較所有選項",
+        "description": "直接競爭者、間接競爭者，以及什麼都不做的選擇。"
+      },
+      "3": {
+        "title": "了解誰做決定",
+        "description": "向誰提案、誰來簽約，以及每個人在每場會議中需要什麼。隱藏成本也算在內。"
+      },
+      "4": {
+        "title": "落地之前，先行驗證",
+        "description": "我們親自與經銷商和第一線客戶走訪市場，確認市場存在，再帶你進入台灣。"
+      },
+      "5": {
+        "title": "用故事促成銷售",
+        "description": "好的銷售需要好的行銷。我們一起打造兩者，讓創意真正帶來成交。"
+      }
+    },
+    "services": {
+      "eyebrow": "我們做什麼",
+      "title": "顧問。執行。",
+      "description": "從最初策略到簽約成交，同一個團隊全程投入。",
+      "consult": "顧問",
+      "consultTitle": "能付諸行動的策略。",
+      "execute": "執行",
+      "executeTitle": "看得見的成果。",
+      "beyond": "不只提供建議",
+      "beyondTitle": "讓你落地的地方。"
+    },
+    "serviceNames": {
+      "1": "市場進入\n策略",
+      "2": "市場拓展\n規劃",
+      "3": "定位與\n定價",
+      "4": "募資與\n投資準備",
+      "5": "行銷\n在地化",
+      "6": "在地銷售與\n業務開發",
+      "7": "經銷商開發與\nKPI 管理",
+      "8": "人才與\n合作夥伴引薦",
+      "9": "製造與\n供應鏈支援",
+      "10": "客戶成功\n管理"
+    },
+    "beyond": {
+      "1": {
+        "title": "共同工作空間",
+        "description": "在台灣啟動事業時，讓你安心工作的地方。"
+      },
+      "2": {
+        "title": "夥伴工作坊",
+        "description": "與合作夥伴一起實作的工作坊。"
+      },
+      "3": {
+        "title": "Nova AI →",
+        "description": "串連創辦人的募資準備與投資人的盡職調查。"
+      }
+    },
+    "phases": {
+      "eyebrow": "合作如何進行",
+      "title": "三個階段，走向亞太。",
+      "description": "前兩階段採固定費用，第三階段採股權合作。",
+      "includes": "包含項目",
+      "time": "時間",
+      "fee": "費用",
+      "1": {
+        "label": "第一階段",
+        "title": "商業計畫",
+        "items": "市場進入、理想客戶輪廓、產品市場契合度\n市場規模\n路線圖與機會\n一份銷售提案\n品牌：三種市場切入方式\n通路建議",
+        "time": "每天 4 小時，共 7 天",
+        "fee": "US$5,020",
+        "note": "未稅。每小時 US$160，另加 7 杯星巴克美式咖啡。"
+      },
+      "2": {
+        "label": "第二階段",
+        "title": "銷售策略",
+        "items": "銷售策略\n三種通路輪廓\n客製銷售提案\n拆解一個目標\n每週一小時顧問會議\n完整創意品牌規劃",
+        "time": "每天 4 小時，共 14 天",
+        "fee": "US$8,970",
+        "note": "未稅。每小時 US$160，另加 7 杯星巴克美式咖啡及一頓晚餐。"
+      },
+      "3": {
+        "label": "第三階段",
+        "title": "亞太拓展",
+        "items": "拓展亞太地區銷售\n股權合作",
+        "fee": "股權",
+        "note": "創投與家族辦公室：請聯絡我們。"
+      }
+    },
+    "comparison": {
+      "eyebrow": "為什麼選擇 ROLL ON",
+      "title": "在地執行，\n不只提供建議。",
+      "label": "市場進入方式比較",
+      "columns": {
+        "1": "顧問／代理商",
+        "2": "自建團隊",
+        "3": "傳統經銷商",
+        "4": "Roll On"
+      },
+      "rows": {
+        "1": {
+          "label": "進入市場時間",
+          "1": "6–12 個月",
+          "2": "12–24 個月",
+          "3": "6–12 個月",
+          "4": "6–9 個月"
+        },
+        "2": {
+          "label": "在地銷售執行",
+          "1": "不包含",
+          "2": "自行招募與管理",
+          "3": "有限",
+          "4": "包含"
+        },
+        "3": {
+          "label": "在地人脈",
+          "1": "有限",
+          "2": "從零建立",
+          "3": "有限",
+          "4": "廣泛"
+        },
+        "4": {
+          "label": "股權合作",
+          "1": "有限",
+          "2": "無",
+          "3": "無",
+          "4": "有"
+        },
+        "5": {
+          "label": "募資",
+          "1": "僅提供建議",
+          "2": "無",
+          "3": "無",
+          "4": "包含"
+        }
+      }
+    }
+  },
+  "CasesV10": {
+    "meta": {
+      "title": "成功案例",
+      "description": "來自第一線的成果：Medix 亞洲落地、市場拓展與 Roll On 在地合作紀錄。"
+    },
+    "hero": {
+      "eyebrow": "實際成果",
+      "title": "來自第一線的成果。",
+      "description": "我們如何協助品牌與創辦人進入台灣和亞洲。"
+    },
+    "medix": {
+      "fundingValue": "3",
+      "countriesValue": "5",
+      "eyebrow": "成功案例",
+      "title": "美國醫療科技 Medix，\n亞洲總部落腳台灣。",
+      "challengeLabel": "挑戰",
+      "challenge": "FDA 核准、製造、經銷商與行銷必須同時推進，卻缺乏明確的優先順序與市場進入計畫。創投不願在 FDA 核准前投資，現金也逐漸耗盡。",
+      "workLabel": "我們做了什麼",
+      "work": "三個月內在台灣完成早期募資。在取得美國認證前簽下獨家經銷，並促成越南企業合約。",
+      "resultLabel": "成果",
+      "result": "台灣如今已成為 Medix 的亞洲總部。",
+      "cta": "規劃你的市場落地",
+      "funding": "個月內在台灣\n完成早期募資",
+      "countries": "個國家在 10 個月內\n完成簽約",
+      "markets": "已開拓市場",
+      "marketNames": {
+        "1": "台灣",
+        "2": "土耳其",
+        "3": "越南",
+        "4": "非洲",
+        "5": "柬埔寨"
+      }
+    },
+    "gallery": {
+      "1": {
+        "location": "美國",
+        "title": "佛羅里達 Global Pet Expo",
+        "description": ""
+      },
+      "2": {
+        "location": "美國",
+        "title": "佛羅里達之旅",
+        "description": ""
+      },
+      "3": {
+        "location": "台灣",
+        "title": "2026 台北寵物用品博覽會",
+        "description": "我們的展位 C027。"
+      },
+      "4": {
+        "location": "台灣",
+        "title": "2026 台北寵物用品博覽會",
+        "description": "展位來賓。"
+      },
+      "5": {
+        "location": "越南",
+        "title": "市場開拓",
+        "description": "US$450K 訂單。"
+      },
+      "6": {
+        "location": "越南",
+        "title": "通路拜訪",
+        "description": "零售藥局。"
+      },
+      "7": {
+        "location": "越南",
+        "title": "通路拜訪",
+        "description": "醫院。"
+      },
+      "8": {
+        "location": "香港",
+        "title": "2026 國際醫療及保健展",
+        "description": "受香港貿易發展局邀請參加。"
+      },
+      "9": {
+        "location": "柬埔寨",
+        "title": "市場開拓",
+        "description": ""
+      },
+      "10": {
+        "location": "土耳其",
+        "title": "市場開拓",
+        "description": ""
+      },
+      "11": {
+        "location": "回饋社會",
+        "title": "贊助台灣防止虐待動物協會",
+        "description": ""
+      },
+      "12": {
+        "location": "回饋社會",
+        "title": "贊助 StrayKind",
+        "description": ""
+      }
+    },
+    "ecosystem": {
+      "eyebrow": "深入在地",
+      "title": "活躍於整個\n產業生態圈。",
+      "partners": "合作夥伴"
+    },
+    "events": {
+      "1": {
+        "eyebrow": "ROLL ON 台灣",
+        "title": "與 Enspyre 合作",
+        "description": ""
+      },
+      "2": {
+        "eyebrow": "攜手林口新創園",
+        "title": "共同主辦 TAI-ONE 活動",
+        "description": "台北世界貿易中心。"
+      },
+      "3": {
+        "eyebrow": "台北市進出口商業同業公會",
+        "title": "國際醫療器材\n代理商媒合",
+        "description": "受邀參加，地點為台北晶華酒店。"
+      },
+      "4": {
+        "eyebrow": "2026 台灣數位應用週",
+        "title": "講者分享",
+        "description": "資源有限時的策略合作。"
+      },
+      "5": {
+        "eyebrow": "SHARK TANK TAIWAN",
+        "title": "2026 遴選活動",
+        "description": ""
+      },
+      "6": {
+        "eyebrow": "PROCHILE",
+        "title": "智利駐台辦事處",
+        "description": ""
+      }
+    }
+  },
+  "TaiwanV10": {
+    "meta": {
+      "title": "台灣，亞洲樞紐",
+      "description": "從台灣出發：在地人才、科技實力、市場機會，以及為你開啟機會的人脈網絡。"
+    },
+    "hero": {
+      "eyebrow": "台灣",
+      "title": "台灣是亞洲的樞紐。",
+      "description": "位於東南亞、東北亞與中國之間，\n更有人才與科技實力作為後盾。"
+    },
+    "hub": {
+      "eyebrow": "為什麼是樞紐",
+      "title": "從這裡出發的四個理由。"
+    },
+    "reasons": {
+      "1": {
+        "eyebrow": "地理位置",
+        "title": "位居交會點",
+        "description": "位於東南亞、東北亞與中國之間的島嶼，擁有強大的航運與海運能力。"
+      },
+      "2": {
+        "eyebrow": "科技實力",
+        "title": "世界級的產業底蘊",
+        "description": "在醫療器材、半導體與紡織領域居於領先地位。"
+      },
+      "3": {
+        "eyebrow": "市場價值",
+        "title": "充足的發展空間",
+        "description": "成本比新加坡更低，競爭者較少，有許多市場缺口與有力的市場進入獎勵。"
+      },
+      "4": {
+        "eyebrow": "執行品質",
+        "title": "值得信賴的品質",
+        "description": "負責、細緻的工作態度，並提供避開中國大陸地緣政治複雜性的據點。"
+      }
+    },
+    "now": {
+      "eyebrow": "為什麼是現在",
+      "title": "現在正是時候。",
+      "1": {
+        "value": "US$320B",
+        "caption": "2025 年台灣外資投資創紀錄"
+      },
+      "2": {
+        "value": "20,000",
+        "caption": "家外國企業已進駐"
+      },
+      "3": {
+        "value": "6–9",
+        "caption": "個月，Roll On 一般市場進入時程"
+      }
+    },
+    "value": {
+      "eyebrow": "為台灣創造價值",
+      "title": "引進世界，創造價值。\n不只追求規模。"
+    },
+    "contributions": {
+      "1": {
+        "title": "引進投資",
+        "description": "外國企業帶來資金、客戶與專業知識。"
+      },
+      "2": {
+        "title": "人才轉型",
+        "description": "在地團隊學習全球化的工作方式。"
+      },
+      "3": {
+        "title": "創新樞紐",
+        "description": "讓台灣成為新想法萌芽的地方。"
+      }
+    },
+    "community": {
+      "eyebrow": "社群",
+      "title": "為你開啟機會的人脈網絡。"
+    },
+    "communities": {
+      "1": {
+        "title": "Asia Founders Club",
+        "description": "創辦人與投資人自在交流的社群。"
+      },
+      "2": {
+        "title": "Golden Ticket Podcast",
+        "description": "創辦人與投資人分享最關鍵的決策。"
+      }
+    }
+  },
+  "AboutV10": {
+    "meta": {
+      "title": "關於 Roll On",
+      "description": "2025 年 3 月成立於台北。認識 Roll On 的執行團隊、品牌故事、工作原則與發展藍圖。"
+    },
+    "hero": {
+      "eyebrow": "關於 ROLL ON",
+      "title": "由捲起袖子、\n親自動手的人打造。",
+      "description": "2025 年 3 月，成立於台北。"
+    },
+    "story": {
+      "eyebrow": "我們的故事",
+      "title": "我們為何創立\nRoll On。",
+      "1": "如今，世界級產品可以在任何地方誕生。但要觸及亞洲客戶，仍需要在地團隊。",
+      "2": "太多好產品進入市場時，沒有在地人脈、沒有信任，也沒有人替它銷售。我們於 2025 年 3 月在台北創立 Roll On，就是為了成為這支團隊。",
+      "3": "我們像顧問一樣思考，像經營者一樣執行。每個故事背後都有原因，每次市場落地也是如此。"
+    },
+    "thinking": {
+      "eyebrow": "我們的思考從何而來",
+      "title": "偉大的品牌，\n都有精彩的故事。",
+      "description": "我們熱愛故事，也相信每個故事背後都有一套道理。"
+    },
+    "stories": {
+      "1": {
+        "title": "讓它酷起來，\n人們就會追隨。",
+        "description": "一輛古靈精怪的小車成為電影明星，於是人人都想擁有一輛。"
+      },
+      "2": {
+        "title": "一個細節，\n就能承載故事。",
+        "description": "一輛豪華轎車，靠著車內時鐘的聲音打動買家。"
+      },
+      "3": {
+        "title": "第二名，\n更加努力。",
+        "description": "位居第二，正是更努力的理由。"
+      },
+      "4": {
+        "title": "享受失敗。",
+        "description": "我們從實作中學習，失敗是工作的一部分。"
+      }
+    },
+    "philosophy": {
+      "eyebrow": "ROLL ON 的理念",
+      "title": "滾動的球不會停下。\n我們也一樣。",
+      "1": {
+        "title": "ROLL ON.",
+        "description": "保持永不止息的動能。"
+      },
+      "2": {
+        "title": "ROLL UP.",
+        "description": "親自動手，深度投入。"
+      },
+      "3": {
+        "title": "Impact.",
+        "description": "靠實力競爭，而非價格。"
+      }
+    },
+    "way": {
+      "eyebrow": "ROLL ON 的做事方式",
+      "title": "我們如何工作，\n以及與誰合作。",
+      "closing": "我們不盲目跟隨。"
+    },
+    "values": {
+      "1": {
+        "title": "天生好奇",
+        "description": "我們探索、創造、發現，並持續改善。"
+      },
+      "2": {
+        "title": "隨時準備就緒",
+        "description": "依照客戶期待的步調，為下一個挑戰做好準備。"
+      },
+      "3": {
+        "title": "堅定信念，大膽行動",
+        "description": "即使尚未獲得驗證，我們仍依堅定的信念採取行動。"
+      },
+      "4": {
+        "title": "全心投入",
+        "description": "我們與專注投入、熱愛合作的人共事。"
+      },
+      "5": {
+        "title": "品格至上",
+        "description": "我們重視能力、績效與個人品格。"
+      },
+      "6": {
+        "title": "留有成長空間",
+        "description": "我們尊重個體差異，激發每個團隊的潛力。"
+      }
+    },
+    "roadmap": {
+      "eyebrow": "發展藍圖",
+      "title": "持續向前。",
+      "1": {
+        "eyebrow": "第一年",
+        "title": "成立 Asia Founders Club",
+        "description": "透過創辦人網絡，開拓新的產業與市場。"
+      },
+      "2": {
+        "eyebrow": "第三年",
+        "title": "系統化與規模化",
+        "description": "讓經過驗證的模式，準備好在全球複製。"
+      },
+      "3": {
+        "eyebrow": "第五年",
+        "title": "區域拓展",
+        "description": "以台灣為動力，將 Roll On 模式推向多個國家。"
+      }
+    },
+    "sustainability": {
+      "eyebrow": "永續發展",
+      "title": "為長遠而打造。",
+      "1": {
+        "title": "環境",
+        "description": "在台灣製造，縮短供應鏈並減少碳排。"
+      },
+      "2": {
+        "title": "社會",
+        "description": "創造在地工作、培育人才與促進跨境交流。"
+      },
+      "3": {
+        "title": "治理",
+        "description": "與 Deloitte 合作，實踐透明股權與機構級合規。"
+      }
+    },
+    "team": {
+      "eyebrow": "團隊",
+      "title": "親自執行，\n不只提供建議。",
+      "1": {
+        "name": "Vivian Lee",
+        "role": "創辦人暨執行長",
+        "description": "曾主導全球串流品牌在台灣的市場落地。"
+      },
+      "2": {
+        "name": "Vincent",
+        "role": "商業顧問",
+        "description": "台北天使投資合夥人。"
+      },
+      "3": {
+        "name": "Iris",
+        "role": "創意設計師",
+        "description": ""
+      }
+    }
   }
 }

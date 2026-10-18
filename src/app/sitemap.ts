@@ -34,14 +34,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     alternates: { languages: languageAlternates("/") },
   });
 
-  // About (static brand narrative page)
-  entries.push({
-    url: urlFor("/about", "en"),
-    lastModified: now,
-    changeFrequency: "monthly" as Freq,
-    priority: 0.8,
-    alternates: { languages: languageAlternates("/about") },
-  });
+  // PDF v10 public brand pages.
+  for (const path of ["/approach", "/cases", "/taiwan", "/about"]) {
+    entries.push({
+      url: urlFor(path, "en"),
+      lastModified: now,
+      changeFrequency: "monthly" as Freq,
+      priority: 0.8,
+      alternates: { languages: languageAlternates(path) },
+    });
+  }
 
   // ESG (static brand narrative page)
   entries.push({

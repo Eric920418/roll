@@ -1,3 +1,4 @@
+import { isRollonPage, validateRollonAssets } from "@/lib/cms/rollon-v10";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -23,6 +24,12 @@ export async function PUT(req: NextRequest) {
       return fail(parsed.error.issues.map((i) => i.message).join("；"), 400);
     }
     const { key, value } = parsed.data;
+    if (key.startsWith("rollonV10.")) {
+      const page = key.slice("rollonV10.".length);
+      if (!isRollonPage(page)) return fail("未知官網頁面", 400);
+      const errors = validateRollonAssets(page, value);
+      if (errors.length) return fail(errors.join("\n"), 400);
+    }
     const saved = await prisma.setting.upsert({
       where: { key },
       create: { key, value: asJson(value) },

@@ -9,8 +9,9 @@ import TranslationsEditor, {
 
 export const dynamic = "force-dynamic";
 
-export default async function TranslationsPage() {
+export default async function TranslationsPage({ searchParams }: { searchParams: Promise<{ namespace?: string }> }) {
   await requireAdminPage();
+  const { namespace } = await searchParams;
   const [enOverride, zhOverride] = await Promise.all([
     getMessageOverride("en"),
     getMessageOverride("zh-tw"),
@@ -39,7 +40,7 @@ export default async function TranslationsPage() {
       <p className="text-neutral-500 text-sm mb-6">
         編輯全站 UI 文字（含 About / ESG 頁）。清空欄位則該鍵回退至預設值。
       </p>
-      <TranslationsEditor groups={groups} />
+      <TranslationsEditor key={namespace} groups={groups} initialNamespace={namespace} />
     </div>
   );
 }

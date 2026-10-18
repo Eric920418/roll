@@ -12,6 +12,9 @@ type Props = {
   label?: string;
   /** 預覽容器的額外 class（控制尺寸） */
   className?: string;
+  preservePrevious?: boolean;
+  onUploadingChange?: (uploading: boolean) => void;
+  disabled?: boolean;
 };
 
 export default function ImageUploader({
@@ -20,6 +23,9 @@ export default function ImageUploader({
   folder = "cms",
   label,
   className,
+  preservePrevious = false,
+  onUploadingChange,
+  disabled = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -36,12 +42,13 @@ export default function ImageUploader({
       return;
     }
     setLoading(true);
+    onUploadingChange?.(true);
     try {
       // Vercel Blob client 直傳：瀏覽器 → Blob，繞過 Serverless Function 4.5MB body 限制
       const blob = await upload(`${folder}/${file.name}`, file, {
         access: "public",
         handleUploadUrl: "/api/admin/upload",
-        clientPayload: JSON.stringify({ oldUrl: value || null }),
+        clientPayload: JSON.stringify({ oldUrl: preservePrevious ? null : value || null }),
       });
       onChange(blob.url);
     } catch (err) {
@@ -49,6 +56,7 @@ export default function ImageUploader({
       setError(err instanceof Error ? err.message : "上傳失敗");
     } finally {
       setLoading(false);
+      onUploadingChange?.(false);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
@@ -76,12 +84,13 @@ export default function ImageUploader({
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp"
             onChange={handleFile}
-            disabled={loading}
+            disabled={loading || disabled}
             className="text-sm"
           />
           {value && (
             <button
               type="button"
+              disabled={loading || disabled}
               onClick={() => onChange("")}
               className="text-xs text-red-600 hover:underline text-left"
             >

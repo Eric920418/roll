@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { readAdminResponse } from "@/lib/cms/admin-response";
 import ImageUploader from "./ImageUploader";
 
 export type SettingField = {
@@ -28,6 +29,9 @@ export default function SettingsForm({
     for (const f of fields) v[f.name] = (initial[f.name] as string) ?? "";
     return v;
   });
+  const pending = useRef(false);
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+  const hasUploads = Object.values(uploading).some(Boolean);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -38,6 +42,8 @@ export default function SettingsForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (pending.current || hasUploads) return;
+    pending.current = true;
     setSaving(true);
     setStatus("");
     setError("");
@@ -47,13 +53,13 @@ export default function SettingsForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: settingKey, value: values }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `儲存失敗（HTTP ${res.status}）`);
+      await readAdminResponse(res);
       setStatus("已儲存");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "儲存失敗");
     } finally {
+      pending.current = false;
       setSaving(false);
     }
   }
@@ -75,11 +81,15 @@ export default function SettingsForm({
             folder={f.folder ?? "cms"}
             value={values[f.name]}
             onChange={(url) => set(f.name, url)}
+            preservePrevious
+            disabled={saving || hasUploads}
+            onUploadingChange={(active) => setUploading(prev => ({ ...prev, [f.name]: active }))}
           />
         ) : (
           <label key={f.name} className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-neutral-700">{f.label}</span>
             <input
+              disabled={saving || hasUploads}
               value={values[f.name]}
               onChange={(e) => set(f.name, e.target.value)}
               className={inputClass}
@@ -87,14 +97,14 @@ export default function SettingsForm({
           </label>
         ),
       )}
-      {error && <p className="text-sm text-red-600 whitespace-pre-wrap">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600 whitespace-pre-wrap">{error}</p>}
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || hasUploads}
           className="rounded-lg bg-neutral-900 text-white px-5 py-2 text-sm font-medium hover:bg-neutral-800 disabled:opacity-40"
         >
-          {saving ? "儲存中…" : "儲存"}
+          {saving ? "儲存中…" : hasUploads ? "圖片上傳中…" : "儲存"}
         </button>
         {status && <span className="text-sm text-green-600">{status}</span>}
       </div>

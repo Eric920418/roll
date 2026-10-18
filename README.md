@@ -1,5 +1,68 @@
 # ROLL ON. 企業官網
 
+## 正式發布（2026-10-18）
+
+使用者已授權將本次五頁雙語官網、NOVA 入口與新版 CMS 全部推送正式版；先前「僅本機、不 push、不部署」為前期驗收限制，本次授權已取代。發布前合併最新 origin/main 的 NOVA 會員功能，執行完整測試、Lint 與建置；以正式環境候選部署驗證後切換網域。此改版不執行資料庫 migration、seed、重設或既有資料覆寫。正式部署與驗收結果於完成後記錄。
+
+## 五頁 PDF v10 改版（2026-10-15）
+
+範圍更新：依使用者最新確認，完整實作 PDF 的 Home、Approach、Case studies、Taiwan、About 五個獨立頁面，中英文同步。路由 `/`、`/approach`、`/cases`、`/taiwan`、`/about`，繁中加 `/zh-tw`。新版共用 Inter、導覽、CMS 聯絡資料與表單；語言切換保留所在頁面。首頁三步驟改連新 Approach/Taiwan 頁，完整案例改連 `/cases#medix`，避免導向既有草稿。既有 ESG、NOVA 產品與會員內容保留；後續補上 NOVA 導覽入口與新版官網 CMS 管理。只沿用素材或取出 PDF 原始圖片，不生成替代照片，不修改資料庫、不 push、不部署。
+
+新增 36 張 PDF 原圖於 `public/rollon-v10/`（約 6.27 MB），涵蓋案例、活動、合作夥伴、社群與團隊；原有 Medix 展會照與 NOVA Logo 繼續使用。新增 `ApproachV10`、`CasesV10`、`TaiwanV10`、`AboutV10` 翻譯 namespace，沿用 CMS 編輯；獨立 metadata、canonical、中英文 alternates、一小時 ISR 與 sitemap 已補齊。
+
+PDF 中的 Taiwan SPCA／StrayKind 外部連結原樣保留；NOVA 入口維持目前語系。所有 Book a call 與 Plan a similar launch 連當頁聯絡表單；首頁 See our work 連 `/cases`。五頁主內容的 351 個中英文翻譯鍵一致，四個新 namespace 的所有可見文案已逐項核對渲染內容；英文原文完整保留，繁中逐段翻譯。
+
+### NOVA 入口與新版 CMS 補齊（2026-10-16）
+
+NOVA 既有 `/product` 頁持續使用；五頁桌面導覽、手機選單、頁尾新增可見入口並保留語系。新版照片／Logo 改用各頁 `rollonV10.*` 設定與 PDF 預設素材，未設定時不需寫入資料庫。新增 `/admin/website`：分頁選取五頁、替換照片／Logo、編輯各頁中英文、連結 NOVA 文案與產品預覽；聯絡資訊及收件箱保留原入口。沿用 Setting JSON、登入驗證、上傳與快取失效，不新增 schema 或自動寫入資料。圖片設定限制為各位置預設素材或合法 Blob 圖片；上傳不刪除舊圖，送出期間避免重複儲存。管理表單保留完整公開錯誤、HTTP 狀態及追蹤碼。新增案例數字的翻譯欄位，五頁共 351 個文案鍵。NOVA 產品頁的 Events 舊首頁錨點改連 `/cases#ecosystem`。驗證完成：`pnpm exec tsc --noEmit`、`pnpm lint`（0 error／14 個既有 warning）、`pnpm test`（197 項，190 通過、7 個資料庫測試略過）、`pnpm build`（367 靜態頁，新增管理頁正常編譯）及 `git diff --check` 通過。
+
+瀏覽器驗證五頁中英文的導覽／頁尾 NOVA 連結、首頁 390／768／1024／1280／1440px 無溢位，實際點擊英文桌面與繁中手機入口均到既有產品頁。`/admin/website` 未登入時正確導向管理員登入。`tests/rollon-cms.test.ts` 使用替身驗證五頁管理頁資料、44 個圖片位置、非法圖片輸入、登入保護、儲存與快取失效、防重送、上傳期間禁止儲存、錯誤保留與重試；沒有連線寫入資料庫或上傳 Blob。**尚未登入正式 CMS 執行真實上傳／存檔端到端驗收**，不可將替身測試當成正式儲存測試。
+
+本機入口：`http://localhost:3002/`；NOVA：`http://localhost:3002/product`（繁中 `/zh-tw/product`）；新版 CMS：`http://localhost:3002/admin/website`。新版五頁圖文請由「新版官網」管理；原有服務／活動／客戶／案例清單保留供既有內容使用，不控制 PDF 五頁版面。NOVA 原有 Product 文案、會員、方案與帳戶功能保留。新增導覽證據：`/Users/eric/.codex/visualizations/2026/10/15/01a13fba-5559-7d73-9294-4c8e75250e85/rollon-nova-navigation.png`。未部署、未 push、未修改 schema 或既有資料。
+
+### 五頁最終驗收
+
+- 設計來源：`/Users/eric/Downloads/ROLL_ON_Website_v10_5pages.pdf` 五頁。原稿依序為 1440×4823、1440×5285、1440×6264、1440×3699、1440×5870px。實作全頁依序約 1440×4834、1440×5295、1440×6278、1440×3711、1440×5881px。截圖 CSS viewport 為 1440×6500、密度 1，裁去頁尾後空白；Display P3 截圖轉 sRGB 後與來源並排，空表單、選單關閉、圖片完整載入。
+- 五個必要面向皆已核對：Inter 字重／字級／換行、1200px 內容寬／留白／段落節奏、PDF 色票、原始圖片／裁切與清晰度、完整英文及繁中文案。Home 與 About 的主要段落邊界與來源一致；Approach／Taiwan 約 1px、Cases 約 2px 的累積差異屬 P3 像素取整差異。五頁額外頁尾高度來自語言切換。保留 PDF 內容與數字，未另行改寫商業主張。
+- 比較歷史：第一輪修正內頁 Hero 間距、Approach 卡片換行與方案間距；第二輪修正 Medix 圖庫列距、活動照片裁切、Taiwan 內文字級與 About ESG 卡片位置；第三輪修正繁中手機 Hero 孤字換行、英文平板強制斷行與手機活動照片單欄。修正後重新擷取、並排核對全頁和首屏／服務／價格表／圖庫／社群／ESG／團隊等局部。
+- 視覺證據目錄：`/Users/eric/.codex/visualizations/2026/10/15/01a13fba-5559-7d73-9294-4c8e75250e85`。五頁總覽 `rollon-five-pages-overview.png`；每頁完整截圖 `rollon-{home,approach,cases,taiwan,about}-five-page-final.png`；每頁 PDF 左／網站右對照 `rollon-{home,approach,cases,taiwan,about}-pdf-comparison.png`。局部與手機證據在 `/private/tmp/rollon-*-final-detail-*.png`、`/private/tmp/rollon-zh-approach-mobile-final.jpg`、`/private/tmp/rollon-tablet-table-final.jpg`。
+- 五頁 × 中英文 × 390／768／1440px，共 30 組：無頁面水平溢位、缺失翻譯、損壞圖片或重複 H1。四個內頁另驗收 1024／1280／1920px，內容寬依序為 853.33／1066.66／1200px，桌面同步縮放正常。PDF 未提供手機／繁中視覺稿，這兩者採相同設計系統與可讀性重排，不強制維持英文桌面換行。
+- 實測桌面五頁導覽、See our work、手機選單、Escape 關閉及焦點返回、繁中案例切英文後仍停在 `/cases`、聯絡錨點與空表單必填驗證。比較表在窄螢幕獨立水平捲動，具標籤及鍵盤焦點，ArrowRight 可操作；無整頁溢位。所有預覽 console 無 error；Product 保有 NOVA 主題、ESG 不掛新版樣式。
+- `pnpm exec tsc --noEmit`、本次檔案 ESLint、`git diff --check` 通過。全域 `pnpm lint` 通過（0 errors、14 個既有 warnings，位於 Auth／Dashboard／舊 Navbar／TaiwanMap）；本次新元件無 warning。`pnpm test` 共 191 項，184 通過、7 項隔離 DB 整合測試跳過。表單 8 項 fake-fetch／元件測試涵蓋成功、400、429、500 追蹤碼、網路／非 JSON 失敗、保留輸入及重複送出；未提交正式聯絡資料。最後 `pnpm build` 成功產生 367 個靜態頁面。
+- 本機啟動：`pnpm dev --hostname localhost --port 3002`。五頁均由頂端導覽進入，語言切換位於頁尾與手機選單。未修改 schema、seed 或既有資料，未 Git push 或部署；唯一文件仍為 README。
+
+final result: passed（五頁已無待修 P0／P1／P2；P3 為文字渲染／圖片壓縮及 1–2px 取整差異。既有 `/cases/medix` 草稿保留，但新版導覽與案例入口使用已完成的 `/cases#medix`。）
+
+下列為第一階段只做首頁時的歷史紀錄；五頁現況以上述最終驗收為準。
+
+### 第一階段首頁紀錄
+
+只還原 `ROLL_ON_Website_v10_5pages.pdf` 第 1 頁；英文 `/` 與繁中 `/zh-tw` 同步改版。首頁改用專用 `HomeV10` 元件與 CSS module：酒紅雙欄 Hero、四個客戶 Logo、品牌／銷售雙卡、Think／Execute／Land、Medix 案例、核心理念、聯絡表單及頁尾。桌面以原稿 1440px（內容 1200px、左右 120px）為基準，Inter 字型僅作用於新版首頁；共用 Navbar／Footer 與 NOVA 產品、會員、後台頁面不改版。
+
+素材沿用既有 `Medix.png`、`Max.png`、`inspo.png`、`Teotihuacan.png`、`IMG_0418.JPG`；`public/home-v10/taipei-101.jpg` 直接取自提供的 PDF 原始內嵌照片，未生成替代圖片。新版文案放在中英文 `HomeV10` namespace，沿用 CMS 翻譯覆寫及失效機制，不覆寫舊翻譯或資料表。保留 metadata、canonical 與一小時 ISR；首屏使用唯一可見 H1，移除無對應可見 FAQ 的首頁 FAQ JSON-LD。
+
+導覽 Home／Approach／Case studies／Taiwan 連首頁對應區塊；About 連既有頁面。所有 Book a call 連 `#contact`，Medix 連既有案例頁，三步驟連既有市場進入／通路開發／台灣指南，維持語系。低於 1024px 收合導覽，低於 768px 單欄；語言切換放頁尾與手機選單。
+
+聯絡資訊仍讀 CMS `contactInfo`，表單沿用 `POST /api/contact`、honeypot 與既有驗證。前端顯示完整 API 回傳錯誤、HTTP 狀態與追蹤碼；失敗保留輸入、送出中阻擋重複請求。非預期後端錯誤沿用安全訊息與追蹤碼，不把連線憑證或內部堆疊回傳瀏覽器。驗收使用 fake fetch，不寫入正式聯絡訊息。此改版不修改資料庫、不執行 seed／migration、不推送或部署。
+
+本機預覽使用 `pnpm dev --hostname localhost --port 3002`，網址 `http://localhost:3002/`、`http://localhost:3002/zh-tw`。這版 Next.js 會把 loopback URL 正規化為 localhost；若用 `--hostname 127.0.0.1` 啟動，default locale 的 `/ → /en` 可能被當成跨 origin rewrite，繼而 `/en → /` 循環，因此啟動參數與預覽網址都使用 localhost，無須修改 proxy 或 localePrefix。
+
+2026-10-15 長版比例修正：使用者指出本機與 PDF 比例不同，重新檢查發現舊版只在 1440px 對齊；1280px 時內容仍寬 1200px、照片仍寬 498px，但主標題已縮小，導致左右留白、圖片／文字比例與整頁長度不一致。桌面 1024–1439px 現改用 `--home-unit: min(1px, calc(100vw / 1440))` 統一計算欄寬、字級、留白、卡片、圖片與圓角；不使用 CSS zoom／transform 縮小整個網頁。1440px 以上保留 1200px 最大內容寬，1023px 以下沿用平板／手機重排。原平板樣式上限同步由 1199px 調為 1023px，避免覆蓋桌面縮放規則。本次仍只包含 PDF 第 1 頁完整長版，未合併其他四頁，未部署或寫入資料庫；修正後另驗收 1024／1280／1440／1920px。
+
+比例修正驗收：1024px 內容寬 853.33／左距 85.34／照片寬 354.13／頁尾起點 2929.63；1280px 為 1066.66／106.66／442.67／3662.19；1440px 為 1200／120／498／4120；1920px 為 1200／360／498／4120。各桌面寬度無橫向溢位，繁中 390／768／1280px 複驗亦無溢位，console 無 error，`pnpm build` 與 `git diff --check` 通過。1280px 的完整原稿／修正版並排圖在上述視覺證據目錄 `rollon-home-long-comparison.png`（左 PDF、右網站，兩側相同寬度）；完整網站為 `rollon-home-long-1280.png`。此輪修正 CSS 比例，未更動表單邏輯，未重跑無關的資料庫整合測試。
+
+### 首頁設計與功能驗收
+
+- 設計來源：`/Users/eric/Downloads/ROLL_ON_Website_v10_5pages.pdf` 第 1 頁，1080×3617.04pt，由 1440px 原始版面縮製；來源比對圖為 1440×4823px。英文瀏覽器 CSS viewport 1440×4823、密度 1，全頁截圖 1440×4834；額外高度來自已確認的頁尾語言切換。所有圖片與字型已載入，空表單、選單關閉狀態。
+- 最終全頁與原稿並排證據：`/Users/eric/.codex/visualizations/2026/10/15/01a13fba-5559-7d73-9294-4c8e75250e85/rollon-home-comparison.png`；實作全頁同目錄 `rollon-home-full.png`，首屏 `rollon-home-desktop.png`，繁中手機首屏 `rollon-home-mobile.png`。內建瀏覽器 JPEG 的 Display P3 色彩已轉 sRGB 再並排；色票另以 DOM computed styles 核對，未為截圖改動網站色彩。
+- 比較歷史：第一輪修正 Hero 內文寬度、章節標題間距、留言框高度；第二輪修正雙卡標題／數字對齊、Logo 尺寸與按鈕字重；最後一輪檢查 Hero、雙卡、三步驟、案例、理念與頁尾局部，調整繁中自然斷句與平板字級。1440px 的主要章節邊界依序為 815／1077／2028／2712／3536／4120，與原稿一致。
+- 字型與排版、留白與比例、色票、圖片／裁切、文案五個面向已核對。英文逐字依稿；繁中、手機與平板採已確認的適配，頁尾與手機選單多出語言切換。殘餘 P3 為 PDF／瀏覽器字型抗鋸齒、截圖壓縮差異，以及本機 Next.js 開發工具與既有游標；沒有待修的首頁 P0／P1／P2 視覺問題。
+- 瀏覽器檢查中英文 390×844、768×1024、1440×1000：無橫向溢位；首頁／案例／台灣錨點、語言切換、Medix 詳頁導覽、手機選單與 Escape 焦點返回正常。空表單阻擋提交並聚焦必填欄位。首頁只有一個可見 H1，無舊 FAQPage 標記，console 無 error。另確認 About 仍使用 Hero New、Product 仍有 NOVA 主題，兩者皆不掛新版首頁樣式根節點。
+- `pnpm test`：191 項中 184 通過、7 項隔離環境整合測試跳過；新增表單 8 項 fake-fetch／元件測試涵蓋成功、400 多行錯誤、429、500 追蹤碼、網路失敗、非 JSON、重送與成功重試清空。`pnpm exec tsc --noEmit`、首頁異動檔 ESLint、`pnpm build`、`git diff --check` 通過。建置有既有 Edge Runtime deprecation 提醒，非本次首頁失敗；沒有寄信或新增正式聯絡訊息。
+- 既有內容限制：中英文 `/cases/medix` 路由可進入，但內文仍包含 TODO／待確認草稿。依本次「只改首頁」範圍保留，正式發布前應另補齊，不能把首頁視覺完成當成案例全文已完成。
+
+final result: passed（驗收範圍為本次首頁；唯一文檔仍為 README，未新增 design-qa.md。）
+
 ## Neon 成本調整（2026-10-06）
 
 公開 CMS 與首頁 ISR 的兜底從 60 秒延長為 3600 秒；所有 CMS 後台 mutation 仍以 tag 與 layout 失效，tag 改用 `{ expire: 0 }`，編輯後下一次讀取取得新內容。直接 SQL 修改不走失效，需要後台存檔或等兜底重新載入。
@@ -224,20 +287,9 @@ public/
 
 ## 首頁 Sections（由 `src/app/[locale]/page.tsx` 組合）
 
-1. **Navbar** — 固定導航；漢堡選單保留 `About`、`ESG`、`Product` 三個獨立頁面入口（首頁回跳由左上 Logo 提供，避免重複）
-2. **RollMap** — 滾動三頁：品牌 Hero → 全球 vs 台灣外商數量對比 → Forbes Global 2000 排名（含 ROLL ON 客戶）
-   - 包含 `sr-only` SSR 純文字版本供 LLM / 螢幕閱讀器讀取（視覺化數據雙軌化）
-   - 手機版 Hero 使用 `svh` 與受高度約束的 `contain` Logo 容器，並保留固定導覽列空間；短螢幕與 Safari 動態工具列不會再把直式 ROLL ON Logo 裁切，桌機仍維持原始最大寬度
-3. **TaiwanMap** — 台灣地圖縮放 → 全球 + 6 座橋樑城市；5 行品牌宣言
-4. **Services** — 服務卡片（**CMS 管理**），每張連到 `/services/[slug]` + Investor Access CTA
-5. **Work** — 案例章節（**CMS 管理**）：`Medix LLC` 可展開/收合；server wrapper 抓資料 → `WorkClient` 渲染 motion
-6. **Events** — R Event. 活動卡（**CMS 管理**）；server wrapper → `EventsClient` 渲染 motion
-7. **Clients** — 客戶 logo 牆（**CMS 管理**，server component）
-8. **GoldenTicket** — YouTube 頻道預覽（**CMS 管理**：影片清單 + 頻道設定）
-9. **InsightsTeaser** — 3 篇 pillar guides 入口（**CMS 管理**，已掛在 page.tsx）
-10. **Footer** — 聯絡表單（投遞到 `/api/contact` → 後台收件匣）+ 社群連結（**CMS 管理**）
+首頁目前由 `HomeV10` 組合，依序為：**HomeNavigation + Hero → Trusted by → Brand / Sales → Think / Execute / Land → Medix → Core belief → Contact + Footer**。英文忠於 PDF 第 1 頁，繁中使用相同設計與對應翻譯；桌面基準、互動與驗收見本 README 頂端的「五頁 PDF v10 改版」。
 
-> 所有 section 文字（含區塊標題、About / ESG 整頁）皆可由後台「文案翻譯」即時編輯；清單型內容（4–9）由各自 CRUD 管理。**例外**：RollMap 的數值（mapData / Forbes 排名）與地圖幾何座標仍寫死在程式碼（屬呈現邏輯），其文字標籤可由翻譯覆蓋編輯。
+首頁文字由後台「文案翻譯 → HomeV10」編輯，聯絡資訊仍由 `contactInfo` 設定管理。為維持圖稿的指定四品牌、順序與照片裁切，首頁 Logo 與 Medix 照以既有素材為預設，現在可從「新版官網」替換，位置及裁切保留 PDF 規格，不再使用舊首頁清單排序。舊 RollMap、TaiwanMap、Services、Work、Events、Clients、GoldenTicket、InsightsTeaser 與首頁 NOVA 價值卡已從首頁移除；元件與 CMS 資料保留，其他使用者與頁面不受影響。Approach／Cases／Taiwan／About 現與首頁共用新版導覽及聯絡頁尾；ESG 與其他既有內容頁保留原共用 Navbar／Footer，NOVA 產品頁保留自身品牌與共用價值卡。
 
 ## 產品著陸頁 `/product`（由 `src/app/[locale]/product/page.tsx` 組合）
 

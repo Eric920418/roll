@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const NAV: { href: string; label: string }[] = [
   { href: "/admin", label: "儀表板" },
+  { href: "/admin/website", label: "新版官網（五頁）" },
   { href: "/admin/services", label: "服務項目" },
   { href: "/admin/events", label: "活動" },
   { href: "/admin/clients", label: "客戶 Logo" },
