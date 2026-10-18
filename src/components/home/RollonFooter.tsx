@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/routing";
-import { pathForLocale } from "@/lib/routes";
+import { INSIGHT_SLUGS, pathForLocale } from "@/lib/routes";
 import { getSetting } from "@/lib/cms/content";
 import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
 import HomeContactForm from "./HomeContactForm";
@@ -19,6 +19,10 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
   const email = typeof contact.email === "string" ? contact.email : "Vivian.lee@roll-grp.com";
   const phone = typeof contact.phone === "string" ? contact.phone : "(+886) 980-371-946";
   const address = typeof contact.address === "string" ? contact.address : "Level 34, Taipei Nanshan Plaza, No. 100 Songren Road, Xinyi District, Taipei 110";
+  const socialLinks = [
+    { label: "Instagram", href: typeof contact.instagram === "string" ? contact.instagram : "https://www.instagram.com/rollon.tw/" },
+    { label: "LinkedIn", href: typeof contact.linkedin === "string" ? contact.linkedin : "https://www.linkedin.com/company/rollon/" },
+  ].filter(({ href }) => /^https?:\/\//i.test(href));
 
   return (
       <footer id="contact" className={styles.footer}>
@@ -34,6 +38,16 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
               {contactError && <p role="alert" className={styles.formError}>{contactError}</p>}
             </div>
             <HomeContactForm locale={locale} labels={{ name: t("contact.name"), email: t("contact.email"), message: t("contact.message"), send: t("contact.send"), sending: t("contact.sending"), success: t("contact.success"), error: t("contact.error") }} />
+          </div>
+          <div className={styles.footerResources}>
+            <nav aria-label={t("footer.insights")}>
+              <h3>{t("footer.insights")}</h3>
+              {INSIGHT_SLUGS.map((slug) => <Link key={slug} href={pathForLocale(`/insights/${slug}`, locale)}>{t(`footer.${slug}`)}</Link>)}
+            </nav>
+            {socialLinks.length > 0 && <nav aria-label={t("footer.social")}>
+              <h3>{t("footer.social")}</h3>
+              {socialLinks.map(({ label, href }) => <a key={label} href={href} target="_blank" rel="noopener noreferrer">{label} ↗</a>)}
+            </nav>}
           </div>
           <div className={styles.footerBottom}>
             <div className={styles.footerBrand}>

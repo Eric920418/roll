@@ -1,5 +1,11 @@
 # ROLL ON. 企業官網
 
+## 頁尾入口補回（2026-10-18）
+
+五頁雙語共用頁尾補回 Instagram、LinkedIn 與三篇既有深度指南。社群網址讀取 CMS `contactInfo.instagram`／`linkedin`，缺值沿用既有品牌網址；明確清空則隱藏，非 HTTP(S) 網址不渲染。三篇文章沿用原網址與語系，新增頁尾標籤可由 HomeV10 翻譯編輯。不改文章、資料庫或 NOVA 既有頁尾；此次依使用者正式發布授權更新正式站。
+
+驗收：`pnpm test` 203 項（194 通過、9 項隔離 DB 測試略過）、`pnpm exec tsc --noEmit`、`pnpm build`、`git diff --check` 通過；Lint 0 errors／14 個既有 warnings。新增替身測試涵蓋雙語文章／NOVA／語言連結、CMS 社群覆寫、清空與非法協定。瀏覽器檢查雙語 390／768／1440px 無水平溢位，確認社群網址、手機排版、可見鍵盤焦點與指南實際開啟。未提交正式 CMS 或表單資料，未重新稽核文章內容與搜尋排名。
+
 ## 正式發布（2026-10-18）
 
 使用者已授權將本次五頁雙語官網、NOVA 入口與新版 CMS 全部推送正式版；先前「僅本機、不 push、不部署」為前期驗收限制，本次授權已取代。發布前合併最新 origin/main 的 NOVA 會員功能，執行完整測試、Lint 與建置；以正式環境候選部署驗證後切換網域。此改版不執行資料庫 migration、seed、重設或既有資料覆寫。正式已發布：Vercel `dpl_47Sb5HoeoF5zLS3b4RaFyXdeoKJg`（`roll-bj9nq7taw`），程式 commit `33a7127`；先以 `--prod --skip-domain` 建立 Production 候選，驗證通過後 promote 至 `https://www.rollgrp.com` 與 `https://rollgrp.com`。先前可回退版本為 `dpl_54KaVGgsjyc1EDNSoidLKXEKtANX`。

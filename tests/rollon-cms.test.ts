@@ -6,6 +6,48 @@ import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { readAdminResponse } from "../src/lib/cms/admin-response";
 import * as assets from "../src/lib/cms/rollon-v10";
+import * as routes from "../src/lib/routes";
+
+test("共用頁尾保留雙語指南與 NOVA，社群使用 CMS、清空隱藏並拒絕危險協定", async () => {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const require = createRequire(import.meta.url);
+  let contact: Record<string, unknown> = {};
+  const loaded = { exports: {} as { default: (props: { locale: "en" | "zh-tw"; path: string }) => Promise<import("react").ReactNode> } };
+  runInNewContext(ts.transpileModule(readFileSync("src/components/home/RollonFooter.tsx", "utf8"), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText, {
+    module: loaded, exports: loaded.exports,
+    require: (id: string) => {
+      if (id === "next/link") return { default: "a" };
+      if (id === "./HomeContactForm") return { default: () => null };
+      if (id === "./home.module.css") return { default: {} };
+      if (id === "@/lib/routes") return routes;
+      if (id === "@/lib/cms/content") return { getSetting: async () => contact };
+      if (id === "@/lib/security/log") return {};
+      if (id === "next-intl/server") return { getTranslations: async ({ locale }: { locale: string }) => {
+        const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).HomeV10;
+        return (key: string) => key.split(".").reduce((value, part) => value[part], messages);
+      } };
+      return require(id);
+    },
+  });
+  for (const locale of ["en", "zh-tw"] as const) {
+    const render = async () => renderToStaticMarkup(await loaded.exports.default({ locale, path: "/about" }));
+    contact = {};
+    const defaults = await render();
+    for (const slug of routes.INSIGHT_SLUGS) assert.ok(defaults.includes(`href="${routes.pathForLocale(`/insights/${slug}`, locale)}"`));
+    assert.ok(defaults.includes(`href="${routes.pathForLocale("/product", locale)}"`));
+    assert.ok(defaults.includes('href="/zh-tw/about"'));
+    assert.ok(defaults.includes('href="https://www.instagram.com/rollon.tw/"'));
+    assert.ok(defaults.includes('href="https://www.linkedin.com/company/rollon/"'));
+    assert.ok(defaults.includes(locale === "en" ? "Insights &amp; guides" : "深度指南"));
+    contact = { instagram: "https://www.instagram.com/cms-profile/", linkedin: "" };
+    const custom = await render();
+    assert.ok(custom.includes('href="https://www.instagram.com/cms-profile/" target="_blank" rel="noopener noreferrer"'));
+    assert.ok(!custom.includes("LinkedIn"));
+    contact = { instagram: "javascript:alert(1)", linkedin: "data:text/html,bad" };
+    const invalid = await render();
+    assert.ok(!invalid.includes("Instagram") && !invalid.includes("LinkedIn"));
+  }
+});
 
 const blob = "https://example.public.blob.vercel-storage.com/rollon-v10/photo.jpg";
 test("五頁 44 個圖片位置有唯一名稱、存在的預設素材，覆寫只影響對應位置", () => {
