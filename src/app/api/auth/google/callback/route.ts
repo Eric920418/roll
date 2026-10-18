@@ -1,3 +1,4 @@
+import { newDiscoveryTrial } from "@/lib/discovery/policy";
 import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -84,6 +85,7 @@ export async function GET(req: NextRequest) {
           image: profile.picture,
           emailVerified: new Date(), // Google 已驗證
           onboardingStep: 2, // Google 註冊即完成帳號步驟
+          ...newDiscoveryTrial(),
         },
       });
     }

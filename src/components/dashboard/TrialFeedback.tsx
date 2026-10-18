@@ -12,7 +12,7 @@ const empty = { goal: "", motivation: "", firstStep: "", continueUsing: "" as ""
 const button = "inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/30 px-5 py-2.5 text-sm font-semibold disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2";
 const bar = "h-3 w-full overflow-hidden rounded-full bg-dark/10 [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black";
 
-export default function TrialFeedback({ userId }: { userId: string }) {
+export default function TrialFeedback({ userId, discovery = false, paidDiscovery = false }: { userId: string; discovery?: boolean; paidDiscovery?: boolean }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw", pathname = usePathname();
   const inNextSteps = pathname === pathForLocale("/dashboard/agenda", locale);
   const [status, setStatus] = useState<Status | null>(null), [error, setError] = useState("");
@@ -52,10 +52,10 @@ export default function TrialFeedback({ userId }: { userId: string }) {
     }, 0); return () => clearTimeout(timer);
   }, [key, zh]);
   useEffect(() => {
-    if (!key || !status?.trial?.due || status.submitted || autoOpened.current === key) return;
+    if (paidDiscovery || !key || !status?.trial?.due || status.submitted || autoOpened.current === key) return;
     try { if (sessionStorage.getItem(`${key}:dismissed`)) return; } catch { /* In-memory guard prevents repeated popups. */ }
     const timer = setTimeout(() => { autoOpened.current = key; show(); }, 0); return () => clearTimeout(timer);
-  }, [key, status]);
+  }, [key, status, paidDiscovery]);
   function change(name: keyof typeof empty, value: string) {
     const next = { ...answers, [name]: value };
     if (name === "continueUsing") next.reason = value === "yes" ? next.yesReason : next.noReason;
@@ -96,7 +96,7 @@ export default function TrialFeedback({ userId }: { userId: string }) {
   }
   const trial = status?.trial;
   return <>
-    {inNextSteps && trial?.available && <section aria-label={zh ? "免費試用" : "Free trial"} className="mb-6 rounded-2xl border-2 border-black bg-white p-5 sm:p-7">
+    {inNextSteps && !discovery && trial?.available && <section aria-label={zh ? "免費試用" : "Free trial"} className="mb-6 rounded-2xl border-2 border-black bg-white p-5 sm:p-7">
       <p className="text-xs font-semibold uppercase tracking-[0.15em] text-dark/65">Free trial</p>
       <h2 className="mt-3 text-2xl font-bold sm:text-3xl">{trial.active ? (zh ? `免費試用還剩 ${trial.daysRemaining} 天` : `${trial.daysRemaining} days left in your free trial`) : (zh ? "你的免費試用已結束" : "Your free trial is over")}</h2>
       <progress aria-label={zh ? "試用時間進度" : "Trial time elapsed"} max={100} value={trial.elapsedPercent} className={`${bar} mt-5`} />
@@ -104,6 +104,7 @@ export default function TrialFeedback({ userId }: { userId: string }) {
       <p className="mt-4 text-base text-dark/75">{status?.submitted ? (zh ? "感謝！回饋已保存，你可以查看下一步的方案選擇。" : "Thank you! Your feedback is saved. Explore your plan options for the next step.") : (zh ? "花約 2 分鐘告訴我們 NOVA 對你的幫助，完成回饋後選擇接下來的方案。" : "Tell us how Nova is working for you (about 2 minutes). Finish the feedback, then choose your next plan.")}</p>
       {status?.submitted ? <Link href={pathForLocale("/dashboard/account#plan", locale)} className={`${button} mt-5 bg-black text-white`}>{zh ? "查看方案" : "View plans"}</Link> : <button type="button" className={`${button} mt-5 bg-black text-white`} onClick={show}>{zh ? "填寫回饋" : "Give feedback"}</button>}
     </section>}
+    {inNextSteps && discovery && trial?.available && !status?.submitted && <div className="mb-4 text-right"><button type="button" className={button} onClick={show}>{zh ? "填寫試用回饋（選填）" : "Give trial feedback (optional)"}</button></div>}
     {error && !opened && inNextSteps && <div role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p><button type="button" className={`${button} mt-2`} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></div>}
     <dialog id="trial-feedback-dialog" ref={dialog} onToggle={() => setOpened(Boolean(dialog.current?.open))} aria-labelledby="trial-feedback-title" onCancel={event => { if (busy) event.preventDefault(); }} onClose={() => { setOpened(false); try { if (key) sessionStorage.setItem(`${key}:dismissed`, "true"); } catch { /* In-memory guard remains active. */ } }} className="nova-theme fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-4xl overflow-y-auto rounded-2xl border-0 bg-white p-5 text-dark shadow-xl backdrop:bg-black/45 sm:rounded-3xl sm:p-10">
       <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold tracking-[0.2em]">NOVA</p><button type="button" disabled={busy} aria-label={zh ? "關閉回饋問卷" : "Close feedback survey"} className={button} onClick={() => dialog.current?.close()}>×</button></div>

@@ -17,7 +17,7 @@ async function read<T>(url: string, init?: RequestInit): Promise<T> {
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
   return body.data;
 }
-export default function HomeLogButton({ canRecord }: { canRecord: boolean }) {
+export default function HomeLogButton({ canRecord, discovery = false }: { canRecord: boolean; discovery?: boolean }) {
   const locale = useLocale() === "zh-tw" ? "zh-tw" : "en", zh = locale === "zh-tw", userId = useDashboardUser();
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLElement | null>(null), pending = useRef(false);
   const [plan, setPlan] = useState<ActionPlanDto | null>(null), [actionId, setActionId] = useState<string | null>(null);
@@ -53,6 +53,7 @@ export default function HomeLogButton({ canRecord }: { canRecord: boolean }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { pending.current = false; setBusy(false); }
   }
+  if (discovery) return <Link href={`${pathForLocale("/dashboard/agenda", locale)}#discovery`} className="inline-flex min-h-12 items-center justify-center rounded-full bg-dark px-6 py-3 text-base font-bold text-white">+ {zh ? "記錄訪談" : "Log interview"}</Link>;
   return <>
     <button type="button" onClick={() => void open()} className="inline-flex min-h-12 items-center justify-center rounded-full bg-dark px-6 py-3 text-base font-bold text-white hover:bg-dark/85 focus-visible:outline-2 focus-visible:outline-offset-4">+ {zh ? "記錄訪談" : "Log interview"}</button>
     <dialog ref={dialog} aria-labelledby="home-interview-title" onClose={() => { if (trigger.current?.isConnected) trigger.current.focus(); }} className="nova-theme fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-3xl bg-white p-5 text-dark backdrop:bg-black/50 sm:p-7">

@@ -35,8 +35,12 @@ export async function POST(req: NextRequest) {
 
     const basePlan = await getActiveActionPlan(session.uid);
     const quiz = await getLatestQuizResult(session.uid);
+    const interviewEvidence = account.trialPolicy === "interviews-3-v1"
+      ? await (await import("@/lib/discovery/service")).getDiscoverySnapshot(session.uid).then(snapshot => ({ companies: snapshot.total, report: snapshot.report, preview: snapshot.preview }))
+      : undefined;
     const actions = await generateActionCandidates({
       locale: parsed.data.locale,
+      interviewEvidence,
       profile: account.profile,
       quiz,
       messages: parsed.data.messages,

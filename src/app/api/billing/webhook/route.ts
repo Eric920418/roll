@@ -27,6 +27,7 @@ type PaypalEvent = {
     id?: string;
     billing_agreement_id?: string;
     supplementary_data?: { related_ids?: { order_id?: string } };
+    links?: Array<{ rel: string; href: string }>;
   };
 };
 
@@ -103,7 +104,14 @@ export async function POST(req: NextRequest) {
           select: { id: true },
         });
         if (purchase) await fulfillCreditOrder(await getOrder(orderId));
+        else if (await prisma.founderOrder.findUnique({ where: { paypalOrderId: orderId }, select: { id: true } })) await (await import("@/lib/discovery/founder")).fulfillFounderOrder(await getOrder(orderId));
       }
+    }
+
+    if (eventType === "PAYMENT.CAPTURE.REFUNDED" || eventType === "PAYMENT.CAPTURE.REVERSED") {
+      const path = event.resource?.links?.find(link => link.rel === "up")?.href;
+      const captureId = eventType === "PAYMENT.CAPTURE.REVERSED" ? event.resource?.id : path?.match(/\/v2\/payments\/captures\/([A-Za-z0-9]+)(?:[/?#]|$)/)?.[1];
+      if (captureId) await (await import("@/lib/discovery/founder")).revokeFounderCapture(captureId, eventType === "PAYMENT.CAPTURE.REVERSED");
     }
 
     return NextResponse.json({ ok: true });

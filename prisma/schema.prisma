@@ -170,6 +170,9 @@ model User {
   trialPlan     String?
   trialStartsAt DateTime?
   trialEndsAt   DateTime?
+  trialPolicy   String?
+  founderStartedAt DateTime?
+  founderEndsAt DateTime?
 
   // Tools 落地清單勾選狀態 { itemKey: true }
   checklistState Json @default("{}")
@@ -198,6 +201,8 @@ model User {
   deals        Deal[]
   customerStageOutcomes CustomerStageOutcome[]
   meetingNotes MeetingNote[]
+  discoveryJourney DiscoveryJourney?
+  founderOrders FounderOrder[]
   copilotTurns CopilotTurn[]
   icpWorkspace IcpWorkspace?
 
@@ -224,6 +229,46 @@ model User {
   weekCalendarItems WeekCalendarItem[]
   calendarAlerts CalendarTaskAlert[]
 
+}
+
+/// 新試用的三次初步訪談與付費後十次完整分析；不覆寫舊計畫或訪談。
+model DiscoveryJourney {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version Int @default(0)
+  preview Json?
+  previewVersion Int?
+  report Json?
+  reportVersion Int?
+  analysisToken String?
+  analysisExpiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// 創始會員一次性年費；paid 的 seat 永久佔名額，待付款逾期才釋放。
+model FounderOrder {
+  id String @id @default(cuid())
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  requestId String @unique
+  paypalOrderId String? @unique
+  paypalCaptureId String? @unique
+  seat Int? @unique
+  status String @default("reserved")
+  reservedUntil DateTime
+  captureToken String?
+  captureExpiresAt DateTime?
+  paidAt DateTime?
+  accessEndsAt DateTime?
+  revokedAt DateTime?
+  paymentCheckedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([status, reservedUntil])
 }
 
 /// Onboarding Step 2/3 資料（與 User 1:1）。欄位內容為推測，待設計確認。

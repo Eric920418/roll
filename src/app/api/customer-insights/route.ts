@@ -45,8 +45,9 @@ export async function POST(req: NextRequest) {
   const blocked = browserMutationGuard(req, true); if (blocked) return blocked;
   try {
     const session = await getUserSession(); if (!session) return unauthorized();
-    if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案 / Pro plan required", 403);
     const { requestId, insight } = create.parse(await req.json());
+    if (!(await requirePlan("pro")) && !insight.journeyId) return fail("此功能需 Pro 以上方案 / Pro plan required", 403);
+    if (insight.journeyId && (insight.stage !== "discover" || insight.type !== "Prospect")) return fail("此工作區只記錄潛在客戶訪談 / This workspace records prospect interviews", 400);
     const id = `insight_${requestId}`;
     try {
       await prisma.$transaction(async raw => {
@@ -56,9 +57,11 @@ export async function POST(req: NextRequest) {
           if (existing.userId !== session.uid || !sameInsight(existing.insight, insight)) throw new PlanWriteError("這次提交已儲存不同內容，請重新載入；輸入保留 / Submission already saved with different content; reload", 409);
           return;
         }
+        if (insight.journeyId) await (await import("@/lib/discovery/service")).lockDiscoveryWrite(tx, session.uid, insight.journeyId, true);
         if (insight.actionId) await lockInterviewAction(tx, session.uid, insight.actionId, true);
         await tx.meetingNote.create({ data: { id, userId: session.uid, ...noteData(insight), meetingType: "other" } });
         if (insight.actionId) await refreshInterviewProgress(tx, session.uid, insight.actionId);
+        if (insight.journeyId) await (await import("@/lib/discovery/service")).invalidateDiscovery(tx, insight.journeyId);
       });
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
@@ -73,18 +76,22 @@ export async function PATCH(req: NextRequest) {
   const blocked = browserMutationGuard(req, true); if (blocked) return blocked;
   try {
     const session = await getUserSession(); if (!session) return unauthorized();
-    if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案 / Pro plan required", 403);
     const input = edit.parse(await req.json());
+    if (!(await requirePlan("pro")) && !input.insight.journeyId) return fail("此功能需 Pro 以上方案 / Pro plan required", 403);
+    if (input.insight.journeyId && (input.insight.stage !== "discover" || input.insight.type !== "Prospect")) return fail("此工作區只記錄潛在客戶訪談 / This workspace records prospect interviews", 400);
     await prisma.$transaction(async raw => {
       const tx = raw as unknown as Prisma.TransactionClient;
       const row = await tx.meetingNote.findFirst({ where: { id: input.id, userId: session.uid }, select: { insight: true } });
       const old = insightSchema.safeParse(row?.insight);
       if (!row || !old.success) throw new PlanWriteError("找不到對話 / Conversation not found", 404);
+      if (old.data.journeyId !== input.insight.journeyId) throw new PlanWriteError("不可移除或轉移工作區關聯 / Cannot remove or transfer a workspace link", 409);
+      if (input.insight.journeyId) await (await import("@/lib/discovery/service")).lockDiscoveryWrite(tx, session.uid, input.insight.journeyId);
       if (old.data.actionId && old.data.actionId !== input.insight.actionId) throw new PlanWriteError("不可移除或轉移訪談的任務關聯 / Cannot remove or transfer the interview task link", 409);
       if (input.insight.actionId) await lockInterviewAction(tx, session.uid, input.insight.actionId, !old.data.actionId);
       const updated = await tx.meetingNote.updateMany({ where: { id: input.id, userId: session.uid, updatedAt: new Date(input.updatedAt) }, data: noteData(input.insight) });
       if (!updated.count) throw new PlanWriteError("紀錄已由其他分頁更新；輸入保留，請重新載入後比對 / Conversation changed in another tab; reload and compare", 409);
       if (input.insight.actionId) await refreshInterviewProgress(tx, session.uid, input.insight.actionId);
+      if (input.insight.journeyId) await (await import("@/lib/discovery/service")).invalidateDiscovery(tx, input.insight.journeyId);
     });
     return ok({ id: input.id, ...(input.insight.actionId ? { plan: await getActiveActionPlan(session.uid) } : {}) });
   } catch (error) { return errorResponse(error); }

@@ -6,6 +6,9 @@ import AgendaBoard from "@/components/dashboard/AgendaBoard";
 import PlanPaywall from "@/components/dashboard/PlanPaywall";
 import type { Locale } from "@/i18n/routing";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
+import { getCurrentAccount } from "@/lib/auth/account";
+import { isDiscoveryMember } from "@/lib/discovery/policy";
+import DiscoveryJourney from "@/components/dashboard/discovery/DiscoveryJourney";
 
 type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ guide?: string }> };
 
@@ -18,6 +21,8 @@ export default async function AgendaPage({ params, searchParams }: Props) {
 
   // layout 已確保登入；null → 方案不足（付費牆）
   const account = await requirePlan("pro");
+  const current = account ?? await getCurrentAccount();
+  const discovery = isDiscoveryMember(current);
 
   if (!account) {
     return (
@@ -26,7 +31,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
           {t("title")}
         </h1>
         <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
-        <PlanPaywall locale={l} />
+        {discovery && current ? <div className="mt-7"><DiscoveryJourney userId={current.id} /></div> : <PlanPaywall locale={l} />}
       </div>
     );
   }
@@ -42,6 +47,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
       <GettingStartedHint mode="next" />
+      {discovery && <div className="my-7"><DiscoveryJourney userId={account.id} /></div>}
       <AgendaBoard guided={guided} userId={account.id}
         actionPlan={actionPlan}
       />

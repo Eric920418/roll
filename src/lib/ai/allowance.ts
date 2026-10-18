@@ -48,7 +48,7 @@ async function allowanceCycleFor(account: Account, now: Date) {
         select: { startedAt: true },
       })
     : null;
-  return monthlyCycle(sub?.startedAt ?? account.planUpdatedAt ?? account.createdAt, now);
+  return monthlyCycle(sub?.startedAt ?? account.founderStartedAt ?? account.planUpdatedAt ?? account.createdAt, now);
 }
 
 async function serializable<T>(

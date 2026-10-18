@@ -52,6 +52,7 @@ async function getAccessToken(): Promise<string> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(20_000),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -103,6 +104,7 @@ export interface PaypalOrder {
         id: string;
         status: string;
         amount?: { currency_code?: string; value?: string };
+        create_time?: string;
       }>;
     };
   }>;
@@ -220,6 +222,32 @@ export async function createCreditOrder(params: {
   return { id: order.id, status: order.status, approveUrl };
 }
 
+/** One prepaid year, with no subscription or automatic renewal. */
+export async function createFounderPayment(params: { localOrderId: string; returnUrl: string; cancelUrl: string }): Promise<PaypalOrder> {
+  const res = await paypalFetch("/v2/checkout/orders", {
+    method: "POST", signal: AbortSignal.timeout(20_000),
+    headers: { "PayPal-Request-Id": `founder-${params.localOrderId}`, Prefer: "return=representation" },
+    jsonBody: { intent: "CAPTURE", purchase_units: [{ custom_id: params.localOrderId, description: "NOVA Founding Member — 12 months, one-time payment, no auto-renewal", amount: { currency_code: "USD", value: "348.00" } }],
+      application_context: { brand_name: "NOVA by ROLL ON", user_action: "PAY_NOW", shipping_preference: "NO_SHIPPING", return_url: params.returnUrl, cancel_url: params.cancelUrl } },
+  });
+  if (!res.ok) throw new Error(`PayPal founder order failed (${res.status})`);
+  return await res.json() as PaypalOrder;
+}
+
+export async function captureFounderPayment(orderId: string, localOrderId: string): Promise<PaypalOrder> {
+  const res = await paypalFetch(`/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
+    method: "POST", signal: AbortSignal.timeout(20_000), headers: { "PayPal-Request-Id": `founder-capture-${localOrderId}`, Prefer: "return=representation" }, jsonBody: {},
+  });
+  if (!res.ok) throw new Error(`PayPal founder capture failed (${res.status})`);
+  return await res.json() as PaypalOrder;
+}
+
+export async function getFounderCapture(captureId: string): Promise<{ id: string; status: string }> {
+  const response = await paypalFetch(`/v2/payments/captures/${encodeURIComponent(captureId)}`, { method: "GET", signal: AbortSignal.timeout(20_000) });
+  if (!response.ok) throw new Error(`PayPal capture status unavailable (${response.status})`);
+  return await response.json() as { id: string; status: string };
+}
+
 export async function captureCreditOrder(
   orderId: string,
   requestId: string,
@@ -243,7 +271,7 @@ export async function captureCreditOrder(
 
 export async function getOrder(orderId: string): Promise<PaypalOrder> {
   const res = await paypalFetch(`/v2/checkout/orders/${encodeURIComponent(orderId)}`, {
-    method: "GET",
+    method: "GET", signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) {
     throw new Error(`PayPal 查詢額度訂單失敗（${res.status}）：${await res.text()}`);

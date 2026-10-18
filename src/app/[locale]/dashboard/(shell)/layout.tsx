@@ -7,6 +7,7 @@ import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { pathForLocale } from "@/lib/routes";
+import { isDiscoveryMember } from "@/lib/discovery/policy";
 import type { Locale } from "@/i18n/routing";
 
 import { RewardsProvider } from "@/components/dashboard/rewards/RewardsProvider";
@@ -45,7 +46,7 @@ export default async function DashboardLayout({ children, params }: Props) {
         userLabel={userLabel}
       />
       <main className="nova-page-enter min-w-0 flex-1 px-5 py-8 md:px-8">
-        <div className="mx-auto w-full max-w-7xl"><TrialFeedback key={account.id} userId={account.id} />{children}</div>
+        <div className="mx-auto w-full max-w-7xl"><TrialFeedback key={account.id} userId={account.id} discovery={isDiscoveryMember(account)} paidDiscovery={isDiscoveryMember(account) && effectivePlan !== "free"} />{children}</div>
       </main>
     </div>
     </RewardsProvider></DashboardUserProvider>

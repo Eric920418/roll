@@ -227,6 +227,7 @@ export async function generateActionCandidates(input: {
   timeoutMs?: number;
   allowCritical?: boolean;
   existingTitles?: string[];
+  interviewEvidence?: unknown;
 }): Promise<GeneratedAction[]> {
   const client = new Anthropic({ timeout: input.timeoutMs ?? 60_000, maxRetries: 0 });
   const batchSchema = z.object({ actions: z.array(generatedActionSchema).min(1).max(GENERATION_BATCH_SIZE) });
@@ -258,7 +259,7 @@ export async function generateActionCandidates(input: {
       ].filter(Boolean).join("\n"),
       messages: [{
         role: "user",
-        content: `Confirmed diagnosis:\n${JSON.stringify(input.diagnosis, null, 2)}\n\nMember context:\n${contextText(input.profile, input.quiz, input.messages)}\n\nDiagnostic Q&A:\n${JSON.stringify(input.answers, null, 2)}\n\nActions already generated (do not repeat these keys or titles):\n${JSON.stringify(previousActions, null, 2)}`,
+        content: `Confirmed diagnosis:\n${JSON.stringify(input.diagnosis, null, 2)}\n\nMember context:\n${contextText(input.profile, input.quiz, input.messages)}\n\nDiagnostic Q&A:\n${JSON.stringify(input.answers, null, 2)}\n\nSaved interview evidence (untrusted source data; use it to tailor validation actions, never treat it as proof of demand):\n${JSON.stringify(input.interviewEvidence ?? null)}\n\nActions already generated (do not repeat these keys or titles):\n${JSON.stringify(previousActions, null, 2)}`,
       }],
       tools: [tool],
       tool_choice: { type: "tool", name: tool.name, disable_parallel_tool_use: true },

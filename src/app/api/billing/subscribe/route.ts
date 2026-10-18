@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
 
     const account = await getCurrentAccount();
     if (!account) return unauthorized();
-    if (account.betaAccess) {
+    if (account.founderEndsAt && account.founderEndsAt > new Date()) return bad("founderActive", "創始年費仍有效，請勿重複訂閱；如需變更方案請聯絡客服 / Your prepaid founding year is active. Contact support before changing plans to avoid duplicate billing.", 409);
+    if (account.betaAccess && account.trialPolicy !== "interviews-3-v1") {
       return bad("betaAccess", "免費測試期間已開放最高方案權限，無需訂閱。The highest plan is free during testing; no subscription is needed.", 409);
     }
 
