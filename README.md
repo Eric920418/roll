@@ -2,7 +2,11 @@
 
 ## 正式發布（2026-10-18）
 
-使用者已授權將本次五頁雙語官網、NOVA 入口與新版 CMS 全部推送正式版；先前「僅本機、不 push、不部署」為前期驗收限制，本次授權已取代。發布前合併最新 origin/main 的 NOVA 會員功能，執行完整測試、Lint 與建置；以正式環境候選部署驗證後切換網域。此改版不執行資料庫 migration、seed、重設或既有資料覆寫。正式部署與驗收結果於完成後記錄。
+使用者已授權將本次五頁雙語官網、NOVA 入口與新版 CMS 全部推送正式版；先前「僅本機、不 push、不部署」為前期驗收限制，本次授權已取代。發布前合併最新 origin/main 的 NOVA 會員功能，執行完整測試、Lint 與建置；以正式環境候選部署驗證後切換網域。此改版不執行資料庫 migration、seed、重設或既有資料覆寫。正式已發布：Vercel `dpl_47Sb5HoeoF5zLS3b4RaFyXdeoKJg`（`roll-bj9nq7taw`），程式 commit `33a7127`；先以 `--prod --skip-domain` 建立 Production 候選，驗證通過後 promote 至 `https://www.rollgrp.com` 與 `https://rollgrp.com`。先前可回退版本為 `dpl_54KaVGgsjyc1EDNSoidLKXEKtANX`。
+
+發布前 `pnpm test`：202 項／193 通過／9 項隔離資料庫測試略過；`pnpm lint`：0 errors／14 個既有 warnings；本機與 Vercel Production 建置成功（376 靜態頁）。候選及正式網域各完成 15 項路由檢查：五頁雙語有新版標記、唯一 H1、NOVA 連結與正式 canonical；兩個 NOVA 產品頁正常；CMS 頁面未登入導向登入頁、設定 API 回 401；sitemap 含新版頁面。43 張去重圖片全部 200，公開頁面無 CMS 錯誤提示。正式首頁 1440px 無水平溢位，瀏覽器確認為新版。執行錯誤日誌初查未發現 error。
+
+正式 CMS 管理入口：`https://www.rollgrp.com/admin/website`；保留原管理員登入。未操作正式 CMS 上傳／儲存及聯絡表單送出，相關寫入流程沿用替身測試結果，不宣稱已完成正式寫入驗收。發布證據：`/private/tmp/rollon-{candidate,production}-smoke.json`、`/private/tmp/rollon-release-{tests,lint,build}.log`；截圖 `rollon-production-20261018.png` 位於本 README 下方所列視覺證據目錄。
 
 ## 五頁 PDF v10 改版（2026-10-15）
 
