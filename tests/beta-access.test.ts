@@ -7,11 +7,15 @@ import ts from "typescript";
 import * as plans from "../src/lib/billing/plans";
 import type { BillingAccount } from "../src/lib/billing/gate";
 import type { Account } from "../src/lib/auth/account";
+import * as discoveryPolicy from "../src/lib/discovery/policy";
+import { createElement, type ComponentType } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import * as jsxRuntime from "react/jsx-runtime";
 
 function load<T>(file: string, dependencies: Record<string, unknown>): T {
   const exports = {};
   const code = ts.transpileModule(readFileSync(file, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   runInNewContext(code, {
     exports, process, Date,
@@ -34,6 +38,72 @@ const account: BillingAccount = {
   currentPeriodEnd: null, planUpdatedAt: null,
   trialPlan: null, trialStartsAt: null, trialEndsAt: null,
 };
+
+test("admin lists stored plan, effective access and grant sources without exposing billing credentials", async () => {
+  let betaAccess = true;
+  let authorized = true;
+  let reads = 0;
+  let rows: Array<{ plan: string; effectivePlan: string; accessLabel: string }> = [];
+  const start = new Date(Date.now() - 86400000), end = new Date(Date.now() + 86400000);
+  const cases = [
+    { ...account, id: "basic" },
+    { ...account, id: "legacy-trial", trialPlan: "pro", trialStartsAt: start, trialEndsAt: end },
+    { ...account, id: "discovery", trialPolicy: discoveryPolicy.DISCOVERY_POLICY, trialPlan: "pro", trialStartsAt: start, trialEndsAt: end },
+    { ...account, id: "founder", trialPolicy: discoveryPolicy.DISCOVERY_POLICY, founderStartedAt: start, founderEndsAt: end },
+    { ...account, id: "pending", trialPolicy: discoveryPolicy.DISCOVERY_POLICY, plan: "pro", subscriptionStatus: "APPROVAL_PENDING", paypalSubscriptionId: "I-private" },
+    { ...account, id: "paid", plan: "business", subscriptionStatus: "ACTIVE", paypalSubscriptionId: "I-paid", currentPeriodEnd: end },
+    { ...account, id: "expired", trialPolicy: discoveryPolicy.DISCOVERY_POLICY, trialPlan: "pro", trialStartsAt: new Date(0), trialEndsAt: start },
+  ].map(value => ({ ...value, email: `${value.id}@example.invalid`, firstName: value.id, lastName: null, googleId: null, emailVerified: start, completed: true, onboardingStep: 4, quizCompleted: true, createdAt: start, passwordHash: "never-send-this" }));
+  const jsx = (type: unknown, props: { users?: typeof rows }) => {
+    if (props.users) rows = props.users;
+    return { type, props };
+  };
+  const page = load<{ default: () => Promise<unknown> }>("src/app/admin/(dashboard)/users/page.tsx", {
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+    "@/lib/auth/guard": { requireAdminPage: async () => { if (!authorized) throw new Error("Unauthorized"); } },
+    "@/lib/auth/account": { getBetaAccess: async () => betaAccess },
+    "@/lib/billing/gate": gate, "@/lib/billing/plans": plans,
+    "@/lib/discovery/policy": discoveryPolicy,
+    "@/components/admin/UsersList": { default: () => null },
+    "@/lib/prisma": { prisma: { user: { findMany: async ({ select }: { select: Record<string, boolean> }) => {
+      reads++;
+      assert.equal(select.passwordHash, undefined);
+      return cases.map(value => Object.fromEntries(Object.entries(value).filter(([key]) => select[key])));
+    } } } },
+  });
+  await page.default();
+  assert.equal(rows[0].plan, "free");
+  assert.equal(rows[0].effectivePlan, "enterprise");
+  assert.match(rows[0].accessLabel, /免費測試授權/);
+  assert.equal(rows[2].effectivePlan, "free");
+  assert.match(rows[2].accessLabel, /3 次訪談試用/);
+  assert.equal(rows[3].effectivePlan, "pro");
+  assert.match(rows[3].accessLabel, /創始會員/);
+  assert.equal(rows[4].effectivePlan, "free");
+  assert.equal(rows[6].effectivePlan, "free");
+  assert.match(rows[6].accessLabel, /到期/);
+  assert(!JSON.stringify(rows).includes("I-private"));
+  assert(!JSON.stringify(rows).includes("never-send-this"));
+  const list = load<{ default: ComponentType<{ users: typeof rows }> }>("src/components/admin/UsersList.tsx", {
+    "react/jsx-runtime": jsxRuntime,
+    react: { useMemo: (fn: () => unknown) => fn(), useState: (initial: unknown) => [initial, () => {}] },
+    "next/navigation": { useRouter: () => ({ refresh: () => {} }) },
+  });
+  const html = renderToStaticMarkup(createElement(list.default, { users: rows }));
+  for (const label of ["帳戶方案（原始）", "目前功能權限／授權來源", "Enterprise 功能", "免費測試授權（非付費訂閱）", "PayPal 待付款人核准"]) assert(html.includes(label), label);
+  assert(!html.includes("I-private"));
+  betaAccess = false;
+  await page.default();
+  assert.equal(rows[0].effectivePlan, "free");
+  assert.equal(rows[1].effectivePlan, "pro");
+  assert.match(rows[1].accessLabel, /Pro 限時試用/);
+  assert.equal(rows[5].effectivePlan, "business");
+  assert.match(rows[5].accessLabel, /PayPal 訂閱/);
+  authorized = false;
+  const before = reads;
+  await assert.rejects(page.default(), /Unauthorized/);
+  assert.equal(reads, before);
+});
 
 test("beta grants Enterprise to registered accounts; revoking preserves original entitlements", () => {
   assert.equal(gate.getEffectivePlan(null, now), "free");

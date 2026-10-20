@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+const PLAN_LABELS: Record<string, string> = { free: "Free", pro: "Pro", business: "Business", enterprise: "Enterprise" };
+
 export type UserRow = {
   id: string;
   email: string;
@@ -10,6 +12,8 @@ export type UserRow = {
   provider: "Google" | "Email";
   emailVerified: boolean;
   plan: string;
+  effectivePlan: string;
+  accessLabel: string;
   subscriptionStatus: string | null;
   hasPaypalSubscription: boolean;
   currentPeriodEnd: string | null;
@@ -116,7 +120,8 @@ export default function UsersList({ users }: { users: UserRow[] }) {
               <th className="px-4 py-2.5 text-left font-medium">用戶</th>
               <th className="px-4 py-2.5 text-left font-medium">Email</th>
               <th className="px-4 py-2.5 text-left font-medium">註冊方式</th>
-              <th className="px-4 py-2.5 text-left font-medium">方案</th>
+              <th className="px-4 py-2.5 text-left font-medium">帳戶方案（原始）</th>
+              <th className="px-4 py-2.5 text-left font-medium">目前功能權限／授權來源</th>
               <th className="px-4 py-2.5 text-left font-medium">狀態</th>
               <th className="px-4 py-2.5 text-left font-medium">限時試用</th>
               <th className="px-4 py-2.5 text-left font-medium">註冊時間</th>
@@ -149,12 +154,16 @@ export default function UsersList({ users }: { users: UserRow[] }) {
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
-                  <span className="font-medium">{u.plan}</span>
+                  <span className="font-medium">{PLAN_LABELS[u.plan] ?? u.plan}</span>
                   {u.subscriptionStatus && (
                     <span className="ml-1.5 text-xs text-neutral-400">
-                      {u.subscriptionStatus}
+                      {u.subscriptionStatus === "APPROVAL_PENDING" ? "PayPal 待付款人核准" : u.subscriptionStatus}
                     </span>
                   )}
+                </td>
+                <td className="min-w-56 px-4 py-2.5">
+                  <span className="font-medium">{PLAN_LABELS[u.effectivePlan] ?? u.effectivePlan} 功能</span>
+                  <p className="mt-1 text-xs text-neutral-500">{u.accessLabel}</p>
                 </td>
                 <td className="whitespace-nowrap px-4 py-2.5 text-xs text-neutral-600">
                   {u.status}
