@@ -53,6 +53,7 @@ test("admin lists stored plan, effective access and grant sources without exposi
     { ...account, id: "pending", trialPolicy: discoveryPolicy.DISCOVERY_POLICY, plan: "pro", subscriptionStatus: "APPROVAL_PENDING", paypalSubscriptionId: "I-private" },
     { ...account, id: "paid", plan: "business", subscriptionStatus: "ACTIVE", paypalSubscriptionId: "I-paid", currentPeriodEnd: end },
     { ...account, id: "expired", trialPolicy: discoveryPolicy.DISCOVERY_POLICY, trialPlan: "pro", trialStartsAt: new Date(0), trialEndsAt: start },
+    { ...account, id: "manual", plan: "enterprise" },
   ].map(value => ({ ...value, email: `${value.id}@example.invalid`, firstName: value.id, lastName: null, googleId: null, emailVerified: start, completed: true, onboardingStep: 4, quizCompleted: true, createdAt: start, passwordHash: "never-send-this" }));
   const jsx = (type: unknown, props: { users?: typeof rows }) => {
     if (props.users) rows = props.users;
@@ -82,6 +83,7 @@ test("admin lists stored plan, effective access and grant sources without exposi
   assert.equal(rows[4].effectivePlan, "free");
   assert.equal(rows[6].effectivePlan, "free");
   assert.match(rows[6].accessLabel, /到期/);
+  assert.match(rows[7].accessLabel, /管理員 Enterprise 授權/);
   assert(!JSON.stringify(rows).includes("I-private"));
   assert(!JSON.stringify(rows).includes("never-send-this"));
   const list = load<{ default: ComponentType<{ users: typeof rows }> }>("src/components/admin/UsersList.tsx", {

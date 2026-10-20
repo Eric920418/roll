@@ -70,7 +70,7 @@ export default async function UsersPage() {
     if (hasActiveTrial(account, now)) grants.push(`${u.trialPlan === "business" ? "Business" : "Pro"} 限時試用`);
     if (u.founderStartedAt && u.founderEndsAt && u.founderStartedAt <= now && u.founderEndsAt > now) grants.push("創始會員年費");
     const subscriptionPlan = getEffectivePlan({ ...account, betaAccess: false, trialPlan: null, founderStartedAt: null, founderEndsAt: null }, now);
-    if (subscriptionPlan !== "free") grants.push(u.plan === "enterprise" ? "管理員 Enterprise 授權" : "PayPal 訂閱");
+    if (subscriptionPlan !== "free") grants.push(u.plan === "enterprise" ? "管理員 Enterprise 授權" : u.paypalSubscriptionId ? "PayPal 訂閱" : "管理員方案授權（無 PayPal 訂閱）");
     if (isDiscoveryMember(account)) {
       if (discoveryTrialActive(account, now)) grants.push("14 天／3 次訪談試用（不含完整 Pro）");
       else if (grants.length === 0) grants.push(!u.trialStartsAt || !u.trialEndsAt ? "訪談試用未啟用／已撤銷" : u.trialStartsAt > now ? "訪談試用尚未開始" : "訪談試用已到期");
