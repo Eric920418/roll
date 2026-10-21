@@ -7,7 +7,6 @@ import NovaLogo from "@/components/brand/NovaLogo";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 
 export type ContactInfo = {
-  phone: string;
   email: string;
   address: string;
   instagram: string;
@@ -89,7 +88,6 @@ export default function FooterClient({
                   )}
                 </div>
                 <div className="space-y-2 text-white/40 text-sm">
-                  {contact.phone && <p>{contact.phone}</p>}
                   {contact.email && <p>{contact.email}</p>}
                   {contact.address && <p>{contact.address}</p>}
                 </div>

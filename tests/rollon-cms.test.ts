@@ -31,10 +31,13 @@ test("共用頁尾保留雙語指南與 NOVA，社群使用 CMS、清空隱藏�
   });
   for (const locale of ["en", "zh-tw"] as const) {
     const render = async () => renderToStaticMarkup(await loaded.exports.default({ locale, path: "/about" }));
-    contact = {};
+    contact = { phone: "private-phone-test" };
     const defaults = await render();
     for (const slug of routes.INSIGHT_SLUGS) assert.ok(defaults.includes(`href="${routes.pathForLocale(`/insights/${slug}`, locale)}"`));
     assert.ok(defaults.includes(`href="${routes.pathForLocale("/product", locale)}"`));
+    assert.ok(defaults.includes("NOVA AI ↗"));
+    assert.ok(!defaults.includes("private-phone-test") && !defaults.includes("tel:"));
+    assert.ok(defaults.includes(locale === "en" ? "Free 30-min call — see if Asia is the right market for you." : "免費 30 分鐘通話"));
     assert.ok(defaults.includes('href="/zh-tw/about"'));
     assert.ok(defaults.includes('href="https://www.instagram.com/rollon.tw/"'));
     assert.ok(defaults.includes('href="https://www.linkedin.com/company/rollon/"'));

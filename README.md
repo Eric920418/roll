@@ -1,5 +1,11 @@
 # ROLL ON. 企業官網
 
+## NOVA AI 入口與聯絡資訊調整（2026-10-21）
+
+五頁官網桌面／手機導覽及頁尾的 NOVA 入口改為「NOVA AI」。公開聯絡區移除手機，新版與既有頁尾都不渲染號碼；既有頁尾也不再將 CMS 手機欄位傳給瀏覽器。同步移除共用 LocalBusiness／FAQ 結構化資料及 `llms.txt` 的手機號碼，保留 CMS 原始資料，不寫入資料庫。預約聯絡區新增使用者提供的「Free 30-min call — see if Asia is the right market for you.」，繁中同步翻譯，使用 13px、`#8a7a7c`、上距 12px；文案沿用 HomeV10 CMS 編輯。提供的 HTML 僅有說明文字，未包含預約日曆或網址，繼續使用現有聯絡表單。沿用正式發布授權更新正式站。
+
+驗收：`pnpm test` 204 項（195 通過、9 項隔離資料庫測試略過）、`pnpm exec tsc --noEmit`、`pnpm build` 與 `git diff --check` 通過；Lint 0 errors／14 個既有 warnings。共用頁尾測試加入 CMS 有手機資料仍不輸出、NOVA AI 與雙語通話說明驗證。瀏覽器確認雙語 390／1024／1440px 無水平溢位，說明文字實際為 13px／`#8a7a7c`／上距 12px，手機選單 NOVA AI 保留語系。17 項本機 HTTP 檢查涵蓋五頁雙語、產品、ESG、指南與 llms.txt，完整回應（包含結構化資料及傳給瀏覽器的資料）無手機號碼。未提交正式聯絡表單，未接入預約日曆，也未修改 CMS 原始資料或 SaaS 會員品牌文案。
+
 ## 導覽名稱調整（2026-10-20）
 
 五頁共用導覽的 `HomeV10.nav.taiwan` 改為英文「Why Taiwan」、繁中「為何選擇台灣」，桌面與手機選單共用同一翻譯，維持既有 CMS 編輯機制。路由 `/taiwan`、`/zh-tw/taiwan` 保留，避免既有連結與搜尋網址變動。不修改資料庫。`pnpm build` 與 `git diff --check` 通過；瀏覽器確認英文桌面 1024／1440px 無水平溢位，點擊 Why Taiwan 到 `/taiwan`，繁中手機選單顯示「為何選擇台灣」並連到 `/zh-tw/taiwan`。沿用既有正式發布授權推送部署；此次僅改兩個翻譯值，未新增程式邏輯、測試或套件，未重跑完整測試套件。

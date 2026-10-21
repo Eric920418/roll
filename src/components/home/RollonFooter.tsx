@@ -17,7 +17,6 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
     contactError = publicErrorMessage(logSecurityError("home.contact-info", error));
   }
   const email = typeof contact.email === "string" ? contact.email : "Vivian.lee@roll-grp.com";
-  const phone = typeof contact.phone === "string" ? contact.phone : "(+886) 980-371-946";
   const address = typeof contact.address === "string" ? contact.address : "Level 34, Taipei Nanshan Plaza, No. 100 Songren Road, Xinyi District, Taipei 110";
   const socialLinks = [
     { label: "Instagram", href: typeof contact.instagram === "string" ? contact.instagram : "https://www.instagram.com/rollon.tw/" },
@@ -30,9 +29,9 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
           <div className={styles.contactGrid}>
             <div>
               <h2 className={styles.contactTitle}>{t("contact.title")}</h2>
+              <p className={styles.meetingNote}>{t("contact.meetingNote")}</p>
               <address className={styles.contactDetails}>
                 {email && <a className={styles.contactEmail} href={`mailto:${email}`}>{email}</a>}
-                {phone && <a href={`tel:${phone.replace(/[^+\d]/g, "")}`}>{phone}</a>}
                 {address && <p>{address}</p>}
               </address>
               {contactError && <p role="alert" className={styles.formError}>{contactError}</p>}
@@ -54,7 +53,7 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
               <Link href={pathForLocale("/", locale)} className={styles.wordmark}>ROLL ON.</Link>
               <p>{t("footer.tagline")}</p>
             </div>
-            <div className={styles.footerProducts}><Link href={pathForLocale("/product", locale)}>NOVA ↗</Link><p>{t("footer.since")}</p></div>
+            <div className={styles.footerProducts}><Link href={pathForLocale("/product", locale)}>NOVA AI ↗</Link><p>{t("footer.since")}</p></div>
           </div>
           <nav className={styles.footerLanguages} aria-label={t("footer.language")}>
             <Link href={pathForLocale(path, "en")} lang="en" hrefLang="en" aria-current={locale === "en" ? "page" : undefined}>EN</Link>

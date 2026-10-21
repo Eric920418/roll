@@ -86,6 +86,7 @@
 .footer { background: #2a0e19; color: var(--home-paper); padding-top: calc(112 * var(--home-unit)); }
 .contactGrid { display: grid; grid-template-columns: minmax(0, 600fr) minmax(0, 540fr); gap: calc(60 * var(--home-unit)); }
 .contactTitle { font-size: calc(72 * var(--home-unit)); line-height: calc(73 * var(--home-unit)); font-weight: 800; letter-spacing: calc(-2.8 * var(--home-unit)); white-space: pre-line; }
+.footer .meetingNote { font-size: 13px; line-height: 20px; color: #8a7a7c; margin-top: 12px; }
 .contactDetails { display: flex; flex-direction: column; align-items: flex-start; gap: calc(6 * var(--home-unit)); max-width: calc(580 * var(--home-unit)); margin-top: calc(36 * var(--home-unit)); font-style: normal; font-size: calc(16 * var(--home-unit)); line-height: calc(24 * var(--home-unit)); color: #dfced4; }
 .contactEmail { font-weight: 600; color: var(--home-paper); }
 .contactDetails a:hover { text-decoration: underline; text-underline-offset: calc(4 * var(--home-unit)); }

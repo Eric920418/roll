@@ -46,7 +46,7 @@ export default function HomeNavigation({ locale, current = "home" }: { locale: L
               {t(key)}
             </Link>
           ))}
-          <Link href={pathForLocale("/product", locale)}>NOVA</Link>
+          <Link href={pathForLocale("/product", locale)}>NOVA AI</Link>
           <a href="#contact" className={`${styles.button} ${styles.navBook}`}>{t("book")}</a>
         </nav>
         <button ref={toggle} type="button" className={styles.menuToggle} aria-expanded={open} aria-controls="home-mobile-nav" aria-label={open ? t("close") : t("open")} onClick={() => setOpen(!open)}>
@@ -57,7 +57,7 @@ export default function HomeNavigation({ locale, current = "home" }: { locale: L
             {links.map(({ key, href }) => (
               <Link key={key} href={href} aria-current={key === current ? "page" : undefined} onClick={() => setOpen(false)}>{t(key)}</Link>
             ))}
-            <Link href={pathForLocale("/product", locale)} onClick={() => setOpen(false)}>NOVA</Link>
+            <Link href={pathForLocale("/product", locale)} onClick={() => setOpen(false)}>NOVA AI</Link>
             <a href="#contact" onClick={() => setOpen(false)}>{t("book")}</a>
             <div className={styles.mobileLanguages}>
               <Link href={pathForLocale(pagePath, "en")} lang="en" hrefLang="en" aria-current={locale === "en" ? "page" : undefined}>EN</Link>

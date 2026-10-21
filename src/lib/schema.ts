@@ -135,7 +135,6 @@ export function localBusinessSchema(locale: Locale) {
     name: "ROLL ON. LTD",
     image: `${SITE_URL}/horizontal.png`,
     url: SITE_URL,
-    telephone: "+886-980-371-946",
     email: "Vivian.lee@roll-grp.com",
     priceRange: "$$$",
     address: {
@@ -199,7 +198,7 @@ export const SITE_FAQS: Record<Locale, Faq[]> = {
     },
     {
       q: "Where is ROLL ON. located?",
-      a: "Level 34, Taipei Nanshan Plaza, No. 100 Songren Road, Xinyi District, Taipei 110, Taiwan. Contact: Vivian.lee@roll-grp.com, +886-980-371-946.",
+      a: "Level 34, Taipei Nanshan Plaza, No. 100 Songren Road, Xinyi District, Taipei 110, Taiwan. Contact: Vivian.lee@roll-grp.com.",
     },
     {
       q: "Does ROLL ON. help with fundraising?",
@@ -328,7 +327,7 @@ export const SITE_FAQS: Record<Locale, Faq[]> = {
     },
     {
       q: "ROLL ON. 辦公室在哪裡？",
-      a: "110 台北市信義區松仁路 100 號 34 樓（台北南山廣場）。聯絡：Vivian.lee@roll-grp.com、+886-980-371-946。",
+      a: "110 台北市信義區松仁路 100 號 34 樓（台北南山廣場）。聯絡：Vivian.lee@roll-grp.com。",
     },
     {
       q: "ROLL ON. 有協助募資嗎？",

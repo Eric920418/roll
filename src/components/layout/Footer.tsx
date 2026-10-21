@@ -9,7 +9,6 @@ export default async function Footer({
 }) {
   const c = await getSetting("contactInfo");
   const contact: ContactInfo = {
-    phone: (c.phone as string) ?? "",
     email: (c.email as string) ?? "",
     address: (c.address as string) ?? "",
     instagram: (c.instagram as string) ?? "",
