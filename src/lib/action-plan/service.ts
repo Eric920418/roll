@@ -14,6 +14,7 @@ const actionInclude = {
 } as const;
 
 export type ActionPlanDto = {
+  sourceJourneyId?: string | null;
   diagnosticAnswers?: Array<{ question: string; answer: string }> | null;
   id: string;
   locale: string;
@@ -40,6 +41,7 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
   const blocks = new Map(milestones.filter(m => m.status === "blocked").map(m => [m.id, m.title]));
   const actions = rankActions(plan.actions, blocks, new Map(milestones.map(m => [m.id, m.position])));
   return {
+    sourceJourneyId: plan.sourceJourneyId,
     diagnosticAnswers: generateBodySchema.shape.answers.safeParse(plan.diagnosticAnswers).data ?? null,
     id: plan.id,
     revision: plan.revision,

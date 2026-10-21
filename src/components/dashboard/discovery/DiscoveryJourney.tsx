@@ -13,7 +13,7 @@ import FounderOffer from "./FounderOffer";
 
 type Snapshot = Awaited<ReturnType<typeof getDiscoverySnapshot>>;
 const button = "inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/20 px-5 py-3 text-sm font-semibold disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-2";
-export default function DiscoveryJourney({ userId, planId }: { userId: string; planId?: string }) {
+export default function DiscoveryJourney({ userId, planId, showCommercial = true }: { userId: string; planId?: string; showCommercial?: boolean }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw";
   const [data, setData] = useState<Snapshot | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false), [analysing, setAnalysing] = useState(false);
   const attempted = useRef("");
@@ -53,9 +53,9 @@ export default function DiscoveryJourney({ userId, planId }: { userId: string; p
       {!preview && <button type="button" disabled={analysing} className={button} onClick={() => void analyse(false)}>{zh ? "產生／重試初步分析" : "Generate / retry preliminary analysis"}</button>}
     </section>}
     {data && data.total >= 3 && !data.paid && <FounderOffer />}
-    {data?.paid && data.journeyId && !planId && <ValidationWorkspace userId={userId} journeyId={data.journeyId} revision={data.version} />}
+    {data?.paid && data.journeyId && showCommercial && <ValidationWorkspace userId={userId} planId={planId} journeyId={planId ? undefined : data.journeyId} revision={data.version} />}
     {error && <div role="alert" className="space-y-3 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p><button type="button" className={button} onClick={() => void load()}>{zh ? "重新載入，保留已輸入內容" : "Reload · keep my input"}</button></div>}
-    {data?.paid && planId && <a href={`#validation-${planId}`} className={button}>{zh ? "繼續聯絡與付款驗證 →" : "Continue to outreach and payment validation →"}</a>}
+    {data?.paid && planId && !showCommercial && <a href={`#validation-${planId}`} className={button}>{zh ? "繼續聯絡與付款驗證 →" : "Continue to outreach and payment validation →"}</a>}
     {data?.journeyId && <><LearningResources kind="interview" question={zh ? "如何進行訪談？" : "How to run an interview?"} />{!data.canCreate && <p className="rounded-xl bg-dark/5 p-4 text-sm">{!data.paid ? (zh ? "試用訪談先停在這裡。已儲存內容保留；升級後可繼續其餘訪談與完整分析。" : "Your trial interviews pause here. Saved records are retained; upgrade to continue and unlock full analysis.") : (zh ? "十次訪談已記錄，可查看完整分析，或在下方建立下一步計畫。" : "Ten interviews saved. Review the full analysis or build your next plan below.")}</p>}<CustomerDiscovery key={data.journeyId} journeyId={data.journeyId} userId={userId} rows={data.rows} outcomes={[]} createDisabled={!data.canCreate} readOnly={busy || (!data.paid && !data.active)} onSaved={() => void load()} /></>}
   </section>;
 }

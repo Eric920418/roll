@@ -43,7 +43,7 @@ export default async function CustomerInsightsPage({ params }: { params: Promise
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
       {!account ? discovery && current ? <div className="mt-8"><DiscoveryJourney userId={current.id} /></div> : <PlanPaywall locale={locale as Locale} /> : (
         <div className="mt-8 flex flex-col gap-12">
-          {discovery ? <DiscoveryJourney userId={account.id} /> : <CustomerDiscovery tasks={plan?.actions ?? []} userId={account.id} rows={rows.map(r => ({ ...r, updatedAt: r.updatedAt.toISOString() }))} outcomes={outcomes.map(o => ({ ...o, confirmedAt: o.confirmedAt.toISOString() }))} />}
+          {discovery ? <DiscoveryJourney userId={account.id} planId={plan?.sourceJourneyId ? plan.id : undefined} /> : <CustomerDiscovery tasks={plan?.actions ?? []} userId={account.id} rows={rows.map(r => ({ ...r, updatedAt: r.updatedAt.toISOString() }))} outcomes={outcomes.map(o => ({ ...o, confirmedAt: o.confirmedAt.toISOString() }))} />}
           <details id="contacts" className="scroll-mt-6">
             <summary className="min-h-11 cursor-pointer text-xl font-bold text-dark">{t("contacts")}</summary>
             <CrmManager contacts={contacts} />

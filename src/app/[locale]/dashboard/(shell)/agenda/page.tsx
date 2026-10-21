@@ -47,7 +47,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
       <GettingStartedHint mode="next" />
-      {discovery && <div className="my-7"><DiscoveryJourney userId={account.id} planId={actionPlan?.id} /></div>}
+      {discovery && <div className="my-7"><DiscoveryJourney userId={account.id} planId={actionPlan?.id} showCommercial={!actionPlan} /></div>}
       <AgendaBoard guided={guided} userId={account.id}
         actionPlan={actionPlan}
       />

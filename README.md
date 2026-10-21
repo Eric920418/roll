@@ -1783,3 +1783,9 @@ Next Steps 新增共用 ValidationWorkspace：3／6／10 分段分析、最多�
 商業任務類型沿用既有 workspaceKind（含中英文付費試用／試點名稱），避免同一任務在舊表單與新證據規則間判定不同。
 
 上線驗收：隔離 PostgreSQL 下 `pnpm test` 284/284 通過、無 skip；`pnpm lint` 0 錯誤（14 個既有警告）；`pnpm build` 通過。正常登入的獨立 QA 帳號已實際完成訪談、引用原紀錄、報價、Private Blob PDF 上傳、確認成果及下一任務解鎖，並驗收中英文與 390px 手機版。正式 schema 已在交易內套用上述 5 個 nullable 欄位；原會員／訪談／商機／計畫／任務筆數未變，Jamie 完整試用方案與起訖時間未變。正式 AI 真實呼叫另以可刪除的獨立 QA 帳號驗收，不使用會員額度、不寄信。
+
+Customer Insights 在 Journey 已經由會員確認連結目前計畫時，直接開同一份計畫的成交工作區；不再各自建立兩份同公司跟進狀態。Agenda 只顯示一個完整工作區，Customer Insights 則保留完整入口。
+
+新計畫不自動承接舊訪談來源，只有已確認的 sourceJourneyId 才會序列化到本人後台供頁面選擇共用工作區。
+
+正式真實 AI 驗收：獨立 Production QA 帳號成功產生 3 家初步訊號（1 項）、10 家完整報告（2 項）及拒絕分析（2 項）；重送使用來源快取。DB 確認只有該 QA 的 2 筆 included / succeeded（完整報告、拒絕分析），初步訊號與重試不另扣次；無未釋放分析鎖。跨頁共用工作區補正後重新通過 284 項測試、lint 與 build。QA 資料與測試附件驗收後清除。
