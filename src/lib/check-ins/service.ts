@@ -1,3 +1,4 @@
+import { commercialTask } from "@/lib/validation/schema";
 import { dependencySatisfied } from "@/lib/action-plan/dependency";
 import { logSecurityError } from "@/lib/security/log";
 import "server-only";
@@ -10,7 +11,7 @@ import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { taipeiWeek, taskSnapshot, weeklySummary, weeklyOutputSchema, type CheckInRequest } from "./schema";
 import { generateWeekly } from "./ai";
 const json = (value: unknown) => value as Prisma.InputJsonValue;
-const includes = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
+const includes = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, commercialValidation: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
 const conflict = () => new PlanWriteError("計畫或週記已更新，請重新載入；輸入保留。 / Plan or check-in changed. Reload; your input is preserved.");
 const editable = (row: { weekStart: Date }, archived: Date | null) => {
   if (archived || row.weekStart.toISOString().slice(0, 10) !== taipeiWeek()) throw new PlanWriteError("歷史週記或封存計畫為唯讀 / Historical check-ins and archived plans are read-only");
@@ -49,6 +50,7 @@ export async function saveCheckIn(userId: string, input: Extract<CheckInRequest,
         const task = plan.actions.find(a => a.id === m.actionId);
         if (!task || (m.current != null && !task.metricUnit)) throw new PlanWriteError("請先確認數量目標與單位 / Confirm the metric target and unit first", 400);
         if (task.metricCurrent === m.current) continue;
+        if (commercialTask(task)) throw new PlanWriteError("成交數量由私密付款／合約證據計算，不能手填 / Commercial totals come from private payment / contract evidence", 409);
         if (task.recordingMode === "interview") throw new PlanWriteError("訪談數量由實際紀錄計算 / Interview totals come from saved records", 409);
         const unresolved = task.dependencies.some(edge => !dependencySatisfied({ ...edge, dependsOn: { ...edge.dependsOn, metricCurrent: input.metrics.some(change => change.actionId === edge.dependsOn.id) ? input.metrics.find(change => change.actionId === edge.dependsOn.id)!.current : edge.dependsOn.metricCurrent } }));
         if (m.current != null && m.current > (task.metricCurrent ?? -1) && (unresolved || (task.dependencyLevel > 0 && task.dependencies.length === 0))) throw new PlanWriteError("請先達成前置條件，再增加本任務進度。 / Resolve prerequisites before increasing this task’s progress.", 409);

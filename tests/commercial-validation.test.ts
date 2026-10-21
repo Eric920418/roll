@@ -8,8 +8,9 @@ import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { taipeiWeek } from "../src/lib/check-ins/schema";
 import { emptyInsight, insightSchema } from "../src/lib/customer-insights/schema";
-import { commitmentSummary, proofSchema, salesMutationSchema, salesRecordSchema, commercialTarget, priorityCompanies, standardScripts, type SalesRecord, type SalesMutation } from "../src/lib/validation/schema";
+import { commitmentSummary, proofSchema, salesMutationSchema, salesRecordSchema, commercialTask, commercialTarget, priorityCompanies, standardScripts, type SalesRecord, type SalesMutation } from "../src/lib/validation/schema";
 
 const proof = (kind: "signed" | "paid" = "signed") => ({ id: randomUUID(), kind, amount: "125.50", currency: "USD", date: "2026-10-21", pathname: `commercial-evidence/owner/${randomUUID()}.pdf`, filename: "proof.pdf", confirmed: true as const });
 const record = (company = "Acme", proofs: SalesRecord["proofs"] = [proof()]): SalesRecord => ({ scope: { journeyId: "journey" }, company, name: "Founder", version: 1, status: "signed", events: [], proofs });
@@ -33,6 +34,7 @@ test("Commitments dedupe normalized companies, separate paid / signed and curren
   assert.equal(commercialTarget({ title: "Run paid pilot offer with 3 prospects", expectedOutcome: "At least 1 of 3 agrees" }), 1);
   assert.equal(commercialTarget({ title: "Close 3 paying customers" }), 3);
   assert.equal(commercialTarget({ title: "Paid pilot", metricTarget: 4 }), 4);
+  assert(commercialTask({ title: "Renamed task", commercialValidation: { requiresConfirmation: true } }));
 });
 test("Priority uses actual companies, newest evidence, explicit willingness before heat, and never fills missing names", () => {
   const rows = Array.from({ length: 7 }, (_, i) => ({ id: String(i), updatedAt: new Date(2026, 9, i + 1), insight: { ...emptyInsight("discover"), name: `Person ${i}`, company: `Company ${i}`, notes: "Manual reporting", commercial: { willingness: i === 0 ? "willing" : "considering", heat: i === 0 ? "cold" : "hot" } } }));
@@ -97,6 +99,15 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     await t.test("Interest, legacy won and agreed do not complete; manual quantity and old pilot form are rejected", async () => {
       await db.deal.create({ data: { userId: owner.id, title: "Old win", stage: "won", value: 999 } });
       assert.equal((await complete()).status, 409);
+      assert.equal((await tasks.PATCH(req({ revision: await revision(), recordingMode: "interview", metricTarget: 1 }), { params: Promise.resolve({ id: task.id }) })).status, 409);
+      const edit = { title: "Document next result", impact: "High", urgencyType: "immediate", urgencyDays: null, dependencyLevel: 0, dependencyNotes: null, difficulty: 1, actionTime: { minMinutes: 60, maxMinutes: 60 }, companyStage: "MVP", stageFit: { score: 4, reason: "QA evidence", confidence: null }, bottleneckGroup: "Sales", bottleneckCode: "no_icp", bottleneckFit: { score: 4, reason: "QA evidence", confidence: null }, outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTime: { min: 1, max: 7 }, dependencyActionIds: [] };
+      assert.equal((await tasks.PATCH(req({ revision: await revision(), ...edit }), { params: Promise.resolve({ id: task.id }) })).status, 200);
+      assert.equal((await complete()).status, 409, "Renaming must not bypass proof requirements");
+      await db.actionItem.update({ where: { id: task.id }, data: { metricTarget: 1, metricCurrent: 0, metricUnit: "companies" } });
+      const checkIns = load<typeof import("../src/lib/check-ins/service")>("src/lib/check-ins/service.ts");
+      await assert.rejects(checkIns.saveCheckIn(owner.id, { action: "save", planId: plan.id, planRevision: await revision(), weekStart: taipeiWeek(), revision: 0, requestId: randomUUID(), finding: "QA weekly finding", blockers: "", metrics: [{ actionId: task.id, current: 1 }] }));
+      assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: task.id } })).metricCurrent, 0);
+
       assert.equal((await tasks.PATCH(req({ revision: await revision(), metricTarget: 1, metricCurrent: 1, metricUnit: "companies" }), { params: Promise.resolve({ id: task.id }) })).status, 409);
       assert.equal((await tasks.PATCH(req({ revision: await revision(), taskWorkspace: { kind: "pilot", prospects: [{ leadId: "x", offer: "125", response: "agreed", reason: "Yes" }] } }), { params: Promise.resolve({ id: task.id }) })).status, 409);
       const res = await api.POST(req(current)); assert.equal(res.status, 200); const snapshot = (await res.json()).data; dealId = snapshot.deals[0].id;

@@ -148,8 +148,8 @@ test("weekly simultaneous generation locks; changed plans reject late AI without
 test("weekly quantity edits cannot invalidate completed quantity-dependent tasks", async () => {
   let writes = 0;
   const rawPlan = { id: "p1", actions: [
-    { id: "t1", metricCurrent: 5, metricUnit: "interviews", milestoneId: "m1", done: false, dependencies: [] },
-    { id: "t2", done: true, dependencies: [{ minimumCurrent: 5, dependsOn: { id: "t1", metricCurrent: 5 } }] },
+    { id: "t1", title: "Track quantity", metricCurrent: 5, metricUnit: "interviews", milestoneId: "m1", done: false, dependencies: [] },
+    { id: "t2", title: "Follow up", done: true, dependencies: [{ minimumCurrent: 5, dependsOn: { id: "t1", metricCurrent: 5 } }] },
   ] };
   const tx = { weeklyCheckIn: { findUnique: async () => null }, actionPlan: { findUniqueOrThrow: async () => rawPlan }, actionItem: { update: async () => { writes++; } } };
   const api = load<typeof import("../src/lib/check-ins/service")>("src/lib/check-ins/service.ts", {

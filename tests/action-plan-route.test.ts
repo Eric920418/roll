@@ -78,7 +78,7 @@ function serviceHarness() {
     "./ranking": { rankActions: () => [], humanizeActionText: (s: string) => s, taskReference: () => "", wouldCreateCycle: () => false }, "./time": { legacyHoursForMinutes: () => ({ minHours: 1, maxHours: 2 }) },
   });
   // Persistence uses generated fields only; schema/AI validation is tested separately.
-  const task = { clientKey: "task_1", dependsOnKeys: [], actionTime: {}, stageFit: {}, bottleneckFit: {}, outcomeTime: {} };
+  const task = { title: "A valid task title", clientKey: "task_1", dependsOnKeys: [], actionTime: {}, stageFit: {}, bottleneckFit: {}, outcomeTime: {} };
   const input = { userId: "owner", locale: "en", requestId: body.requestId, diagnosis, answers: body.answers, actions: Array.from({ length: 5 }, (_, i) => ({ ...task, clientKey: `task_${i + 1}` })), basePlan: { id: "base", revision: 2 } } as unknown as Parameters<typeof service.persistGeneratedPlan>[0];
   return { service, input, writes, active: () => active, update: (next: Record<string, unknown> | null) => { active = next; }, count: (n: number) => { count = n; } };
 }

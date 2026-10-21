@@ -51,6 +51,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         title: true,
         taskWorkspace: true,
         taskFinding: true,
+        commercialValidation: true,
         actionPlanId: true,
         done: true,
         milestoneId: true,
@@ -98,6 +99,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     }
 
     if ("recordingMode" in parsed.data) {
+      if (commercialTask(current)) throw new PlanWriteError("成交任務必須保留付款／合約證據模式 / Commercial tasks must retain payment / contract evidence", 409);
       if (current.done) throw new PlanWriteError("請先撤銷完成再設定訪談模式 / Undo completion before configuring interviews", 409);
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
       const largestThreshold = Math.max(0, ...current.requiredBy.map(e => e.minimumCurrent || 0));
@@ -159,7 +161,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, current.done && action.done === false ? "undo" : "edit");
     if (current.done && action.done === false && current.requiredBy.some(edge => edge.action.done && edge.minimumCurrent == null)) throw new PlanWriteError("請先取消後續任務的完成狀態 / Undo dependent tasks first");
     if (action.done && !current.done) await assertCommercialPrerequisites(tx, session.uid, current.actionPlanId, action.dependencyActionIds);
-    if (action.done) { if (!current.done || commercialTask(current)) await assertTaskWorkspaceComplete(tx, session.uid, current); await assertInterviewComplete(tx, session.uid, current); }
+    const evidenceAction = { ...current, title: action.title, expectedOutcome: action.expectedOutcome, commercialValidation: current.commercialValidation ?? (commercialTask(current) || commercialTask(action) ? { requiresConfirmation: true } : null) };
+    if (action.done) { if (!current.done || commercialTask(evidenceAction)) await assertTaskWorkspaceComplete(tx, session.uid, evidenceAction); await assertInterviewComplete(tx, session.uid, current); }
     const legacyActionTime = legacyHoursForMinutes(action.actionTime);
     const stageFitChanged = action.stageFit.score !== current.stageFit || action.stageFit.reason !== current.stageFitReason;
     const bottleneckFitChanged = action.bottleneckFit.score !== current.bottleneckFit || action.bottleneckFit.reason !== current.bottleneckFitReason;
@@ -175,6 +178,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       await tx.actionItem.update({
         where: { id },
         data: {
+          ...(commercialTask(evidenceAction) && !action.done ? { commercialValidation: current.commercialValidation ?? { requiresConfirmation: true } } : {}),
           title: action.title,
           impact: action.impact,
           urgencyType: action.urgencyType,

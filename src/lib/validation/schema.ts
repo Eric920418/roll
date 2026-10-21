@@ -47,8 +47,8 @@ export function commitmentSummary(records: SalesRecord[]) {
   }
   return { total: new Set([...signed, ...paid]).size, signed: signed.size, paid: paid.size, amounts };
 }
-export function commercialTask(action: { title: string; taskWorkspace?: unknown }) {
-  return workspaceKind(action) === "pilot" || /paying customer|paid commitment|付費試營運|付費客戶|付費承諾|收款|付費合約/i.test(action.title);
+export function commercialTask(action: { title: string; taskWorkspace?: unknown; commercialValidation?: unknown }) {
+  return !!action.commercialValidation || workspaceKind(action) === "pilot" || /paying customer|paid commitment|付費試營運|付費客戶|付費承諾|收款|付費合約/i.test(action.title);
 }
 export function commercialTarget(action: { metricTarget?: number | null; title: string; expectedOutcome?: string }) {
   if (action.metricTarget && action.metricTarget > 0) return action.metricTarget;

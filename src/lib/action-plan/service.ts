@@ -1,3 +1,4 @@
+import { commercialTask } from "@/lib/validation/schema";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -196,6 +197,7 @@ export function actionRecord(action: GeneratedAction, id: string, clientKey = ac
   const legacy = legacyHoursForMinutes(action.actionTime);
   return {
     id, clientKey, title: action.title, milestoneId,
+    commercialValidation: commercialTask(action) ? { requiresConfirmation: true } : undefined,
     impact: action.impact, urgencyType: action.urgencyType, urgencyDays: action.urgencyDays,
     dependencyLevel: action.dependencyLevel, dependencyNotes: action.dependencyNotes, difficulty: action.difficulty,
     actionTimeMinHours: legacy.minHours, actionTimeMaxHours: legacy.maxHours,

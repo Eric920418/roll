@@ -1,3 +1,4 @@
+import { commercialTask } from "@/lib/validation/schema";
 import { assertCommercialPrerequisites } from "@/lib/validation/service";
 import { logSecurityError } from "@/lib/security/log";
 import "server-only";
@@ -201,7 +202,9 @@ async function patchCorrection(userId: string, input: Extract<z.infer<typeof roa
     await lockActivePlan(tx, userId, record.id, workspace.basePlanRevision!);
     // Validate the complete proposed graph before applying any edge changes.
     for (const change of input.correction.changes) {
-      await tx.actionItem.update({ where: { id: change.actionId }, data: { title: change.title, expectedOutcome: change.expectedOutcome, bottleneckFitReason: change.whyNow, bottleneckFitEditedByUser: true, bottleneckFitConfidence: null, dependencyLevel: change.dependencyActionIds.length ? 1 : 0 } });
+      const previous = record.actions.find(a => a.id === change.actionId)!;
+      const commercial = commercialTask(previous) || commercialTask({ ...previous, title: change.title });
+      await tx.actionItem.update({ where: { id: change.actionId }, data: { ...(commercial ? { commercialValidation: previous.commercialValidation ?? { requiresConfirmation: true } } : {}), title: change.title, expectedOutcome: change.expectedOutcome, bottleneckFitReason: change.whyNow, bottleneckFitEditedByUser: true, bottleneckFitConfidence: null, dependencyLevel: change.dependencyActionIds.length ? 1 : 0 } });
       const thresholds = await tx.actionDependency.findMany({ where: { actionId: change.actionId }, select: { dependsOnId: true, minimumCurrent: true } });
       await tx.actionDependency.deleteMany({ where: { actionId: change.actionId } });
       if (change.dependencyActionIds.length) await tx.actionDependency.createMany({ data: change.dependencyActionIds.map(dependsOnId => ({ actionId: change.actionId, dependsOnId, minimumCurrent: thresholds.find(e => e.dependsOnId === dependsOnId)?.minimumCurrent ?? null })) });
