@@ -1,7 +1,7 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getPaidPlan } from "@/lib/billing/gate";
+import { getEffectivePlan } from "@/lib/billing/gate";
 import { toPlanKey } from "@/lib/billing/plans";
 import { PlanWriteError } from "@/lib/action-plan/service";
 import { DISCOVERY_POLICY, TRIAL_INTERVIEWS, FULL_INTERVIEWS, discoveryTrialActive, discoveryEvidence } from "./policy";
@@ -9,7 +9,7 @@ import { DISCOVERY_POLICY, TRIAL_INTERVIEWS, FULL_INTERVIEWS, discoveryTrialActi
 export const discoveryAccountSelect = { id: true, plan: true, subscriptionStatus: true, paypalSubscriptionId: true, currentPeriodEnd: true, planUpdatedAt: true, trialPlan: true, trialStartsAt: true, trialEndsAt: true, trialPolicy: true, founderStartedAt: true, founderEndsAt: true } as const;
 export type DiscoveryAccount = NonNullable<Awaited<ReturnType<typeof discoveryAccount>>>;
 export function discoveryAccount(userId: string, db: Pick<Prisma.TransactionClient, "user"> = prisma as unknown as Prisma.TransactionClient) { return db.user.findUnique({ where: { id: userId }, select: discoveryAccountSelect }); }
-export function discoveryPaid(account: DiscoveryAccount) { return getPaidPlan({ ...account, plan: toPlanKey(account.plan), trialPlan: account.trialPlan ? toPlanKey(account.trialPlan) : null }) !== "free"; }
+export function discoveryPaid(account: DiscoveryAccount) { return getEffectivePlan({ ...account, plan: toPlanKey(account.plan), trialPlan: account.trialPlan ? toPlanKey(account.trialPlan) : null }) !== "free"; }
 export function discoveryRows(userId: string, journeyId: string, db: Pick<Prisma.TransactionClient, "meetingNote"> = prisma as unknown as Prisma.TransactionClient) {
   return db.meetingNote.findMany({ where: { userId, insight: { path: ["journeyId"], equals: journeyId } }, select: { id: true, updatedAt: true, insight: true }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
 }

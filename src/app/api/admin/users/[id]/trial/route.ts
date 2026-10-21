@@ -20,8 +20,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     const body = await req.json();
     const plan = body?.plan;
-    if (plan !== "pro" && plan !== "business") {
-      return fail("試用方案只能是 Pro 或 Business。", 400);
+    if (plan !== "pro" && plan !== "business" && plan !== "enterprise") {
+      return fail("試用方案只能是 Pro、Business 或 Enterprise。", 400);
     }
     const startsAt = parseDate(body?.startsAt);
     const endsAt = parseDate(body?.endsAt);

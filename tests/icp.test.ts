@@ -323,12 +323,15 @@ test("Billing overview loads reward allowance even when the effective plan is Fr
   const overview = load<{ default(props: object): Promise<unknown> }>("src/components/dashboard/BillingOverview.tsx", {
     "next-intl/server": { getTranslations: async () => (key: string) => key },
     "@/components/dashboard/BillingPanel": { default: () => null },
-    "@/lib/auth/account": { getCurrentAccount: async () => ({ id: "free-member" }) },
+    "@/lib/auth/account": { getCurrentAccount: async () => ({ id: "free-member", subscriptionStatus: "APPROVAL_PENDING" }) },
     "@/lib/billing/gate": { getEffectivePlan: () => "free", suspendedGraceActive: () => false },
     "@/lib/billing/paypal": {}, "@/lib/prisma": { prisma: {} },
     "@/lib/ai/allowance": { getAiUsageSummary: async (account: { id: string }) => { assert.equal(account.id, "free-member"); calls++; return usage; } },
   });
-  assert.ok(JSON.stringify(await overview.default({ locale: "en" })).includes('"rewardRemaining":10'));
+  const rendered = JSON.stringify(await overview.default({ locale: "en" }));
+  assert.ok(rendered.includes('"rewardRemaining":10'));
+  assert.ok(rendered.includes("PayPal checkout not approved; active trial access is unaffected"));
+  assert.equal(rendered.includes("APPROVAL_PENDING"), false);
   assert.equal(calls, 1);
 });
 

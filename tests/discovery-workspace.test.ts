@@ -18,13 +18,13 @@ test("Discovery records, analysis and entitlements in isolated PostgreSQL", { sk
   const owner = await db.user.create({ data: { email: `journey-${randomUUID()}@example.invalid`, trialPolicy: "interviews-3-v1", trialPlan: "pro", trialStartsAt: new Date(Date.now() - 1000), trialEndsAt: new Date(Date.now() + 14 * 86400000) } });
   const stranger = await db.user.create({ data: { email: `journey-${randomUUID()}@example.invalid` } });
   const journey = await db.discoveryJourney.create({ data: { userId: owner.id } });
-  let uid: string | null = owner.id, fullReservation = 0, aiCalls = 0, failure = false, mutateDuringAnalysis = false, refunded = 0;
+  let uid: string | null = owner.id, admin = false, fullReservation = 0, aiCalls = 0, failure = false, mutateDuringAnalysis = false, refunded = 0;
   let inference: (() => Promise<void>) | null = null;
   class WriteError extends Error { constructor(message: string, public status = 409) { super(message); } }
   const require = createRequire(import.meta.url), cache = new Map<string, unknown>();
   const mocks: Record<string, unknown> = {
     "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/action-plan/service": { PlanWriteError: WriteError, getActiveActionPlan: async () => null },
-    "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null }, "@/lib/auth/account": { getCurrentAccount: async () => null },
+    "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null, requireAdmin: async () => admin ? { role: "admin" } : null }, "@/lib/auth/account": { getCurrentAccount: async () => null },
     "@/lib/security/http": { browserMutationGuard: () => null },
     "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({ error: "Unauthorized" }, { status: 401 }), failFromError: () => Response.json({ error: "Safe error" }, { status: 500 }) },
     "@/lib/customer-insights/service": {}, "@/lib/action-plan/workspace-service": {},
@@ -43,6 +43,7 @@ test("Discovery records, analysis and entitlements in isolated PostgreSQL", { sk
   const records = load<typeof import("../src/app/api/customer-insights/route")>("src/app/api/customer-insights/route.ts");
   const service = load<typeof import("../src/lib/discovery/service")>("src/lib/discovery/service.ts");
   const analysis = load<typeof import("../src/lib/discovery/analysis")>("src/lib/discovery/analysis.ts");
+  const trials = load<typeof import("../src/app/api/admin/users/[id]/trial/route")>("src/app/api/admin/users/[id]/trial/route.ts");
   const req = (body: unknown) => ({ json: async () => body }) as never;
   const insight = (company: string) => ({ ...emptyInsight("discover"), journeyId: journey.id, name: "Founder", company, notes: "Finding customers is hard" });
   const save = (company: string, requestId = randomUUID()) => records.POST(req({ requestId, insight: insight(company) }));
@@ -51,6 +52,24 @@ test("Discovery records, analysis and entitlements in isolated PostgreSQL", { sk
     await t.test("A new trial has no Pro API access even when beta is enabled; legacy trials remain intact", () => {
       const base = { ...owner, betaAccess: true, plan: "free" as const, trialPlan: "pro" as const };
       assert.equal(gate.getEffectivePlan(base), "free"); assert.equal(gate.getEffectivePlan({ ...base, trialPolicy: null, betaAccess: false }), "pro"); assert.equal(gate.getEffectivePlan({ ...base, trialPolicy: null }), "enterprise");
+    });
+    await t.test("Only an admin can grant full Business or Enterprise trial access; ten interviews and all tiers expire at the original end", async () => {
+      const body = { plan: "enterprise", startsAt: owner.trialStartsAt!.toISOString(), endsAt: owner.trialEndsAt!.toISOString() };
+      const ctx = { params: Promise.resolve({ id: owner.id }) };
+      assert.equal((await trials.PATCH(req(body), ctx)).status, 401);
+      admin = true;
+      try {
+        for (const trialPlan of ["business", "enterprise"] as const) {
+          const full = { ...owner, betaAccess: true, plan: "free" as const, trialPlan };
+          assert.equal(gate.getEffectivePlan(full), trialPlan);
+          assert.equal(gate.getEffectivePlan(full, owner.trialEndsAt!), "free");
+          assert.equal(gate.getEffectivePlan({ ...full, trialStartsAt: new Date(Date.now() + 86400000) }), "free");
+          assert.equal((await trials.PATCH(req({ ...body, plan: trialPlan }), ctx)).status, 200);
+          const snapshot = await service.getDiscoverySnapshot(owner.id);
+          assert.equal(snapshot.paid, true); assert.equal(snapshot.target, 10); assert.equal(snapshot.canCreate, true);
+          assert.equal(snapshot.endsAt, owner.trialEndsAt!.toISOString());
+        }
+      } finally { admin = false; await db.user.update({ where: { id: owner.id }, data: { trialPlan: "pro" } }); }
     });
     await t.test("Owned writes validate inputs, deduplicate request IDs and normalized company names", async () => {
       uid = null; assert.equal((await save("Acme")).status, 401); uid = stranger.id; assert.equal((await save("Acme")).status, 404); uid = owner.id;

@@ -67,12 +67,12 @@ export default async function UsersPage() {
     const account = { ...u, plan: toPlanKey(u.plan), trialPlan: u.trialPlan ? toPlanKey(u.trialPlan) : null, betaAccess };
     const grants: string[] = [];
     if (betaAccess && !isDiscoveryMember(account)) grants.push("免費測試授權（非付費訂閱）");
-    if (hasActiveTrial(account, now)) grants.push(`${u.trialPlan === "business" ? "Business" : "Pro"} 限時試用`);
+    if (hasActiveTrial(account, now)) grants.push(`${u.trialPlan === "enterprise" ? "Enterprise" : u.trialPlan === "business" ? "Business" : "Pro"} 限時試用`);
     if (u.founderStartedAt && u.founderEndsAt && u.founderStartedAt <= now && u.founderEndsAt > now) grants.push("創始會員年費");
     const subscriptionPlan = getEffectivePlan({ ...account, betaAccess: false, trialPlan: null, founderStartedAt: null, founderEndsAt: null }, now);
     if (subscriptionPlan !== "free") grants.push(u.plan === "enterprise" ? "管理員 Enterprise 授權" : u.paypalSubscriptionId ? "PayPal 訂閱" : "管理員方案授權（無 PayPal 訂閱）");
     if (isDiscoveryMember(account)) {
-      if (discoveryTrialActive(account, now)) grants.push("14 天／3 次訪談試用（不含完整 Pro）");
+      if (discoveryTrialActive(account, now) && !hasActiveTrial(account, now)) grants.push("14 天／3 次訪談試用（不含完整 Pro）");
       else if (grants.length === 0) grants.push(!u.trialStartsAt || !u.trialEndsAt ? "訪談試用未啟用／已撤銷" : u.trialStartsAt > now ? "訪談試用尚未開始" : "訪談試用已到期");
     }
     return {

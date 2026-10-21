@@ -32,7 +32,7 @@ export default function UsersList({ users }: { users: UserRow[] }) {
 
   async function updateTrial(
     user: UserRow,
-    plan: "pro" | "business",
+    plan: "pro" | "business" | "enterprise",
     startsAt: string,
     endsAt: string,
   ) {
@@ -207,13 +207,13 @@ function TrialControls({
 }: {
   user: UserRow;
   disabled: boolean;
-  onSave: (user: UserRow, plan: "pro" | "business", startsAt: string, endsAt: string) => void;
+  onSave: (user: UserRow, plan: "pro" | "business" | "enterprise", startsAt: string, endsAt: string) => void;
   onRevoke: (user: UserRow) => void;
 }) {
   const now = new Date();
   const plus30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const [plan, setPlan] = useState<"pro" | "business">(
-    user.trialPlan === "business" ? "business" : "pro",
+  const [plan, setPlan] = useState<"pro" | "business" | "enterprise">(
+    user.trialPlan === "enterprise" ? "enterprise" : user.trialPlan === "business" ? "business" : "pro",
   );
   const [startsAt, setStartsAt] = useState(localInputValue(user.trialStartsAt, now));
   const [endsAt, setEndsAt] = useState(localInputValue(user.trialEndsAt, plus30));
@@ -221,9 +221,10 @@ function TrialControls({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
-        <select value={plan} onChange={(e) => setPlan(e.target.value as "pro" | "business")} className="min-h-11 rounded border border-neutral-300 px-2 text-xs">
+        <select value={plan} onChange={(e) => setPlan(e.target.value as "pro" | "business" | "enterprise")} className="min-h-11 rounded border border-neutral-300 px-2 text-xs">
           <option value="pro">Pro</option>
           <option value="business">Business</option>
+          <option value="enterprise">Enterprise</option>
         </select>
         <button type="button" disabled={disabled} onClick={() => onSave(user, plan, startsAt, endsAt)} className="min-h-11 rounded bg-neutral-900 px-3 text-xs font-semibold text-white disabled:opacity-50">
           {disabled ? "處理中…" : user.trialPlan ? "更新" : "設定"}

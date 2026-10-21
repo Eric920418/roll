@@ -77,11 +77,11 @@ export function suspendedGraceActive(
  * - pro/business → ACTIVE/CANCELLED 需本期未過期；SUSPENDED 走 1 天寬限期；其餘退回 free
  */
 function activeTrialPlan(account: BillingAccount, now: Date): PlanKey {
-  if (account.trialPolicy === "interviews-3-v1") return "free";
+  // New signups use Pro as the interview-only marker; higher trial tiers require an explicit admin grant.
+  if (account.trialPolicy === "interviews-3-v1" && account.trialPlan !== "business" && account.trialPlan !== "enterprise") return "free";
   if (
     !account.trialPlan ||
     account.trialPlan === "free" ||
-    account.trialPlan === "enterprise" ||
     !account.trialStartsAt ||
     !account.trialEndsAt ||
     account.trialStartsAt.getTime() > now.getTime() ||

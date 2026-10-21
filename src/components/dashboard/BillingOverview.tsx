@@ -30,6 +30,8 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
     ? t("betaAccess")
     : !status
     ? t("noSubscription")
+    : status === "APPROVAL_PENDING"
+      ? (l === "zh-tw" ? "PayPal 結帳尚未核准；不影響有效試用權限" : "PayPal checkout not approved; active trial access is unaffected")
     : KNOWN_STATUSES.includes(status)
       ? tStatus(status)
       : status;

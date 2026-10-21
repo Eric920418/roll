@@ -1685,6 +1685,14 @@ QA 比對結果：字體沿用 Hero New／Noto Sans TC，編輯標題 24px、內
 
 ### 新會員 14 天／3 次訪談試用與創始年費（2026-10-16）
 
+完整付費功能試用例外（2026-10-21）：使用者明確授權特定會員於原期限內試用所有付費功能，因此採最高級 Enterprise，含 Business、Pro、ICP、計畫、投資人欄位隱私設定與每月 150 次 AI。新制註冊仍以 trialPlan=pro 表示三次訪談試用，不改動預設分群；只有管理員明確設定 Business／Enterprise，既有有效日期窗口才授予該級完整權限。管理員 trial PATCH／選單支援 Enterprise，仍須管理員登入，不能由會員自助升權。訪談完整權益沿用同一個 getEffectivePlan，解除三次上限為十次並開放完整報告；到期立即撤回，沒有新增永久授權、偽造 PayPal ACTIVE、扣款或重設期限。帳務頁將 APPROVAL_PENDING 說明為 PayPal 尚未核准且不影響有效試用；後台不再把完整試用另標為三次訪談限制。只沿用現有欄位與管理員 API，不修改 schema。
+
+隔離驗收以與個案相同的新制分群及 APPROVAL_PENDING 建立專用測試帳號，再明確授予原期限內的 Business 試用。瀏覽器登入後核對 Business／150 次回答，實際啟動十次訪談工作區、儲存一筆訪談並看到 1/10；回歸測試包含試用尚未開始、精確到期撤權與原始三次試用不變。此測試不修改正式會員的內容，也不把未付款訂單標記為付款成功。
+
+最終 Enterprise 隔離帳號重新整理後，側欄與帳務頁同時顯示 Enterprise／150 次回答；ICP 編輯器、計畫生成入口與投資人私人頁面（含欄位隱私控制）皆可開啟。沒有開啟任何對外分享、寄送邀請或執行付款。
+
+完整回歸 270 項通過（隔離 PostgreSQL、無略過），含未登入不得授予 Enterprise 試用、有效期間／到期邊界、舊試用及標準三次試用；pnpm lint 0 errors／14 項既有 warnings，pnpm build 通過。正式授予前須再次核對指定會員、原起訖與分群，只更新 trialPlan，不更動付款狀態或既有內容。
+
 管理員會員列表方案顯示修正（2026-10-20）：原列表僅讀取 User.plan，導致保留 Free 的舊測試會員被誤認為沒有權限。新增「目前功能權限／授權來源」，在 requireAdminPage 驗證後讀取同一個即時 beta 開關，沿用 getEffectivePlan／hasActiveTrial 計算；同時保留原始方案與 PayPal 狀態。區分免費測試授權（非付費）、舊 Pro／Business 試用、三次訪談試用、創始年費、有效訂閱與基本免費功能，訪談試用到期／撤銷也明示；APPROVAL_PENDING 標為「PayPal 待付款人核准」。沒有調整授權邏輯、API、環境變數或 schema，不修改會員資料或全站授權開關。回歸測試先確認舊頁缺少 effectivePlan 而失敗，再驗證新頁各授權情境與實際表格 HTML 標籤、未登入不得讀會員資料；不將密碼、Google ID 或 PayPal 訂閱 ID 傳入列表。
 
 此顯示修正驗收：使用隔離 PostgreSQL 執行 pnpm test，269 項全數通過、無略過；pnpm lint 0 errors／14 項既有 warnings，TypeScript 與 pnpm build 通過。正式資料只做唯讀核對，未改動會員方案、試用、付款、獎勵或設定；正式站管理員瀏覽器驗收需沿用有效登入。
