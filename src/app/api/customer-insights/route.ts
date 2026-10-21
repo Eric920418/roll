@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     const { requestId, insight } = create.parse(await req.json());
     if (!(await requirePlan("pro")) && !insight.journeyId) return fail("此功能需 Pro 以上方案 / Pro plan required", 403);
     if (insight.journeyId && (insight.stage !== "discover" || insight.type !== "Prospect")) return fail("此工作區只記錄潛在客戶訪談 / This workspace records prospect interviews", 400);
+    if (insight.commercial?.contactId && !await prisma.contact.findFirst({ where: { id: insight.commercial.contactId, userId: session.uid }, select: { id: true } })) return fail("找不到自己的聯絡人 / Contact not found", 404);
     const id = `insight_${requestId}`;
     try {
       await prisma.$transaction(async raw => {
@@ -79,6 +80,7 @@ export async function PATCH(req: NextRequest) {
     const input = edit.parse(await req.json());
     if (!(await requirePlan("pro")) && !input.insight.journeyId) return fail("此功能需 Pro 以上方案 / Pro plan required", 403);
     if (input.insight.journeyId && (input.insight.stage !== "discover" || input.insight.type !== "Prospect")) return fail("此工作區只記錄潛在客戶訪談 / This workspace records prospect interviews", 400);
+    if (input.insight.commercial?.contactId && !await prisma.contact.findFirst({ where: { id: input.insight.commercial.contactId, userId: session.uid }, select: { id: true } })) return fail("找不到自己的聯絡人 / Contact not found", 404);
     await prisma.$transaction(async raw => {
       const tx = raw as unknown as Prisma.TransactionClient;
       const row = await tx.meetingNote.findFirst({ where: { id: input.id, userId: session.uid }, select: { insight: true } });

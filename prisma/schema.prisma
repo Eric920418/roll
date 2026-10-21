@@ -233,6 +233,7 @@ model User {
 
 /// 新試用的三次初步訪談與付費後十次完整分析；不覆寫舊計畫或訪談。
 model DiscoveryJourney {
+  validationAnalysis Json?
   id String @id @default(cuid())
   userId String @unique
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -497,6 +498,7 @@ model Contact {
 
 /// 銷售管道商機（依 stage 分欄看板）
 model Deal {
+  validation Json?
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -537,6 +539,8 @@ model LandingTask {
 /// NOVA Action Plan 的版本容器。
 /// activeKey 啟用時固定等於 userId，nullable unique 保證每位使用者至多一份 active plan。
 model ActionPlan {
+  sourceJourneyId String?
+  validationAnalysis Json?
   diagnosticAnswers Json?
   id     String @id @default(cuid())
   userId String
@@ -572,6 +576,7 @@ model ActionPlan {
 
 /// Action 的完整八維資料。priority score、rank、blocked 皆由 server 即時計算，不持久化。
 model ActionItem {
+  commercialValidation Json?
   recordingMode String?
   id           String     @id @default(cuid())
   actionPlanId String

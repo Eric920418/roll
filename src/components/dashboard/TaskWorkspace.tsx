@@ -5,6 +5,7 @@ import type { ActionPlanDto } from "@/lib/action-plan/service";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { emptyWorkspace, workspaceSchema, workspaceKind, workspaceProgress, leadScore, findingSchema, findingDraftSchema, type TaskWorkspace as Workspace, type WorkspaceLead } from "@/lib/action-plan/workspace";
 import InterviewWorkspace from "./InterviewWorkspace";
+import { commercialTask } from "@/lib/validation/schema";
 import LearningResources from "./LearningResources";
 
 const button = "inline-flex min-h-11 items-center justify-center rounded-lg border border-dark/20 px-4 py-2 text-sm font-semibold disabled:opacity-50";
@@ -15,9 +16,10 @@ const questions = {
 } as const;
 
 export default function TaskWorkspace({ userId, action, plan, busy, onChanged, onInsights, onAnalyze }: { userId: string; action: ActionPlanActionDto; plan: ActionPlanDto; busy: boolean; onChanged: (plan: ActionPlanDto | null) => void; onInsights: () => void; onAnalyze: () => void }) {
-  const kind = workspaceKind(action);
+  const kind = workspaceKind(action), zh = useLocale() === "zh-tw";
+  if (commercialTask(action)) return <div className="mt-5 space-y-3"><LearningResources kind="pilot" question={zh ? "如何提出付費試點？" : "How to offer a paid pilot?"} /><p className="text-sm text-dark/65">{zh ? "口頭同意不計成交；請在上方驗證工作區保存實際收款或付費合約證據。" : "Verbal agreement is not a conversion; save payment or paid-contract evidence above."}</p><a className={button} href={`#validation-${plan.id}`}>{zh ? "付款／簽約證據 →" : "Payment / contract evidence →"}</a></div>;
   return <>{kind === "interview" ? <InterviewWorkspace revision={plan.revision} userId={userId} action={action} busy={busy} onChanged={onChanged} onInsights={onInsights} /> : kind ? <WorkspaceForm key={action.id} userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} /> : null}
-    {kind && <TaskFinding userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} onAnalyze={onAnalyze} />}
+    {kind && kind !== "interview" && <TaskFinding userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} onAnalyze={onAnalyze} />}
   </>;
 }
 

@@ -1,4 +1,5 @@
 "use client";
+import { commercialTask } from "@/lib/validation/schema";
 import type { ReactNode } from "react";
 import TaskDependencyEditor from "./TaskDependencyEditor";
 import TaskProgressLog from "./TaskProgressLog";
@@ -32,7 +33,7 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
   const metric = <>{action.metric?.target != null && !(focusMode && workspace) && <div className="mt-3">
     <p className="text-sm font-semibold">{action.metric.current ?? (zh ? "尚未回報" : "Not reported")}/{action.metric.target} {action.metric.unit}</p>
     {!focusMode && action.metric.current != null && <><progress className="mt-2 h-2 w-full overflow-hidden rounded-full appearance-none [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" aria-label={zh ? "數量進度" : "Quantity progress"} value={Math.min(action.metric.current, action.metric.target)} max={action.metric.target} /><p className="mt-1 text-xs text-dark/60">{zh ? `剩餘 ${Math.max(0, action.metric.target - action.metric.current)}` : `${Math.max(0, action.metric.target - action.metric.current)} remaining`}</p></>}
-  </div>}{!readOnly && onMetric && !action.done && !action.dependency.blocked && action.recordingMode !== "interview" && !action.taskWorkspace && !(focusMode && workspace) && <TaskProgressLog inline={focusMode} action={action} revision={revision} busy={busy} onSave={onMetric} />}</>;
+  </div>}{!readOnly && onMetric && !action.done && !action.dependency.blocked && action.recordingMode !== "interview" && !action.taskWorkspace && !commercialTask(action) && !(focusMode && workspace) && <TaskProgressLog inline={focusMode} action={action} revision={revision} busy={busy} onSave={onMetric} />}</>;
   const shortBlocker = action.dependency.milestoneTitle || (action.dependency.missingLink ? (zh ? "請設定前置任務" : "Link prerequisites") : action.dependency.actionRefs.filter(d => !(d.resolved ?? d.done)).map(d => `${d.crossMilestone && d.milestonePosition != null ? (zh ? `里程碑 ${Number(d.milestonePosition) + 1} 的 ` : `Milestone ${Number(d.milestonePosition) + 1} · `) : ""}#${d.displayNumber}${d.minimumCurrent != null ? ` (${d.metricCurrent ?? "?"}/${d.minimumCurrent} ${d.metricUnit || ""})` : ""}`).join(", "));
   const number = <span aria-hidden="true" className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dark/20 text-sm font-bold">{action.displayNumber}</span>;
   if (compact) return <article className={`min-w-0 rounded-2xl border bg-white p-3 [overflow-wrap:anywhere] sm:p-4 ${featured ? "border-black shadow-sm" : focusMode ? "border-dark/30" : "border-dark/10"}`}>

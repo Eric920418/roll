@@ -28,6 +28,7 @@ export default async function PipelinePage({ params }: Props) {
             value: true,
             contactId: true,
             notes: true,
+            validation: true,
           },
         }),
         prisma.contact.findMany({
@@ -48,7 +49,7 @@ export default async function PipelinePage({ params }: Props) {
       {!account ? (
         <PlanPaywall locale={l} />
       ) : (
-        <PipelineBoard deals={deals} contacts={contacts} />
+        <PipelineBoard deals={deals.map(d => ({ ...d, validation: Boolean(d.validation) }))} contacts={contacts} />
       )}
     </div>
   );

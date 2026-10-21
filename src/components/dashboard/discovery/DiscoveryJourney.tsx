@@ -7,12 +7,13 @@ import { pathForLocale } from "@/lib/routes";
 import type { getDiscoverySnapshot } from "@/lib/discovery/service";
 import { discoveryReportSchema } from "@/lib/discovery/policy";
 import CustomerDiscovery from "../CustomerDiscovery";
+import ValidationWorkspace from "../ValidationWorkspace";
 import LearningResources from "../LearningResources";
 import FounderOffer from "./FounderOffer";
 
 type Snapshot = Awaited<ReturnType<typeof getDiscoverySnapshot>>;
 const button = "inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/20 px-5 py-3 text-sm font-semibold disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-2";
-export default function DiscoveryJourney({ userId }: { userId: string }) {
+export default function DiscoveryJourney({ userId, planId }: { userId: string; planId?: string }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw";
   const [data, setData] = useState<Snapshot | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false), [analysing, setAnalysing] = useState(false);
   const attempted = useRef("");
@@ -25,9 +26,9 @@ export default function DiscoveryJourney({ userId }: { userId: string }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setAnalysing(false); }
   }, [locale, accept]);
-  const previewKey = data?.journeyId && data.total === 3 && !data.preview ? `${data.journeyId}:${data.version}` : "";
+  const previewKey = !data?.paid && data?.journeyId && data.total === 3 && !data.preview ? `${data.journeyId}:${data.version}` : "";
   useEffect(() => { if (!previewKey || attempted.current === previewKey) return; const timer = setTimeout(() => { attempted.current = previewKey; void analyse(false); }, 0); return () => clearTimeout(timer); }, [previewKey, analyse]);
-  const preview = discoveryReportSchema.safeParse(data?.preview).data, report = discoveryReportSchema.safeParse(data?.report).data;
+  const preview = discoveryReportSchema.safeParse(data?.preview).data;
   async function start() {
     if (busy) return; setBusy(true); setError("");
     try { const response = await fetch("/api/discovery", { method: "POST" }), json = await response.json(); if (!response.ok) throw new Error(json.error || `HTTP ${response.status}`); accept(json.data); }
@@ -44,7 +45,7 @@ export default function DiscoveryJourney({ userId }: { userId: string }) {
       </> : <p role="status" className="mt-5 text-sm">{zh ? "載入里程碑…" : "Loading your milestone…"}</p>}
     </div>
     {data && !data.paid && !data.active && data.total < 3 && <p className="rounded-xl border border-dark/15 bg-white p-5 text-sm">{zh ? "14 天試用已結束，已存訪談完整保留。" : "Your 14-day trial ended. Saved interviews are retained."} <Link className={`${button} mt-3`} href={pathForLocale("/dashboard/account#plan", locale)}>{zh ? "查看一般方案，繼續訪談" : "View regular plans to continue"}</Link></p>}
-    {data && data.total === 3 && <section className="space-y-4 rounded-2xl border border-dark/15 bg-white p-5 sm:p-7" aria-label={zh ? "初步訪談訊號" : "Preliminary interview signal"}>
+    {data && !data.paid && data.total === 3 && <section className="space-y-4 rounded-2xl border border-dark/15 bg-white p-5 sm:p-7" aria-label={zh ? "初步訪談訊號" : "Preliminary interview signal"}>
       <p className="text-xs font-semibold uppercase tracking-[0.15em]">{zh ? "你已完成第一個里程碑" : "Your first milestone is complete"}</p>
       <h3 className="text-xl font-bold">{zh ? "初步訊號，還不是結論" : "An early signal, not a conclusion"}</h3>
       {preview ? preview.topics[0] ? <><p className="text-lg font-semibold">{zh ? `目前分析的 ${preview.total} 次訪談中，有 ${preview.topics[0].count} 間公司提到相近痛點：${preview.topics[0].label}` : `${preview.topics[0].count} of the ${preview.total} companies analysed described a similar pain: ${preview.topics[0].label}`}</p><details><summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">{zh ? "查看訪談依據" : "View the interview evidence"}</summary>{preview.topics[0].evidence.map((source, i) => <blockquote key={`${source.recordId}-${i}`} className="mt-3 border-l-2 border-dark/20 pl-4 text-sm text-dark/70">{source.quote}</blockquote>)}</details></> : <p>{zh ? "目前的訪談還沒有出現可核對的共同痛點，這也是有用的訊號。" : "These interviews do not yet show a verifiable shared pain. That is useful evidence too."}</p> : <p role="status">{analysing ? (zh ? "NOVA 正在核對你的訪談…" : "NOVA is checking your interview evidence…") : (zh ? "初步分析尚未完成，原始紀錄已保存。" : "Preliminary analysis is not ready. Your interviews are saved.")}</p>}
@@ -52,10 +53,9 @@ export default function DiscoveryJourney({ userId }: { userId: string }) {
       {!preview && <button type="button" disabled={analysing} className={button} onClick={() => void analyse(false)}>{zh ? "產生／重試初步分析" : "Generate / retry preliminary analysis"}</button>}
     </section>}
     {data && data.total >= 3 && !data.paid && <FounderOffer />}
-    {data?.paid && <section className="space-y-4 rounded-2xl border border-dark/15 bg-white p-5"><h3 className="text-xl font-bold">{zh ? "完整分析與投資人證據報告" : "Full analysis and investor evidence report"}</h3><p className="text-sm text-dark/65">{zh ? "完成十間不同公司的訪談後，整理前三大痛點、引用與限制；報告不代表已證明市場需求。" : "After 10 distinct-company interviews, review the leading pain points, sources and limitations. The report does not certify market demand."}</p>
-      {report ? <><ol className="list-decimal space-y-3 pl-5">{report.topics.map(topic => <li key={topic.label}><strong>{topic.label}</strong><span className="ml-2 text-sm text-dark/60">{topic.count}/{report.total} · {topic.percent}%</span></li>)}</ol><Link href={pathForLocale("/dashboard/discovery-report", locale)} className={`${button} bg-black text-white`}>{zh ? "查看／列印驗證報告" : "View / print evidence report"}</Link><div><h4 className="font-semibold">{zh ? "建議下一步" : "Suggested next actions"}</h4><ul className="mt-3 list-disc space-y-2 pl-5 text-sm">{report.nextMoves.map(move => <li key={move}>{move}</li>)}</ul></div></> : <button type="button" className={button} disabled={data.total < 10 || analysing} onClick={() => void analyse(true)}>{data.total < 10 ? (zh ? `再訪談 ${10 - data.total} 間，解鎖完整報告` : `${10 - data.total} more interviews to unlock the report`) : (zh ? "產生完整分析 · 使用 1 次 AI" : "Generate full analysis · uses 1 AI request")}</button>}
-    </section>}
+    {data?.paid && data.journeyId && !planId && <ValidationWorkspace userId={userId} journeyId={data.journeyId} revision={data.version} />}
     {error && <div role="alert" className="space-y-3 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p><button type="button" className={button} onClick={() => void load()}>{zh ? "重新載入，保留已輸入內容" : "Reload · keep my input"}</button></div>}
+    {data?.paid && planId && <a href={`#validation-${planId}`} className={button}>{zh ? "繼續聯絡與付款驗證 →" : "Continue to outreach and payment validation →"}</a>}
     {data?.journeyId && <><LearningResources kind="interview" question={zh ? "如何進行訪談？" : "How to run an interview?"} />{!data.canCreate && <p className="rounded-xl bg-dark/5 p-4 text-sm">{!data.paid ? (zh ? "試用訪談先停在這裡。已儲存內容保留；升級後可繼續其餘訪談與完整分析。" : "Your trial interviews pause here. Saved records are retained; upgrade to continue and unlock full analysis.") : (zh ? "十次訪談已記錄，可查看完整分析，或在下方建立下一步計畫。" : "Ten interviews saved. Review the full analysis or build your next plan below.")}</p>}<CustomerDiscovery key={data.journeyId} journeyId={data.journeyId} userId={userId} rows={data.rows} outcomes={[]} createDisabled={!data.canCreate} readOnly={busy || (!data.paid && !data.active)} onSaved={() => void load()} /></>}
   </section>;
 }

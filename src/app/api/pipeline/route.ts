@@ -1,3 +1,8 @@
+import { z } from "zod";
+import { scopeSchema, salesMutationSchema } from "@/lib/validation/schema";
+import { validationSnapshot, saveSalesRecord } from "@/lib/validation/service";
+import { verifyProof } from "@/lib/validation/proof";
+import { PlanWriteError } from "@/lib/action-plan/service";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +20,14 @@ export async function POST(req: NextRequest) {
     if (!session) return unauthorized();
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
 
-    const parsed = dealCreateSchema.safeParse(await req.json());
+    const body = await req.json();
+    if (body.scope) {
+      const input = salesMutationSchema.parse(body);
+      if (input.proof) await verifyProof(session.uid, input.proof);
+      await saveSalesRecord(session.uid, input);
+      return ok(await validationSnapshot(session.uid, input.scope));
+    }
+    const parsed = dealCreateSchema.safeParse(body);
     if (!parsed.success) return fail(zodMessage(parsed.error), 400);
     const d = parsed.data;
 
@@ -40,6 +52,22 @@ export async function POST(req: NextRequest) {
     });
     return ok(row, 201);
   } catch (error) {
+    if (error instanceof PlanWriteError) return fail(error.message, error.status);
+    if (error instanceof z.ZodError) return fail(zodMessage(error), 400);
+    if (error instanceof SyntaxError) return fail("無效 JSON / Invalid JSON", 400);
+    return failFromError(error);
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getUserSession(); if (!session) return unauthorized();
+    if (!await requirePlan("pro")) return fail("升級後可使用聯絡、話術與成交工作區 / Upgrade to use outreach, scripts and payment evidence", 403);
+    const scope = scopeSchema.parse(Object.fromEntries(req.nextUrl.searchParams));
+    return ok(await validationSnapshot(session.uid, scope));
+  } catch (error) {
+    if (error instanceof PlanWriteError) return fail(error.message, error.status);
+    if (error instanceof z.ZodError) return fail(zodMessage(error), 400);
     return failFromError(error);
   }
 }

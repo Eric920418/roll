@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 export type DealRow = {
   id: string;
@@ -11,6 +11,7 @@ export type DealRow = {
   value: number | null;
   contactId: string | null;
   notes: string | null;
+  validation?: unknown;
 };
 export type ContactOption = { id: string; name: string };
 
@@ -31,6 +32,7 @@ export default function PipelineBoard({
   deals: DealRow[];
   contacts: ContactOption[];
 }) {
+  const zh = useLocale() === "zh-tw";
   const t = useTranslations("Dashboard.pipeline");
   const tA = useTranslations("Dashboard.actions");
   const router = useRouter();
@@ -231,7 +233,7 @@ export default function PipelineBoard({
                       className="rounded-xl border border-dark/10 bg-white p-3"
                     >
                       <p className="text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
-                        {d.title}
+                        {d.title}{d.stage === "won" && !d.validation && <span className="mt-1 block text-xs font-normal text-amber-800">{zh ? "歷史贏單・尚未驗證付款／付費合約" : "Historical win · payment / paid contract unverified"}</span>}
                       </p>
                       {d.value != null && (
                         <p className="mt-0.5 text-xs font-semibold text-primary">
@@ -246,7 +248,7 @@ export default function PipelineBoard({
                       {d.notes && (
                         <p className="mt-1 text-xs text-dark/60">{d.notes}</p>
                       )}
-                      <div className="mt-2 flex gap-1.5">
+                      {d.validation ? <a href={zh ? "/zh-tw/dashboard/agenda" : "/dashboard/agenda"} className="mt-2 inline-flex min-h-11 items-center text-xs underline">{zh ? "在 Next Steps 查看證據與歷史" : "View evidence and history in Next Steps"}</a> : <div className="mt-2 flex gap-1.5">
                         <button
                           type="button"
                           onClick={() => startEdit(d)}
@@ -262,7 +264,7 @@ export default function PipelineBoard({
                         >
                           {deletingId === d.id ? tA("deleting") : tA("delete")}
                         </button>
-                      </div>
+                      </div>}
                     </div>
                   ))}
                 </div>

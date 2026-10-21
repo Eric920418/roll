@@ -71,8 +71,9 @@ test("Task workspace APIs in isolated PostgreSQL: versioning, ownership, evidenc
     return loaded.exports as T;
   }
   const plans = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts"); mocks["@/lib/action-plan/service"] = plans; mocks["./service"] = plans;
-  mocks["@/lib/action-plan/workspace-service"] = load("src/lib/action-plan/workspace-service.ts");
   mocks["@/lib/customer-insights/service"] = load("src/lib/customer-insights/service.ts");
+  mocks["@/lib/validation/service"] = load("src/lib/validation/service.ts");
+  mocks["@/lib/action-plan/workspace-service"] = load("src/lib/action-plan/workspace-service.ts");
   const rewards = load<typeof import("../src/lib/rewards/service")>("src/lib/rewards/service.ts"); mocks["@/lib/rewards/service"] = { ...rewards, awardReward: async (...args: Parameters<typeof rewards.awardReward>) => { if (failAward) throw new Error("Injected reward failure"); return rewards.awardReward(...args); } };
   const api = load<typeof import("../src/app/api/action-plans/actions/[id]/route")>("src/app/api/action-plans/actions/[id]/route.ts"), notes = load<typeof import("../src/app/api/customer-insights/route")>("src/app/api/customer-insights/route.ts");
   const plan = await db.actionPlan.create({ data: { userId: owner.id, activeKey: owner.id, locale: "en", requestId: randomUUID(), companyStage: "MVP", stageReason: "QA", stageConfidence: 80, bottleneckGroup: "Sales", bottleneckCode: "no_icp", bottleneckReason: "QA", bottleneckConfidence: 80 } });

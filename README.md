@@ -1741,3 +1741,43 @@ Schema 只新增 User 的 nullable trialPolicy／founderStartedAt／founderEndsA
 驗收結果：253 項完整回歸全數通過（含真實隔離 PostgreSQL）、TypeScript／build／diff check 通過；lint 0 errors、14 個既有 warnings。覆蓋並行三次限制、重複公司／編輯繞過、歸屬、冪等、版本衝突、舊會員授權、AI 租約／引用／快取／失敗退款、十一位搶十席、訂單逾時、交易回滾、重複 webhook、不延長一年、退款及刪帳號匿名留席。桌面／繁中 390px 手機實際保存第 3 間、自動顯示有引用的 2／3 訊號、跨頁共用資料、第四間停用、付費報告與帳務到期日已驗收；手機 scrollWidth=390。三個本機專用帳號與範例紀錄已清理。
 
 功能 commit `403e0281bcf90d8baddd5e2105e15c14b1dbcd1f` 的 Production `dpl_FQLj5vDXCm2rmBB7xcuD12q5Wysp` 已 READY，正式網域指向同一版本。以一個新建專用 QA 帳號實際驗證 14 天／3 次、三筆訪談寫入、真實 AI 原文分析（兩間公司共同提及開發合格潛在客戶困難）、第 4 次與免費完整分析回 402，並成功建立 **PayPal Live** 年費訂單；未核准、未擷取、未扣款。測試帳號、其訪談與未付款暫留席位已清除，沒有寄信或變更既有會員。Production 新註冊開關在這些驗收完成後才開啟，隨本次發布生效。
+
+## 訪談到付款驗證流程（開發中）
+
+資料變更僅新增 nullable 欄位：ActionPlan.sourceJourneyId / validationAnalysis、DiscoveryJourney.validationAnalysis、Deal.validation、ActionItem.commercialValidation。MeetingNote.insight 保留原四題，新增選填 commercial 報價、幣別、明確付費意願、熱度與原話；未知不影響有效訪談。既有資料不回填、不重置；Jamie 既有完整試用權益不變。成交必須由使用者確認正數金額、日期與私密證明，口頭同意不計；不是金流／電子簽章自動驗證。
+
+驗證流程共用規則置於 `src/lib/validation/schema.ts`：公司正規化去重、最多五位既有名單排序、七段中英文標準話術、付費證據驗證與各幣別分開的小數金額統計。標準話術不扣 AI 次數，不自動發送；缺資訊保留明確待填位置。
+
+商業紀錄以同會員／工作區／正規化公司產生固定 Deal ID，工作區交易鎖、requestId 與 version 防止重送及多分頁覆寫。撤銷保留證據歷史，停止計數、標示新流程成果待確認；舊完成任務不倒退。ActionPlan 的 Journey 來源必須由會員確認連結，並由伺服器驗證歸屬，原訪談不複製、不改成雙重關聯。
+
+成交附件沿用現有獨立 Private Blob token `INVESTOR_BLOB_READ_WRITE_TOKEN`，不新增金鑰。使用 `commercial-evidence/<userId>/` 隔離路徑；`POST /api/pipeline/evidence/upload` 限 Pro／有效完整試用、PDF/JPEG/PNG、10 MB、不可覆寫，儲存成交時重新檢查實際內容與檔頭。`GET /api/pipeline/evidence?dealId=&proofId=` 僅本人登入可下載，保留撤銷歷史，不加入任何投資人分享。
+
+API：`GET /api/pipeline?planId=...` 或 `?journeyId=...` 取得共用驗證工作區；`POST /api/pipeline` 帶 scope/requestId/version 可儲存聯絡、報價、私密證據、撤銷及話術。舊 Pipeline 建立介面保留；帶新驗證資料的 Deal 禁止從舊通用 PATCH/DELETE 繞過歷史保留。`PATCH /api/discovery` 使用 planId/journeyId/revision/confirmed=true 確認引用原訪談工作區。
+
+分段分析：`POST /api/discovery/analyse` 新增 `{scope, milestone:3|6|10, locale}` 或 `{scope, dealId, locale}`。3 次初步訊號免費；6／10 次與拒絕分析各按鈕明示使用 1 次，既有 allowance 扣次／退款沿用。來源指紋快取、120 秒處理鎖與產生後再次核對來源／方案；引用必須與原話一致，痛點至少有兩間公司支持。拒絕原話與理由不足先補問，不扣次數；失敗不套用結果並退回原額度來源。
+
+任務完成 PATCH 已接到成交證據的同一交易：伺服器重算不同公司數、依原目標（無目標預設 1 家）驗證後才完成並入帳。新未完成任務會追查整條前置任務鏈，撤銷／退款不得藉舊 done 標記繞過。此類任務禁止手填數量或用舊 agreed 表單加進度。Customer Insights 新增商業欄位仍驗證 linked Contact 歸屬。
+
+Next Steps 新增共用 ValidationWorkspace：3／6／10 分段分析、最多五位優先公司、完整聯絡／報價／成交歷史、可儲存雙語話術、拒絕後補問與分析、私密附件及撤銷、確認成果與下一步。公司編輯草稿以會員／工作區隔離保留，衝突需比較最新版本；畫面操作至少 44px。新試用第 3 次後原升級牆與 Feedback 問卷維持不變，完整試用／付費使用全流程。付費試點卡改連結證據工作區，Home 共用 Quantity 也不得手填此類成交進度。
+
+舊 Pipeline 的 won 顯示「歷史贏單・尚未驗證付款／付費合約」，不補算新流程成交。分析卡不強迫先跑 6 次再跑 10 次；不足共同痛點會顯示證據不足。儲存／複製錯誤在前端顯示，版本衝突不清除輸入。
+
+冪等提交同時比對 payload hash；相同 requestId 不同內容回 409。證據 ID／私密檔案不得在其他公司重複使用。成交狀態同步舊 Pipeline 欄位，但驗證進度永遠只採有效證據，不採 won 本身。
+
+引用 Journey 後，原訪談也可作為計畫訪談任務的證據；只在查詢結果增加 scopeActionId 標記，不改寫 MeetingNote.insight。編輯／刪除 Journey 訪談會在原交易重算已連結的訪談任務，原有後續依賴與已完成數量限制仍生效。所有 Journey／計畫寫入統一先鎖計畫，避免反向鎖順序。
+
+下一階段啟用與里程碑成果確認也重新檢查先前成交證據，避免跳過任務 PATCH 入口。10 家完整分析有獨立可列印報告頁（支援 planId 或 journeyId、本人與方案驗證）；不把成交附件混入報告。Pipeline 證據型商機改引導回 Next Steps 管理，舊贏單仍保留但明示未驗證。測試 fixture 與 provider callback origin 例外清單同步更新。
+
+驗收新增 `tests/commercial-validation.test.ts`：價格欄位相容、去重與幣別、優先名單、免費／完整試用／到期權限、重送與多分頁、私密附件歸屬、無證據不得完成、簽約後付款、撤銷與後續限制、交易與積分回滾、原訪談引用、3／6／10 快取、分析併行／失敗／來源變動退款及拒絕分析。
+
+訪談／成交任務完成不再自動呼叫舊任務 AI 分析，避免多扣一次且繞過 3／6／10 上限；改由分段按鈕明示產生。排序的最近回覆只採明確回覆或訪談日期，不把單純修改紀錄當成新回覆；最新拒絕會降低優先順序。
+
+同頁已有計畫時，只保留一份成交驗證工作區，訪談區提供往下繼續入口，避免 Journey 與 Roadmap 重複完整流程。舊完成任務另外標示歷史未驗證；不假裝舊口頭 Yes 已附付款證據。開發驗收使用隔離 PostgreSQL、獨立 QA 帳號與明示 QA 的附件，不異動正式會員或寄信。
+
+證據撤銷後即使補上新證據，仍需按「重新確認成果」才能讓新步驟繼續；不重發積分。完成態只更新確認狀態，保留原 completedAt。依賴排序也會將待重新確認的前項顯示為阻擋。新任務上方提供前一項的真實成交摘要與證據性質說明，不顯示空白假 Insights。
+
+重新確認區使用獨立狀態文字，補上證據後按鈕才可操作，避免使用者看到舊完成勾選便以為目前證據仍有效。
+
+附件上傳成功但儲存失敗時，草稿保留已上傳路徑供重試，不要求重複上傳；證據種類須與簽約／付款狀態一致。額外驗證已撤銷成果不能從里程碑入口繞過、補證後仍需明確重新確認、重新確認不重複發分。
+
+商業任務類型沿用既有 workspaceKind（含中英文付費試用／試點名稱），避免同一任務在舊表單與新證據規則間判定不同。

@@ -1,3 +1,6 @@
+import { interviewRows } from "@/lib/customer-insights/service";
+import { commercialTask } from "@/lib/validation/schema";
+import { assertCommercialCompletion } from "@/lib/validation/service";
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
@@ -10,11 +13,12 @@ import { PlanWriteError, lockActivePlan, getActiveActionPlan } from "./service";
 import { workspaceSchema, storedFindingSchema, workspaceLeads, workspaceKind, workspaceComplete, workspaceProgress, interviewTarget, groundedFinding, type TaskWorkspace } from "./workspace";
 import { interviewSummary } from "@/lib/customer-insights/interviews";
 
-export async function planWorkspaceEvidence(tx: Pick<Prisma.TransactionClient, "actionItem" | "meetingNote">, userId: string, planId: string) {
+export async function planWorkspaceEvidence(tx: Pick<Prisma.TransactionClient, "actionItem" | "meetingNote" | "actionPlan">, userId: string, planId: string) {
   const actions = await tx.actionItem.findMany({ where: { actionPlanId: planId, actionPlan: { userId } }, orderBy: [{ executionOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }], select: { id: true, taskWorkspace: true } });
-  const rows = await tx.meetingNote.findMany({ where: { userId, insight: { path: ["actionId"], not: Prisma.JsonNull } }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], select: { id: true, updatedAt: true, insight: true } });
+  const plan = await tx.actionPlan.findFirst({ where: { id: planId, userId }, select: { sourceJourneyId: true } });
+  const rows = await tx.meetingNote.findMany({ where: { userId, insight: { not: Prisma.DbNull } }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], select: { id: true, updatedAt: true, insight: true } });
   const ids = new Set(actions.map(a => a.id));
-  const ownedRows = rows.filter(row => row.insight && typeof row.insight === "object" && "actionId" in row.insight && ids.has(String(row.insight.actionId)));
+  const ownedRows = rows.filter(row => row.insight && typeof row.insight === "object" && (("actionId" in row.insight && ids.has(String(row.insight.actionId))) || (plan?.sourceJourneyId && "journeyId" in row.insight && row.insight.journeyId === plan.sourceJourneyId)));
   const scorecards = actions.flatMap(action => { const w = workspaceSchema.safeParse(action.taskWorkspace); return w.success && w.data.kind === "scorecard" && workspaceComplete(w.data) ? [{ actionId: action.id, ...w.data }] : []; });
   return { rows: ownedRows, leads: workspaceLeads(ownedRows), scorecards: scorecards.reverse() };
 }
@@ -32,11 +36,12 @@ export function validateWorkspaceLinks(workspace: TaskWorkspace, evidence: Await
   }
 }
 export async function assertTaskWorkspaceComplete(tx: Prisma.TransactionClient, userId: string, action: { id: string; actionPlanId: string; title: string; recordingMode: string | null; metricTarget: number | null; taskWorkspace: unknown }) {
+  if (commercialTask(action)) return assertCommercialCompletion(tx, userId, action);
   const kind = workspaceKind(action);
   if (!kind) return;
   const evidence = await planWorkspaceEvidence(tx, userId, action.actionPlanId);
   if (kind === "interview") {
-    const count = interviewSummary(action.id, evidence.rows).total, target = interviewTarget(action);
+    const count = interviewSummary(action.id, await interviewRows(tx, userId, action.id)).total, target = interviewTarget(action);
     if (!target || count < target) throw new PlanWriteError(`有效訪談尚未達標 ${count}/${target ?? "?"}；請先儲存訪談 / Save enough valid interviews first`, 409);
     return;
   }
@@ -55,7 +60,7 @@ function strings(value: unknown): string[] {
   if (value && typeof value === "object") return Object.entries(value).filter(([key]) => !["id", "leadId", "actionId", "kind", "type", "date"].includes(key)).flatMap(([, v]) => strings(v));
   return [];
 }
-async function findingInput(tx: Pick<Prisma.TransactionClient, "actionItem" | "meetingNote">, userId: string, action: { id: string; actionPlanId: string; title: string; taskWorkspace: unknown }) {
+async function findingInput(tx: Pick<Prisma.TransactionClient, "actionItem" | "meetingNote" | "actionPlan">, userId: string, action: { id: string; actionPlanId: string; title: string; taskWorkspace: unknown }) {
   const evidence = await planWorkspaceEvidence(tx, userId, action.actionPlanId);
   const workspace = workspaceSchema.safeParse(action.taskWorkspace).data;
   const inputs = workspace ? { workspace, ...(workspace.kind === "pilot" || workspace.kind === "tiers" ? { leads: evidence.leads.filter(l => (workspace.kind === "pilot" ? workspace.prospects.map(p => p.leadId) : workspace.leads.map(l => l.leadId)).includes(l.id)).map(l => ({ id: l.id, name: l.name, company: l.company, answers: l.insight.answers, notes: l.insight.notes })), scorecards: evidence.scorecards } : {}) } : { interviews: evidence.rows.filter(row => row.insight && typeof row.insight === "object" && "actionId" in row.insight && row.insight.actionId === action.id).map(row => row.insight) };
@@ -71,6 +76,7 @@ export async function generateTaskFinding(account: Account, actionId: string, in
       const tx = raw as unknown as Prisma.TransactionClient;
       const a = await tx.actionItem.findFirst({ where: { id: actionId, actionPlan: { userId: account.id, activeKey: account.id, archivedAt: null } } });
       if (!a) throw new PlanWriteError("找不到任務 / Task not found", 404);
+      if (commercialTask(a) || workspaceKind(a) === "interview") throw new PlanWriteError("請使用訪談分段分析按鈕，確認次數後才產生 / Use the interview milestone analysis buttons with explicit usage", 409);
       if (!a.done || !workspaceKind(a)) throw new PlanWriteError("完成並保存紀錄後才能分析 / Complete the task with saved records first", 409);
       const finding = storedFindingSchema.safeParse(a.taskFinding).data;
       if (finding?.result) return null;

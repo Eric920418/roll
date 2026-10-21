@@ -5,8 +5,11 @@ import { dependencySatisfied } from "@/lib/action-plan/dependency";
 import { interviewSummary } from "./interviews";
 import { workspaceKind, interviewTarget } from "@/lib/action-plan/workspace";
 
-export async function interviewRows(tx: Pick<Prisma.TransactionClient, "meetingNote">, userId: string, actionId: string) {
-  return tx.meetingNote.findMany({ where: { userId, insight: { path: ["actionId"], equals: actionId } }, select: { id: true, updatedAt: true, insight: true }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
+export async function interviewRows(tx: Pick<Prisma.TransactionClient, "meetingNote" | "actionItem" | "actionPlan">, userId: string, actionId: string) {
+  const action = await tx.actionItem.findFirst({ where: { id: actionId, actionPlan: { userId } }, select: { actionPlanId: true } });
+  const plan = action ? await tx.actionPlan.findFirst({ where: { id: action.actionPlanId, userId }, select: { sourceJourneyId: true } }) : null;
+  const rows = await tx.meetingNote.findMany({ where: { userId, OR: [{ insight: { path: ["actionId"], equals: actionId } }, ...(plan?.sourceJourneyId ? [{ insight: { path: ["journeyId"], equals: plan.sourceJourneyId } }] : [])] }, select: { id: true, updatedAt: true, insight: true }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
+  return rows.map(row => ({ ...row, scopeActionId: actionId }));
 }
 
 export async function lockInterviewAction(tx: Prisma.TransactionClient, userId: string, actionId: string, creating = false) {

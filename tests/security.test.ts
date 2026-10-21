@@ -35,7 +35,7 @@ test("Browser mutation boundary rejects absent/foreign/null/subdomain origins an
 });
 
 test("All browser write handlers enforce their own origin boundary, provider callbacks keep separate authentication", () => {
-  const exceptions = new Set(["billing/webhook/route.ts", "rewards/unsubscribe/route.ts", "week-plan/alerts/unsubscribe/route.ts", "admin/upload/route.ts", "investor-portal/business-plan/upload/route.ts"]);
+  const exceptions = new Set(["billing/webhook/route.ts", "rewards/unsubscribe/route.ts", "week-plan/alerts/unsubscribe/route.ts", "admin/upload/route.ts", "investor-portal/business-plan/upload/route.ts", "pipeline/evidence/upload/route.ts"]);
   let checked = 0;
   function walk(dir: string) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {

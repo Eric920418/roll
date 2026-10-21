@@ -1,3 +1,4 @@
+import { assertCommercialPrerequisites } from "@/lib/validation/service";
 import { logSecurityError } from "@/lib/security/log";
 import "server-only";
 import { randomUUID } from "node:crypto";
@@ -16,7 +17,7 @@ import { z } from "zod";
 export const LOCK_MS = 360_000;
 const asJson = (value: unknown) => value as Prisma.InputJsonValue;
 const conflict = () => new PlanWriteError("草稿已被另一分頁更新，請重新載入；你的輸入仍保留。 / Draft changed in another tab. Reload; your input is preserved.");
-const includes = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
+const includes = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, commercialValidation: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
 
 export async function getRoadmapHistory(userId: string, historyId: string) {
   const plan = await prisma.actionPlan.findFirst({ where: { id: historyId, userId }, include: includes });
@@ -112,6 +113,7 @@ export async function patchRoadmap(userId: string, input: z.infer<typeof roadmap
       if (!active?.goal || active.goal !== draft.goal || active.goalStartsAt?.toISOString().slice(0, 10) !== draft.startsAt || active.goalDeadline?.toISOString().slice(0, 10) !== draft.deadline) throw new PlanWriteError("下一階段不可更換目標或期限 / The next stage cannot change the goal or horizon", 400);
       const stage = active.milestones.find(m => m.id === draft.milestoneId);
       if (!stage || stage.achievedAt || active.actions.some(a => a.milestoneId === stage.id) || active.milestones.some(m => m.position < stage.position && !m.achievedAt)) throw new PlanWriteError("階段已更新或尚未解鎖 / Stage changed or is not unlocked");
+      await assertCommercialPrerequisites(tx, userId, active.id, active.actions.map(a => a.id));
       if (active.actions.length + draft.actions.length > 100) throw new PlanWriteError("每份計畫最多 100 項任務 / Maximum 100 tasks per plan");
       if (draft.actions.some(a => active.actions.some(old => old.title.trim().toLocaleLowerCase() === a.title.trim().toLocaleLowerCase()))) throw new PlanWriteError("任務與先前階段重複，請修改或重新生成 / A task repeats an earlier stage; edit or regenerate", 400);
       if (active.actions.some(a => a.impact === "Critical") && draft.actions.some(a => a.impact === "Critical")) throw new PlanWriteError("每份計畫最多一項 Critical，請調整任務 / Maximum one Critical impact per plan; adjust the tasks", 400);
@@ -136,6 +138,7 @@ export async function confirmMilestone(userId: string, id: string, input: z.infe
     const stages = await tx.planMilestone.findMany({ where: { actionPlanId: found.actionPlanId }, include: { actions: true }, orderBy: { position: "asc" } });
     const stage = stages.find(m => m.id === id)!;
     if (input.achieved) {
+      await assertCommercialPrerequisites(tx, userId, found.actionPlanId, stage.actions.map(a => a.id));
       if (!input.outcomeNote) throw new PlanWriteError("請填寫實際成果說明 / Describe the actual result", 400);
       if (stages.some(m => m.position < stage.position && !m.achievedAt) || !stage.actions.length || stage.actions.some(a => !a.done)) throw new PlanWriteError("請先完成前階段成果確認與本階段任務 / Confirm previous milestones and complete this stage's tasks first");
     } else if (stages.some(m => m.position > stage.position && (m.achievedAt || m.actions.some(a => a.done)))) throw new PlanWriteError("請先撤銷後續階段的完成紀錄 / Undo later stage completions first");

@@ -6,14 +6,27 @@ import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import { getDiscoverySnapshot } from "@/lib/discovery/service";
 import { discoveryReportSchema, isDiscoveryMember } from "@/lib/discovery/policy";
+import { requirePlan } from "@/lib/billing/gate";
+import { validationSnapshot } from "@/lib/validation/service";
 import PrintReport from "@/components/dashboard/discovery/PrintReport";
 
-export default async function DiscoveryReportPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function DiscoveryReportPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ planId?: string; journeyId?: string }> }) {
   const { locale } = await params, l = locale as Locale, zh = locale === "zh-tw";
   await requireUserPage(locale); setRequestLocale(locale);
-  const account = await getCurrentAccount(); if (!isDiscoveryMember(account) || !account) redirect(pathForLocale("/dashboard/agenda", l));
-  const snapshot = await getDiscoverySnapshot(account.id), report = discoveryReportSchema.safeParse(snapshot.report).data;
-  if (!snapshot.paid || !report || snapshot.total < 10) redirect(`${pathForLocale("/dashboard/agenda", l)}#discovery`);
+  const account = await getCurrentAccount(); if (!account) redirect(pathForLocale("/dashboard/agenda", l));
+  const query = await searchParams;
+  let report: ReturnType<typeof discoveryReportSchema.safeParse>["data"];
+  if (query.planId || query.journeyId) {
+    if (!await requirePlan("pro")) redirect(pathForLocale("/dashboard/agenda", l));
+    const snapshot = await validationSnapshot(account.id, query.planId ? { planId: query.planId } : { journeyId: query.journeyId! });
+    const cache = snapshot.analysis as { reports?: Record<string, { source: string; result: unknown }> } | null;
+    const entry = cache?.reports?.["10"];
+    report = entry?.source === snapshot.source ? discoveryReportSchema.safeParse(entry.result).data : undefined;
+  } else if (isDiscoveryMember(account)) {
+    const snapshot = await getDiscoverySnapshot(account.id);
+    report = snapshot.paid && snapshot.total >= 10 ? discoveryReportSchema.safeParse(snapshot.report).data : undefined;
+  }
+  if (!report) redirect(`${pathForLocale("/dashboard/agenda", l)}#discovery`);
   const ids = [...new Set(report.topics.flatMap(topic => topic.evidence.map(source => source.recordId)))];
   return <article className="discovery-report mx-auto max-w-4xl space-y-7 rounded-2xl border border-dark/15 bg-white p-6 sm:p-9">
     <style>{`@media print { body * { visibility: hidden; } .discovery-report, .discovery-report * { visibility: visible; } .discovery-report { position: absolute; inset: 0; width: 100%; max-width: none; border: 0; margin: 0; padding: 0; } .discovery-report button { display: none; } } @page { margin: 18mm; }`}</style>

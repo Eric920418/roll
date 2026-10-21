@@ -13,7 +13,7 @@ import type * as PlanService from "../src/lib/action-plan/service";
 const require = createRequire(import.meta.url);
 function load<T>(path: string, mocks: Record<string, unknown>) {
  const result = { exports: {} };
- runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { module: result, exports: result.exports, require: (id: string) => id === "server-only" ? {} : id in mocks ? mocks[id] : require(id), console: { error() {} }, process: { env: {} }, Date, Set, Map, JSON, Error });
+ runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { module: result, exports: result.exports, require: (id: string) => id === "server-only" ? {} : id in mocks ? mocks[id] : id === "@/lib/validation/service" ? { assertCommercialPrerequisites: async () => {} } : require(id), console: { error() {} }, process: { env: {} }, Date, Set, Map, JSON, Error });
  return result.exports as T;
 }
 const diagnosis = { companyStage: "MVP" as const, stageReason: "User reports MVP", stageConfidence: 70, bottleneckGroup: "Sales" as const, bottleneckCode: "no_leads", bottleneckReason: "User wants customers", bottleneckConfidence: 60 };

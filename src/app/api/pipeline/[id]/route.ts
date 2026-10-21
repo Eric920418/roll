@@ -21,6 +21,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (!session) return unauthorized();
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
     const { id } = await params;
+    const validation = await prisma.deal.findFirst({ where: { id, userId: session.uid }, select: { validation: true } });
+    if (validation?.validation) return fail("請在 Next Steps 編輯或撤銷成交證據；歷史不可刪除 / Edit or revoke evidence in Next Steps; history is retained", 409);
 
     const parsed = dealUpdateSchema.safeParse(await req.json());
     if (!parsed.success) return fail(zodMessage(parsed.error), 400);
@@ -62,6 +64,8 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     if (!session) return unauthorized();
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
     const { id } = await params;
+    const validation = await prisma.deal.findFirst({ where: { id, userId: session.uid }, select: { validation: true } });
+    if (validation?.validation) return fail("請在 Next Steps 編輯或撤銷成交證據；歷史不可刪除 / Edit or revoke evidence in Next Steps; history is retained", 409);
 
     const res = await prisma.deal.deleteMany({
       where: { id, userId: session.uid },

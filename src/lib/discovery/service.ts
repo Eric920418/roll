@@ -1,3 +1,5 @@
+import { refreshInterviewProgress } from "@/lib/customer-insights/service";
+import { lockActivePlan } from "@/lib/action-plan/service";
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +16,8 @@ export function discoveryRows(userId: string, journeyId: string, db: Pick<Prisma
   return db.meetingNote.findMany({ where: { userId, insight: { path: ["journeyId"], equals: journeyId } }, select: { id: true, updatedAt: true, insight: true }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
 }
 export async function lockDiscoveryWrite(tx: Prisma.TransactionClient, userId: string, journeyId: string, creating = false) {
+  const linked = await tx.actionPlan.findFirst({ where: { userId, activeKey: userId, sourceJourneyId: journeyId }, select: { id: true } });
+  if (linked) await lockActivePlan(tx, userId, linked.id);
   const owned = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "DiscoveryJourney" WHERE "id" = ${journeyId} AND "userId" = ${userId} FOR UPDATE`;
   if (!owned.length) throw new PlanWriteError("找不到訪談工作區 / Interview workspace not found", 404);
   const account = await discoveryAccount(userId, tx);
@@ -31,6 +35,8 @@ export async function invalidateDiscovery(tx: Prisma.TransactionClient, journeyI
   const limit = account && discoveryPaid(account) ? FULL_INTERVIEWS : TRIAL_INTERVIEWS;
   // Validate the projected total as well: editing a formerly duplicated company must not bypass the cap.
   if (discoveryEvidence(journeyId, await discoveryRows(journey.userId, journeyId, tx)).length > limit) throw new PlanWriteError("已達訪談上限，這次修改未儲存 / Interview limit reached; this change was not saved", limit === TRIAL_INTERVIEWS ? 402 : 409);
+  const linkedActions = await tx.actionItem.findMany({ where: { recordingMode: "interview", actionPlan: { userId: journey.userId, activeKey: journey.userId, sourceJourneyId: journeyId } }, select: { id: true } });
+  for (const action of linkedActions) await refreshInterviewProgress(tx, journey.userId, action.id);
   await tx.discoveryJourney.update({ where: { id: journeyId }, data: { version: { increment: 1 }, preview: Prisma.DbNull, previewVersion: null, report: Prisma.DbNull, reportVersion: null } });
 }
 export async function getDiscoverySnapshot(userId: string) {

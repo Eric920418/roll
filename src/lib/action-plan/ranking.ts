@@ -1,8 +1,10 @@
+import { commercialStateSchema } from "@/lib/validation/schema";
 import { dependencySatisfied } from "./dependency";
 import { workspaceSchema, storedFindingSchema, type TaskWorkspace, type TaskFinding, workspaceKind, interviewTarget } from "./workspace";
 import { BOTTLENECKS, IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight } from "./constants";
 
 export type RankableAction = {
+  commercialValidation?: unknown;
   taskWorkspace?: unknown;
   taskFinding?: unknown;
   recordingMode?: string | null;
@@ -45,11 +47,12 @@ export type RankableAction = {
   createdAt: Date | string;
   dependencies: Array<{
     minimumCurrent?: number | null;
-    dependsOn: { id: string; clientKey: string; title: string; done: boolean; metricCurrent?: number | null; metricUnit?: string | null };
+    dependsOn: { commercialValidation?: unknown; id: string; clientKey: string; title: string; done: boolean; metricCurrent?: number | null; metricUnit?: string | null };
   }>;
 };
 
 export type ActionPlanActionDto = {
+  commercialValidation?: { requiresConfirmation: boolean; confirmedAt?: string } | null;
   taskWorkspace?: TaskWorkspace | null;
   taskFinding?: { result: TaskFinding["result"]; source?: "ai" | "user"; generatedAt?: string; pending: boolean; error?: string } | null;
   recordingMode?: "interview" | null;
@@ -183,6 +186,7 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
   return rows
     .map(({ action, score, impactWeight, urgencyWeight: urgency, resolved, blocked, unfinished, missingLink, milestoneTitle, actionTimeMinMinutes, actionTimeMaxMinutes }) => ({
       id: action.id,
+      commercialValidation: commercialStateSchema.safeParse(action.commercialValidation).data ?? null,
       taskWorkspace: workspaceSchema.safeParse(action.taskWorkspace).data ?? null,
       taskFinding: (() => { const f = storedFindingSchema.safeParse(action.taskFinding).data; return f ? { result: f.result, source: f.source, generatedAt: f.generatedAt, pending: Boolean(f.pending), error: f.error } : null; })(),
       recordingMode: action.recordingMode === "interview" ? "interview" : null,

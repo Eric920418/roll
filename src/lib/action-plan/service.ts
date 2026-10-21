@@ -9,7 +9,7 @@ import { legacyHoursForMinutes } from "./time";
 
 const actionInclude = {
   dependencies: {
-    select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, metricCurrent: true, metricUnit: true } } },
+    select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, commercialValidation: true, metricCurrent: true, metricUnit: true } } },
   },
 } as const;
 

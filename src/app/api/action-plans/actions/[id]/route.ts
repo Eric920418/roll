@@ -1,3 +1,5 @@
+import { commercialTask } from "@/lib/validation/schema";
+import { assertCommercialPrerequisites } from "@/lib/validation/service";
 import { dependencySatisfied } from "@/lib/action-plan/dependency";
 import { browserMutationGuard } from "@/lib/security/http";
 import { completeGettingStarted } from "@/lib/getting-started/service";
@@ -54,10 +56,11 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         milestoneId: true,
         recordingMode: true,
         metricTarget: true,
+        expectedOutcome: true,
         metricUnit: true,
         metricCurrent: true,
         dependencyLevel: true,
-        dependencies: { select: { dependsOnId: true, minimumCurrent: true, dependsOn: { select: { title: true, done: true, metricTarget: true, metricCurrent: true, metricUnit: true } } } },
+        dependencies: { select: { dependsOnId: true, minimumCurrent: true, dependsOn: { select: { title: true, done: true, commercialValidation: true, metricTarget: true, metricCurrent: true, metricUnit: true } } } },
         requiredBy: { select: { minimumCurrent: true, action: { select: { title: true, done: true } } } },
         stageFit: true,
         stageFitReason: true,
@@ -82,6 +85,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       }
       if (current.done) throw new PlanWriteError("請先撤銷完成，再編輯任務紀錄 / Undo completion before editing task records", 409);
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
+      if (commercialTask(current)) throw new PlanWriteError("請使用成交證據工作區，口頭同意不計成交 / Use the commercial evidence workspace; verbal agreement is not a conversion", 409);
       const workspace = parsed.data.taskWorkspace;
       if (workspaceKind(current) !== workspace.kind) throw new PlanWriteError("表單不符合本任務類型 / Form does not match this task", 400);
       validateWorkspaceLinks(workspace, await planWorkspaceEvidence(tx, session.uid, current.actionPlanId));
@@ -116,7 +120,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       return;
     }
     if ("metricTarget" in parsed.data) {
-      if (current.recordingMode === "interview" || current.taskWorkspace) throw new PlanWriteError("進度由已存紀錄計算，請在 Next Steps 編輯紀錄 / Progress comes from saved records; edit them in Next Steps", 409);
+      if (commercialTask(current) || current.recordingMode === "interview" || current.taskWorkspace) throw new PlanWriteError("進度由已存紀錄計算，請在 Next Steps 編輯紀錄 / Progress comes from saved records; edit them in Next Steps", 409);
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
       const metricCurrent = parsed.data.metricCurrent;
       if (metricCurrent != null && metricCurrent > (current.metricCurrent ?? -1) && ((current.dependencyLevel > 0 && current.dependencies.length === 0) || current.dependencies.some(edge => !dependencySatisfied(edge)))) throw new PlanWriteError("請先達成前置條件，再增加本任務進度。 / Resolve prerequisites before increasing this task’s progress.", 409);
@@ -132,7 +136,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (Object.keys(parsed.data).length === 1 && "done" in parsed.data) {
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, parsed.data.done ? "done" : "undo");
       if (parsed.data.done) {
-        if (!current.done) await assertTaskWorkspaceComplete(tx, session.uid, current);
+        if (!current.done) await assertCommercialPrerequisites(tx, session.uid, current.actionPlanId, current.dependencies.map(d => d.dependsOnId));
+        if (!current.done || commercialTask(current)) await assertTaskWorkspaceComplete(tx, session.uid, current);
         await assertInterviewComplete(tx, session.uid, current);
         if (current.dependencyLevel > 0 && current.dependencies.length === 0) {
           throw new PlanWriteError("此任務尚未連結前置任務 ID，請先編輯依賴。");
@@ -153,7 +158,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!("dependencyActionIds" in action)) throw new PlanWriteError("Action 編輯資料不完整。", 400);
     await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, current.done && action.done === false ? "undo" : "edit");
     if (current.done && action.done === false && current.requiredBy.some(edge => edge.action.done && edge.minimumCurrent == null)) throw new PlanWriteError("請先取消後續任務的完成狀態 / Undo dependent tasks first");
-    if (action.done) { if (!current.done) await assertTaskWorkspaceComplete(tx, session.uid, current); await assertInterviewComplete(tx, session.uid, current); }
+    if (action.done && !current.done) await assertCommercialPrerequisites(tx, session.uid, current.actionPlanId, action.dependencyActionIds);
+    if (action.done) { if (!current.done || commercialTask(current)) await assertTaskWorkspaceComplete(tx, session.uid, current); await assertInterviewComplete(tx, session.uid, current); }
     const legacyActionTime = legacyHoursForMinutes(action.actionTime);
     const stageFitChanged = action.stageFit.score !== current.stageFit || action.stageFit.reason !== current.stageFitReason;
     const bottleneckFitChanged = action.bottleneckFit.score !== current.bottleneckFit || action.bottleneckFit.reason !== current.bottleneckFitReason;
@@ -161,7 +167,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (current.done || action.done) {
       const unmet = await tx.actionItem.findMany({
         where: { id: { in: action.dependencyActionIds }, actionPlanId: current.actionPlanId },
-        select: { id: true, title: true, done: true, metricCurrent: true },
+        select: { id: true, title: true, done: true, commercialValidation: true, metricCurrent: true },
       });
       const unsatisfied = unmet.filter(dependsOn => !dependencySatisfied({ minimumCurrent: current.dependencies.find(e => e.dependsOnId === dependsOn.id)?.minimumCurrent, dependsOn }));
       if (unsatisfied.length) throw new PlanWriteError(`請先完成前置任務：${unsatisfied.map((item) => item.title).join("、")}`);

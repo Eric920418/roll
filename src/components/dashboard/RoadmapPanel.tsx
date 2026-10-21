@@ -1,4 +1,6 @@
 "use client";
+import ValidationWorkspace from "./ValidationWorkspace";
+import { commercialTask } from "@/lib/validation/schema";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
@@ -125,7 +127,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     try {
       const next: ActionPlanDto = await request(method, { revision: initialPlan.revision, ...body }, `/api/action-plans/actions/${id}`); onChanged(next); router.refresh();
       const completed = next.actions.find(a => a.id === id);
-      if ((body as { done?: boolean }).done && !initialPlan.actions.find(a => a.id === id)?.done && completed && workspaceKind(completed)) {
+      if (workspaceKind(completed || { title: "" }) !== "interview" && !commercialTask(completed || { title: "" }) && (body as { done?: boolean }).done && !initialPlan.actions.find(a => a.id === id)?.done && completed && workspaceKind(completed)) {
         try { const analysed: ActionPlanDto = await request("POST", { revision: next.revision, requestId: crypto.randomUUID(), locale }, `/api/action-plans/actions/${id}`); onChanged(analysed); }
         catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); try { const fresh: RoadmapView = await request(); accept(fresh); } catch { /* retain completed state and the analysis error */ } }
       }
@@ -189,6 +191,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   return <section id="goal-roadmap" className="min-w-0 rounded-2xl border border-dark/15 bg-white p-4 sm:p-7">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">{t("title")}</h2><button ref={planTrigger} type="button" className={button} onClick={() => void open()}>+ {t("title")}</button></div>
     {initialPlan && <section className="mt-5 rounded-xl border border-dark/10 bg-dark/[0.02] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-dark/55">{locale === "zh-tw" ? "我的目標" : "My goal"}</p><p className="mt-2 whitespace-pre-wrap text-lg font-bold">{initialPlan.roadmap?.goal || (locale === "zh-tw" ? "尚未設定目標" : "No goal set yet")}</p><p className="mt-2 text-xs text-dark/55">{locale === "zh-tw" ? "完整計畫：目標 → 里程碑 → 任務" : "Your full plan: goal → milestones → tasks"}</p></section>}
+    {initialPlan && <ValidationWorkspace userId={userId} planId={initialPlan.id} revision={initialPlan.revision} />}
     {initialPlan && <div id="action-plan-list" tabIndex={-1} className="mt-5 scroll-mt-6">
       <details className="mt-3 text-sm"><summary className="min-h-11 cursor-pointer font-semibold">{locale === "zh-tw" ? "搜尋與篩選" : "Search and filter"}</summary><div className="mt-2 flex flex-wrap gap-2">
         <input aria-label={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} placeholder={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} value={search} onChange={e => setSearch(e.target.value)} className={`${input} min-h-11 sm:w-auto`} />

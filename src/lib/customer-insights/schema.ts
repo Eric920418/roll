@@ -16,6 +16,15 @@ export const STAGE_CONFIG = {
 export const insightSchema = z.object({
   actionId: z.string().trim().min(1).max(200).optional(),
   journeyId: z.string().trim().min(1).max(200).optional(),
+  commercial: z.object({
+    amount: z.string().regex(/^\d{1,10}(\.\d{1,2})?$/).or(z.literal("")).optional(),
+    currency: z.string().regex(/^[A-Z]{3}$/).or(z.literal("")).optional(),
+    willingness: z.enum(["not_asked", "willing", "considering", "declined"]).optional(),
+    heat: z.enum(["unknown", "cold", "warm", "hot"]).optional(),
+    quote: z.string().trim().max(4000).optional(),
+    contactId: z.string().trim().min(1).max(200).optional(),
+    respondedAt: z.iso.datetime().optional(),
+  }).strict().optional(),
   challenge: z.enum(["market", "focus", "survival", "other"]).optional(),
   stage: z.enum(INSIGHT_STAGES), name: z.string().trim().min(1).max(200), company: z.string().trim().max(200), role: z.string().trim().max(200),
   type: z.string().max(40), fit: z.enum(["unknown", "yes", "partly", "no"]),
