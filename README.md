@@ -1695,6 +1695,8 @@ QA 比對結果：字體沿用 Hero New／Noto Sans TC，編輯標題 24px、內
 
 正式站已部署 `97959eef12ac3c6269a6095733854356f15152f7`（Production `dpl_4ZxfSErVyVUaoK9Gapg1tMRnCfAS`，READY）。指定個案已授予 Enterprise 試用，前台品牌名稱 ALLIANCE；原期限維持 2026-11-01 23:29 Asia/Taipei，原分群及 PayPal 未核准紀錄保留。直接以共用授權／額度服務核對本人 Enterprise、150 次尚未使用、到期轉回 Free；沒有使用個案的 AI 額度或代登入。正式專用 QA 經一般登入取得 ICP、計畫與投資人 API 的成功回應，實際儲存十間訪談、取得 POLARIS 真實回答並生成十次完整分析報告；只扣 QA 的兩次 AI，瀏覽器顯示 ALLIANCE、148 次與已用兩次一致。正式與本機 QA 帳號及其資料均已清理，沒有寄信、對外分享或付款。
 
+投資人閱讀權限同步讀取 owner 的 trialPolicy，避免新制完整試用到期後被舊 beta 誤判為永久可讀。兩個投資人讀取入口共用同一份 owner 欄位；回歸覆蓋有效完整試用、到期撤權、舊測試授權及邀請必要條件，並驗證查詢確實包含 trialPolicy。原創始會員 Pro 與私人 Investor Portal 至少 Business 的規則皆未變更。
+
 管理員會員列表方案顯示修正（2026-10-20）：原列表僅讀取 User.plan，導致保留 Free 的舊測試會員被誤認為沒有權限。新增「目前功能權限／授權來源」，在 requireAdminPage 驗證後讀取同一個即時 beta 開關，沿用 getEffectivePlan／hasActiveTrial 計算；同時保留原始方案與 PayPal 狀態。區分免費測試授權（非付費）、舊 Pro／Business 試用、三次訪談試用、創始年費、有效訂閱與基本免費功能，訪談試用到期／撤銷也明示；APPROVAL_PENDING 標為「PayPal 待付款人核准」。沒有調整授權邏輯、API、環境變數或 schema，不修改會員資料或全站授權開關。回歸測試先確認舊頁缺少 effectivePlan 而失敗，再驗證新頁各授權情境與實際表格 HTML 標籤、未登入不得讀會員資料；不將密碼、Google ID 或 PayPal 訂閱 ID 傳入列表。
 
 此顯示修正驗收：使用隔離 PostgreSQL 執行 pnpm test，269 項全數通過、無略過；pnpm lint 0 errors／14 項既有 warnings，TypeScript 與 pnpm build 通過。正式資料只做唯讀核對，未改動會員方案、試用、付款、獎勵或設定；正式站管理員瀏覽器驗收需沿用有效登入。

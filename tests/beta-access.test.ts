@@ -195,11 +195,16 @@ test("enabling beta preserves a trial user's AI cycle and included allowance", a
 test("investor sharing respects beta owner access and still requires an accepted invitation", async () => {
   let enabled = true;
   let invited = true;
+  let owner: BillingAccount = account;
   const portal = load<typeof import("../src/lib/investor/portal")>("src/lib/investor/portal.ts", {
-    "@/lib/prisma": { prisma: { investorInvitation: { findMany: async (args: { where: { acceptedByUserId: string; status: string } }) => {
+    "@/lib/prisma": { prisma: { investorInvitation: { findMany: async (args: {
+      where: { acceptedByUserId: string; status: string };
+      include: { portal: { include: { user: { select: Record<string, unknown> } } } };
+    }) => {
       assert.equal(args.where.acceptedByUserId, "investor");
       assert.equal(args.where.status, "accepted");
-      return invited ? [{ portalId: "portal", acceptedAt: now, portal: { user: account } }] : [];
+      assert.equal(args.include.portal.include.user.select.trialPolicy, true);
+      return invited ? [{ portalId: "portal", acceptedAt: now, portal: { user: owner } }] : [];
     } } } },
     "@/lib/billing/gate": gate,
     "@/lib/auth/account": { getBetaAccess: async () => enabled },
@@ -209,6 +214,11 @@ test("investor sharing respects beta owner access and still requires an accepted
   assert.equal(portal.ownerHasInvestorAccess(account, true), true);
   assert.equal(portal.ownerHasInvestorAccess(account, false), false);
   assert.equal((await portal.listInvestorMemberships("investor")).length, 1);
+  owner = { ...account, trialPolicy: "interviews-3-v1", trialPlan: "enterprise", trialStartsAt: new Date(Date.now() - 86400000), trialEndsAt: new Date(Date.now() + 86400000) };
+  assert.equal((await portal.listInvestorMemberships("investor")).length, 1);
+  owner = { ...owner, trialEndsAt: new Date(0) };
+  assert.equal((await portal.listInvestorMemberships("investor")).length, 0);
+  owner = account;
   enabled = false;
   assert.equal((await portal.listInvestorMemberships("investor")).length, 0);
   enabled = true;

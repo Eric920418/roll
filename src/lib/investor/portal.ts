@@ -28,6 +28,7 @@ const ownerBillingSelect = {
   trialPlan: true,
   trialStartsAt: true,
   trialEndsAt: true,
+  trialPolicy: true,
 } as const;
 
 export function ownerHasInvestorAccess(owner: {
@@ -39,6 +40,7 @@ export function ownerHasInvestorAccess(owner: {
   trialPlan: string | null;
   trialStartsAt: Date | null;
   trialEndsAt: Date | null;
+  trialPolicy?: string | null;
 }, betaAccess = false): boolean {
   return planAtLeast(
     getEffectivePlan({
