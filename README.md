@@ -1742,7 +1742,7 @@ Schema 只新增 User 的 nullable trialPolicy／founderStartedAt／founderEndsA
 
 功能 commit `403e0281bcf90d8baddd5e2105e15c14b1dbcd1f` 的 Production `dpl_FQLj5vDXCm2rmBB7xcuD12q5Wysp` 已 READY，正式網域指向同一版本。以一個新建專用 QA 帳號實際驗證 14 天／3 次、三筆訪談寫入、真實 AI 原文分析（兩間公司共同提及開發合格潛在客戶困難）、第 4 次與免費完整分析回 402，並成功建立 **PayPal Live** 年費訂單；未核准、未擷取、未扣款。測試帳號、其訪談與未付款暫留席位已清除，沒有寄信或變更既有會員。Production 新註冊開關在這些驗收完成後才開啟，隨本次發布生效。
 
-## 訪談到付款驗證流程（開發中）
+## 訪談到付款驗證流程（2026-10-21）
 
 資料變更僅新增 nullable 欄位：ActionPlan.sourceJourneyId / validationAnalysis、DiscoveryJourney.validationAnalysis、Deal.validation、ActionItem.commercialValidation。MeetingNote.insight 保留原四題，新增選填 commercial 報價、幣別、明確付費意願、熱度與原話；未知不影響有效訪談。既有資料不回填、不重置；Jamie 既有完整試用權益不變。成交必須由使用者確認正數金額、日期與私密證明，口頭同意不計；不是金流／電子簽章自動驗證。
 
@@ -1781,3 +1781,5 @@ Next Steps 新增共用 ValidationWorkspace：3／6／10 分段分析、最多�
 附件上傳成功但儲存失敗時，草稿保留已上傳路徑供重試，不要求重複上傳；證據種類須與簽約／付款狀態一致。額外驗證已撤銷成果不能從里程碑入口繞過、補證後仍需明確重新確認、重新確認不重複發分。
 
 商業任務類型沿用既有 workspaceKind（含中英文付費試用／試點名稱），避免同一任務在舊表單與新證據規則間判定不同。
+
+上線驗收：隔離 PostgreSQL 下 `pnpm test` 284/284 通過、無 skip；`pnpm lint` 0 錯誤（14 個既有警告）；`pnpm build` 通過。正常登入的獨立 QA 帳號已實際完成訪談、引用原紀錄、報價、Private Blob PDF 上傳、確認成果及下一任務解鎖，並驗收中英文與 390px 手機版。正式 schema 已在交易內套用上述 5 個 nullable 欄位；原會員／訪談／商機／計畫／任務筆數未變，Jamie 完整試用方案與起訖時間未變。正式 AI 真實呼叫另以可刪除的獨立 QA 帳號驗收，不使用會員額度、不寄信。
