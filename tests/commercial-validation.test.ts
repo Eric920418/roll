@@ -71,7 +71,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string }[]; messages: { content: string }[] }) => {
       calls++; if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
       if (input.tools?.[0]?.name === "web_search") return { stop_reason: fetchOnly ? "pause_turn" : "end_turn", content: [
-        { type: "web_search_tool_result", content: prospectFixtures.map(c => ({ type: "web_search_result", url: `${c.taiwan.url}?utm_source=qa` })) },
+        { type: "web_search_tool_result", content: prospectFixtures.map(c => ({ type: "web_search_result", url: `${c.taiwan.url}?utm_source=qa`, title: c.name })) },
         { type: "text", text: "Researched new Taiwan companies", citations: noSources || fetchOnly ? [] : prospectFixtures.map(c => ({ type: "web_search_result_location", url: c.taiwan.url, cited_text: invent ? "Unrelated business" : "Taipei, Taiwan. B2B software" })) },
         ...(fetchOnly ? prospectFixtures.map(c => ({ type: "web_fetch_tool_result", content: { type: "web_fetch_result", url: c.taiwan.url, content: { source: { type: "text", data: "Taipei, Taiwan.\nB2B software." } } } })) : []),
       ] };

@@ -36,8 +36,12 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
   const normalize = (s: string) => s.normalize("NFKC").replace(/\s+/g, " ").trim();
   return excludeKnownCompanies(parsed.companies.filter(c => {
     const host = new URL(c.website).hostname.replace(/^www\./, "");
+    const ownDomain = (value: string) => { const h = new URL(value).hostname.replace(/^www\./, ""); return h === host || h.endsWith(`.${host}`); };
+    const named = (text: string) => [c.name, ...c.aliases].some(n => prospectKey(n).length >= 3 && prospectKey(text).includes(prospectKey(n)));
+    const government = (ref: { url: string; quote: string }) => new URL(ref.url).hostname.endsWith(".gov.tw") && named(ref.quote);
     return [c.taiwan, c.fit].every(ref => sources.some(s => s.url === ref.url && normalize(s.quote).includes(normalize(ref.quote))))
-      && [c.taiwan, c.fit].every(ref => (new URL(ref.url).hostname.replace(/^www\./, "") === host || new URL(ref.url).hostname.endsWith(`.${host}`)))
+      && [c.taiwan, c.fit].every(ref => ownDomain(ref.url) || government(ref))
+      && ([c.taiwan, c.fit].some(ref => ownDomain(ref.url)) || sources.some(s => ownDomain(s.url) && named(s.quote)))
       && taiwanEvidence(c.taiwan.quote);
   }), excluded).slice(0, count);
 }

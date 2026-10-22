@@ -19,6 +19,12 @@ test("Only officially cited Taiwan prospects qualify, fewer than requested is va
   assert.deepEqual(groundedProspects({ companies: [{ ...valid, taiwan: { ...valid.taiwan, quote: "Taiwan invented" } }] }, sources, [], 6), []);
   assert.deepEqual(groundedProspects({ companies: [{ ...valid, website: "https://fake.example.com" }] }, sources, [], 6), []);
   assert.equal(groundedProspects({ companies: [{ ...valid, website: "https://example.com" }] }, sources, [], 6).length, 1, "Official subdomains can support a corporate website");
+  const gov = { url: "https://startup.sme.gov.tw/company/real", quote: "Real is a B2B software company operating in Taipei, Taiwan" };
+  const govCompany = { ...valid, taiwan: gov, fit: gov };
+  const govSources = [gov, { url: valid.website, quote: "Real official software website" }];
+  assert.equal(groundedProspects({ companies: [govCompany] }, govSources, [], 6).length, 1);
+  assert.equal(groundedProspects({ companies: [{ ...govCompany, name: "Not Real Company" }] }, govSources, [], 6).length, 0);
+  assert.equal(groundedProspects({ companies: [{ ...govCompany, website: "https://invented.example.com" }] }, govSources, [], 6).length, 0);
   const noTaiwan = { ...valid, taiwan: { ...valid.taiwan, quote: "B2B software" } };
   assert.deepEqual(groundedProspects({ companies: [noTaiwan] }, sources, [], 6), []);
   assert.throws(() => groundedProspects({ companies: [{ ...valid, invented: "field" }] }, sources, [], 6));
