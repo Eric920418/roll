@@ -70,7 +70,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({ error: "Unauthorized" }, { status: 401 }), failFromError: () => Response.json({ error: "Safe failure" }, { status: 500 }) },
     "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string }[]; messages: { content: string }[] }) => {
       calls++; if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
-      if (input.tools?.[0]?.name === "web_search") return { stop_reason: "end_turn", content: [
+      if (input.tools?.[0]?.name === "web_search") return { stop_reason: fetchOnly ? "pause_turn" : "end_turn", content: [
         { type: "web_search_tool_result", content: prospectFixtures.map(c => ({ type: "web_search_result", url: c.taiwan.url })) },
         { type: "text", text: "Researched new Taiwan companies", citations: noSources || fetchOnly ? [] : prospectFixtures.map(c => ({ type: "web_search_result_location", url: c.taiwan.url, cited_text: invent ? "Unrelated business" : "Taipei, Taiwan. B2B software" })) },
         ...(fetchOnly ? prospectFixtures.map(c => ({ type: "web_fetch_tool_result", content: { type: "web_fetch_result", url: c.taiwan.url, content: { source: { type: "text", data: "Taipei, Taiwan.\nB2B software." } } } })) : []),

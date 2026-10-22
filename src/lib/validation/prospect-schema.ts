@@ -30,6 +30,7 @@ export function excludeKnownCompanies(companies: ProspectCompany[], excluded: st
     keys.forEach(k => seen.add(k)); domains.add(host); return true;
   });
 }
+export const taiwanEvidence = (text: string) => /taiwan|taipei|taichung|tainan|kaohsiung|hsinchu|taoyuan|keelung|chiayi|changhua|yunlin|miaoli|nantou|pingtung|yilan|hualien|taitung|penghu|kinmen|lienchiang|台灣|臺灣|台北|臺北|新北|台中|臺中|台南|臺南|高雄|新竹|桃園|基隆|嘉義|彰化|雲林|苗栗|南投|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|連江/i.test(text);
 export function groundedProspects(raw: unknown, sources: { url: string; quote: string }[], excluded: string[], count: 6 | 10) {
   const parsed = prospectResultSchema.parse(raw);
   const normalize = (s: string) => s.normalize("NFKC").replace(/\s+/g, " ").trim();
@@ -37,6 +38,6 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
     const host = new URL(c.website).hostname.replace(/^www\./, "");
     return [c.taiwan, c.fit].every(ref => sources.some(s => s.url === ref.url && normalize(s.quote).includes(normalize(ref.quote))))
       && [c.taiwan, c.fit].every(ref => (new URL(ref.url).hostname.replace(/^www\./, "") === host || new URL(ref.url).hostname.endsWith(`.${host}`)))
-      && /taiwan|taipei|taichung|kaohsiung|hsinchu|台灣|臺灣|台北|臺北|新北|台中|臺中|高雄|新竹/i.test(c.taiwan.quote);
+      && taiwanEvidence(c.taiwan.quote);
   }), excluded).slice(0, count);
 }
