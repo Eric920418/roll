@@ -1799,4 +1799,4 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 - API：POST /api/discovery/analyse 接受 {scope, prospectCount: 6|10, locale}；GET /api/pipeline 回傳 prospects。名單數量不受訪談 6／10 家門檻限制，仍須完整功能權限與有效產品／ICP。同來源與語言快取不重扣，ICP／全帳號公司資料變更失效；讀取時再次排除已記錄公司。沿用 validationAnalysis JSON，與訪談報告分開保存。
 - 新測試涵蓋 Unicode／公司後綴／別名／網域排除、官方引用與台灣依據、跨工作區與會員、舊 JSON、快取與分析互不覆寫、新增紀錄後移除、並行鎖、來源變更／無依據／搜尋無引用／供應商失敗退款。
 - 名單快照與排除清單沿用 validation 共用服務，網路搜尋獨立於任務與訪談寫入，避免一般儲存操作載入額外 AI 依賴。
-- 本機獨立 PostgreSQL 全測試 287/287 通過（0 skip）；pnpm lint 0 errors、14 個既有 warnings；pnpm build 通過。尚待正式真實搜尋與瀏覽器驗收。
+- 本機獨立 PostgreSQL 全測試 287/287 通過（0 skip）；pnpm lint 0 errors、14 個既有 warnings；pnpm build 通過。正式首輪搜尋無合格結果，已確認退款與 UI 重疊鎖錯誤。改由結構化步驟選擇實際搜尋引用編號，來源網址及原文由伺服器帶入，避免 AI 重寫引用導致誤擋，並僅以無敏感資料的數量紀錄搜尋品質；尚待再次正式真實搜尋與瀏覽器驗收。

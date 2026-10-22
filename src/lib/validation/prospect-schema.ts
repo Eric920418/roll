@@ -17,6 +17,7 @@ export const prospectCompanySchema = z.object({
   website: url, reason: z.string().trim().min(1).max(1000),
   taiwan: citation, fit: citation,
 }).strict();
+export const prospectSelectionSchema = z.object({ companies: z.array(prospectCompanySchema.omit({ taiwan: true, fit: true }).extend({ taiwanSource: z.number().int().nonnegative(), fitSource: z.number().int().nonnegative() })).max(10) }).strict();
 export const prospectResultSchema = z.object({ companies: z.array(prospectCompanySchema).max(10) }).strict();
 export const prospectReportSchema = prospectResultSchema.extend({ requested: z.union([z.literal(6), z.literal(10)]), generatedAt: z.iso.datetime() });
 export const prospectCacheSchema = z.object({ prospects: z.record(z.string(), z.object({ source: z.string(), result: prospectReportSchema })).default({}), prospectPending: z.object({ token: z.string(), since: z.iso.datetime() }).optional() }).passthrough();

@@ -72,9 +72,9 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       calls++; if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
       if (input.tools?.[0]?.name === "web_search") return { stop_reason: "end_turn", content: [
         { type: "web_search_tool_result", content: prospectFixtures.map(c => ({ type: "web_search_result", url: c.taiwan.url })) },
-        { type: "text", text: "Researched new Taiwan companies", citations: noSources ? [] : prospectFixtures.map(c => ({ type: "web_search_result_location", url: c.taiwan.url, cited_text: "Taipei, Taiwan. B2B software" })) },
+        { type: "text", text: "Researched new Taiwan companies", citations: noSources ? [] : prospectFixtures.map(c => ({ type: "web_search_result_location", url: c.taiwan.url, cited_text: invent ? "Unrelated business" : "Taipei, Taiwan. B2B software" })) },
       ] };
-      if (input.tools?.[0]?.name === "prospect_result") return { content: [{ type: "tool_use", input: { companies: invent ? prospectFixtures.map(c => ({ ...c, taiwan: { ...c.taiwan, quote: "Invented Taiwan address" } })) : prospectFixtures } }] };
+      if (input.tools?.[0]?.name === "prospect_result") return { content: [{ type: "tool_use", input: { companies: prospectFixtures.map((c, index) => ({ name: c.name, aliases: c.aliases, website: c.website, reason: c.reason, taiwanSource: index, fitSource: index })) } }] };
       const content = JSON.parse(input.messages[0]!.content);
       const result = content.evidence ? { topics: [{ label: "Reporting pain", evidence: content.evidence.slice(0, 2).map((v: { id: string }) => ({ recordId: v.id, quote: invent ? "Invented quote" : "Manual reporting takes hours" })) }], nextMoves: ["Ask willing prospects about a paid pilot"] } : { items: [{ quote: invent ? "Invented" : content.rejection.quote, possibleReason: "Budget may be constrained; confirm", clarify: "What budget is available?", next: "Clarify budget" }], followUp: "Could we clarify your budget concern?" };
       return { content: [{ type: "tool_use", name: "validation_result", input: result }] };
