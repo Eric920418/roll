@@ -53,8 +53,9 @@ export async function prospectContext(tx: DB, userId: string, scope: Scope) {
     tx.contact.findMany({ where: { userId }, select: { company: true } }),
     tx.deal.findMany({ where: { userId }, select: { title: true, validation: true } }),
   ]);
+  let ownWebsite = ""; try { ownWebsite = new URL(profile?.website || "").origin; } catch { /* A missing website does not block discovery. */ }
   const excluded = [...new Set([
-    profile?.companyName || "", profile?.website || "", ...notes.map(n => (n.insight as { company?: unknown } | null)?.company).filter((v): v is string => typeof v === "string"),
+    profile?.companyName || "", ownWebsite, ...notes.map(n => (n.insight as { company?: unknown } | null)?.company).filter((v): v is string => typeof v === "string"),
     ...contacts.map(c => c.company || ""), ...deals.flatMap(d => [d.title, salesRecordSchema.safeParse(d.validation).data?.company || ""]),
   ].filter(Boolean))].sort();
   const icp = readIcp(profile?.icpDetails);

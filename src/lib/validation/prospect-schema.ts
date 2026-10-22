@@ -7,7 +7,7 @@ export function prospectKey(name: string) {
 export function publicWebsite(value: string) {
   try {
     const u = new URL(value);
-    return u.protocol === "https:" && !u.username && !u.password && !u.port && !/^(?:localhost|.*\.localhost|.*\.local|.*\.internal|\[.*\]|[\d.]+)$/.test(u.hostname) && u.hostname.includes(".");
+    return u.protocol === "https:" && !u.username && !u.password && !u.port && !/^(?:localhost|.*\.localhost|.*\.local|.*\.internal|\[.*\]|[\d.]+)$/.test(u.hostname.replace(/\.$/, "")) && u.hostname.includes(".");
   } catch { return false; }
 }
 const url = z.string().max(2000).refine(publicWebsite, "Public HTTPS website required");

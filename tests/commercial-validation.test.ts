@@ -204,7 +204,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       const args = { scope: { planId: plan.id }, prospectCount: 6 as const, locale: "en" as const };
       const before = reservations;
       await assert.rejects(prospects.generateProspects(await account(), args), /ICP/); assert.equal(reservations, before);
-      await db.onboardingProfile.create({ data: { userId: owner.id, companyName: "Own Company", oneLinePitch: "B2B reporting software for Taiwan companies", targetMarkets: [], needs: [] } });
+      await db.onboardingProfile.create({ data: { userId: owner.id, companyName: "Own Company", website: "https://own.example.com/?token=private-qa-test", oneLinePitch: "B2B reporting software for Taiwan companies", targetMarkets: [], needs: [] } });
       await db.meetingNote.create({ data: { userId: owner.id, title: "Legacy unlinked note", insight: { company: "CircleWe" } } });
       await db.meetingNote.create({ data: { userId: owner.id, title: "Other workspace", insight: { company: "EV Rapid Force" } } });
       await db.contact.create({ data: { userId: owner.id, name: "Known", company: "KnownContact" } });
@@ -212,6 +212,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       await assert.rejects(prospects.generateProspects(await account(), { ...args, scope: { journeyId: "foreign" } }));
       await db.user.update({ where: { id: owner.id }, data: { trialPlan: "pro" } }); await assert.rejects(prospects.generateProspects(await account(), args));
       await db.user.update({ where: { id: owner.id }, data: { trialPlan: "enterprise" } });
+      const context = await service.prospectContext(db as never, owner.id, args.scope); assert.equal(context.excluded.some(v => v.includes("private-qa-test")), false);
       const first = await prospects.generateProspects(await account(), args); assert(first);
       assert.deepEqual(Array.from(first.companies, c => c.name), ["Foreign Company", "New Taiwan Company"]); assert.equal(reservations, before + 1);
       const after = calls; await prospects.generateProspects(await account(), args); assert.equal(calls, after);

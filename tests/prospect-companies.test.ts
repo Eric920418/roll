@@ -23,7 +23,7 @@ test("Only officially cited Taiwan prospects qualify, fewer than requested is va
   assert.deepEqual(groundedProspects({ companies: [noTaiwan] }, sources, [], 6), []);
   assert.throws(() => groundedProspects({ companies: [{ ...valid, invented: "field" }] }, sources, [], 6));
   assert.equal(prospectCompanySchema.safeParse({ ...valid, website: "javascript:alert(1)" }).success, false);
-  for (const url of ["http://example.com", "https://localhost/", "https://127.0.0.1/", "https://[::1]/", "https://user:pass@example.com/", "https://x.internal/", "https://example.com:8443/"]) assert.equal(publicWebsite(url), false, url);
+  for (const url of ["http://example.com", "https://localhost/", "https://localhost./", "https://127.0.0.1/", "https://[::1]/", "https://user:pass@example.com/", "https://x.internal/", "https://example.com:8443/"]) assert.equal(publicWebsite(url), false, url);
   assert(publicWebsite("https://www.example.com/about"));
   for (const city of ["Taoyuan", "Tainan", "Hualien", "台東", "嘉義", "新北"]) assert(taiwanEvidence(city), city);
   assert.equal(taiwanEvidence("Singapore"), false);
