@@ -55,7 +55,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
   const base = { actionPlanId: plan.id, impact: "High", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: "MVP", bottleneckGroup: "Sales", bottleneckCode: "no_icp", stageFit: 4, stageFitReason: "QA", bottleneckFit: 4, bottleneckFitReason: "QA", outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 };
   const task = await db.actionItem.create({ data: { ...base, clientKey: "task_1", title: "Run paid pilot offer with 3 prospects" } });
   const nextTask = await db.actionItem.create({ data: { ...base, clientKey: "task_2", title: "Publish an update", dependencies: { create: { dependsOnId: task.id } } } });
-  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
+  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
   let mutate: (() => Promise<void>) | null = null;
   const prospectFixtures = ["CircleWe", "EV Rapid Force", "KnownContact", "Old win", "Own Company", "Foreign Company", "New Taiwan Company"].map((name, i) => ({ name, aliases: [], website: `https://prospect${i}.example.com`, reason: "Potential software buyer; confirm need", taiwan: { url: `https://prospect${i}.example.com/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://prospect${i}.example.com/about`, quote: "B2B software" } }));
   const require = createRequire(import.meta.url), cache = new Map<string, unknown>();
@@ -75,6 +75,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
         { type: "text", text: "Researched new Taiwan companies", citations: noSources || fetchOnly ? [] : prospectFixtures.map(c => ({ type: "web_search_result_location", url: c.taiwan.url, cited_text: invent ? "Unrelated business" : "Taipei, Taiwan. B2B software" })) },
       ] };
       if (input.tools?.[0]?.name === "web_fetch") {
+        if (fetchFail) throw new Error("Optional page reader timeout");
         const supplied = JSON.parse(input.messages[0]!.content) as { pages: { url: string; title: string }[] };
         assert(supplied.pages.every(p => prospectFixtures.some(c => p.url === c.taiwan.url || p.url === `${c.taiwan.url}?utm_source=qa`)), "Fetch receives only exact URLs returned by search");
         assert(supplied.pages.some(p => p.title === "Foreign Company"), "Preserve meaningful result titles when deduplicating URLs");
@@ -240,6 +241,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       await assert.rejects(prospects.generateProspects(await account(), args)); hold = false; (release as () => void)(); release = null; await pending;
       const ten = await prospects.generateProspects(await account(), { ...args, prospectCount: 10 }); assert.equal(ten!.requested, 10); assert.equal(ten!.companies.length, 1);
       fetchOnly = true; const fetched = await prospects.generateProspects(await account(), { ...args, locale: "zh-tw" }); fetchOnly = false; assert.equal(fetched!.companies.length, 1);
+      fetchFail = true; const fallback = await prospects.generateProspects(await account(), { ...args, scope: { journeyId: journey.id }, locale: "zh-tw" }); fetchFail = false; assert.equal(fallback!.companies.length, 1, "Reader failure can use already verified search sources");
     });
     await t.test("Rejection analysis requires exact reason and quote, refunds failures and caches unchanged reply", async () => {
       let saved = salesRecordSchema.parse((await db.deal.findUniqueOrThrow({ where: { id: dealId } })).validation);

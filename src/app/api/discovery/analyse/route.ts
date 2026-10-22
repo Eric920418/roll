@@ -7,7 +7,7 @@ import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 import { browserMutationGuard } from "@/lib/security/http";
 import { PlanWriteError } from "@/lib/action-plan/service";
 import { analyseDiscovery } from "@/lib/discovery/analysis";
-export const maxDuration = 180;
+export const maxDuration = 240;
 const input = z.object({ kind: z.enum(["preview", "full"]), locale: z.enum(["en", "zh-tw"]) }).strict();
 export async function POST(req: NextRequest) {
   const blocked = browserMutationGuard(req, true); if (blocked) return blocked;
