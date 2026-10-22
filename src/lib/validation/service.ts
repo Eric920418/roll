@@ -59,7 +59,7 @@ export async function prospectContext(tx: DB, userId: string, scope: Scope) {
     ...contacts.map(c => c.company || ""), ...deals.flatMap(d => [d.title, salesRecordSchema.safeParse(d.validation).data?.company || ""]),
   ].filter(Boolean))].sort();
   const icp = readIcp(profile?.icpDetails);
-  const criteria = { product: profile?.oneLinePitch || "", industry: profile?.industry || "", customer: icp?.who || "", problem: icp?.problem || "", summary: icp?.summary || profile?.icp || "", market: "Taiwan" };
+  const criteria = { product: profile?.oneLinePitch || "", industry: profile?.industry || "", customer: icp?.who || "", customerStage: icp?.stage || "", customerLocation: icp?.location || "", problem: icp?.problem || "", summary: icp?.summary || profile?.icp || "", market: "Taiwan" };
   const source = sourceFingerprint([{ id: "prospects-v1", updatedAt: "2026-10-22T00:00:00Z", insight: { criteria, excluded } }]);
   return { ...context, criteria, excluded, prospectSource: source };
 }

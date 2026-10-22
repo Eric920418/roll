@@ -71,7 +71,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string }[]; messages: { content: string }[] }) => {
       calls++; if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
       if (input.tools?.[0]?.name === "web_search") return { stop_reason: fetchOnly ? "pause_turn" : "end_turn", content: [
-        { type: "web_search_tool_result", content: prospectFixtures.map(c => ({ type: "web_search_result", url: `${c.taiwan.url}?utm_source=qa`, title: c.name })) },
+        { type: "web_search_tool_result", content: [...prospectFixtures.map(c => ({ type: "web_search_result", url: `${c.taiwan.url}?utm_source=qa`, title: c.name })), { type: "web_search_result", url: "https://registry.example.com/large-report.pdf", title: "Large public report" }] },
         { type: "text", text: "Researched new Taiwan companies", citations: noSources || fetchOnly ? [] : prospectFixtures.map(c => ({ type: "web_search_result_location", url: c.taiwan.url, cited_text: invent ? "Unrelated business" : "Taipei, Taiwan. B2B software" })) },
       ] };
       if (input.tools?.[0]?.name === "web_fetch") {
@@ -209,7 +209,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       const args = { scope: { planId: plan.id }, prospectCount: 6 as const, locale: "en" as const };
       const before = reservations;
       await assert.rejects(prospects.generateProspects(await account(), args), /ICP/); assert.equal(reservations, before);
-      await db.onboardingProfile.create({ data: { userId: owner.id, companyName: "Own Company", website: "https://own.example.com/?token=private-qa-test", oneLinePitch: "B2B reporting software for Taiwan companies", targetMarkets: [], needs: [] } });
+      await db.onboardingProfile.create({ data: { userId: owner.id, companyName: "Own Company", website: "https://own.example.com/?token=private-qa-test", oneLinePitch: "B2B reporting software for Taiwan companies", icpDetails: { summary: "B2B software buyers", who: "Software companies", stage: "MVP", location: "Taiwan", problem: "Customer research", workaround: "Manual", channels: "Professional outreach" }, targetMarkets: [], needs: [] } });
       await db.meetingNote.create({ data: { userId: owner.id, title: "Legacy unlinked note", insight: { company: "CircleWe" } } });
       await db.meetingNote.create({ data: { userId: owner.id, title: "Other workspace", insight: { company: "EV Rapid Force" } } });
       await db.contact.create({ data: { userId: owner.id, name: "Known", company: "KnownContact" } });
@@ -221,6 +221,8 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       const first = await prospects.generateProspects(await account(), args); assert(first);
       assert.deepEqual(Array.from(first.companies, c => c.name), ["Foreign Company", "New Taiwan Company"]); assert.equal(reservations, before + 1);
       const after = calls; await prospects.generateProspects(await account(), args); assert.equal(calls, after);
+      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { icpDetails: { summary: "B2B software buyers", who: "Software companies", stage: "Growth", location: "Taiwan", problem: "Customer research", workaround: "Manual", channels: "Professional outreach" } } });
+      assert((await service.currentProspects(db as never, owner.id, args.scope))["6:en"]!.stale, "Changing customer stage invalidates the old list");
       const cache = (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).validationAnalysis as { reports: unknown }; assert(cache.reports, "Pain analysis cache retained");
       await db.meetingNote.updateMany({ where: { userId: owner.id }, data: { updatedAt: new Date() } });
       await analysis.analyseValidation(await account(), { scope: args.scope, milestone: 3, locale: "en" });
@@ -231,7 +233,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       const refundsBefore = refunds; aiFail = true; await assert.rejects(prospects.generateProspects(await account(), args)); aiFail = false; assert.equal(refunds, refundsBefore + 1);
       noSources = true; await assert.rejects(prospects.generateProspects(await account(), args)); noSources = false; assert.equal(refunds, refundsBefore + 2);
       invent = true; await assert.rejects(prospects.generateProspects(await account(), args)); invent = false; assert.equal(refunds, refundsBefore + 3);
-      mutate = async () => { await db.onboardingProfile.update({ where: { userId: owner.id }, data: { icp: "New criteria" } }); };
+      mutate = async () => { await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Source changed during provider work" } }); };
       await assert.rejects(prospects.generateProspects(await account(), args)); mutate = null; assert.equal(refunds, refundsBefore + 4);
       hold = true; const pending = prospects.generateProspects(await account(), args); const deadline = Date.now() + 5000;
       while (!release && Date.now() < deadline) await new Promise(r => setTimeout(r, 5)); assert(release);
