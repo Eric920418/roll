@@ -1,4 +1,6 @@
 import { workspaceKind, interviewTarget } from "@/lib/action-plan/workspace";
+import { readIcp } from "@/lib/icp/schema";
+import { excludeKnownCompanies, prospectCacheSchema } from "./prospect-schema";
 import { interviewSummary } from "@/lib/customer-insights/interviews";
 import { interviewRows } from "@/lib/customer-insights/service";
 import "server-only";
@@ -43,12 +45,33 @@ export async function validationDeals(tx: DB, userId: string, scope: Scope) {
 export function sourceFingerprint(rows: { id: string; updatedAt: Date | string; insight: unknown }[]) {
   return createHash("sha256").update(JSON.stringify(rows.map(r => [r.id, new Date(r.updatedAt).toISOString(), r.insight]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))))).digest("hex");
 }
+// Read legacy insight JSON too: incomplete/older notes must still exclude an existing company.
+export async function prospectContext(tx: DB, userId: string, scope: Scope) {
+  const [context, profile, notes, contacts, deals] = await Promise.all([
+    validationRows(tx, userId, scope), tx.onboardingProfile.findUnique({ where: { userId } }),
+    tx.meetingNote.findMany({ where: { userId }, select: { insight: true } }),
+    tx.contact.findMany({ where: { userId }, select: { company: true } }),
+    tx.deal.findMany({ where: { userId }, select: { title: true, validation: true } }),
+  ]);
+  const excluded = [...new Set([
+    profile?.companyName || "", profile?.website || "", ...notes.map(n => (n.insight as { company?: unknown } | null)?.company).filter((v): v is string => typeof v === "string"),
+    ...contacts.map(c => c.company || ""), ...deals.flatMap(d => [d.title, salesRecordSchema.safeParse(d.validation).data?.company || ""]),
+  ].filter(Boolean))].sort();
+  const icp = readIcp(profile?.icpDetails);
+  const criteria = { product: profile?.oneLinePitch || "", industry: profile?.industry || "", customer: icp?.who || "", problem: icp?.problem || "", summary: icp?.summary || profile?.icp || "", market: "Taiwan" };
+  const source = sourceFingerprint([{ id: "prospects-v1", updatedAt: "2026-10-22T00:00:00Z", insight: { criteria, excluded } }]);
+  return { ...context, criteria, excluded, prospectSource: source };
+}
+export async function currentProspects(tx: DB, userId: string, scope: Scope) {
+  const context = await prospectContext(tx, userId, scope), cache = prospectCacheSchema.safeParse(context.cache).data;
+  return Object.fromEntries(Object.entries(cache?.prospects || {}).map(([key, entry]) => [key, { ...entry.result, stale: entry.source !== context.prospectSource, companies: excludeKnownCompanies(entry.result.companies, context.excluded) }]));
+}
 export async function validationSnapshot(userId: string, scope: Scope) {
   const tx = prisma as unknown as DB;
   const [context, deals, contacts] = await Promise.all([validationRows(tx, userId, scope), validationDeals(tx, userId, scope), tx.contact.findMany({ where: { userId }, select: { id: true, name: true, company: true } })]);
   const records = deals.map(d => d.record), summary = commitmentSummary(records);
   const ownJourney = scope.planId && !context.plan?.sourceJourneyId ? await tx.discoveryJourney.findUnique({ where: { userId }, select: { id: true } }) : null;
-  return { scope, rows: context.rows, source: sourceFingerprint(context.rows), analysis: context.cache, summary, priority: priorityCompanies(context.rows, contacts, records),
+  return { scope, rows: context.rows, source: sourceFingerprint(context.rows), analysis: context.cache, prospects: await currentProspects(tx, userId, scope), summary, priority: priorityCompanies(context.rows, contacts, records),
     deals: deals.map(d => ({ id: d.id, contactId: d.contactId, ...d.record })),
     sourceJourneyId: context.plan?.sourceJourneyId ?? null, availableJourneyId: ownJourney?.id ?? null,
     revision: context.plan?.revision ?? null,

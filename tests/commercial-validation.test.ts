@@ -55,8 +55,9 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
   const base = { actionPlanId: plan.id, impact: "High", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: "MVP", bottleneckGroup: "Sales", bottleneckCode: "no_icp", stageFit: 4, stageFitReason: "QA", bottleneckFit: 4, bottleneckFitReason: "QA", outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 };
   const task = await db.actionItem.create({ data: { ...base, clientKey: "task_1", title: "Run paid pilot offer with 3 prospects" } });
   const nextTask = await db.actionItem.create({ data: { ...base, clientKey: "task_2", title: "Publish an update", dependencies: { create: { dependsOnId: task.id } } } });
-  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
+  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
   let mutate: (() => Promise<void>) | null = null;
+  const prospectFixtures = ["CircleWe", "EV Rapid Force", "KnownContact", "Old win", "Own Company", "Foreign Company", "New Taiwan Company"].map((name, i) => ({ name, aliases: [], website: `https://prospect${i}.example.com`, reason: "Potential software buyer; confirm need", taiwan: { url: `https://prospect${i}.example.com/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://prospect${i}.example.com/about`, quote: "B2B software" } }));
   const require = createRequire(import.meta.url), cache = new Map<string, unknown>();
   const mocks: Record<string, unknown> = {
     "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null },
@@ -67,8 +68,13 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     "@/lib/playbook/quiz": { fortnightIndex: () => 0, periodEnd: () => new Date() },
     "@vercel/blob": { get: async () => ({ statusCode: 200, blob: { contentType: "application/pdf", size: 50 }, stream: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode("%PDF-1.7\nQA")); c.close(); } }) }) },
     "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({ error: "Unauthorized" }, { status: 401 }), failFromError: () => Response.json({ error: "Safe failure" }, { status: 500 }) },
-    "@anthropic-ai/sdk": class { messages = { create: async (input: { messages: { content: string }[] }) => {
+    "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string }[]; messages: { content: string }[] }) => {
       calls++; if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
+      if (input.tools?.[0]?.name === "web_search") return { stop_reason: "end_turn", content: [
+        { type: "web_search_tool_result", content: prospectFixtures.map(c => ({ type: "web_search_result", url: c.taiwan.url })) },
+        { type: "text", text: "Researched new Taiwan companies", citations: noSources ? [] : prospectFixtures.map(c => ({ type: "web_search_result_location", url: c.taiwan.url, cited_text: "Taipei, Taiwan. B2B software" })) },
+      ] };
+      if (input.tools?.[0]?.name === "prospect_result") return { content: [{ type: "tool_use", input: { companies: invent ? prospectFixtures.map(c => ({ ...c, taiwan: { ...c.taiwan, quote: "Invented Taiwan address" } })) : prospectFixtures } }] };
       const content = JSON.parse(input.messages[0]!.content);
       const result = content.evidence ? { topics: [{ label: "Reporting pain", evidence: content.evidence.slice(0, 2).map((v: { id: string }) => ({ recordId: v.id, quote: invent ? "Invented quote" : "Manual reporting takes hours" })) }], nextMoves: ["Ask willing prospects about a paid pilot"] } : { items: [{ quote: invent ? "Invented" : content.rejection.quote, possibleReason: "Budget may be constrained; confirm", clarify: "What budget is available?", next: "Clarify budget" }], followUp: "Could we clarify your budget concern?" };
       return { content: [{ type: "tool_use", name: "validation_result", input: result }] };
@@ -191,6 +197,39 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       aiFail = true; await assert.rejects(analysis.analyseValidation(await account(), args)); aiFail = false; assert.equal(refunds, before + 2);
       mutate = async () => { await db.meetingNote.update({ where: { id: row.id }, data: { updatedAt: new Date(Date.now() + 3000) } }); }; await assert.rejects(analysis.analyseValidation(await account(), args)); mutate = null; assert.equal(refunds, before + 3);
       await analysis.analyseValidation(await account(), args); assert(successes > 0);
+    });
+    await t.test("New Taiwan prospects exclude all owned companies, cache separately, remove newly recorded companies and refund failures", async () => {
+      const prospects = load<typeof import("../src/lib/validation/prospects")>("src/lib/validation/prospects.ts");
+      const args = { scope: { planId: plan.id }, prospectCount: 6 as const, locale: "en" as const };
+      const before = reservations;
+      await assert.rejects(prospects.generateProspects(await account(), args), /ICP/); assert.equal(reservations, before);
+      await db.onboardingProfile.create({ data: { userId: owner.id, companyName: "Own Company", oneLinePitch: "B2B reporting software for Taiwan companies", targetMarkets: [], needs: [] } });
+      await db.meetingNote.create({ data: { userId: owner.id, title: "Legacy unlinked note", insight: { company: "CircleWe" } } });
+      await db.meetingNote.create({ data: { userId: owner.id, title: "Other workspace", insight: { company: "EV Rapid Force" } } });
+      await db.contact.create({ data: { userId: owner.id, name: "Known", company: "KnownContact" } });
+      await db.contact.create({ data: { userId: other.id, name: "Other owner", company: "Foreign Company" } });
+      await assert.rejects(prospects.generateProspects(await account(), { ...args, scope: { journeyId: "foreign" } }));
+      await db.user.update({ where: { id: owner.id }, data: { trialPlan: "pro" } }); await assert.rejects(prospects.generateProspects(await account(), args));
+      await db.user.update({ where: { id: owner.id }, data: { trialPlan: "enterprise" } });
+      const first = await prospects.generateProspects(await account(), args); assert(first);
+      assert.deepEqual(Array.from(first.companies, c => c.name), ["Foreign Company", "New Taiwan Company"]); assert.equal(reservations, before + 1);
+      const after = calls; await prospects.generateProspects(await account(), args); assert.equal(calls, after);
+      const cache = (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).validationAnalysis as { reports: unknown }; assert(cache.reports, "Pain analysis cache retained");
+      await db.meetingNote.updateMany({ where: { userId: owner.id }, data: { updatedAt: new Date() } });
+      await analysis.analyseValidation(await account(), { scope: args.scope, milestone: 3, locale: "en" });
+      assert((await service.currentProspects(db as never, owner.id, args.scope))["6:en"], "Analysing interviews retains prospect cache");
+      await db.contact.create({ data: { userId: owner.id, name: "Now contacted", company: "New Taiwan Company Ltd." } });
+      const filtered = (await service.validationSnapshot(owner.id, args.scope)).prospects["6:en"]!;
+      assert(filtered.stale); assert.deepEqual(Array.from(filtered.companies, c => c.name), ["Foreign Company"]);
+      const refundsBefore = refunds; aiFail = true; await assert.rejects(prospects.generateProspects(await account(), args)); aiFail = false; assert.equal(refunds, refundsBefore + 1);
+      noSources = true; await assert.rejects(prospects.generateProspects(await account(), args)); noSources = false; assert.equal(refunds, refundsBefore + 2);
+      invent = true; await assert.rejects(prospects.generateProspects(await account(), args)); invent = false; assert.equal(refunds, refundsBefore + 3);
+      mutate = async () => { await db.onboardingProfile.update({ where: { userId: owner.id }, data: { icp: "New criteria" } }); };
+      await assert.rejects(prospects.generateProspects(await account(), args)); mutate = null; assert.equal(refunds, refundsBefore + 4);
+      hold = true; const pending = prospects.generateProspects(await account(), args); const deadline = Date.now() + 5000;
+      while (!release && Date.now() < deadline) await new Promise(r => setTimeout(r, 5)); assert(release);
+      await assert.rejects(prospects.generateProspects(await account(), args)); hold = false; (release as () => void)(); release = null; await pending;
+      const ten = await prospects.generateProspects(await account(), { ...args, prospectCount: 10 }); assert.equal(ten!.requested, 10); assert.equal(ten!.companies.length, 1);
     });
     await t.test("Rejection analysis requires exact reason and quote, refunds failures and caches unchanged reply", async () => {
       let saved = salesRecordSchema.parse((await db.deal.findUniqueOrThrow({ where: { id: dealId } })).validation);

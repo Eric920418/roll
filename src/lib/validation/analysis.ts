@@ -20,7 +20,7 @@ import { scopeSchema, salesRecordSchema, type Scope } from "./schema";
 
 export const analysisInputSchema = z.object({ scope: scopeSchema, milestone: z.union([z.literal(3), z.literal(6), z.literal(10)]).optional(), dealId: z.string().min(1).max(200).optional(), locale: z.enum(["en", "zh-tw"]) }).strict().refine(v => Boolean(v.dealId) !== Boolean(v.milestone), "Choose interview or rejection analysis");
 const rejectionResult = z.object({ items: z.array(z.object({ quote: z.string().min(1).max(800), possibleReason: z.string().max(1000), clarify: z.string().max(1000), next: z.string().max(1000) })).max(3), followUp: z.string().max(4000) }).strict();
-const cacheSchema = z.object({ reports: z.record(z.string(), z.object({ source: z.string(), result: discoveryReportSchema })).default({}), pending: z.object({ token: z.string(), since: z.string() }).optional() });
+const cacheSchema = z.object({ reports: z.record(z.string(), z.object({ source: z.string(), result: discoveryReportSchema })).default({}), pending: z.object({ token: z.string(), since: z.string() }).optional() }).passthrough();
 function evidenceRows(rows: Awaited<ReturnType<typeof validationRows>>["rows"], limit: number) {
   const seen = new Set<string>();
   return rows.flatMap(row => {
@@ -105,7 +105,8 @@ export async function analyseValidation(account: Account, input: z.infer<typeof 
       } else {
         const latest = await validationRows(tx, account.id, input.scope), cache = cacheSchema.parse(context.cache);
         if (cache.pending?.token !== token || sourceFingerprint(latest.rows) !== source) throw new PlanWriteError("訪談已更新，結果未套用；次數退回 / Interviews changed; request refunded", 409);
-        const data = { validationAnalysis: { reports: { ...cache.reports, [String(milestone)]: { source, result } } } as Prisma.InputJsonValue };
+        delete cache.pending;
+        const data = { validationAnalysis: { ...cache, reports: { ...cache.reports, [String(milestone)]: { source, result } } } as Prisma.InputJsonValue };
         if (input.scope.planId) await tx.actionPlan.update({ where: { id: input.scope.planId }, data });
         else await tx.discoveryJourney.update({ where: { id: input.scope.journeyId! }, data });
       }
@@ -131,7 +132,8 @@ async function releaseClaim(userId: string, scope: Scope, dealId: string | undef
     } else {
       const cache = cacheSchema.safeParse(context.cache).data;
       if (cache?.pending?.token === token) {
-        const data = { validationAnalysis: { reports: cache.reports } as Prisma.InputJsonValue };
+        delete cache.pending;
+        const data = { validationAnalysis: cache as Prisma.InputJsonValue };
         if (scope.planId) await tx.actionPlan.update({ where: { id: scope.planId }, data }); else await tx.discoveryJourney.update({ where: { id: scope.journeyId! }, data });
       }
     }
