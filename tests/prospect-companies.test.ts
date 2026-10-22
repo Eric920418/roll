@@ -18,6 +18,7 @@ test("Only officially cited Taiwan prospects qualify, fewer than requested is va
   assert.deepEqual(groundedProspects({ companies: [valid] }, sources, ["Real"], 10), []);
   assert.deepEqual(groundedProspects({ companies: [{ ...valid, taiwan: { ...valid.taiwan, quote: "Taiwan invented" } }] }, sources, [], 6), []);
   assert.deepEqual(groundedProspects({ companies: [{ ...valid, website: "https://fake.example.com" }] }, sources, [], 6), []);
+  assert.equal(groundedProspects({ companies: [{ ...valid, website: "https://example.com" }] }, sources, [], 6).length, 1, "Official subdomains can support a corporate website");
   const noTaiwan = { ...valid, taiwan: { ...valid.taiwan, quote: "B2B software" } };
   assert.deepEqual(groundedProspects({ companies: [noTaiwan] }, sources, [], 6), []);
   assert.throws(() => groundedProspects({ companies: [{ ...valid, invented: "field" }] }, sources, [], 6));

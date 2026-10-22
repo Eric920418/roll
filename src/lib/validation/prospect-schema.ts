@@ -36,7 +36,7 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
   return excludeKnownCompanies(parsed.companies.filter(c => {
     const host = new URL(c.website).hostname.replace(/^www\./, "");
     return [c.taiwan, c.fit].every(ref => sources.some(s => s.url === ref.url && normalize(s.quote).includes(normalize(ref.quote))))
-      && [c.taiwan, c.fit].every(ref => new URL(ref.url).hostname.replace(/^www\./, "") === host)
+      && [c.taiwan, c.fit].every(ref => (new URL(ref.url).hostname.replace(/^www\./, "") === host || new URL(ref.url).hostname.endsWith(`.${host}`)))
       && /taiwan|taipei|taichung|kaohsiung|hsinchu|台灣|臺灣|台北|臺北|新北|台中|臺中|高雄|新竹/i.test(c.taiwan.quote);
   }), excluded).slice(0, count);
 }
