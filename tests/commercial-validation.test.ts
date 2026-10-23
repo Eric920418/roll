@@ -55,8 +55,9 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
   const base = { actionPlanId: plan.id, impact: "High", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: "MVP", bottleneckGroup: "Sales", bottleneckCode: "no_icp", stageFit: 4, stageFitReason: "QA", bottleneckFit: 4, bottleneckFitReason: "QA", outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 };
   const task = await db.actionItem.create({ data: { ...base, clientKey: "task_1", title: "Run paid pilot offer with 3 prospects" } });
   const nextTask = await db.actionItem.create({ data: { ...base, clientKey: "task_2", title: "Publish an update", dependencies: { create: { dependsOnId: task.id } } } });
-  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
+  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, failSecondRound = false, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
   let mutate: (() => Promise<void>) | null = null;
+  const researchExclusions: string[][] = [];
   const prospectFixtures = ["CircleWe", "EV Rapid Force", "KnownContact", "Old win", "Own Company", "Foreign Company", "New Taiwan Company"].map((name, i) => ({ name, aliases: [], website: `https://prospect${i}.example.com`, reason: "Potential software buyer; confirm need", taiwan: { url: `https://prospect${i}.example.com/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://prospect${i}.example.com/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://prospect${i}.example.com/contact`, source: { url: `https://prospect${i}.example.com/contact`, quote: "Contact our business team" } } }));
   const require = createRequire(import.meta.url), cache = new Map<string, unknown>();
   const mocks: Record<string, unknown> = {
@@ -71,6 +72,10 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string }[]; messages: { role?: string; content: string | { type: string; text?: string }[] }[] }) => {
       const lastContent = input.messages.at(-1)!.content;
       const bodyText = typeof lastContent === "string" ? lastContent : lastContent.find(b => b.type === "text")!.text!;
+      if (input.tools?.[0]?.name === "web_search") {
+        const excluded = JSON.parse(bodyText).excludeNames as string[]; researchExclusions.push(excluded);
+        if (failSecondRound && excluded.includes("Foreign Company")) throw new Error("Second research round failed");
+      }
       calls++; if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
       if (input.tools?.[0]?.name === "web_search") return { stop_reason: fetchOnly ? "pause_turn" : "end_turn", content: [
         { type: "web_search_tool_result", content: [...prospectFixtures.flatMap(c => [{ type: "web_search_result", url: `${c.taiwan.url}?utm_source=qa`, title: c.name }, ...(noContacts ? [] : [{ type: "web_search_result", url: c.contact.source.url, title: c.name + " Contact our business team" }])]), { type: "web_search_result", url: "https://registry.example.com/large-report.pdf", title: "Large public report" }] },
@@ -229,6 +234,8 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       const first = await prospects.generateProspects(await account(), args); assert(first);
       assert.deepEqual(Array.from(first.companies, c => c.name), ["Foreign Company", "New Taiwan Company"]); assert.equal(reservations, before + 1);
       assert(first.companies.every(c => c.contact?.value.endsWith("/contact")));
+      assert(researchExclusions.at(-1)!.includes("Foreign Company") && researchExclusions.at(-1)!.includes("New Taiwan Company"), "The expansion round excludes first-round companies");
+      assert(researchExclusions.at(-1)!.includes("https://prospect5.example.com"), "The expansion round excludes prior domains too");
       const after = calls; await prospects.generateProspects(await account(), args); assert.equal(calls, after);
       partialInvalid = true; const partial = await prospects.generateProspects(await account(), { ...args, locale: "zh-tw" }); partialInvalid = false;
       assert.deepEqual(Array.from(partial!.companies, c => c.name), ["Foreign Company"], "One invalid model candidate does not discard a valid reachable buyer");
@@ -254,6 +261,10 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       fetchFail = true; const fallback = await prospects.generateProspects(await account(), { ...args, scope: { journeyId: journey.id }, locale: "zh-tw" }); fetchFail = false; assert.equal(fallback!.companies.length, 1, "Reader failure can use already verified search sources");
       await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "New source for missing-contact check" } });
       const beforeContactRefund = refunds; noContacts = true; await assert.rejects(prospects.generateProspects(await account(), args), /聯絡入口/); noContacts = false; assert.equal(refunds, beforeContactRefund + 1);
+      const beforeExpansionRefund = refunds, beforeExpansionReservation = reservations; failSecondRound = true;
+      const kept = await prospects.generateProspects(await account(), args); failSecondRound = false;
+      assert.equal(kept!.companies.length, 1, "Retain a verified first-round company if expansion fails");
+      assert.equal(refunds, beforeExpansionRefund); assert.equal(reservations, beforeExpansionReservation + 1, "Two rounds reserve only one request");
     });
     await t.test("Rejection analysis requires exact reason and quote, refunds failures and caches unchanged reply", async () => {
       let saved = salesRecordSchema.parse((await db.deal.findUniqueOrThrow({ where: { id: dealId } })).validation);
