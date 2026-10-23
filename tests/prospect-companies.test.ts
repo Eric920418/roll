@@ -109,7 +109,7 @@ test("Public contact routes require exact official evidence; homepages, fabricat
   assert(prospectCacheSchema.safeParse({ reports: { existing: "retained" }, prospects: { "6:en": { source: "old", result: { companies: [legacy], requested: 6, generatedAt: new Date().toISOString() } } } }).success, "Legacy caches still parse without overwriting interview reports");
 });
 
-test("Candidate verification uses distinct exact searched domains in bounded batches and rejects injected paths", () => {
+test("Candidate verification uses distinct exact searched domains in bounded batches and never fetches injected paths", () => {
   const candidates = Array.from({ length: 16 }, (_, i) => ({ name: `Buyer ${i}`, urls: [`https://buyer${i}.example.com/contact`] }));
   const pages = candidates.map(c => ({ url: c.urls[0]!, title: c.name }));
   const batches = prospectResearchBatches({ candidates }, pages, ["Buyer 0"], 10);
@@ -117,6 +117,9 @@ test("Candidate verification uses distinct exact searched domains in bounded bat
   assert.equal(new Set(batches.flat().flatMap(c => c.urls)).size, 12);
   assert(!batches.flat().some(c => c.name === "Buyer 0"));
   assert.equal(prospectResearchBatches({ candidates }, pages, [], 6).flat().length, 9);
-  assert.equal(prospectResearchBatches({ candidates: [{ name: "Invented path", urls: ["https://buyer0.example.com/guessed"] }] }, pages, [], 6).length, 0);
+  const reused = prospectResearchBatches({ candidates: [{ name: "Invented path", urls: ["https://buyer0.example.com/guessed"] }] }, pages, [], 6);
+  assert.deepEqual(reused.flat().flatMap(c => c.urls), ["https://buyer0.example.com/contact"], "Reuse the real searched page on that domain, never an invented path");
+  assert.equal(prospectResearchBatches({ candidates: [{ name: "Invented domain", urls: ["https://never-searched.example.com/contact"] }] }, pages, [], 6).length, 0);
   assert.equal(prospectResearchBatches(null, [...pages, pages[0]!], [], 10).flat().length, 12);
+  assert.equal(prospectResearchBatches({ candidates: [{ name: "Canonical root", urls: ["https://root.example.com"] }] }, [{ url: "https://root.example.com/", title: "Root" }], [], 6)[0]![0]!.urls[0], "https://root.example.com/", "Use the actual searched URL when URL serialization only adds a root slash");
 });

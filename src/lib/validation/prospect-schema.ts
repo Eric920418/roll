@@ -63,12 +63,17 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
 
 export function prospectResearchBatches(raw: unknown, pages: { url: string; title: string }[], excluded: string[], count: 6 | 10) {
   const known = new Set(excluded.map(prospectKey));
-  const allowed = new Set(pages.map(p => p.url));
+  const allowed = new Map(pages.filter(p => publicWebsite(p.url)).map(p => [new URL(p.url).href, p.url]));
   const candidates = prospectShortlistSchema.safeParse(raw).data?.candidates || pages.map(p => ({ name: p.title, urls: [p.url] }));
   const seen = new Set<string>();
   const accepted = candidates.flatMap(c => {
     if (known.has(prospectKey(c.name))) return [];
-    const urls = c.urls.filter(u => allowed.has(u) && publicWebsite(u) && !/\.pdf(?:[?#]|$)/i.test(u));
+    const urls = [...new Set(c.urls.flatMap(u => {
+      if (!publicWebsite(u)) return [];
+      const exact = allowed.get(new URL(u).href);
+      const host = new URL(u).hostname.replace(/^www\./, "");
+      return (exact ? [exact] : pages.filter(p => publicWebsite(p.url) && new URL(p.url).hostname.replace(/^www\./, "") === host).map(p => p.url)).filter(p => !/\.pdf(?:[?#]|$)/i.test(p));
+    }))].slice(0, 4);
     if (!urls.length) return [];
     const host = new URL(urls[0]!).hostname.replace(/^www\./, "");
     if (seen.has(host)) return []; seen.add(host);
