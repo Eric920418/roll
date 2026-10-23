@@ -137,7 +137,7 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
         lastResearchError = providerProblem(error);
         const diagnostic = error as { status?: number; message?: unknown; error?: { error?: { message?: unknown }; message?: unknown } };
         const providerMessage = String(diagnostic?.error?.error?.message || diagnostic?.error?.message || diagnostic?.message || "");
-        console.warn({ event: "validation.prospects.round.failed", round, step, status: diagnostic?.status, providerIssue: /credit|billing|balance/i.test(providerMessage) ? "billing" : /tool_result|tool_use|max_uses/i.test(providerMessage) ? "tool_context" : /schema|messages|input|parameter/i.test(providerMessage) ? "request_format" : "other" });
+        console.warn({ event: "validation.prospects.round.failed", round, step, status: diagnostic?.status, providerField: providerMessage.match(/(?:messages|tools|max_tokens|thinking|model|output_config|tool_choice|system)(?:\.[a-z_0-9]+){0,10}(?=:)/i)?.[0], providerIssue: /credit|billing|balance/i.test(providerMessage) ? "billing" : /tool_result|tool_use|max_uses/i.test(providerMessage) ? "tool_context" : /schema|messages|input|parameter/i.test(providerMessage) ? "request_format" : "other" });
         if (lastResearchError instanceof PlanWriteError && lastResearchError.status === 503) break;
       }
     }
