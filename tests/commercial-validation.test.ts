@@ -55,7 +55,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
   const base = { actionPlanId: plan.id, impact: "High", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: "MVP", bottleneckGroup: "Sales", bottleneckCode: "no_icp", stageFit: 4, stageFitReason: "QA", bottleneckFit: 4, bottleneckFitReason: "QA", outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 };
   const task = await db.actionItem.create({ data: { ...base, clientKey: "task_1", title: "Run paid pilot offer with 3 prospects" } });
   const nextTask = await db.actionItem.create({ data: { ...base, clientKey: "task_2", title: "Publish an update", dependencies: { create: { dependsOnId: task.id } } } });
-  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, malformedSelection = false, wrongFit = false, correctionLimited = false, correctionCalls = 0, failSecondRound = false, providerFailure: string | null = null, providerFailureStatus = 400, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
+  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, malformedSelection = false, wrongFit = false, correctionLimited = false, correctionCalls = 0, failSecondRound = false, secondRoundCredit = false, providerFailure: string | null = null, providerFailureStatus = 400, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
   let mutate: (() => Promise<void>) | null = null;
   let contactReachable = true, liveChecks = 0;
   const researchExclusions: string[][] = [];
@@ -71,12 +71,12 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     "@/lib/playbook/quiz": { fortnightIndex: () => 0, periodEnd: () => new Date() },
     "@vercel/blob": { get: async () => ({ statusCode: 200, blob: { contentType: "application/pdf", size: 50 }, stream: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode("%PDF-1.7\nQA")); c.close(); } }) }) },
     "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({ error: "Unauthorized" }, { status: 401 }), failFromError: () => Response.json({ error: "Safe failure" }, { status: 500 }) },
-    "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string; strict?: boolean; input_schema?: Record<string, unknown> }[]; messages: { role?: string; content: string | { type: string; text?: string }[] }[] }) => {
+    "@anthropic-ai/sdk": class { messages = { create: async (input: { system?: string; tools?: { name: string; strict?: boolean; input_schema?: Record<string, unknown> }[]; messages: { role?: string; content: string | { type: string; text?: string }[] }[] }) => {
       const lastContent = input.messages.at(-1)!.content;
       const bodyText = typeof lastContent === "string" ? lastContent : lastContent.filter(b => b.type === "text").at(-1)!.text!;
       if (input.tools?.[0]?.name === "web_search") {
         const excluded = JSON.parse(bodyText).excludeNames as string[]; researchExclusions.push(excluded);
-        if (failSecondRound && excluded.includes("Foreign Company")) throw new Error("Second research round failed");
+        if (failSecondRound && excluded.includes("Foreign Company")) throw secondRoundCredit ? Object.assign(new Error("Your credit balance is too low; re_secret_fixture"), { status: 400 }) : new Error("Second research round failed");
       }
       calls++; if (providerFailure) throw Object.assign(new Error(providerFailure), { status: providerFailureStatus }); if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
       if (input.tools?.[0]?.name === "web_search") return { stop_reason: fetchOnly ? "pause_turn" : "end_turn", content: [
@@ -89,7 +89,9 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
         assert.equal(input.messages.length, 1, "Do not duplicate full search history into every batch");
         assert.equal(input.messages[0]?.role, "user");
         assert(Array.isArray(lastContent) && lastContent.every(b => b.type === "text"), "Batch URLs are explicitly supplied by the user message, without dangling tool results");
-        const supplied = JSON.parse(bodyText) as { pages: { url: string; title: string }[]; candidates: { name: string }[]; contactSearches: string[] };
+        const supplied = JSON.parse(bodyText) as { pages: { url: string; title: string }[]; candidates: { name: string }[]; evidence: { url: string; quote: string }[]; contactSearches: string[] };
+        assert(input.system?.includes("Do not search by default."), "Reuse sourced evidence instead of mandating another paid search");
+        assert(supplied.evidence.every(s => s.quote.length <= 1000 && supplied.pages.some(p => p.url === s.url)), "Reuse only exact supplied public source excerpts");
         assert(supplied.pages.every(p => prospectFixtures.some(c => p.url === c.taiwan.url || p.url === `${c.taiwan.url}?utm_source=qa` || p.url === c.contact.source.url)), "Fetch receives only exact URLs returned by search");
         assert(supplied.pages.every(p => Array.isArray(lastContent) && lastContent[0]!.text!.includes(p.url)), "Exact allowed URLs appear verbatim in user text for fetch authorization");
         assert(supplied.pages.every(p => p.title.length > 0), "Preserve meaningful result titles in each verification batch");
@@ -104,7 +106,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
         assert.equal(input.tools[0].strict, true, "Supplier grammar enforces an array, not encoded JSON text");
         assert.equal(input.tools[0].input_schema?.type, "object");
         const data = JSON.parse(input.messages[0]!.content as string) as { candidateEvidence: { candidates: { name: string }[]; sourceIndexes: number[] }[]; sources: { url: string; quote: string }[] };
-        assert(data.candidateEvidence.length > 0 && data.candidateEvidence.every(v => v.candidates.length === 1 && v.sourceIndexes.every(i => !!data.sources[i])), "Extraction keeps candidate-to-source associations");
+        assert(data.candidateEvidence.every(v => v.candidates.length === 1 && v.sourceIndexes.every(i => !!data.sources[i])), "Extraction keeps candidate-to-source associations");
         const correcting = !!JSON.parse(bodyText).correction;
         if (correcting) { correctionCalls++; if (correctionLimited) throw Object.assign(new Error("Rate limit"), { status: 429 }); assert.equal(input.messages.length, 2); assert(JSON.parse(bodyText).companies.every((c: { name: string }) => c.name === "Foreign Company")); }
         return { content: [{ type: "tool_use", input: { companies: prospectFixtures.flatMap(c => { const sources = data.sources; const contactSource = sources.findIndex(s => s.url === c.contact.source.url); const taiwanSource = sources.findIndex(s => s.url === c.taiwan.url), fitSource = sources.findIndex(s => s.url === c.fit.url && (s.quote.includes("B2B") || invent)); return taiwanSource >= 0 && fitSource >= 0 && contactSource >= 0 ? [{ contact: { kind: partialInvalid && c.name === "New Taiwan Company" ? "invented" : "page", value: c.contact.value + "/model-normalized", source: contactSource }, name: c.name, aliases: c.aliases, website: c.website, reason: c.reason, taiwanSource, fitSource: wrongFit && !correcting && c.name === "Foreign Company" ? sources.findIndex(s => s.url === "https://directory.example.com/unnamed") : fitSource }] : []; }) } }] };
@@ -285,7 +287,19 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       const beforeExpansionRefund = refunds, beforeExpansionReservation = reservations; failSecondRound = true;
       const kept = await prospects.generateProspects(await account(), args); failSecondRound = false;
       assert.equal(kept!.companies.length, 1, "Retain a verified first-round company if expansion fails");
+      assert.equal(kept!.warning, "search_incomplete");
       assert.equal(refunds, beforeExpansionRefund); assert.equal(reservations, beforeExpansionReservation + 1, "Two rounds reserve only one request");
+      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Partial credit warning check" } });
+      failSecondRound = true; secondRoundCredit = true;
+      const beforePartialCredit = reservations, beforePartialRefund = refunds;
+      const creditPartial = await prospects.generateProspects(await account(), args);
+      failSecondRound = false; secondRoundCredit = false;
+      assert.equal(creditPartial!.companies.length, 1); assert.equal(creditPartial!.warning, "provider_credits");
+      assert.equal(reservations, beforePartialCredit + 1); assert.equal(refunds, beforePartialRefund, "Verified partial results use one request, not a false refund message");
+      const beforeCreditRetry = researchExclusions.length;
+      const retried = await prospects.generateProspects(await account(), args);
+      assert(researchExclusions.length > beforeCreditRetry, "An interrupted list does not block a post-funding retry behind a 24-hour cache");
+      assert.equal(retried!.warning, undefined); assert.equal(reservations, beforePartialCredit + 2);
       await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "New source for malformed extraction check" } });
       const beforeMalformedRefunds = refunds, beforeMalformedSearches = researchExclusions.length; malformedSelection = true;
       await assert.rejects(prospects.generateProspects(await account(), args)); malformedSelection = false;

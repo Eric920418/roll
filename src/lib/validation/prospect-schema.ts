@@ -24,7 +24,8 @@ export function readProspectSelection(raw: unknown) {
   return z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(raw).companies;
 }
 export const prospectResultSchema = z.object({ companies: z.array(prospectCompanySchema).max(10) }).strict();
-export const prospectReportSchema = prospectResultSchema.extend({ requested: z.union([z.literal(6), z.literal(10)]), generatedAt: z.iso.datetime(), contactChecked: z.literal(true).optional() });
+export const prospectWarningSchema = z.enum(["provider_credits", "provider_rate_limit", "provider_config", "search_incomplete"]);
+export const prospectReportSchema = prospectResultSchema.extend({ requested: z.union([z.literal(6), z.literal(10)]), generatedAt: z.iso.datetime(), contactChecked: z.literal(true).optional(), warning: prospectWarningSchema.optional() });
 export const prospectCacheSchema = z.object({ prospects: z.record(z.string(), z.object({ source: z.string(), result: prospectReportSchema })).default({}), prospectPending: z.object({ token: z.string(), since: z.iso.datetime() }).optional() }).passthrough();
 export type ProspectCompany = z.infer<typeof prospectCompanySchema>;
 export const prospectCacheFresh = (generatedAt: string) => Date.parse(generatedAt) <= Date.now() && Date.now() - Date.parse(generatedAt) < 86400000;

@@ -15,6 +15,7 @@ export function publicProspectAddress(address: string) {
 }
 
 // Pin public IPv4 DNS results to the TLS connection; never follow a redirect into private networks.
+// shortcut: Probe one public IPv4 address; add IPv6/failover if legitimate sources are repeatedly excluded.
 export async function reachableProspectContact(company: ProspectCompany) {
   if (!company.contact) return false;
   const host = new URL(company.website).hostname.replace(/^www\./, "");
