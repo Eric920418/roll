@@ -20,6 +20,13 @@ export const prospectCompanySchema = z.object({
   taiwan: citation, fit: citation, contact: contactSchema.optional(),
 }).strict();
 export const prospectSelectionSchema = z.object({ companies: z.array(prospectCompanySchema.omit({ taiwan: true, fit: true, contact: true }).extend({ taiwanSource: z.number().int().nonnegative(), fitSource: z.number().int().nonnegative(), contact: z.object({ kind: z.enum(["page", "email"]), value: z.string().trim().min(1).max(2000), source: z.number().int().nonnegative() }).strict() })).max(10) }).strict();
+export function readProspectSelection(raw: unknown) {
+  const list = z.object({ companies: z.union([z.array(z.unknown()).max(16), z.string().max(100000)]) }).strict().parse(raw);
+  if (typeof list.companies !== "string") return list.companies;
+  let decoded: unknown;
+  try { decoded = JSON.parse(list.companies); } catch { throw new z.ZodError([{ code: "custom", path: ["companies"], message: "Invalid structured JSON" }]); }
+  return Array.isArray(decoded) ? z.array(z.unknown()).max(16).parse(decoded) : z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(decoded).companies;
+}
 export const prospectResultSchema = z.object({ companies: z.array(prospectCompanySchema).max(10) }).strict();
 export const prospectReportSchema = prospectResultSchema.extend({ requested: z.union([z.literal(6), z.literal(10)]), generatedAt: z.iso.datetime() });
 export const prospectCacheSchema = z.object({ prospects: z.record(z.string(), z.object({ source: z.string(), result: prospectReportSchema })).default({}), prospectPending: z.object({ token: z.string(), since: z.iso.datetime() }).optional() }).passthrough();
@@ -28,7 +35,7 @@ export function excludeKnownCompanies(companies: ProspectCompany[], excluded: st
   const seen = new Set(excluded.map(prospectKey).filter(Boolean)), domains = new Set<string>(excluded.flatMap(value => { try { return [new URL(value).hostname.replace(/^www\./, "")]; } catch { return []; } }));
   return companies.filter(c => {
     const keys = [c.name, ...c.aliases].map(prospectKey).filter(Boolean), host = new URL(c.website).hostname.replace(/^www\./, "");
-    if (keys.some(k => seen.has(k)) || domains.has(host)) return false;
+    if (keys.some(k => seen.has(k)) || [...domains].some(d => host === d || host.endsWith(`.${d}`) || d.endsWith(`.${host}`))) return false;
     keys.forEach(k => seen.add(k)); domains.add(host); return true;
   });
 }
@@ -64,10 +71,12 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
       if (!publicWebsite(contact.value) || contact.value !== contact.source.url) return reject("contact_url_mismatch");
       const path = new URL(contact.value).pathname + new URL(contact.value).hash;
       const contactPath = /(?:^|[/#])(?:contact(?:[-_]?us)?|contacts|enquir(?:y|ies)|inquir(?:y|ies)|聯絡(?:我們)?|聯繫(?:我們)?|联系我们)(?:[/.#_-]|$)/i.test(path);
-      const contactQuote = /contact\s+(?:us|our|team|sales)|business\s+(?:inquir|enquir)|sales\s+(?:inquir|enquir)|聯絡|聯繫|洽詢|業務諮詢/i.test(contact.source.quote);
+      const contactQuote = /(?:contact|inquiry|enquiry)\s+form|send\s+us\s+(?:a\s+)?message|聯絡表單|聯繫表單|諮詢表單|留言表單/i.test(contact.source.quote);
       if (path === "/" || !(contactPath || contactQuote)) return reject("not_contact_page");
     } else {
       const emails = contact.source.quote.match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
+      const emailHost = contactValue.split("@")[1] || "";
+      if (!(emailHost === host || emailHost.endsWith(`.${host}`) || host.endsWith(`.${emailHost}`))) return reject("email_domain_mismatch");
       if (!z.email().safeParse(contact.value).success || !emails.some(e => e.toLowerCase() === contactValue) || /^(?:no.?reply|privacy|dpo|abuse|security|jobs|careers|legal)@/i.test(contact.value)) return reject("email_not_published");
     }
     if (![c.taiwan, c.fit, contact.source].every(ref => sources.some(s => s.url === ref.url && normalize(s.quote).includes(normalize(ref.quote))))) return reject("quote_not_found");
@@ -90,7 +99,7 @@ export function prospectResearchBatches(raw: unknown, pages: { url: string; titl
   const seen = new Set<string>(), names = new Set<string>();
   const accepted = candidates.flatMap(c => {
     const name = prospectKey(c.name);
-    if (known.has(name) || names.has(name) || c.urls.some(u => blockedDomains.has(new URL(u).hostname.replace(/^www\./, "")))) return [];
+    if (known.has(name) || names.has(name) || c.urls.some(u => { const host = new URL(u).hostname.replace(/^www\./, ""); return [...blockedDomains].some(d => host === d || host.endsWith(`.${d}`) || d.endsWith(`.${host}`)); })) return [];
     const urls = [...new Set(c.urls.flatMap(u => {
       if (!publicWebsite(u)) return [];
       const exact = allowed.get(new URL(u).href);

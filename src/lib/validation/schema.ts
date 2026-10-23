@@ -2,6 +2,7 @@ import { z } from "zod";
 import { workspaceKind } from "@/lib/action-plan/workspace";
 import { insightSchema } from "@/lib/customer-insights/schema";
 import { companyKey, type InterviewRow } from "@/lib/customer-insights/interviews";
+import { prospectCompanySchema } from "./prospect-schema";
 
 export const commercialStateSchema = z.object({ requiresConfirmation: z.boolean(), confirmedAt: z.iso.datetime().optional() });
 export const scopeSchema = z.object({ planId: z.string().min(1).max(200).optional(), journeyId: z.string().min(1).max(200).optional() }).refine(v => Boolean(v.planId) !== Boolean(v.journeyId), "Choose one workspace / 請選一個工作區");
@@ -22,6 +23,7 @@ export const salesRecordSchema = z.object({
   version: z.number().int().nonnegative(), status: z.enum(salesStatuses),
   events: z.array(salesEventSchema).max(500), proofs: z.array(proofSchema).max(100),
   scripts: z.record(z.string(), z.string().max(8000)).optional(),
+  prospect: prospectCompanySchema.pick({ name: true, aliases: true, website: true }).optional(),
   rejection: z.object({ source: z.string(), result: z.unknown().optional(), token: z.string().optional(), since: z.iso.datetime().optional() }).optional(),
 }).strict();
 export type SalesRecord = z.infer<typeof salesRecordSchema>;

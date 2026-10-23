@@ -6,9 +6,14 @@ import { runInNewContext } from "node:vm";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import ts from "typescript";
-import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectSources, prospectCacheSchema, resolveProspectEvidence } from "../src/lib/validation/prospect-schema";
+import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectSources, prospectCacheSchema, resolveProspectEvidence, readProspectSelection } from "../src/lib/validation/prospect-schema";
 
 const company = (name: string, domain = "new.example.com") => ({ name, aliases: [] as string[], website: `https://${domain}`, reason: "Potential ICP fit; confirm with outreach", taiwan: { url: `https://${domain}/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://${domain}/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://${domain}/contact`, source: { url: `https://${domain}/contact`, quote: "Contact our business team" } } });
+test("A single encoded tool array or envelope is decoded without accepting broken, oversized or extra data", () => {
+  const rows = [{ name: "Candidate still requires full evidence validation" }];
+  for (const companies of [rows, JSON.stringify(rows), JSON.stringify({ companies: rows })]) assert.deepEqual(readProspectSelection({ companies }), rows);
+  for (const raw of [{}, { companies: "bad JSON" }, { companies: JSON.stringify({ companies: rows, invented: true }) }, { companies: JSON.stringify({ companies: JSON.stringify(rows) }) }, { companies: Array(17).fill({}) }, { companies: " ".repeat(100001) }, { companies: rows, invented: true }]) assert.throws(() => readProspectSelection(raw));
+});
 test("Source limits retain the business summary, footer Taiwan address and published email instead of only navigation", () => {
   const url = "https://new.example.com/contact";
   const collected = ["B2B software for logistics", ...Array.from({ length: 150 }, (_, i) => `Navigation item ${i}`), "Taipei, Taiwan 110", "Business enquiries: hello@new.example.com", "Business   enquiries: hello@new.example.com", "Contact our team"].map(quote => ({ url, quote }));
@@ -26,6 +31,8 @@ test("Prospect exclusions normalize Unicode, legal suffixes, punctuation and ali
   const known = ["CircleWe", "EV Rapid Force", "Other Name", "https://www.own.example.com"];
   const companies = [company("Circle We"), company("EV-Rapid-Force", "ev.example.com"), { ...company("新品牌", "alias.example.com"), aliases: ["Other Name Ltd."] }, company("Different Name", "own.example.com"), company("New Company", "new.example.com"), company("New Company 2", "new.example.com"), company("Circle Ventures", "circle.example.com")];
   assert.deepEqual(excludeKnownCompanies(companies, known).map(v => v.name), ["New Company", "Circle Ventures"]);
+  assert.deepEqual(excludeKnownCompanies([company("New brand", "portal.own.example.com"), company("Similar domain", "notown.example.com")], ["https://own.example.com"]).map(c => c.name), ["Similar domain"]);
+  assert.equal(excludeKnownCompanies([company("Parent brand", "own.example.com")], ["https://portal.own.example.com"]).length, 0);
 });
 test("Only officially cited Taiwan prospects qualify, fewer than requested is valid; invalid or ungrounded data never fills quotas", () => {
   const valid = company("Real"), other = company("Other", "other.example.com");
@@ -107,6 +114,10 @@ test("Public contact routes require exact official evidence; homepages, fabricat
   assert.equal(prospectCompanySchema.safeParse({ ...value, contact: { ...value.contact, value: "javascript:alert(1)" } }).success, false);
   const about = { url: `${value.website}/about`, quote: "Our business software in Taiwan" };
   assert.equal(check({ kind: "page", value: about.url, source: about }, about).length, 0, "Business descriptions alone are not contact routes");
+  const navigation = { url: `${value.website}/success-stories/customer`, quote: "Contact us: https://new.example.com/contact-en" };
+  assert.equal(check({ kind: "page", value: navigation.url, source: navigation }, navigation).length, 0, "An article's contact navigation is not an actual contact page");
+  const form = { url: `${value.website}/get-started`, quote: "Send us a message using the contact form" };
+  assert.equal(check({ kind: "page", value: form.url, source: form }, form).length, 1);
   const home = { url: value.website, quote: "Contact us" };
   assert.equal(check({ kind: "page", value: value.website, source: home }, home).length, 0);
   const privacy = { url: `${value.website}/privacy-policy`, quote: "Contact us for privacy requests" };
@@ -114,6 +125,8 @@ test("Public contact routes require exact official evidence; homepages, fabricat
   const email = { url: value.contact.source.url, quote: "Business inquiries: hello@new.example.com" };
   assert.equal(check({ kind: "email", value: "hello@new.example.com", source: email }, email).length, 1);
   assert.equal(check({ kind: "email", value: "invented@new.example.com", source: email }, email).length, 0);
+  const directoryEmail = { ...email, quote: "Business inquiries: hello@other-company.com" };
+  assert.equal(check({ kind: "email", value: "hello@other-company.com", source: directoryEmail }, directoryEmail).length, 0, "Published directory contact data cannot establish the directory as this company's official site");
   const foreign = { ...email, url: "https://directory.example.com/contact" };
   assert.equal(check({ kind: "email", value: "hello@new.example.com", source: foreign }, foreign).length, 0);
   for (const mailbox of ["no-reply", "privacy", "jobs", "legal"]) {

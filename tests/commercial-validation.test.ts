@@ -55,10 +55,11 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
   const base = { actionPlanId: plan.id, impact: "High", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: "MVP", bottleneckGroup: "Sales", bottleneckCode: "no_icp", stageFit: 4, stageFitReason: "QA", bottleneckFit: 4, bottleneckFitReason: "QA", outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 };
   const task = await db.actionItem.create({ data: { ...base, clientKey: "task_1", title: "Run paid pilot offer with 3 prospects" } });
   const nextTask = await db.actionItem.create({ data: { ...base, clientKey: "task_2", title: "Publish an update", dependencies: { create: { dependsOnId: task.id } } } });
-  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, malformedSelection = false, failSecondRound = false, providerFailure: string | null = null, providerFailureStatus = 400, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
+  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, malformedSelection = false, wrongFit = false, correctionLimited = false, correctionCalls = 0, failSecondRound = false, providerFailure: string | null = null, providerFailureStatus = 400, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
   let mutate: (() => Promise<void>) | null = null;
   const researchExclusions: string[][] = [];
-  const prospectFixtures = ["CircleWe", "EV Rapid Force", "KnownContact", "Old win", "Own Company", "Foreign Company", "New Taiwan Company"].map((name, i) => ({ name, aliases: [], website: `https://prospect${i}.example.com`, reason: "Potential software buyer; confirm need", taiwan: { url: `https://prospect${i}.example.com/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://prospect${i}.example.com/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://prospect${i}.example.com/contact`, source: { url: `https://prospect${i}.example.com/contact`, quote: "Contact our business team" } } }));
+  const prospectFixtures = ["CircleWe", "EV Rapid Force", "KnownContact", "Old win", "Own Company", "Foreign Company", "New Taiwan Company"].map((name, i) => ({ name, aliases: [] as string[], website: `https://prospect${i}.example.com`, reason: "Potential software buyer; confirm need", taiwan: { url: `https://prospect${i}.example.com/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://prospect${i}.example.com/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://prospect${i}.example.com/contact`, source: { url: `https://prospect${i}.example.com/contact`, quote: "Contact our business team" } } }));
+  prospectFixtures[5]!.aliases = ["Alternate Legal Brand"];
   const require = createRequire(import.meta.url), cache = new Map<string, unknown>();
   const mocks: Record<string, unknown> = {
     "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null },
@@ -80,25 +81,31 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       if (input.tools?.[0]?.name === "web_search") return { stop_reason: fetchOnly ? "pause_turn" : "end_turn", content: [
         { type: "web_search_tool_result", content: [...prospectFixtures.flatMap(c => [{ type: "web_search_result", url: `${c.taiwan.url}?utm_source=qa`, title: c.name }, ...(noContacts ? [] : [{ type: "web_search_result", url: c.contact.source.url, title: c.name + " Contact our business team" }])]), { type: "web_search_result", url: "https://registry.example.com/large-report.pdf", title: "Large public report" }] },
         { type: "tool_use", id: "qa-shortlist-tool", name: "candidate_shortlist", input: { candidates: prospectFixtures.map(c => ({ name: c.name, urls: [c.taiwan.url, ...(noContacts ? [] : [c.contact.source.url])] })) } },
-        { type: "text", text: "Researched new Taiwan companies", citations: noSources || fetchOnly ? [] : prospectFixtures.flatMap(c => [{ type: "web_search_result_location", url: c.taiwan.url, cited_text: invent ? "Unrelated business" : "Taipei, Taiwan. B2B software" }, ...(noContacts ? [] : [{ type: "web_search_result_location", url: c.contact.source.url, cited_text: "Contact our business team" }])]) },
+        { type: "text", text: "Researched new Taiwan companies", citations: noSources || fetchOnly ? [] : [...(wrongFit ? [{ type: "web_search_result_location", url: "https://directory.example.com/unnamed", cited_text: "B2B software services" }] : []), ...prospectFixtures.flatMap(c => [{ type: "web_search_result_location", url: c.taiwan.url, cited_text: invent ? "Unrelated business" : "Taipei, Taiwan. B2B software" }, ...(noContacts ? [] : [{ type: "web_search_result_location", url: c.contact.source.url, cited_text: "Contact our business team" }])])] },
       ] };
       if (input.tools?.[0]?.name === "web_fetch") {
         if (fetchFail) throw new Error("Optional page reader timeout");
         assert.equal(input.messages.length, 1, "Do not duplicate full search history into every batch");
         assert.equal(input.messages[0]?.role, "user");
         assert(Array.isArray(lastContent) && lastContent.every(b => b.type === "text"), "Batch URLs are explicitly supplied by the user message, without dangling tool results");
-        const supplied = JSON.parse(bodyText) as { pages: { url: string; title: string }[]; contactSearches: string[] };
+        const supplied = JSON.parse(bodyText) as { pages: { url: string; title: string }[]; candidates: { name: string }[]; contactSearches: string[] };
         assert(supplied.pages.every(p => prospectFixtures.some(c => p.url === c.taiwan.url || p.url === `${c.taiwan.url}?utm_source=qa` || p.url === c.contact.source.url)), "Fetch receives only exact URLs returned by search");
         assert(supplied.pages.every(p => Array.isArray(lastContent) && lastContent[0]!.text!.includes(p.url)), "Exact allowed URLs appear verbatim in user text for fetch authorization");
         assert(supplied.pages.every(p => p.title.length > 0), "Preserve meaningful result titles in each verification batch");
         assert(new Set(supplied.pages.map(p => new URL(p.url).hostname)).size <= 1, "Each company gets its own verification budget");
-        assert(supplied.contactSearches.length <= 2 && supplied.contactSearches.every(q => supplied.pages.some(p => q.startsWith(`site:${new URL(p.url).hostname} `))), "Queries use only exact searched public company domains");
+        assert(supplied.contactSearches.length <= 2 && supplied.contactSearches.every(q => supplied.candidates.some(c => q.startsWith((c.name.replace(/\s*[（(].*$/u, "").trim() || c.name) + " "))), "Queries use public company names, not an assumed official domain from a directory result");
         assert(!supplied.contactSearches.some(q => /CircleWe|EV Rapid Force|private-qa-test/.test(q)), "Never query excluded companies or private owner URL parameters");
         if (fetchOnly) { const c = prospectFixtures.find(v => v.name === "Foreign Company")!; return { content: [{ type: "web_search_tool_result", content: [{ type: "web_search_result", url: c.taiwan.url, title: c.name }] }, { type: "text", text: "Targeted official result", citations: [{ type: "web_search_result_location", url: c.taiwan.url, cited_text: "Taipei, Taiwan. B2B software" }, { type: "web_search_result_location", url: c.contact.source.url, cited_text: "Contact our business team" }] }] }; }
         return { content: noSources ? [] : prospectFixtures.filter(c => c.name === "Foreign Company").map(c => ({ type: "web_fetch_tool_result", content: { type: "web_fetch_result", url: c.taiwan.url, content: { source: { type: "text", data: invent ? "Unrelated business" : "Taipei, Taiwan.\nB2B software." } } } })) };
       }
       if (input.tools?.[0]?.name === "prospect_result" && malformedSelection) return { stop_reason: "max_tokens", content: [{ type: "tool_use", input: {} }] };
-      if (input.tools?.[0]?.name === "prospect_result") return { content: [{ type: "tool_use", input: { companies: prospectFixtures.flatMap(c => { const sources = JSON.parse(bodyText).sources as { url: string; quote: string }[]; const contactSource = sources.findIndex(s => s.url === c.contact.source.url); const taiwanSource = sources.findIndex(s => s.url === c.taiwan.url), fitSource = sources.findIndex(s => s.url === c.fit.url && (s.quote.includes("B2B") || invent)); return taiwanSource >= 0 && fitSource >= 0 && contactSource >= 0 ? [{ contact: { kind: partialInvalid && c.name === "New Taiwan Company" ? "invented" : "page", value: c.contact.value + "/model-normalized", source: contactSource }, name: c.name, aliases: c.aliases, website: c.website, reason: c.reason, taiwanSource, fitSource }] : []; }) } }] };
+      if (input.tools?.[0]?.name === "prospect_result") {
+        const data = JSON.parse(input.messages[0]!.content as string) as { candidateEvidence: { candidates: { name: string }[]; sourceIndexes: number[] }[]; sources: { url: string; quote: string }[] };
+        assert(data.candidateEvidence.length > 0 && data.candidateEvidence.every(v => v.candidates.length === 1 && v.sourceIndexes.every(i => !!data.sources[i])), "Extraction keeps candidate-to-source associations");
+        const correcting = !!JSON.parse(bodyText).correction;
+        if (correcting) { correctionCalls++; if (correctionLimited) throw Object.assign(new Error("Rate limit"), { status: 429 }); assert.equal(input.messages.length, 2); assert(JSON.parse(bodyText).companies.every((c: { name: string }) => c.name === "Foreign Company")); }
+        return { content: [{ type: "tool_use", input: { companies: prospectFixtures.flatMap(c => { const sources = data.sources; const contactSource = sources.findIndex(s => s.url === c.contact.source.url); const taiwanSource = sources.findIndex(s => s.url === c.taiwan.url), fitSource = sources.findIndex(s => s.url === c.fit.url && (s.quote.includes("B2B") || invent)); return taiwanSource >= 0 && fitSource >= 0 && contactSource >= 0 ? [{ contact: { kind: partialInvalid && c.name === "New Taiwan Company" ? "invented" : "page", value: c.contact.value + "/model-normalized", source: contactSource }, name: c.name, aliases: c.aliases, website: c.website, reason: c.reason, taiwanSource, fitSource: wrongFit && !correcting && c.name === "Foreign Company" ? sources.findIndex(s => s.url === "https://directory.example.com/unnamed") : fitSource }] : []; }) } }] };
+      }
       const content = JSON.parse(bodyText);
       const result = content.evidence ? { topics: [{ label: "Reporting pain", evidence: content.evidence.slice(0, 2).map((v: { id: string }) => ({ recordId: v.id, quote: invent ? "Invented quote" : "Manual reporting takes hours" })) }], nextMoves: ["Ask willing prospects about a paid pilot"] } : { items: [{ quote: invent ? "Invented" : content.rejection.quote, possibleReason: "Budget may be constrained; confirm", clarify: "What budget is available?", next: "Clarify budget" }], followUp: "Could we clarify your budget concern?" };
       return { content: [{ type: "tool_use", name: "validation_result", input: result }] };
@@ -275,12 +282,36 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       await assert.rejects(prospects.generateProspects(await account(), args)); malformedSelection = false;
       assert.equal(refunds, beforeMalformedRefunds + 1);
       assert.equal(researchExclusions.length, beforeMalformedSearches + 1, "Malformed extraction never restarts paid web research");
+      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Evidence correction check" } });
+      const beforeCorrectionReservations = reservations, beforeCorrectionSearches = researchExclusions.length;
+      wrongFit = true; const corrected = await prospects.generateProspects(await account(), args); wrongFit = false;
+      assert.equal(corrected!.companies.length, 1); assert.equal(corrected!.companies[0]!.fit.url, prospectFixtures[5]!.fit.url);
+      assert.equal(correctionCalls, 1, "One text-only correction recovers a genuine source, not another web research attempt");
+      assert.equal(reservations, beforeCorrectionReservations + 1); assert.equal(researchExclusions.length, beforeCorrectionSearches + 2);
+      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Correction rate limit check" } });
+      const beforeLimitSearches = researchExclusions.length, beforeLimitRefunds = refunds;
+      wrongFit = true; correctionLimited = true;
+      await assert.rejects(prospects.generateProspects(await account(), args), (error: unknown) => (error as { status: number }).status === 503);
+      wrongFit = false; correctionLimited = false;
+      assert.equal(researchExclusions.length, beforeLimitSearches + 1, "A correction rate limit never restarts paid research");
+      assert.equal(refunds, beforeLimitRefunds + 1);
       for (const [status, message, expected] of [[400, "Your credit balance is too low; re_secret_fixture", /供應商額度不足/], [400, "model does not support web_search; re_secret_fixture", /研究工具或模型設定/], [429, "Rate limit reached for this model; re_secret_fixture", /速率上限/]] as const) {
         await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: `Provider configuration test ${expected.source}` } });
         const previousRefunds = refunds, previousSearches = researchExclusions.length; providerFailure = message; providerFailureStatus = status;
         await assert.rejects(prospects.generateProspects(await account(), args), (cause: unknown) => { const error = cause as { status: number; message: string }; assert.equal(error.status, 503); assert.match(error.message, expected); assert.doesNotMatch(error.message, /re_secret_fixture/); return true; });
         providerFailure = null; providerFailureStatus = 400; assert.equal(refunds, previousRefunds + 1); assert.equal(researchExclusions.length, previousSearches + 1, "Do not repeat a provider billing, rate or configuration failure");
       }
+      const cachedBuyer = prospectFixtures[5]!;
+      const saved = { scope: args.scope, requestId: randomUUID(), version: 0, company: cachedBuyer.name, name: "QA", status: "contacted" as const, quote: "", reason: "", amount: "", currency: "" };
+      const savedId = await service.saveSalesRecord(owner.id, saved);
+      const record = salesRecordSchema.parse((await db.deal.findUniqueOrThrow({ where: { id: savedId } })).validation);
+      assert.equal(record.prospect?.website, cachedBuyer.website, "Save verified identity from the owner's cache, never the client");
+      await db.actionPlan.update({ where: { id: plan.id }, data: { validationAnalysis: {} } });
+      await service.saveSalesRecord(owner.id, { ...saved, requestId: randomUUID(), version: 1, status: "quoted" });
+      const excluded = (await service.prospectContext(db as never, owner.id, { journeyId: journey.id })).excluded;
+      assert(excluded.includes(cachedBuyer.website), "Known domain remains excluded across workspaces after replacing the original cache");
+      assert(excluded.includes("Alternate Legal Brand"), "Verified legal aliases remain excluded after the original cache is replaced");
+      assert(!salesMutationSchema.safeParse({ ...saved, prospect: record.prospect }).success, "Clients cannot forge a verified company identity");
     });
     await t.test("Rejection analysis requires exact reason and quote, refunds failures and caches unchanged reply", async () => {
       let saved = salesRecordSchema.parse((await db.deal.findUniqueOrThrow({ where: { id: dealId } })).validation);

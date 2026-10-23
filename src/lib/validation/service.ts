@@ -1,6 +1,6 @@
 import { workspaceKind, interviewTarget } from "@/lib/action-plan/workspace";
 import { readIcp } from "@/lib/icp/schema";
-import { excludeKnownCompanies, prospectCacheSchema } from "./prospect-schema";
+import { excludeKnownCompanies, prospectCacheSchema, prospectKey } from "./prospect-schema";
 import { interviewSummary } from "@/lib/customer-insights/interviews";
 import { interviewRows } from "@/lib/customer-insights/service";
 import "server-only";
@@ -56,11 +56,11 @@ export async function prospectContext(tx: DB, userId: string, scope: Scope) {
   let ownWebsite = ""; try { ownWebsite = new URL(profile?.website || "").origin; } catch { /* A missing website does not block discovery. */ }
   const excluded = [...new Set([
     profile?.companyName || "", ownWebsite, ...notes.map(n => (n.insight as { company?: unknown } | null)?.company).filter((v): v is string => typeof v === "string"),
-    ...contacts.map(c => c.company || ""), ...deals.flatMap(d => [d.title, salesRecordSchema.safeParse(d.validation).data?.company || ""]),
+    ...contacts.map(c => c.company || ""), ...deals.flatMap(d => { const record = salesRecordSchema.safeParse(d.validation).data; return [d.title, record?.company || "", ...(record?.prospect ? [record.prospect.name, ...record.prospect.aliases, record.prospect.website] : [])]; }),
   ].filter(Boolean))].sort();
   const icp = readIcp(profile?.icpDetails);
   const criteria = { product: profile?.oneLinePitch || "", industry: profile?.industry || "", customer: icp?.who || "", customerStage: icp?.stage || "", customerLocation: icp?.location || "", problem: icp?.problem || "", summary: icp?.summary || profile?.icp || "", market: "Taiwan" };
-  const source = sourceFingerprint([{ id: "prospects-contact-v5", updatedAt: "2026-10-24T00:00:00Z", insight: { criteria, excluded } }]);
+  const source = sourceFingerprint([{ id: "prospects-contact-v7", updatedAt: "2026-10-24T00:00:00Z", insight: { criteria, excluded } }]);
   return { ...context, criteria, excluded, prospectSource: source };
 }
 export async function currentProspects(tx: DB, userId: string, scope: Scope) {
@@ -107,7 +107,7 @@ export async function assertCommercialPrerequisites(tx: DB, userId: string, plan
 export async function saveSalesRecord(userId: string, input: SalesMutation) {
   return prisma.$transaction(async raw => {
     const tx = raw as unknown as DB;
-    await validationScope(tx, userId, input.scope, true);
+    const context = await validationScope(tx, userId, input.scope, true);
     const id = `validation_${createHash("sha256").update(`${userId}:${input.scope.planId || input.scope.journeyId}:${companyKey(input.company)}`).digest("hex")}`;
     // Scope lock serialises deterministic company IDs, including retries from different tabs.
     const existing = await tx.deal.findFirst({ where: { id, userId } });
@@ -134,7 +134,9 @@ export async function saveSalesRecord(userId: string, input: SalesMutation) {
       proof.revokedAt = new Date().toISOString(); proof.revokeReason = input.revoke.reason;
     }
     if ((input.status === "signed" || input.status === "paid") && !proofs.some(p => p.kind === input.status && !p.revokedAt)) throw new PlanWriteError("請先提供正數金額、日期與私密證明附件並確認 / Positive amount, date, private proof and confirmation required", 400);
-    const record = salesRecordSchema.parse({ scope: input.scope, company: input.company, name: input.name, sourceId: input.sourceId || previous?.sourceId, version: (previous?.version || 0) + 1, status: input.status, proofs,
+    const candidate = Object.values(prospectCacheSchema.safeParse(context.cache).data?.prospects || {}).flatMap(entry => entry.result.companies).find(c => c.contact && [c.name, ...c.aliases].some(name => prospectKey(name) === prospectKey(input.company)));
+    const prospect = previous?.prospect || (candidate ? { name: candidate.name, aliases: candidate.aliases, website: candidate.website } : undefined);
+    const record = salesRecordSchema.parse({ scope: input.scope, company: input.company, name: input.name, sourceId: input.sourceId || previous?.sourceId, version: (previous?.version || 0) + 1, status: input.status, proofs, prospect,
       events: [...(previous?.events || []), { requestId: input.requestId, payloadHash, at: new Date().toISOString(), status: input.status, quote: input.quote, reason: input.reason, amount: input.amount, currency: input.currency }], scripts: input.scripts || previous?.scripts,
 
     });
