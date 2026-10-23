@@ -86,10 +86,12 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
         if (fetchFail) throw new Error("Optional page reader timeout");
         assert.equal(input.messages[1]?.role, "assistant", "Preserve original web search context for provider URL authorization");
         assert(Array.isArray(lastContent) && lastContent.some(b => b.type === "tool_result" && (b as { tool_use_id?: string }).tool_use_id === "qa-shortlist-tool"), "Complete the prior client tool call before verification");
-        const supplied = JSON.parse(bodyText) as { pages: { url: string; title: string }[] };
+        const supplied = JSON.parse(bodyText) as { pages: { url: string; title: string }[]; contactSearches: string[] };
         assert(supplied.pages.every(p => prospectFixtures.some(c => p.url === c.taiwan.url || p.url === `${c.taiwan.url}?utm_source=qa` || p.url === c.contact.source.url)), "Fetch receives only exact URLs returned by search");
         assert(supplied.pages.every(p => p.title.length > 0), "Preserve meaningful result titles in each verification batch");
         assert(new Set(supplied.pages.map(p => new URL(p.url).hostname)).size <= 3, "Verify at most three distinct candidates per parallel batch");
+        assert(supplied.contactSearches.length <= 3 && supplied.contactSearches.every(q => supplied.pages.some(p => q.startsWith(`site:${new URL(p.url).hostname} `))), "Contact queries use only exact searched public company domains");
+        assert(!supplied.contactSearches.some(q => /CircleWe|EV Rapid Force|private-qa-test/.test(q)), "Never query excluded companies or private owner URL parameters");
         if (fetchOnly) { const c = prospectFixtures.find(v => v.name === "Foreign Company")!; return { content: [{ type: "web_search_tool_result", content: [{ type: "web_search_result", url: c.taiwan.url, title: c.name }] }, { type: "text", text: "Targeted official result", citations: [{ type: "web_search_result_location", url: c.taiwan.url, cited_text: "Taipei, Taiwan. B2B software" }, { type: "web_search_result_location", url: c.contact.source.url, cited_text: "Contact our business team" }] }] }; }
         return { content: noSources ? [] : prospectFixtures.filter(c => c.name === "Foreign Company").map(c => ({ type: "web_fetch_tool_result", content: { type: "web_fetch_result", url: c.taiwan.url, content: { source: { type: "text", data: invent ? "Unrelated business" : "Taipei, Taiwan.\nB2B software." } } } })) };
       }
