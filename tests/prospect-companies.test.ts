@@ -6,9 +6,19 @@ import { runInNewContext } from "node:vm";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import ts from "typescript";
-import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectCacheSchema, resolveProspectEvidence } from "../src/lib/validation/prospect-schema";
+import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectSources, prospectCacheSchema, resolveProspectEvidence } from "../src/lib/validation/prospect-schema";
 
 const company = (name: string, domain = "new.example.com") => ({ name, aliases: [] as string[], website: `https://${domain}`, reason: "Potential ICP fit; confirm with outreach", taiwan: { url: `https://${domain}/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://${domain}/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://${domain}/contact`, source: { url: `https://${domain}/contact`, quote: "Contact our business team" } } });
+test("Source limits retain the business summary, footer Taiwan address and published email instead of only navigation", () => {
+  const url = "https://new.example.com/contact";
+  const collected = ["B2B software for logistics", ...Array.from({ length: 150 }, (_, i) => `Navigation item ${i}`), "Taipei, Taiwan 110", "Business enquiries: hello@new.example.com", "Business   enquiries: hello@new.example.com", "Contact our team"].map(quote => ({ url, quote }));
+  const sources = prospectSources(collected);
+  assert.equal(sources.length, 6);
+  assert(sources.some(s => s.quote === "B2B software for logistics"));
+  assert(sources.some(s => s.quote === "Taipei, Taiwan 110"));
+  assert.equal(sources.filter(s => s.quote.includes("hello@new.example.com")).length, 1);
+  assert(sources.every(s => collected.some(c => c.url === s.url && c.quote === s.quote)));
+});
 test("Prospect exclusions normalize Unicode, legal suffixes, punctuation and aliases without substring overblocking", () => {
   assert.equal(prospectKey(" ＣｉｒｃｌｅＷｅ Co., Ltd. "), prospectKey("CircleWe"));
   assert.equal(prospectKey("EV Rapid Force Inc."), prospectKey("EV Rapid Force"));
@@ -118,7 +128,7 @@ test("Candidate verification uses distinct exact searched domains in bounded bat
   const candidates = Array.from({ length: 16 }, (_, i) => ({ name: `Buyer ${i}`, urls: [`https://buyer${i}.example.com/contact`] }));
   const pages = candidates.map(c => ({ url: c.urls[0]!, title: c.name }));
   const batches = prospectResearchBatches({ candidates }, [...pages, { url: pages[0]!.url, title: "Buyer 0 Contact us" }], ["Buyer 0"], 10);
-  assert.equal(batches.length, 4); assert(batches.every(b => b.length === 3));
+  assert.equal(batches.length, 12); assert(batches.every(b => b.length === 1));
   assert.equal(new Set(batches.flat().flatMap(c => c.urls)).size, 12);
   assert(!batches.flat().some(c => c.name === "Buyer 0"));
   assert.equal(prospectResearchBatches({ candidates }, pages, [], 6).flat().length, 9);
@@ -126,7 +136,11 @@ test("Candidate verification uses distinct exact searched domains in bounded bat
   assert.equal(reused[0]![0]!.urls[0], "https://buyer0.example.com/contact", "Reuse the real searched page on that domain, never an invented path");
   assert(!reused.flat().flatMap(c => c.urls).some(u => u.includes("guessed")));
   assert(!prospectResearchBatches({ candidates: [{ name: "Invented domain", urls: ["https://never-searched.example.com/contact"] }] }, pages, [], 6).flat().flatMap(c => c.urls).some(u => u.includes("never-searched")));
-  assert.equal(prospectResearchBatches(null, [...pages, pages[0]!], [], 10).flat().length, 12);
+  const pending = prospectResearchBatches({ candidates: [{ name: "Needs official domain discovery", urls: ["https://never-searched.example.com/contact"] }] }, pages, [], 6);
+  assert.equal(pending[0]![0]!.name, "Needs official domain discovery");
+  assert.deepEqual(pending[0]![0]!.urls, [], "Search the candidate by name without fetching an unverified model URL");
+  assert.equal(prospectResearchBatches({ candidates: [{ name: "Different brand", urls: ["https://never-searched.example.com/contact"] }] }, pages, ["https://never-searched.example.com"], 6).length, 0, "An unsearched URL cannot disguise an already known company domain");
+  assert.equal(prospectResearchBatches(null, [...pages, pages[0]!], [], 10).flat().length, 0, "Directory/page titles never become company candidates");
   assert.equal(prospectResearchBatches({ candidates: [{ name: "Canonical root", urls: ["https://root.example.com"] }] }, [{ url: "https://root.example.com/", title: "Root" }], [], 6)[0]![0]!.urls[0], "https://root.example.com/", "Use the actual searched URL when URL serialization only adds a root slash");
 });
 

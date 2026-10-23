@@ -60,7 +60,7 @@ export async function prospectContext(tx: DB, userId: string, scope: Scope) {
   ].filter(Boolean))].sort();
   const icp = readIcp(profile?.icpDetails);
   const criteria = { product: profile?.oneLinePitch || "", industry: profile?.industry || "", customer: icp?.who || "", customerStage: icp?.stage || "", customerLocation: icp?.location || "", problem: icp?.problem || "", summary: icp?.summary || profile?.icp || "", market: "Taiwan" };
-  const source = sourceFingerprint([{ id: "prospects-contact-v4", updatedAt: "2026-10-24T00:00:00Z", insight: { criteria, excluded } }]);
+  const source = sourceFingerprint([{ id: "prospects-contact-v5", updatedAt: "2026-10-24T00:00:00Z", insight: { criteria, excluded } }]);
   return { ...context, criteria, excluded, prospectSource: source };
 }
 export async function currentProspects(tx: DB, userId: string, scope: Scope) {

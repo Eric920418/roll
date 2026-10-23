@@ -33,6 +33,19 @@ export function excludeKnownCompanies(companies: ProspectCompany[], excluded: st
   });
 }
 export const taiwanEvidence = (text: string) => /taiwan|taipei|taichung|tainan|kaohsiung|hsinchu|taoyuan|keelung|chiayi|changhua|yunlin|miaoli|nantou|pingtung|yilan|hualien|taitung|penghu|kinmen|lienchiang|台灣|臺灣|台北|臺北|新北|台中|臺中|台南|臺南|高雄|新竹|桃園|基隆|嘉義|彰化|雲林|苗栗|南投|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|連江/i.test(text);
+export function prospectSources(collected: { url: string; quote: string }[]) {
+  const seen = new Set<string>(), pages = new Map<string, { url: string; quote: string }[]>();
+  for (const entry of collected) {
+    const source = { url: entry.url, quote: entry.quote.slice(0, 1000) };
+    const key = source.url + "\0" + source.quote.replace(/\s+/g, " ");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const page = pages.get(source.url) || []; page.push(source); pages.set(source.url, page);
+  }
+  const priority = (quote: string) => 4 * Number(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(quote)) +
+    2 * Number(taiwanEvidence(quote)) + Number(/contact|聯絡|聯繫|洽詢/i.test(quote));
+  return [...pages.values()].flatMap(([first, ...rest]) => [first!, ...rest.sort((a, b) => priority(b.quote) - priority(a.quote))].slice(0, 6));
+}
 export function groundedProspects(raw: unknown, sources: { url: string; quote: string }[], excluded: string[], count: 6 | 10, rejected: Record<string, number> = {}) {
   const reject = (reason: string) => { rejected[reason] = (rejected[reason] || 0) + 1; return false; };
   const parsed = z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(raw);
@@ -71,24 +84,26 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
 export function prospectResearchBatches(raw: unknown, pages: { url: string; title: string }[], excluded: string[], count: 6 | 10) {
   const known = new Set(excluded.map(prospectKey));
   const allowed = new Map(pages.filter(p => publicWebsite(p.url)).map(p => [new URL(p.url).href, p.url]));
-  const candidates = [...(prospectShortlistSchema.safeParse(raw).data?.candidates || []), ...pages.map(p => ({ name: p.title, urls: [p.url] }))];
+  const candidates = prospectShortlistSchema.safeParse(raw).data?.candidates || [];
   const blockedDomains = new Set(excluded.flatMap(value => publicWebsite(value) ? [new URL(value).hostname.replace(/^www\./, "")] : []));
   for (const c of candidates) if (known.has(prospectKey(c.name))) for (const value of c.urls) if (publicWebsite(value)) blockedDomains.add(new URL(value).hostname.replace(/^www\./, ""));
-  const seen = new Set<string>();
+  const seen = new Set<string>(), names = new Set<string>();
   const accepted = candidates.flatMap(c => {
-    if (known.has(prospectKey(c.name))) return [];
+    const name = prospectKey(c.name);
+    if (known.has(name) || names.has(name) || c.urls.some(u => blockedDomains.has(new URL(u).hostname.replace(/^www\./, "")))) return [];
     const urls = [...new Set(c.urls.flatMap(u => {
       if (!publicWebsite(u)) return [];
       const exact = allowed.get(new URL(u).href);
       const host = new URL(u).hostname.replace(/^www\./, "");
       return (exact ? [exact] : pages.filter(p => publicWebsite(p.url) && new URL(p.url).hostname.replace(/^www\./, "") === host).map(p => p.url)).filter(p => !/\.pdf(?:[?#]|$)/i.test(p));
     }))].slice(0, 4);
-    if (!urls.length) return [];
-    const host = new URL(urls[0]!).hostname.replace(/^www\./, "");
-    if (seen.has(host) || blockedDomains.has(host)) return []; seen.add(host);
+    const host = urls.length ? new URL(urls[0]!).hostname.replace(/^www\./, "") : null;
+    if (host && (seen.has(host) || blockedDomains.has(host))) return [];
+    if (host) seen.add(host);
+    names.add(name);
     return [{ name: c.name, urls }];
   }).slice(0, count === 6 ? 9 : 12);
-  return Array.from({ length: Math.ceil(accepted.length / 3) }, (_, i) => accepted.slice(i * 3, i * 3 + 3));
+  return accepted.map(candidate => [candidate]);
 }
 
 // Repair source selection using actual same-company evidence, never invented contact data.
