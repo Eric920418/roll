@@ -1,6 +1,7 @@
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     // 缺 key 等設定問題 → 回真正的錯誤
     let client: Anthropic;
     try {
-      client = new Anthropic();
+      client = new Anthropic(anthropicOptions());
     } catch (err) {
       return failFromError(err);
     }

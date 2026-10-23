@@ -1,3 +1,4 @@
+import { anthropicOptions } from "../src/lib/ai/anthropic-options";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -383,6 +384,7 @@ function loadAi(create: (request: AiRequest) => Promise<unknown>, configured: (o
     module: loaded, exports: loaded.exports, process: { env: {} }, console,
     require: (id: string) => {
       if (id === "server-only") return {};
+      if (id === "@/lib/ai/anthropic-options") return { anthropicOptions };
       if (id === "@anthropic-ai/sdk") return class { constructor(options: unknown) { configured(options); } messages = { create }; };
       if (id === "./builder-draft") return require("../src/lib/action-plan/builder-draft");
       if (id === "./constants") return require("../src/lib/action-plan/constants");

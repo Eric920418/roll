@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { z } from "zod";
 import type { Account } from "@/lib/auth/account";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
@@ -7,7 +8,7 @@ import { weeklyOutputSchema, validateWeeklyOutput } from "./schema";
 
 /** Reuse native tool calls and one format repair; no additional AI usage per repair. */
 export async function structuredDraft<T>(schema: z.ZodType<T>, name: string, system: string, input: unknown, validate?: (draft: T) => T): Promise<T> {
-  const client = new Anthropic({ timeout: 60000, maxRetries: 0 });
+  const client = new Anthropic(anthropicOptions({ timeout: 60000, maxRetries: 0 }));
   const tool: Anthropic.Tool = { name, description: "Produce a private editable draft", input_schema: z.toJSONSchema(schema, { unrepresentable: "any" }) as Anthropic.Tool.InputSchema };
   let issue = "";
   for (let attempt = 0; attempt < 2; attempt++) {

@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { z } from "zod";
 import type { Account } from "@/lib/auth/account";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
@@ -15,7 +16,7 @@ export async function generateRoadmap(input: { goal: string; startsAt: string; d
   if (milestoneId && current?.roadmap) {
     metadata = { assumptions: current.roadmap.assumptions, diagnosis: current.diagnosis, milestones: current.roadmap.milestones.map(({ title, expectedOutcome, acceptanceCriteria, targetDate }) => ({ title, expectedOutcome, acceptanceCriteria, targetDate })) };
   } else {
-    const client = new Anthropic({ timeout: 40_000, maxRetries: 0 });
+    const client = new Anthropic(anthropicOptions({ timeout: 40_000, maxRetries: 0 }));
     const tool: Anthropic.Tool = { name: "draft_roadmap", description: "Propose 3–5 ordered milestone hypotheses and a company diagnosis. No invented achievements.", input_schema: { type: "object", additionalProperties: false, required: ["assumptions", "diagnosis", "milestones"], properties: {
       assumptions: { type: "array", items: { type: "string" } },
       diagnosis: { type: "object", required: ["companyStage", "stageReason", "stageConfidence", "bottleneckGroup", "bottleneckCode", "bottleneckReason", "bottleneckConfidence"], properties: { companyStage: { type: "string", enum: [...COMPANY_STAGES] }, stageReason: { type: "string" }, stageConfidence: { type: "integer" }, bottleneckGroup: { type: "string", enum: Object.keys(BOTTLENECKS) }, bottleneckCode: { type: "string", enum: Object.values(BOTTLENECKS).flat().map(([code]) => code) }, bottleneckReason: { type: "string" }, bottleneckConfidence: { type: "integer" } } },

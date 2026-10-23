@@ -1,3 +1,4 @@
+import { anthropicOptions } from "../src/lib/ai/anthropic-options";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
@@ -67,7 +68,7 @@ test("Task workspace APIs in isolated PostgreSQL: versioning, ownership, evidenc
   };
   function load<T>(file: string): T {
     const require = createRequire(resolve(file)), loaded = { exports: {} };
-    runInNewContext(ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText, { module: loaded, exports: loaded.exports, Date, Error, console, process, Response, URL, Headers, Buffer, setTimeout, require: (id: string) => id in mocks ? mocks[id] : require(id) });
+    runInNewContext(ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText, { module: loaded, exports: loaded.exports, Date, Error, console, process, Response, URL, Headers, Buffer, setTimeout, require: (id: string) => id === "@/lib/ai/anthropic-options" ? { anthropicOptions } : id in mocks ? mocks[id] : require(id) });
     return loaded.exports as T;
   }
   const plans = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts"); mocks["@/lib/action-plan/service"] = plans; mocks["./service"] = plans;

@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -56,7 +57,7 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
     if (!(await checkRateLimit(`validation-prospects:${account.id}`, 10, DAY_MS)).ok) throw new PlanWriteError("今日公司搜尋上限已達 / Daily company search limit reached", 429);
     usageId = await reserveAiUsage(account);
     if (!usageId) throw new PlanWriteError("AI 次數不足，未搜尋或修改紀錄 / No AI requests remaining; records unchanged", 429);
-    const client = new Anthropic({ timeout: 50000, maxRetries: 0 }), model = process.env.ANTHROPIC_ACTION_PLAN_MODEL || process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
+    const client = new Anthropic(anthropicOptions({ timeout: 50000, maxRetries: 0 })), model = process.env.ANTHROPIC_ACTION_PLAN_MODEL || process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
     const deadline = Date.now() + 200000;
     const timeout = (limit: number, reserved = 0) => Math.min(limit, Math.max(1000, deadline - Date.now() - reserved));
     async function research(excluded: string[], round: number) {

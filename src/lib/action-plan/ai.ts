@@ -1,6 +1,7 @@
 import { DIAGNOSTIC_QUESTIONS } from "./builder-draft";
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { z } from "zod";
 import type { Account } from "@/lib/auth/account";
 import type { QuizContext } from "@/lib/quiz/result";
@@ -169,7 +170,7 @@ export async function diagnoseActionPlan(input: {
   // The system owns all three questions; AI only diagnoses after the final answer.
   const questions = DIAGNOSTIC_QUESTIONS[input.locale];
   if (input.answers.length < questions.length) return { status: "needs_input", question: questions[input.answers.length] };
-  const client = new Anthropic({ timeout: 45_000, maxRetries: 0 });
+  const client = new Anthropic(anthropicOptions({ timeout: 45_000, maxRetries: 0 }));
   const messages: Anthropic.MessageParam[] = [{
     role: "user",
     content: `Known context:\n${contextText(input.profile, input.quiz, input.messages)}`,
@@ -229,7 +230,7 @@ export async function generateActionCandidates(input: {
   existingTitles?: string[];
   interviewEvidence?: unknown;
 }): Promise<GeneratedAction[]> {
-  const client = new Anthropic({ timeout: input.timeoutMs ?? 60_000, maxRetries: 0 });
+  const client = new Anthropic(anthropicOptions({ timeout: input.timeoutMs ?? 60_000, maxRetries: 0 }));
   const batchSchema = z.object({ actions: z.array(generatedActionSchema).min(1).max(GENERATION_BATCH_SIZE) });
   let actions: GeneratedAction[] = [];
   let repair = "";

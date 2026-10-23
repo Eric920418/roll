@@ -1,11 +1,12 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { z } from "zod";
 import type { Account } from "@/lib/auth/account";
 import { discoveryResultSchema, validateDiscoveryResult, type DiscoveryInput } from "./discovery";
 import { IcpAiError } from "./ai";
 export async function generateDiscovery(profile: Account["profile"], input: DiscoveryInput, locale: "en" | "zh-tw", conversations: { id: string; body: string }[], excluded: string[]) {
-  const client = new Anthropic({ timeout: 40000, maxRetries: 0 });
+  const client = new Anthropic(anthropicOptions({ timeout: 40000, maxRetries: 0 }));
   let repair = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     const response = await client.messages.create({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5", max_tokens: 4500,

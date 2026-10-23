@@ -4,6 +4,35 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
+import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "../src/lib/ai/anthropic-options";
+
+test("未綁定工作區的新金鑰統一帶工作區 header，保留原 timeout／重試與舊金鑰相容", async () => {
+  const original = process.env.ANTHROPIC_WORKSPACE_ID;
+  try {
+    delete process.env.ANTHROPIC_WORKSPACE_ID;
+    const options = { timeout: 1234, maxRetries: 0 };
+    assert.equal(anthropicOptions(options), options);
+    process.env.ANTHROPIC_WORKSPACE_ID = "wrkspc_test123";
+    const configured = anthropicOptions(options);
+    assert.equal(configured.timeout, 1234);
+    assert.equal(configured.maxRetries, 0);
+    assert.deepEqual(configured.defaultHeaders, { "anthropic-workspace-id": "wrkspc_test123" });
+    let calls = 0;
+    const client = new Anthropic({ ...anthropicOptions(), apiKey: "fake-test-key", fetch: async (_input, init) => {
+      calls++;
+      assert.equal(new Headers(init?.headers).get("anthropic-workspace-id"), "wrkspc_test123");
+      return Response.json({ input_tokens: 1 });
+    } });
+    assert.equal((await client.messages.countTokens({ model: "claude-sonnet-5", messages: [{ role: "user", content: "Test" }] })).input_tokens, 1);
+    assert.equal(calls, 1);
+    process.env.ANTHROPIC_WORKSPACE_ID = "invalid-setting";
+    assert.throws(() => anthropicOptions(), /ANTHROPIC_WORKSPACE_ID/);
+  } finally {
+    if (original === undefined) delete process.env.ANTHROPIC_WORKSPACE_ID;
+    else process.env.ANTHROPIC_WORKSPACE_ID = original;
+  }
+});
 
 test("AI 組織核對只限管理員、唯讀且不洩漏金鑰或供應商原始錯誤", async () => {
   const require = createRequire(import.meta.url);

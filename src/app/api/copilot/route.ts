@@ -2,6 +2,7 @@ import { logSecurityError } from "@/lib/security/log";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { z } from "zod";
 import { getUserSession } from "@/lib/auth/guard";
 import { getEffectivePlan } from "@/lib/billing/gate";
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 缺 key 等設定問題 → 串流開始前由共用 5xx 邊界記錄完整例外、回通用訊息。
-    const client = new Anthropic();
+    const client = new Anthropic(anthropicOptions());
     const priorTurns = await prisma.copilotTurn.findMany({
       where: { userId: session.uid, answer: { not: null }, ...(!paid ? { rewardOnly: true } : {}) },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],

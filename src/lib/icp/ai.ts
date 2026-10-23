@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { z } from "zod";
 import type { Account } from "@/lib/auth/account";
 import { EMPTY_ICP, ICP_FIELDS, type IcpDraft, type IcpMessage } from "./schema";
@@ -26,7 +27,7 @@ export async function generateIcp(profile: Account["profile"], messages: IcpMess
   const saved = profile?.icpDetails;
   const sources = [profile?.icp || "", ...(saved ? Object.values(saved) : []), ...messages.filter(m => m.role === "user").map(m => m.content)].filter(Boolean);
   if (!sources.length) throw new IcpAiError("ICP 沒有客戶資訊，請先回答問題或手動編輯。 / Please describe your customers first.");
-  const client = new Anthropic({ timeout: 40_000, maxRetries: 0 });
+  const client = new Anthropic(anthropicOptions({ timeout: 40_000, maxRetries: 0 }));
   let repair = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     const reply = await client.messages.create({
