@@ -58,7 +58,8 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
       if (!z.email().safeParse(contact.value).success || !emails.some(e => e.toLowerCase() === contactValue) || /^(?:no.?reply|privacy|dpo|abuse|security|jobs|careers|legal)@/i.test(contact.value)) return reject("email_not_published");
     }
     if (![c.taiwan, c.fit, contact.source].every(ref => sources.some(s => s.url === ref.url && normalize(s.quote).includes(normalize(ref.quote))))) return reject("quote_not_found");
-    if (![c.taiwan, c.fit].every(ref => ownDomain(ref.url) || government(ref))) return reject("source_not_official");
+    if (!ownDomain(c.taiwan.url) && !government(c.taiwan)) return reject("taiwan_not_official");
+    if (!ownDomain(c.fit.url) && !named(c.fit.quote)) return reject("fit_company_not_named");
     if (![c.taiwan, c.fit].some(ref => ownDomain(ref.url)) && !sources.some(s => ownDomain(s.url) && named(s.quote))) return reject("website_not_established");
     return taiwanEvidence(c.taiwan.quote) || reject("missing_taiwan");
   });

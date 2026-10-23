@@ -159,7 +159,8 @@ test("Rewards integration in isolated PostgreSQL", { skip: !connectionString }, 
         assert.equal(calls, before); assert.equal(saved.status, "skipped"); assert.deepEqual(saved.payload, JSON.parse(JSON.stringify(payload))); assert.equal(saved.attempts, 0);
       });
       await t.test("Send retries reuse the exact provider payload/key, stop after three attempts, redact credentials",async()=>{
-        const u=await user(),now=new Date();await schedule(u.id,now);failSend=true;
+        // Keep all retry offsets within one Taipei day, regardless of the wall clock.
+        const u=await user(),now=new Date();now.setUTCHours(4,0,0,0);await schedule(u.id,now);failSend=true;
         const offset=payloads.length;await reminders.runRewardReminders(now);await reminders.runRewardReminders(new Date(now.getTime()+16*60000));await reminders.runRewardReminders(new Date(now.getTime()+47*60000));
         failSend=false;const delivery=await db.rewardDelivery.findFirstOrThrow({where:{userId:u.id}});assert.equal(delivery.attempts,3);assert.equal(delivery.status,"failed");assert.doesNotMatch(delivery.lastError!,/re_qa_secret/);
         assert.equal(payloads.length-offset,3);assert.equal(new Set(payloads.slice(offset)).size,1);assert.equal(new Set(keys.slice(offset)).size,1);

@@ -31,6 +31,9 @@ test("Only officially cited Taiwan prospects qualify, fewer than requested is va
   assert.equal(groundedProspects({ companies: [govCompany] }, govSources, [], 6).length, 1);
   assert.equal(groundedProspects({ companies: [{ ...govCompany, name: "Not Real Company" }] }, govSources, [], 6).length, 0);
   assert.equal(groundedProspects({ companies: [{ ...govCompany, website: "https://invented.example.com" }] }, govSources, [], 6).length, 0);
+  const directory = { url: "https://directory.example.com/companies/real", quote: "Real provides B2B software" };
+  assert.equal(groundedProspects({ companies: [{ ...valid, fit: directory }] }, [...sources, directory], [], 6).length, 1, "A named public business profile can support fit while Taiwan and contact remain official");
+  assert.equal(groundedProspects({ companies: [{ ...valid, fit: { ...directory, quote: "Other Company provides B2B software" } }] }, [...sources, { ...directory, quote: "Other Company provides B2B software" }], [], 6).length, 0);
   const noTaiwan = { ...valid, taiwan: { ...valid.taiwan, quote: "B2B software" } };
   assert.deepEqual(groundedProspects({ companies: [noTaiwan] }, sources, [], 6), []);
   assert.deepEqual(groundedProspects({ companies: [{ ...valid, invented: "field" }] }, sources, [], 6), []);
