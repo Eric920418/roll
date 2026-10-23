@@ -71,7 +71,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     "@/lib/playbook/quiz": { fortnightIndex: () => 0, periodEnd: () => new Date() },
     "@vercel/blob": { get: async () => ({ statusCode: 200, blob: { contentType: "application/pdf", size: 50 }, stream: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode("%PDF-1.7\nQA")); c.close(); } }) }) },
     "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({ error: "Unauthorized" }, { status: 401 }), failFromError: () => Response.json({ error: "Safe failure" }, { status: 500 }) },
-    "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string }[]; messages: { role?: string; content: string | { type: string; text?: string }[] }[] }) => {
+    "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string; strict?: boolean; input_schema?: Record<string, unknown> }[]; messages: { role?: string; content: string | { type: string; text?: string }[] }[] }) => {
       const lastContent = input.messages.at(-1)!.content;
       const bodyText = typeof lastContent === "string" ? lastContent : lastContent.filter(b => b.type === "text").at(-1)!.text!;
       if (input.tools?.[0]?.name === "web_search") {
@@ -101,6 +101,8 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       }
       if (input.tools?.[0]?.name === "prospect_result" && malformedSelection) return { stop_reason: "max_tokens", content: [{ type: "tool_use", input: {} }] };
       if (input.tools?.[0]?.name === "prospect_result") {
+        assert.equal(input.tools[0].strict, true, "Supplier grammar enforces an array, not encoded JSON text");
+        assert.equal(input.tools[0].input_schema?.type, "object");
         const data = JSON.parse(input.messages[0]!.content as string) as { candidateEvidence: { candidates: { name: string }[]; sourceIndexes: number[] }[]; sources: { url: string; quote: string }[] };
         assert(data.candidateEvidence.length > 0 && data.candidateEvidence.every(v => v.candidates.length === 1 && v.sourceIndexes.every(i => !!data.sources[i])), "Extraction keeps candidate-to-source associations");
         const correcting = !!JSON.parse(bodyText).correction;

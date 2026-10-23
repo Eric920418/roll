@@ -9,10 +9,10 @@ import ts from "typescript";
 import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectSources, prospectCacheSchema, resolveProspectEvidence, readProspectSelection, prospectCacheFresh } from "../src/lib/validation/prospect-schema";
 
 const company = (name: string, domain = "new.example.com") => ({ name, aliases: [] as string[], website: `https://${domain}`, reason: "Potential ICP fit; confirm with outreach", taiwan: { url: `https://${domain}/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://${domain}/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://${domain}/contact`, source: { url: `https://${domain}/contact`, quote: "Contact our business team" } } });
-test("A single encoded tool array or envelope is decoded without accepting broken, oversized or extra data", () => {
+test("Strict tool results require real arrays and reject encoded, broken, oversized or extra data", () => {
   const rows = [{ name: "Candidate still requires full evidence validation" }];
-  for (const companies of [rows, JSON.stringify(rows), JSON.stringify({ companies: rows })]) assert.deepEqual(readProspectSelection({ companies }), rows);
-  for (const raw of [{}, { companies: "bad JSON" }, { companies: JSON.stringify({ companies: rows, invented: true }) }, { companies: JSON.stringify({ companies: JSON.stringify(rows) }) }, { companies: Array(17).fill({}) }, { companies: " ".repeat(100001) }, { companies: rows, invented: true }]) assert.throws(() => readProspectSelection(raw));
+  assert.deepEqual(readProspectSelection({ companies: rows }), rows);
+  for (const raw of [{}, { companies: JSON.stringify(rows) }, { companies: JSON.stringify({ companies: rows }) }, { companies: "bad JSON" }, { companies: JSON.stringify({ companies: rows, invented: true }) }, { companies: JSON.stringify({ companies: JSON.stringify(rows) }) }, { companies: Array(17).fill({}) }, { companies: " ".repeat(100001) }, { companies: rows, invented: true }]) assert.throws(() => readProspectSelection(raw));
 });
 test("Contact-check cache expires after 24 hours, including invalid or future timestamps", () => {
   assert(prospectCacheFresh(new Date(Date.now() - 1000).toISOString()));
@@ -158,6 +158,9 @@ test("Candidate verification uses distinct exact searched domains in bounded bat
   assert.deepEqual(pending[0]![0]!.urls, [], "Search the candidate by name without fetching an unverified model URL");
   assert.equal(prospectResearchBatches({ candidates: [{ name: "Different brand", urls: ["https://never-searched.example.com/contact"] }] }, pages, ["https://never-searched.example.com"], 6).length, 0, "An unsearched URL cannot disguise an already known company domain");
   assert.equal(prospectResearchBatches(null, [...pages, pages[0]!], [], 10).flat().length, 0, "Directory/page titles never become company candidates");
+  const directory = "https://directory.example.com/taiwan-startups";
+  const differentBuyers = prospectResearchBatches({ candidates: [{ name: "Known Buyer", urls: [directory] }, { name: "New Buyer A", urls: [directory] }, { name: "New Buyer B", urls: [directory] }, { name: "Brand needs official discovery", urls: [] }] }, [{ url: directory, title: "Taiwan startups" }], ["Known Buyer"], 6);
+  assert.deepEqual(differentBuyers.flat().map(c => c.name), ["New Buyer A", "New Buyer B", "Brand needs official discovery"], "Different named companies sharing a directory are researched separately, never treated as the directory itself or as one company");
   assert.equal(prospectResearchBatches({ candidates: [{ name: "Canonical root", urls: ["https://root.example.com"] }] }, [{ url: "https://root.example.com/", title: "Root" }], [], 6)[0]![0]!.urls[0], "https://root.example.com/", "Use the actual searched URL when URL serialization only adds a root slash");
 });
 

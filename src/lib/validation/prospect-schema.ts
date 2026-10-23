@@ -13,7 +13,7 @@ export function publicWebsite(value: string) {
 const url = z.string().max(2000).refine(publicWebsite, "Public HTTPS website required");
 const citation = z.object({ url, quote: z.string().trim().min(1).max(1000) }).strict();
 const contactSchema = z.object({ kind: z.enum(["page", "email"]), value: z.string().trim().min(1).max(2000), source: citation }).strict().refine(c => c.kind === "page" ? publicWebsite(c.value) : c.value.length <= 254 && z.email().safeParse(c.value).success, "Valid public contact page or email required");
-export const prospectShortlistSchema = z.object({ candidates: z.array(z.object({ name: z.string().trim().min(1).max(200), urls: z.array(url).min(1).max(4) }).strict()).max(16) }).strict();
+export const prospectShortlistSchema = z.object({ candidates: z.array(z.object({ name: z.string().trim().min(1).max(200), urls: z.array(url).max(4) }).strict()).max(16) }).strict();
 export const prospectCompanySchema = z.object({
   name: z.string().trim().min(1).max(200), aliases: z.array(z.string().trim().min(1).max(200)).max(5),
   website: url, reason: z.string().trim().min(1).max(1000),
@@ -21,11 +21,7 @@ export const prospectCompanySchema = z.object({
 }).strict();
 export const prospectSelectionSchema = z.object({ companies: z.array(prospectCompanySchema.omit({ taiwan: true, fit: true, contact: true }).extend({ taiwanSource: z.number().int().nonnegative(), fitSource: z.number().int().nonnegative(), contact: z.object({ kind: z.enum(["page", "email"]), value: z.string().trim().min(1).max(2000), source: z.number().int().nonnegative() }).strict() })).max(10) }).strict();
 export function readProspectSelection(raw: unknown) {
-  const list = z.object({ companies: z.union([z.array(z.unknown()).max(16), z.string().max(100000)]) }).strict().parse(raw);
-  if (typeof list.companies !== "string") return list.companies;
-  let decoded: unknown;
-  try { decoded = JSON.parse(list.companies); } catch { throw new z.ZodError([{ code: "custom", path: ["companies"], message: "Invalid structured JSON" }]); }
-  return Array.isArray(decoded) ? z.array(z.unknown()).max(16).parse(decoded) : z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(decoded).companies;
+  return z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(raw).companies;
 }
 export const prospectResultSchema = z.object({ companies: z.array(prospectCompanySchema).max(10) }).strict();
 export const prospectReportSchema = prospectResultSchema.extend({ requested: z.union([z.literal(6), z.literal(10)]), generatedAt: z.iso.datetime(), contactChecked: z.literal(true).optional() });
@@ -96,8 +92,7 @@ export function prospectResearchBatches(raw: unknown, pages: { url: string; titl
   const allowed = new Map(pages.filter(p => publicWebsite(p.url)).map(p => [new URL(p.url).href, p.url]));
   const candidates = prospectShortlistSchema.safeParse(raw).data?.candidates || [];
   const blockedDomains = new Set(excluded.flatMap(value => publicWebsite(value) ? [new URL(value).hostname.replace(/^www\./, "")] : []));
-  for (const c of candidates) if (known.has(prospectKey(c.name))) for (const value of c.urls) if (publicWebsite(value)) blockedDomains.add(new URL(value).hostname.replace(/^www\./, ""));
-  const seen = new Set<string>(), names = new Set<string>();
+  const names = new Set<string>();
   const accepted = candidates.flatMap(c => {
     const name = prospectKey(c.name);
     if (known.has(name) || names.has(name) || c.urls.some(u => { const host = new URL(u).hostname.replace(/^www\./, ""); return [...blockedDomains].some(d => host === d || host.endsWith(`.${d}`) || d.endsWith(`.${host}`)); })) return [];
@@ -107,9 +102,6 @@ export function prospectResearchBatches(raw: unknown, pages: { url: string; titl
       const host = new URL(u).hostname.replace(/^www\./, "");
       return (exact ? [exact] : pages.filter(p => publicWebsite(p.url) && new URL(p.url).hostname.replace(/^www\./, "") === host).map(p => p.url)).filter(p => !/\.pdf(?:[?#]|$)/i.test(p));
     }))].slice(0, 4);
-    const host = urls.length ? new URL(urls[0]!).hostname.replace(/^www\./, "") : null;
-    if (host && (seen.has(host) || blockedDomains.has(host))) return [];
-    if (host) seen.add(host);
     names.add(name);
     return [{ name: c.name, urls }];
   }).slice(0, count === 6 ? 9 : 12);
