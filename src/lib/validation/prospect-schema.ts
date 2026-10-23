@@ -28,9 +28,10 @@ export function readProspectSelection(raw: unknown) {
   return Array.isArray(decoded) ? z.array(z.unknown()).max(16).parse(decoded) : z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(decoded).companies;
 }
 export const prospectResultSchema = z.object({ companies: z.array(prospectCompanySchema).max(10) }).strict();
-export const prospectReportSchema = prospectResultSchema.extend({ requested: z.union([z.literal(6), z.literal(10)]), generatedAt: z.iso.datetime() });
+export const prospectReportSchema = prospectResultSchema.extend({ requested: z.union([z.literal(6), z.literal(10)]), generatedAt: z.iso.datetime(), contactChecked: z.literal(true).optional() });
 export const prospectCacheSchema = z.object({ prospects: z.record(z.string(), z.object({ source: z.string(), result: prospectReportSchema })).default({}), prospectPending: z.object({ token: z.string(), since: z.iso.datetime() }).optional() }).passthrough();
 export type ProspectCompany = z.infer<typeof prospectCompanySchema>;
+export const prospectCacheFresh = (generatedAt: string) => Date.parse(generatedAt) <= Date.now() && Date.now() - Date.parse(generatedAt) < 86400000;
 export function excludeKnownCompanies(companies: ProspectCompany[], excluded: string[]) {
   const seen = new Set(excluded.map(prospectKey).filter(Boolean)), domains = new Set<string>(excluded.flatMap(value => { try { return [new URL(value).hostname.replace(/^www\./, "")]; } catch { return []; } }));
   return companies.filter(c => {

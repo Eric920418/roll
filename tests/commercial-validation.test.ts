@@ -57,12 +57,13 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
   const nextTask = await db.actionItem.create({ data: { ...base, clientKey: "task_2", title: "Publish an update", dependencies: { create: { dependsOnId: task.id } } } });
   let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, malformedSelection = false, wrongFit = false, correctionLimited = false, correctionCalls = 0, failSecondRound = false, providerFailure: string | null = null, providerFailureStatus = 400, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
   let mutate: (() => Promise<void>) | null = null;
+  let contactReachable = true, liveChecks = 0;
   const researchExclusions: string[][] = [];
   const prospectFixtures = ["CircleWe", "EV Rapid Force", "KnownContact", "Old win", "Own Company", "Foreign Company", "New Taiwan Company"].map((name, i) => ({ name, aliases: [] as string[], website: `https://prospect${i}.example.com`, reason: "Potential software buyer; confirm need", taiwan: { url: `https://prospect${i}.example.com/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://prospect${i}.example.com/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://prospect${i}.example.com/contact`, source: { url: `https://prospect${i}.example.com/contact`, quote: "Contact our business team" } } }));
   prospectFixtures[5]!.aliases = ["Alternate Legal Brand"];
   const require = createRequire(import.meta.url), cache = new Map<string, unknown>();
   const mocks: Record<string, unknown> = {
-    "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null },
+    "server-only": {}, "@/lib/prisma": { prisma: db }, "./prospect-contact": { reachableProspectContact: async () => { liveChecks++; return contactReachable; } }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null },
     "@/lib/auth/account": { getCurrentAccount: async () => uid ? await db.user.findUnique({ where: { id: uid } }) : null },
     "@/lib/rate-limit": { DAY_MS: 86400000, checkRateLimit: async () => ({ ok: true }) }, "@/lib/security/log": { logSecurityError() {} },
     "@/lib/getting-started/service": { completeGettingStarted: async () => {} },
@@ -248,7 +249,13 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       assert(first.companies.every(c => c.contact?.value.endsWith("/contact")));
       assert(researchExclusions.at(-1)!.includes("Foreign Company") && researchExclusions.at(-1)!.includes("New Taiwan Company"), "The expansion round excludes first-round companies");
       assert(researchExclusions.at(-1)!.includes("https://prospect5.example.com"), "The expansion round excludes prior domains too");
-      const after = calls; await prospects.generateProspects(await account(), args); assert.equal(calls, after);
+      const after = calls, checkedBeforeCache = liveChecks; await prospects.generateProspects(await account(), args); assert.equal(calls, after); assert.equal(liveChecks, checkedBeforeCache, "A fresh cache does not repeat contact checks");
+      const oldCache = (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).validationAnalysis as { prospects: Record<string, { result: { generatedAt: string } }> };
+      oldCache.prospects["6:en"]!.result.generatedAt = new Date(Date.now() - 86400001).toISOString();
+      await db.actionPlan.update({ where: { id: plan.id }, data: { validationAnalysis: oldCache } });
+      assert((await service.currentProspects(db as never, owner.id, args.scope))["6:en"]!.stale);
+      assert.equal((await service.currentProspects(db as never, owner.id, args.scope))["6:en"]!.companies.length, 0, "Expired contact checks are hidden without deleting stored history");
+      await prospects.generateProspects(await account(), args); assert(calls > after && liveChecks > checkedBeforeCache, "Expired contacts are researched and checked again");
       partialInvalid = true; const partial = await prospects.generateProspects(await account(), { ...args, locale: "zh-tw" }); partialInvalid = false;
       assert.deepEqual(Array.from(partial!.companies, c => c.name), ["Foreign Company"], "One invalid model candidate does not discard a valid reachable buyer");
       await db.onboardingProfile.update({ where: { userId: owner.id }, data: { icpDetails: { summary: "B2B software buyers", who: "Software companies", stage: "Growth", location: "Taiwan", problem: "Customer research", workaround: "Manual", channels: "Professional outreach" } } });
@@ -282,6 +289,10 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       await assert.rejects(prospects.generateProspects(await account(), args)); malformedSelection = false;
       assert.equal(refunds, beforeMalformedRefunds + 1);
       assert.equal(researchExclusions.length, beforeMalformedSearches + 1, "Malformed extraction never restarts paid web research");
+      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Unreachable source check" } });
+      const beforeUnreachableRefunds = refunds; contactReachable = false;
+      await assert.rejects(prospects.generateProspects(await account(), args), /官方聯絡來源目前無法連線/); contactReachable = true;
+      assert.equal(refunds, beforeUnreachableRefunds + 1);
       await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Evidence correction check" } });
       const beforeCorrectionReservations = reservations, beforeCorrectionSearches = researchExclusions.length;
       wrongFit = true; const corrected = await prospects.generateProspects(await account(), args); wrongFit = false;

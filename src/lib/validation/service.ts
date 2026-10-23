@@ -1,6 +1,6 @@
 import { workspaceKind, interviewTarget } from "@/lib/action-plan/workspace";
 import { readIcp } from "@/lib/icp/schema";
-import { excludeKnownCompanies, prospectCacheSchema, prospectKey } from "./prospect-schema";
+import { excludeKnownCompanies, prospectCacheSchema, prospectCacheFresh, prospectKey } from "./prospect-schema";
 import { interviewSummary } from "@/lib/customer-insights/interviews";
 import { interviewRows } from "@/lib/customer-insights/service";
 import "server-only";
@@ -60,12 +60,15 @@ export async function prospectContext(tx: DB, userId: string, scope: Scope) {
   ].filter(Boolean))].sort();
   const icp = readIcp(profile?.icpDetails);
   const criteria = { product: profile?.oneLinePitch || "", industry: profile?.industry || "", customer: icp?.who || "", customerStage: icp?.stage || "", customerLocation: icp?.location || "", problem: icp?.problem || "", summary: icp?.summary || profile?.icp || "", market: "Taiwan" };
-  const source = sourceFingerprint([{ id: "prospects-contact-v7", updatedAt: "2026-10-24T00:00:00Z", insight: { criteria, excluded } }]);
+  const source = sourceFingerprint([{ id: "prospects-contact-v8", updatedAt: "2026-10-24T00:00:00Z", insight: { criteria, excluded } }]);
   return { ...context, criteria, excluded, prospectSource: source };
 }
 export async function currentProspects(tx: DB, userId: string, scope: Scope) {
   const context = await prospectContext(tx, userId, scope), cache = prospectCacheSchema.safeParse(context.cache).data;
-  return Object.fromEntries(Object.entries(cache?.prospects || {}).map(([key, entry]) => [key, { ...entry.result, stale: entry.source !== context.prospectSource, companies: excludeKnownCompanies(entry.result.companies.filter(c => c.contact), context.excluded) }]));
+  return Object.fromEntries(Object.entries(cache?.prospects || {}).map(([key, entry]) => {
+    const checked = entry.result.contactChecked && prospectCacheFresh(entry.result.generatedAt);
+    return [key, { ...entry.result, stale: entry.source !== context.prospectSource || !checked, companies: checked ? excludeKnownCompanies(entry.result.companies.filter(c => c.contact), context.excluded) : [] }];
+  }));
 }
 export async function validationSnapshot(userId: string, scope: Scope) {
   const tx = prisma as unknown as DB;
@@ -134,7 +137,7 @@ export async function saveSalesRecord(userId: string, input: SalesMutation) {
       proof.revokedAt = new Date().toISOString(); proof.revokeReason = input.revoke.reason;
     }
     if ((input.status === "signed" || input.status === "paid") && !proofs.some(p => p.kind === input.status && !p.revokedAt)) throw new PlanWriteError("請先提供正數金額、日期與私密證明附件並確認 / Positive amount, date, private proof and confirmation required", 400);
-    const candidate = Object.values(prospectCacheSchema.safeParse(context.cache).data?.prospects || {}).flatMap(entry => entry.result.companies).find(c => c.contact && [c.name, ...c.aliases].some(name => prospectKey(name) === prospectKey(input.company)));
+    const candidate = Object.values(prospectCacheSchema.safeParse(context.cache).data?.prospects || {}).filter(entry => entry.result.contactChecked && prospectCacheFresh(entry.result.generatedAt)).flatMap(entry => entry.result.companies).find(c => c.contact && [c.name, ...c.aliases].some(name => prospectKey(name) === prospectKey(input.company)));
     const prospect = previous?.prospect || (candidate ? { name: candidate.name, aliases: candidate.aliases, website: candidate.website } : undefined);
     const record = salesRecordSchema.parse({ scope: input.scope, company: input.company, name: input.name, sourceId: input.sourceId || previous?.sourceId, version: (previous?.version || 0) + 1, status: input.status, proofs, prospect,
       events: [...(previous?.events || []), { requestId: input.requestId, payloadHash, at: new Date().toISOString(), status: input.status, quote: input.quote, reason: input.reason, amount: input.amount, currency: input.currency }], scripts: input.scripts || previous?.scripts,

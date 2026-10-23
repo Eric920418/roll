@@ -15,7 +15,8 @@ import { PlanWriteError } from "@/lib/action-plan/service";
 import { logSecurityError } from "@/lib/security/log";
 import { scopeSchema, type Scope } from "./schema";
 import { validationScope, prospectContext } from "./service";
-import { groundedProspects, prospectSelectionSchema, readProspectSelection, prospectCacheSchema, taiwanEvidence, publicWebsite, prospectShortlistSchema, prospectResearchBatches, prospectSources, resolveProspectEvidence, excludeKnownCompanies, type ProspectCompany } from "./prospect-schema";
+import { reachableProspectContact } from "./prospect-contact";
+import { groundedProspects, prospectSelectionSchema, readProspectSelection, prospectCacheSchema, prospectCacheFresh, taiwanEvidence, publicWebsite, prospectShortlistSchema, prospectResearchBatches, prospectSources, resolveProspectEvidence, excludeKnownCompanies, type ProspectCompany } from "./prospect-schema";
 
 export const prospectInputSchema = z.object({ scope: scopeSchema, prospectCount: z.union([z.literal(6), z.literal(10)]), locale: z.enum(["en", "zh-tw"]) }).strict();
 const cacheSchema = prospectCacheSchema;
@@ -48,7 +49,7 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
       const context = await prospectContext(tx, account.id, input.scope);
       if (!context.criteria.customer && !context.criteria.summary && !context.criteria.product) throw new PlanWriteError("請先在公司資料填寫產品介紹或 ICP，才能推薦適合的公司 / Add your product description or ICP before finding companies", 409);
       const cache = cacheSchema.safeParse(context.cache).data || { prospects: {} };
-      if (cache.prospects[key]?.source === context.prospectSource) return { cached: cache.prospects[key]!.result };
+      if (cache.prospects[key]?.source === context.prospectSource && cache.prospects[key]!.result.contactChecked && prospectCacheFresh(cache.prospects[key]!.result.generatedAt)) return { cached: cache.prospects[key]!.result };
       if (cache.prospectPending && Date.now() - Date.parse(cache.prospectPending.since) < 240000) throw new PlanWriteError("公司搜尋進行中，請稍後重載 / Company search in progress; reload shortly", 409);
       await writeCache(tx, input.scope, { ...cache, prospectPending: { token, since: new Date().toISOString() } });
       return { criteria: context.criteria, excluded: context.excluded, source: context.prospectSource };
@@ -62,6 +63,7 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
     const deadline = Date.now() + 200000;
     const timeout = (limit: number, reserved = 0) => Math.min(limit, Math.max(1000, deadline - Date.now() - reserved));
     let researchBlocked: PlanWriteError | null = null;
+    let contactCandidates = 0;
     async function research(excluded: string[], round: number) {
       step = "search";
       const search = await client.messages.create({ model, max_tokens: 5000, thinking: { type: "disabled" },
@@ -148,7 +150,11 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
         }
       }
       const usage = [search, ...verified.flatMap(r => r.status === "fulfilled" ? [r.value] : []), structured, ...(correction ? [correction] : [])].reduce((total, response) => ({ input: total.input + (response.usage?.input_tokens || 0), output: total.output + (response.usage?.output_tokens || 0) }), { input: 0, output: 0 });
-      console.info({ event: "validation.prospects.quality", ...quality, usage, invalidCandidates: invalid.slice(0, 12), candidates: candidates.length, rejected, accepted: companies.length, taiwanEvidence: candidates.filter(c => taiwanEvidence(c.taiwan.quote)).length });
+      step = "contact_reachability";
+      contactCandidates += companies.length;
+      const reachable = await Promise.all(companies.map(c => reachableProspectContact(c)));
+      companies = companies.filter((_, i) => reachable[i]);
+      console.info({ event: "validation.prospects.quality", ...quality, usage, invalidCandidates: invalid.slice(0, 12), candidates: candidates.length, rejected, unreachable: reachable.filter(v => !v).length, accepted: companies.length, taiwanEvidence: candidates.filter(c => taiwanEvidence(c.taiwan.quote)).length });
       return companies;
     }
     let companies: ProspectCompany[] = [], lastResearchError: unknown;
@@ -170,10 +176,11 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
       }
     }
     if (!companies.length && lastResearchError) throw lastResearchError;
+    if (!companies.length && contactCandidates) throw new PlanWriteError("官方聯絡來源目前無法連線核對，未加入名單，次數退回；請稍後重試 / Official contact sources could not be reached; no companies added, request refunded. Retry later", 502);
     if (!companies.length) throw new PlanWriteError("找不到符合 ICP、具台灣官方依據及公開聯絡入口的新公司；次數退回。可調整 ICP 或稍後重試 / No verifiable new Taiwan companies with public contact routes found; request refunded. Adjust your ICP or retry later", 422);
     step = "save";
     await access(account);
-    const result = { companies, requested: input.prospectCount, generatedAt: new Date().toISOString() };
+    const result = { companies, requested: input.prospectCount, generatedAt: new Date().toISOString(), contactChecked: true as const };
     await prisma.$transaction(async raw => {
       const tx = raw as unknown as DB;
       await validationScope(tx, account.id, input.scope, true);

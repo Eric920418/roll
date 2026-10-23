@@ -6,13 +6,17 @@ import { runInNewContext } from "node:vm";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import ts from "typescript";
-import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectSources, prospectCacheSchema, resolveProspectEvidence, readProspectSelection } from "../src/lib/validation/prospect-schema";
+import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectSources, prospectCacheSchema, resolveProspectEvidence, readProspectSelection, prospectCacheFresh } from "../src/lib/validation/prospect-schema";
 
 const company = (name: string, domain = "new.example.com") => ({ name, aliases: [] as string[], website: `https://${domain}`, reason: "Potential ICP fit; confirm with outreach", taiwan: { url: `https://${domain}/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://${domain}/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://${domain}/contact`, source: { url: `https://${domain}/contact`, quote: "Contact our business team" } } });
 test("A single encoded tool array or envelope is decoded without accepting broken, oversized or extra data", () => {
   const rows = [{ name: "Candidate still requires full evidence validation" }];
   for (const companies of [rows, JSON.stringify(rows), JSON.stringify({ companies: rows })]) assert.deepEqual(readProspectSelection({ companies }), rows);
   for (const raw of [{}, { companies: "bad JSON" }, { companies: JSON.stringify({ companies: rows, invented: true }) }, { companies: JSON.stringify({ companies: JSON.stringify(rows) }) }, { companies: Array(17).fill({}) }, { companies: " ".repeat(100001) }, { companies: rows, invented: true }]) assert.throws(() => readProspectSelection(raw));
+});
+test("Contact-check cache expires after 24 hours, including invalid or future timestamps", () => {
+  assert(prospectCacheFresh(new Date(Date.now() - 1000).toISOString()));
+  for (const value of ["invalid", new Date(Date.now() - 86400001).toISOString(), new Date(Date.now() + 60000).toISOString()]) assert.equal(prospectCacheFresh(value), false);
 });
 test("Source limits retain the business summary, footer Taiwan address and published email instead of only navigation", () => {
   const url = "https://new.example.com/contact";
