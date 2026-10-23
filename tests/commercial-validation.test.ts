@@ -55,7 +55,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
   const base = { actionPlanId: plan.id, impact: "High", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: "MVP", bottleneckGroup: "Sales", bottleneckCode: "no_icp", stageFit: 4, stageFitReason: "QA", bottleneckFit: 4, bottleneckFitReason: "QA", outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 };
   const task = await db.actionItem.create({ data: { ...base, clientKey: "task_1", title: "Run paid pilot offer with 3 prospects" } });
   const nextTask = await db.actionItem.create({ data: { ...base, clientKey: "task_2", title: "Publish an update", dependencies: { create: { dependsOnId: task.id } } } });
-  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, failSecondRound = false, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
+  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, failSecondRound = false, providerFailure: string | null = null, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
   let mutate: (() => Promise<void>) | null = null;
   const researchExclusions: string[][] = [];
   const prospectFixtures = ["CircleWe", "EV Rapid Force", "KnownContact", "Old win", "Own Company", "Foreign Company", "New Taiwan Company"].map((name, i) => ({ name, aliases: [], website: `https://prospect${i}.example.com`, reason: "Potential software buyer; confirm need", taiwan: { url: `https://prospect${i}.example.com/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://prospect${i}.example.com/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://prospect${i}.example.com/contact`, source: { url: `https://prospect${i}.example.com/contact`, quote: "Contact our business team" } } }));
@@ -76,7 +76,7 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
         const excluded = JSON.parse(bodyText).excludeNames as string[]; researchExclusions.push(excluded);
         if (failSecondRound && excluded.includes("Foreign Company")) throw new Error("Second research round failed");
       }
-      calls++; if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
+      calls++; if (providerFailure) throw Object.assign(new Error(providerFailure), { status: 400 }); if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
       if (input.tools?.[0]?.name === "web_search") return { stop_reason: fetchOnly ? "pause_turn" : "end_turn", content: [
         { type: "web_search_tool_result", content: [...prospectFixtures.flatMap(c => [{ type: "web_search_result", url: `${c.taiwan.url}?utm_source=qa`, title: c.name }, ...(noContacts ? [] : [{ type: "web_search_result", url: c.contact.source.url, title: c.name + " Contact our business team" }])]), { type: "web_search_result", url: "https://registry.example.com/large-report.pdf", title: "Large public report" }] },
         { type: "tool_use", id: "qa-shortlist-tool", name: "candidate_shortlist", input: { candidates: prospectFixtures.map(c => ({ name: c.name, urls: [c.taiwan.url, ...(noContacts ? [] : [c.contact.source.url])] })) } },
@@ -265,6 +265,12 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       const kept = await prospects.generateProspects(await account(), args); failSecondRound = false;
       assert.equal(kept!.companies.length, 1, "Retain a verified first-round company if expansion fails");
       assert.equal(refunds, beforeExpansionRefund); assert.equal(reservations, beforeExpansionReservation + 1, "Two rounds reserve only one request");
+      for (const [message, expected] of [["Your credit balance is too low; re_secret_fixture", /供應商額度不足/], ["model does not support web_search; re_secret_fixture", /研究工具或模型設定/]] as const) {
+        await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: `Provider configuration test ${expected.source}` } });
+        const previousRefunds = refunds, previousSearches = researchExclusions.length; providerFailure = message;
+        await assert.rejects(prospects.generateProspects(await account(), args), (cause: unknown) => { const error = cause as { status: number; message: string }; assert.equal(error.status, 503); assert.match(error.message, expected); assert.doesNotMatch(error.message, /re_secret_fixture/); return true; });
+        providerFailure = null; assert.equal(refunds, previousRefunds + 1); assert.equal(researchExclusions.length, previousSearches + 1, "Do not repeat a provider billing or configuration failure");
+      }
     });
     await t.test("Rejection analysis requires exact reason and quote, refunds failures and caches unchanged reply", async () => {
       let saved = salesRecordSchema.parse((await db.deal.findUniqueOrThrow({ where: { id: dealId } })).validation);
