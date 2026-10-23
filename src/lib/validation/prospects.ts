@@ -93,7 +93,12 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
       tools: [{ name: "prospect_result", description: "New Taiwan prospects with official evidence", input_schema: z.toJSONSchema(prospectSelectionSchema) as Anthropic.Tool.InputSchema }], tool_choice: { type: "tool", name: "prospect_result" },
     }, { timeout: 45000 });
     const block = structured.content.find(b => b.type === "tool_use");
-    const selection = prospectSelectionSchema.parse(block?.type === "tool_use" ? block.input : null);
+    const rawSelection = z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(block?.type === "tool_use" ? block.input : null);
+    const checked = rawSelection.companies.map(value => prospectSelectionSchema.shape.companies.element.safeParse(value));
+    const invalid = checked.flatMap(v => v.success ? [] : v.error.issues.map(i => ({ code: i.code, path: i.path.join(".") })));
+    if (invalid.length) console.warn({ event: "validation.prospects.invalid_candidates", issues: invalid.slice(0, 12) });
+    const selection = { companies: checked.flatMap(v => v.success ? [v.data] : []) };
+    step = "validate";
     const candidates = selection.companies.flatMap(({ taiwanSource, fitSource, contact, ...company }) => sources[taiwanSource] && sources[fitSource] && sources[contact.source] ? [{ ...company, taiwan: sources[taiwanSource], fit: sources[fitSource], contact: { ...contact, source: sources[contact.source] } }] : []);
     const companies = groundedProspects({ companies: candidates }, sources, prepared.excluded, input.prospectCount);
     console.info({ event: "validation.prospects.quality", ...quality, candidates: candidates.length, accepted: companies.length, taiwanEvidence: candidates.filter(c => taiwanEvidence(c.taiwan.quote)).length });
@@ -112,6 +117,7 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
     success = true; return result;
   } catch (error) {
     if (error instanceof PlanWriteError) throw error;
+    if (error instanceof z.ZodError) console.warn({ event: "validation.prospects.invalid_response", step, issues: error.issues.slice(0, 12).map(i => ({ code: i.code, path: i.path.join(".") })) });
     logSecurityError(`validation.prospects.${step}.failed`, error);
     throw new PlanWriteError("公司搜尋失敗或逾時；紀錄保留、次數退回。請重試 / Company search failed or timed out; records retained, request refunded. Retry", 502);
   } finally {

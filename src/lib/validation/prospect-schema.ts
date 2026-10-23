@@ -12,7 +12,7 @@ export function publicWebsite(value: string) {
 }
 const url = z.string().max(2000).refine(publicWebsite, "Public HTTPS website required");
 const citation = z.object({ url, quote: z.string().trim().min(1).max(1000) }).strict();
-const contactSchema = z.object({ kind: z.enum(["page", "email"]), value: z.string().trim().min(1).max(2000), source: citation }).strict();
+const contactSchema = z.object({ kind: z.enum(["page", "email"]), value: z.string().trim().min(1).max(2000), source: citation }).strict().refine(c => c.kind === "page" ? publicWebsite(c.value) : c.value.length <= 254 && z.email().safeParse(c.value).success, "Valid public contact page or email required");
 export const prospectShortlistSchema = z.object({ candidates: z.array(z.object({ name: z.string().trim().min(1).max(200), urls: z.array(url).min(1).max(4) }).strict()).max(16) }).strict();
 export const prospectCompanySchema = z.object({
   name: z.string().trim().min(1).max(200), aliases: z.array(z.string().trim().min(1).max(200)).max(5),
@@ -34,9 +34,10 @@ export function excludeKnownCompanies(companies: ProspectCompany[], excluded: st
 }
 export const taiwanEvidence = (text: string) => /taiwan|taipei|taichung|tainan|kaohsiung|hsinchu|taoyuan|keelung|chiayi|changhua|yunlin|miaoli|nantou|pingtung|yilan|hualien|taitung|penghu|kinmen|lienchiang|台灣|臺灣|台北|臺北|新北|台中|臺中|台南|臺南|高雄|新竹|桃園|基隆|嘉義|彰化|雲林|苗栗|南投|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|連江/i.test(text);
 export function groundedProspects(raw: unknown, sources: { url: string; quote: string }[], excluded: string[], count: 6 | 10) {
-  const parsed = prospectResultSchema.parse(raw);
+  const parsed = z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(raw);
+  const valid = parsed.companies.flatMap(value => { const result = prospectCompanySchema.safeParse(value); return result.success ? [result.data] : []; });
   const normalize = (s: string) => s.normalize("NFKC").replace(/\s+/g, " ").trim();
-  return excludeKnownCompanies(parsed.companies.filter(c => {
+  return excludeKnownCompanies(valid.filter(c => {
     const host = new URL(c.website).hostname.replace(/^www\./, "");
     const ownDomain = (value: string) => { const h = new URL(value).hostname.replace(/^www\./, ""); return h === host || h.endsWith(`.${host}`); };
     const named = (text: string) => [c.name, ...c.aliases].some(n => prospectKey(n).length >= 3 && prospectKey(text).includes(prospectKey(n)));

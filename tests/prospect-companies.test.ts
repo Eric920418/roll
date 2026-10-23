@@ -33,7 +33,8 @@ test("Only officially cited Taiwan prospects qualify, fewer than requested is va
   assert.equal(groundedProspects({ companies: [{ ...govCompany, website: "https://invented.example.com" }] }, govSources, [], 6).length, 0);
   const noTaiwan = { ...valid, taiwan: { ...valid.taiwan, quote: "B2B software" } };
   assert.deepEqual(groundedProspects({ companies: [noTaiwan] }, sources, [], 6), []);
-  assert.throws(() => groundedProspects({ companies: [{ ...valid, invented: "field" }] }, sources, [], 6));
+  assert.deepEqual(groundedProspects({ companies: [{ ...valid, invented: "field" }] }, sources, [], 6), []);
+  assert.equal(groundedProspects({ companies: [{ ...valid, invented: "field" }, valid] }, sources, [], 6).length, 1, "A malformed company must not discard valid companies");
   assert.equal(prospectCompanySchema.safeParse({ ...valid, website: "javascript:alert(1)" }).success, false);
   for (const url of ["http://example.com", "https://localhost/", "https://localhost./", "https://127.0.0.1/", "https://[::1]/", "https://user:pass@example.com/", "https://x.internal/", "https://example.com:8443/"]) assert.equal(publicWebsite(url), false, url);
   assert(publicWebsite("https://www.example.com/about"));
@@ -90,6 +91,7 @@ test("Public contact routes require exact official evidence; homepages, fabricat
   assert.equal(check(value.contact, value.contact.source).length, 1);
   assert.equal(check(undefined).length, 0);
   assert.equal(check({ ...value.contact, value: "https://other.example.com/contact" }, value.contact.source).length, 0);
+  assert.equal(prospectCompanySchema.safeParse({ ...value, contact: { ...value.contact, value: "javascript:alert(1)" } }).success, false);
   const home = { url: value.website, quote: "Contact us" };
   assert.equal(check({ kind: "page", value: value.website, source: home }, home).length, 0);
   const privacy = { url: `${value.website}/privacy-policy`, quote: "Contact us for privacy requests" };
