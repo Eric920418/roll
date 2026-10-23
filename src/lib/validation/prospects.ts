@@ -30,8 +30,9 @@ async function writeCache(tx: DB, scope: Scope, cache: z.infer<typeof cacheSchem
   else await tx.discoveryJourney.update({ where: { id: scope.journeyId! }, data });
 }
 function providerProblem(error: unknown) {
-  const value = error as { message?: unknown; error?: { message?: unknown; error?: { message?: unknown } } } | null;
+  const value = error as { status?: number; message?: unknown; error?: { message?: unknown; error?: { message?: unknown } } } | null;
   const message = String(value?.error?.error?.message || value?.error?.message || value?.message || "");
+  if (value?.status === 429) return new PlanWriteError("平台 AI 暫達供應商速率上限，本次會員次數退回，請稍後重試 / Platform AI provider rate limit reached; your request is refunded. Try again later", 503);
   if (/credit balance|insufficient.{0,30}credit|credit.{0,30}(?:low|exhaust|insufficient)|billing.{0,30}(?:limit|balance)/i.test(message)) return new PlanWriteError("平台 AI 供應商額度不足，本次會員次數退回。請通知平台管理員補充供應商額度後重試 / Platform AI provider credits are insufficient; your request is refunded. Contact the platform administrator", 503);
   if (/model.{0,50}(?:not found|not available|does not exist|not support)|(?:tool|web_search|web_fetch).{0,50}(?:not support|not allowed|not enabled)/i.test(message)) return new PlanWriteError("平台 AI 研究工具或模型設定暫時無法使用，本次會員次數退回。請通知平台管理員 / Platform AI research tools or model are unavailable; request refunded. Contact the platform administrator", 503);
   return error;
@@ -138,7 +139,8 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
         lastResearchError = providerProblem(error);
         const diagnostic = error as { status?: number; message?: unknown; error?: { error?: { message?: unknown }; message?: unknown } };
         const providerMessage = String(diagnostic?.error?.error?.message || diagnostic?.error?.message || diagnostic?.message || "");
-        console.warn({ event: "validation.prospects.round.failed", round, step, status: diagnostic?.status, providerField: providerMessage.match(/(?:messages|tools|max_tokens|thinking|model|output_config|tool_choice|system)(?:\.[a-z_0-9]+){0,10}(?=:)/i)?.[0], providerIssue: /credit|billing|balance/i.test(providerMessage) ? "billing" : /tool_result|tool_use|max_uses/i.test(providerMessage) ? "tool_context" : /schema|messages|input|parameter/i.test(providerMessage) ? "request_format" : "other" });
+        console.warn({ event: "validation.prospects.round.failed", round, step, status: diagnostic?.status, extractionStop, issues: error instanceof z.ZodError ? error.issues.slice(0, 12).map(i => ({ code: i.code, path: i.path.join(".") })) : undefined, providerField: providerMessage.match(/(?:messages|tools|max_tokens|thinking|model|output_config|tool_choice|system)(?:\.[a-z_0-9]+){0,10}(?=:)/i)?.[0], providerIssue: /credit|billing|balance/i.test(providerMessage) ? "billing" : /tool_result|tool_use|max_uses/i.test(providerMessage) ? "tool_context" : /schema|messages|input|parameter/i.test(providerMessage) ? "request_format" : "other" });
+        if (error instanceof z.ZodError) break;
         if (lastResearchError instanceof PlanWriteError && lastResearchError.status === 503) break;
       }
     }

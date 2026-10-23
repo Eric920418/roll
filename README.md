@@ -1841,3 +1841,5 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 - 新金鑰為未綁定 workspace 的個人金鑰，正式模型請求與本地免費 token-count 查詢均確認缺少 `anthropic-workspace-id` 會回 400。已唯讀查得新組織唯一、未封存的 Default workspace，新增可選伺服器設定 `ANTHROPIC_WORKSPACE_ID`；`anthropicOptions` 統一將其加入所有模型客戶端，包含 POLARIS、ICP、計畫／roadmap、check-in、訪談／拒絕分析、公司搜尋及管理員回覆草稿。保留各功能原本 timeout、重試、工具與會員扣次／退款規則，不設定此欄位時維持原 workspace 金鑰行為；無效格式安全拒絕。組織唯讀核對端點不需 workspace header。沒有新增套件、資料表或變更會員資料。
 - Production 與 `.env.local` 已設定新組織的 Default workspace；本地透過實際 SDK 的免費 token-count 查詢成功。共用設定僅接收現有呼叫端使用的 timeout／maxRetries，測試以攔截 SDK fetch 驗證真正送出的 workspace header，沒有連接外部模型；正式使用原金鑰但缺 workspace 的首次 QA 請求失敗已退回次數。
 - 工作區相容性修改驗收：隔離 PostgreSQL 的 pnpm test 293/293 通過（0 skip），pnpm lint 0 errors／14 個既有 warnings，pnpm build 通過；無 schema 或套件差異。
+- 新組織的真實最小文字生成已回 200（輸入 11／輸出 1 token），確認金鑰、工作區及模型可使用。公司搜尋在約 100 秒失敗：完整 Runtime Logs 顯示第一輪整理回應失敗，第二輪 429；QA 兩筆失敗均退回預扣。已將第一輪錯誤日誌補入安全的停止原因與 Zod 欄位路徑，回應格式驗證失敗不再重跑整輪收費搜尋。CLI 日誌須加 `--no-branch`，避免誤套本地分支篩選；逐筆完整事件可在 Vercel Runtime Logs 核對。名單數量尚未完成真實驗收，不誤報為儲值不足。
+- 搜尋供應商 HTTP 429 明確回平台速率限制與退款說明（503），停止整輪補找；回歸測試在更新來源使快取失效後，確認供應商限流與不完整整理回應均只做一輪研究、預扣退回，錯誤不包含供應商原文或金鑰。
