@@ -6,7 +6,7 @@ import { runInNewContext } from "node:vm";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import ts from "typescript";
-import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectCacheSchema } from "../src/lib/validation/prospect-schema";
+import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectCacheSchema, resolveProspectEvidence } from "../src/lib/validation/prospect-schema";
 
 const company = (name: string, domain = "new.example.com") => ({ name, aliases: [] as string[], website: `https://${domain}`, reason: "Potential ICP fit; confirm with outreach", taiwan: { url: `https://${domain}/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://${domain}/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://${domain}/contact`, source: { url: `https://${domain}/contact`, quote: "Contact our business team" } } });
 test("Prospect exclusions normalize Unicode, legal suffixes, punctuation and aliases without substring overblocking", () => {
@@ -92,6 +92,8 @@ test("Public contact routes require exact official evidence; homepages, fabricat
   assert.equal(check(undefined).length, 0);
   assert.equal(check({ ...value.contact, value: "https://other.example.com/contact" }, value.contact.source).length, 0);
   assert.equal(prospectCompanySchema.safeParse({ ...value, contact: { ...value.contact, value: "javascript:alert(1)" } }).success, false);
+  const about = { url: `${value.website}/about`, quote: "Our business software in Taiwan" };
+  assert.equal(check({ kind: "page", value: about.url, source: about }, about).length, 0, "Business descriptions alone are not contact routes");
   const home = { url: value.website, quote: "Contact us" };
   assert.equal(check({ kind: "page", value: value.website, source: home }, home).length, 0);
   const privacy = { url: `${value.website}/privacy-policy`, quote: "Contact us for privacy requests" };
@@ -123,4 +125,21 @@ test("Candidate verification uses distinct exact searched domains in bounded bat
   assert(!prospectResearchBatches({ candidates: [{ name: "Invented domain", urls: ["https://never-searched.example.com/contact"] }] }, pages, [], 6).flat().flatMap(c => c.urls).some(u => u.includes("never-searched")));
   assert.equal(prospectResearchBatches(null, [...pages, pages[0]!], [], 10).flat().length, 12);
   assert.equal(prospectResearchBatches({ candidates: [{ name: "Canonical root", urls: ["https://root.example.com"] }] }, [{ url: "https://root.example.com/", title: "Root" }], [], 6)[0]![0]!.urls[0], "https://root.example.com/", "Use the actual searched URL when URL serialization only adds a root slash");
+});
+
+
+test("Evidence resolution repairs model contact and Taiwan selections only from the same official domain", () => {
+  const buyer = company("Buyer");
+  const business = { url: buyer.website + "/about", quote: "B2B software in Taipei, Taiwan" };
+  const inbox = { url: buyer.website + "/", quote: "Business inquiries: hello@new.example.com" };
+  const foreign = { url: "https://other.example.com/contact", quote: "Other company, Taipei Taiwan. Contact sales@other.example.com" };
+  const broken = { ...buyer, taiwan: { ...buyer.taiwan, quote: "B2B software" }, contact: { kind: "page" as const, value: buyer.website, source: inbox } };
+  const result = resolveProspectEvidence(broken, [business, inbox, foreign]);
+  assert.equal(result.taiwan.quote, business.quote);
+  assert.equal(result.contact?.kind, "email"); assert.equal(result.contact?.value, "hello@new.example.com");
+  assert.equal(groundedProspects({ companies: [result] }, [business, inbox, foreign], [], 6).length, 1);
+  const onlyForeign = resolveProspectEvidence(broken, [business, foreign]);
+  assert.equal(groundedProspects({ companies: [onlyForeign] }, [business, foreign], [], 6).length, 0, "Never borrow another company's contact route");
+  const guessed = resolveProspectEvidence({ ...broken, contact: { kind: "email", value: "guess@new.example.com", source: inbox } }, [business]);
+  assert.equal(groundedProspects({ companies: [guessed] }, [business], [], 6).length, 0);
 });

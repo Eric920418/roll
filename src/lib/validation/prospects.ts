@@ -14,7 +14,7 @@ import { PlanWriteError } from "@/lib/action-plan/service";
 import { logSecurityError } from "@/lib/security/log";
 import { scopeSchema, type Scope } from "./schema";
 import { validationScope, prospectContext } from "./service";
-import { groundedProspects, prospectSelectionSchema, prospectCacheSchema, taiwanEvidence, publicWebsite, prospectShortlistSchema, prospectResearchBatches } from "./prospect-schema";
+import { groundedProspects, prospectSelectionSchema, prospectCacheSchema, taiwanEvidence, publicWebsite, prospectShortlistSchema, prospectResearchBatches, resolveProspectEvidence } from "./prospect-schema";
 
 export const prospectInputSchema = z.object({ scope: scopeSchema, prospectCount: z.union([z.literal(6), z.literal(10)]), locale: z.enum(["en", "zh-tw"]) }).strict();
 const cacheSchema = prospectCacheSchema;
@@ -112,7 +112,7 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
     step = "validate";
     const candidates = selection.companies.flatMap(({ taiwanSource, fitSource, contact, ...company }) => sources[taiwanSource] && sources[fitSource] && sources[contact.source] ? [{ ...company, taiwan: sources[taiwanSource], fit: sources[fitSource], contact: { ...contact, value: contact.kind === "page" ? sources[contact.source]!.url : contact.value, source: sources[contact.source] } }] : []);
     const rejected: Record<string, number> = {};
-    const companies = groundedProspects({ companies: candidates }, sources, prepared.excluded, input.prospectCount, rejected);
+    const companies = groundedProspects({ companies: candidates.map(c => resolveProspectEvidence(c, sources)) }, sources, prepared.excluded, input.prospectCount, rejected);
     console.info({ event: "validation.prospects.quality", ...quality, candidates: candidates.length, rejected, accepted: companies.length, taiwanEvidence: candidates.filter(c => taiwanEvidence(c.taiwan.quote)).length });
     if (!companies.length) throw new PlanWriteError("找不到符合 ICP、具台灣官方依據及公開聯絡入口的新公司；次數退回。可調整 ICP 或稍後重試 / No verifiable new Taiwan companies with public contact routes found; request refunded. Adjust your ICP or retry later", 422);
     step = "save";

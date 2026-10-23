@@ -38,7 +38,7 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
   const parsed = z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(raw);
   const valid = parsed.companies.flatMap(value => { const result = prospectCompanySchema.safeParse(value); if (!result.success) reject("invalid_fields"); return result.success ? [result.data] : []; });
   const normalize = (s: string) => s.normalize("NFKC").replace(/\s+/g, " ").trim();
-  return excludeKnownCompanies(valid.filter(c => {
+  const eligible = valid.filter(c => {
     const host = new URL(c.website).hostname.replace(/^www\./, "");
     const ownDomain = (value: string) => { const h = new URL(value).hostname.replace(/^www\./, ""); return h === host || h.endsWith(`.${host}`); };
     const named = (text: string) => [c.name, ...c.aliases].some(n => prospectKey(n).length >= 3 && prospectKey(text).includes(prospectKey(n)));
@@ -50,7 +50,9 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
     if (contact.kind === "page") {
       if (!publicWebsite(contact.value) || contact.value !== contact.source.url) return reject("contact_url_mismatch");
       const path = new URL(contact.value).pathname + new URL(contact.value).hash;
-      if (path === "/" || !/contact|聯絡|聯繫|洽詢|inquir|enquir|sales|business|合作/i.test(path + " " + contact.source.quote)) return reject("not_contact_page");
+      const contactPath = /(?:^|[/#])(?:contact(?:[-_]?us)?|contacts|enquir(?:y|ies)|inquir(?:y|ies)|聯絡(?:我們)?|聯繫(?:我們)?|联系我们)(?:[/.#_-]|$)/i.test(path);
+      const contactQuote = /contact\s+(?:us|our|team|sales)|business\s+(?:inquir|enquir)|sales\s+(?:inquir|enquir)|聯絡|聯繫|洽詢|業務諮詢/i.test(contact.source.quote);
+      if (path === "/" || !(contactPath || contactQuote)) return reject("not_contact_page");
     } else {
       const emails = contact.source.quote.match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
       if (!z.email().safeParse(contact.value).success || !emails.some(e => e.toLowerCase() === contactValue) || /^(?:no.?reply|privacy|dpo|abuse|security|jobs|careers|legal)@/i.test(contact.value)) return reject("email_not_published");
@@ -59,7 +61,10 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
     if (![c.taiwan, c.fit].every(ref => ownDomain(ref.url) || government(ref))) return reject("source_not_official");
     if (![c.taiwan, c.fit].some(ref => ownDomain(ref.url)) && !sources.some(s => ownDomain(s.url) && named(s.quote))) return reject("website_not_established");
     return taiwanEvidence(c.taiwan.quote) || reject("missing_taiwan");
-  }), excluded).slice(0, count);
+  });
+  const fresh = excludeKnownCompanies(eligible, excluded);
+  if (eligible.length > fresh.length) rejected.known_or_duplicate = eligible.length - fresh.length;
+  return fresh.slice(0, count);
 }
 
 export function prospectResearchBatches(raw: unknown, pages: { url: string; title: string }[], excluded: string[], count: 6 | 10) {
@@ -83,4 +88,21 @@ export function prospectResearchBatches(raw: unknown, pages: { url: string; titl
     return [{ name: c.name, urls }];
   }).slice(0, count === 6 ? 9 : 12);
   return Array.from({ length: Math.ceil(accepted.length / 3) }, (_, i) => accepted.slice(i * 3, i * 3 + 3));
+}
+
+// Repair source selection using actual same-company evidence, never invented contact data.
+export function resolveProspectEvidence(company: ProspectCompany, sources: { url: string; quote: string }[]): ProspectCompany {
+  const host = new URL(company.website).hostname.replace(/^www\./, "");
+  const official = sources.filter(s => { if (!publicWebsite(s.url)) return false; const h = new URL(s.url).hostname.replace(/^www\./, ""); return h === host || h.endsWith(`.${host}`); });
+  const resolved = { ...company, taiwan: official.find(s => taiwanEvidence(s.quote)) || company.taiwan };
+  const routes: NonNullable<ProspectCompany["contact"]>[] = [
+    ...(company.contact ? [company.contact] : []),
+    ...official.map(source => ({ kind: "page" as const, value: source.url, source })),
+    ...official.flatMap(source => (source.quote.match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || []).map(value => ({ kind: "email" as const, value, source }))),
+  ];
+  for (const contact of routes) {
+    const valid = groundedProspects({ companies: [{ ...resolved, contact }] }, sources, [], 6);
+    if (valid.length) return valid[0]!;
+  }
+  return resolved;
 }
