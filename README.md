@@ -1829,3 +1829,9 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 - **目前正式驗收阻礙：Anthropic API 仍回報供應商信用額度不足**。2026-10-24 管理員表示已儲值後，用全新專用 QA 帳號重測一次，仍於 3 秒回安全 503；該帳號 1 筆 failed，includedUsed=0、includedReserved=0，失敗預扣全數退回，未進入公司搜尋。先前 QA 為 8 筆 failed／1 筆 succeeded。兩輪補找已上線，但「真實一次 5–10 家」與新版真實快取重試仍未通過驗收，不能宣稱完成。目前 Chrome 的 Claude API 帳務頁未登入，待管理員登入儲值帳號後核對組織與帳務，不要求再次儲值或提供金鑰。沒有自動儲值、啟用自動扣款或改動任何付款設定。
 - 正式 QA 帳號及其資料已清除；清理前後基準一致：User 20、MeetingNote 33、Deal 9、ActionPlan 11、ActionItem 128。沒有改動其他會員資料、使用其 AI 額度或寄送郵件。Production 經 main 既有 Vercel 管線發布，不另配置 Preview。
 - 最終檢查：隔離 PostgreSQL 的 pnpm test 291/291 通過、0 skip；pnpm lint 0 errors／14 個既有 warnings；pnpm build 與 TypeScript 通過。
+
+### 正式站 AI 組織核對（2026-10-24）
+
+- 新增僅限現有管理員登入的唯讀 `GET /api/admin/ai-provider`：以目前部署的原有 Anthropic 金鑰呼叫官方 `GET /v1/organizations/me`，只回組織 ID、名稱與部署 ID，私有且不快取。10 秒逾時、不自動重試，不產生 AI 內容、不扣會員次數，不讀回或顯示金鑰。錯誤僅回安全的驗證／權限／服務失敗說明，不回傳供應商原文或憑證。
+- 用途是把正式執行環境的組織與 Console 儲值組織核對；帳單 Email 或發票本身不能證明同組織或已入帳。Production 的 `ANTHROPIC_API_KEY` 為 Sensitive，目前沒有 AI Gateway／自訂 Anthropic base URL 設定。未修改金鑰、付款、方案、會員資料或 schema；付款與餘額仍待 Console 登入核對。
+- 驗收：隔離 PostgreSQL 的 pnpm test 292/292 通過（0 skip），pnpm lint 0 errors／14 個既有 warnings，pnpm build 通過。新增核對測試涵蓋未登入不發外部請求、只使用唯讀組織端點、忽略回傳的額外欄位、禁止快取，以及供應商錯誤不洩漏原文與憑證。
