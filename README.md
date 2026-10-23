@@ -1836,3 +1836,4 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 - 用途是把正式執行環境的組織與 Console 儲值組織核對；帳單 Email 或發票本身不能證明同組織或已入帳。Production 的 `ANTHROPIC_API_KEY` 為 Sensitive，目前沒有 AI Gateway／自訂 Anthropic base URL 設定。未修改金鑰、付款、方案、會員資料或 schema；付款與餘額仍待 Console 登入核對。
 - 驗收：隔離 PostgreSQL 的 pnpm test 292/292 通過（0 skip），pnpm lint 0 errors／14 個既有 warnings，pnpm build 通過。新增核對測試涵蓋未登入不發外部請求、只使用唯讀組織端點、忽略回傳的額外欄位、禁止快取，以及供應商錯誤不洩漏原文與憑證。
 - 正式網域經 main 既有管線發布後，以原伺服器管理員簽章機制建立僅存記憶體、5 分鐘有效的核對請求；正式唯讀端點回 200 並取得金鑰所屬組織，部署 ID 與正式網域一致；未登入的獨立請求回 401、不含組織識別。組織識別不寫入公開文件、金鑰不讀回，不產生會員或商機測試資料。Console 仍未登入，故尚不能確認發票付款狀態、可用餘額或儲值組織相同；不把帳單 Email 當成組織證明，也不重複執行收費搜尋。
+- 依管理員後續明確指示，已先以新金鑰驗證組織，再更新 Production 原有 Sensitive `ANTHROPIC_API_KEY` 與被 Git 忽略的本地 `.env.local`；新舊金鑰查回不同組織，但文件不保存金鑰或組織識別。CLI `env update` 因 Sensitive 名稱不可修改遭拒，改用官方 PATCH 只更新原變數的 value，保留名稱、Production 範圍與 Sensitive 類型，不刪除變數。本地使用原子替換及 0600 權限，保留其他環境設定；透過 main 發布新部署後再核對實際執行組織。未更改付款、提醒或會員權益。聊天中曾提供的金鑰應視為暴露並後續輪替；文件與 Git 不保存該金鑰。
