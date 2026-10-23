@@ -6,9 +6,9 @@ import { runInNewContext } from "node:vm";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import ts from "typescript";
-import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence } from "../src/lib/validation/prospect-schema";
+import { excludeKnownCompanies, groundedProspects, prospectCompanySchema, prospectKey, publicWebsite, taiwanEvidence, prospectResearchBatches, prospectCacheSchema } from "../src/lib/validation/prospect-schema";
 
-const company = (name: string, domain = "new.example.com") => ({ name, aliases: [] as string[], website: `https://${domain}`, reason: "Potential ICP fit; confirm with outreach", taiwan: { url: `https://${domain}/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://${domain}/about`, quote: "B2B software" } });
+const company = (name: string, domain = "new.example.com") => ({ name, aliases: [] as string[], website: `https://${domain}`, reason: "Potential ICP fit; confirm with outreach", taiwan: { url: `https://${domain}/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://${domain}/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://${domain}/contact`, source: { url: `https://${domain}/contact`, quote: "Contact our business team" } } });
 test("Prospect exclusions normalize Unicode, legal suffixes, punctuation and aliases without substring overblocking", () => {
   assert.equal(prospectKey(" ＣｉｒｃｌｅＷｅ Co., Ltd. "), prospectKey("CircleWe"));
   assert.equal(prospectKey("EV Rapid Force Inc."), prospectKey("EV Rapid Force"));
@@ -19,7 +19,7 @@ test("Prospect exclusions normalize Unicode, legal suffixes, punctuation and ali
 });
 test("Only officially cited Taiwan prospects qualify, fewer than requested is valid; invalid or ungrounded data never fills quotas", () => {
   const valid = company("Real"), other = company("Other", "other.example.com");
-  const sources = [{ url: valid.taiwan.url, quote: "Based in Taipei, Taiwan. B2B software" }];
+  const sources = [{ url: valid.taiwan.url, quote: "Based in Taipei, Taiwan. B2B software" }, valid.contact.source];
   assert.deepEqual(groundedProspects({ companies: [valid, other] }, sources, [], 6), [valid]);
   assert.deepEqual(groundedProspects({ companies: [valid] }, sources, ["Real"], 10), []);
   assert.deepEqual(groundedProspects({ companies: [{ ...valid, taiwan: { ...valid.taiwan, quote: "Taiwan invented" } }] }, sources, [], 6), []);
@@ -27,7 +27,7 @@ test("Only officially cited Taiwan prospects qualify, fewer than requested is va
   assert.equal(groundedProspects({ companies: [{ ...valid, website: "https://example.com" }] }, sources, [], 6).length, 1, "Official subdomains can support a corporate website");
   const gov = { url: "https://startup.sme.gov.tw/company/real", quote: "Real is a B2B software company operating in Taipei, Taiwan" };
   const govCompany = { ...valid, taiwan: gov, fit: gov };
-  const govSources = [gov, { url: valid.website, quote: "Real official software website" }];
+  const govSources = [gov, { url: valid.website, quote: "Real official software website" }, valid.contact.source];
   assert.equal(groundedProspects({ companies: [govCompany] }, govSources, [], 6).length, 1);
   assert.equal(groundedProspects({ companies: [{ ...govCompany, name: "Not Real Company" }] }, govSources, [], 6).length, 0);
   assert.equal(groundedProspects({ companies: [{ ...govCompany, website: "https://invented.example.com" }] }, govSources, [], 6).length, 0);
@@ -71,6 +71,8 @@ test("New-company discovery and existing follow-up have distinct bilingual label
     const newList = html.slice(discovery, followup);
     assert(newList.includes("New Taiwan Buyer") && !newList.includes("CircleWe"));
     assert(newList.includes(zh ? "新推薦 · 平台內無紀錄" : "New prospect · No saved records"));
+    assert(newList.includes(zh ? "開啟官方聯絡頁" : "Open official contact page"));
+    assert(newList.includes('href="https://new.example.com/contact"'));
     assert(newList.includes(zh ? "平台外是否接觸過" : "outside NOVA"));
     const existingList = html.slice(followup, html.indexOf(zh ? "訪談證據分析" : "Interview evidence analysis"));
     assert(existingList.includes("CircleWe") && existingList.includes("Saved Lead") && !existingList.includes("New Taiwan Buyer"));
@@ -78,4 +80,41 @@ test("New-company discovery and existing follow-up have distinct bilingual label
     assert.equal(existingList.split(zh ? "已加入跟進" : "Saved for follow-up").length - 1, 1);
     assert(existingList.includes(zh ? "查看紀錄／繼續跟進" : "View records / continue follow-up"));
   }
+});
+
+
+test("Public contact routes require exact official evidence; homepages, fabricated emails and specialist inboxes do not qualify", () => {
+  const value = company("Reachable");
+  const base = [{ url: value.taiwan.url, quote: "Taipei, Taiwan. B2B software" }];
+  const check = (contact: unknown, source?: { url: string; quote: string }) => groundedProspects({ companies: [{ ...value, contact }] }, [...base, ...(source ? [source] : [])], [], 6);
+  assert.equal(check(value.contact, value.contact.source).length, 1);
+  assert.equal(check(undefined).length, 0);
+  assert.equal(check({ ...value.contact, value: "https://other.example.com/contact" }, value.contact.source).length, 0);
+  const home = { url: value.website, quote: "Contact us" };
+  assert.equal(check({ kind: "page", value: value.website, source: home }, home).length, 0);
+  const privacy = { url: `${value.website}/privacy-policy`, quote: "Contact us for privacy requests" };
+  assert.equal(check({ kind: "page", value: privacy.url, source: privacy }, privacy).length, 0);
+  const email = { url: value.contact.source.url, quote: "Business inquiries: hello@new.example.com" };
+  assert.equal(check({ kind: "email", value: "hello@new.example.com", source: email }, email).length, 1);
+  assert.equal(check({ kind: "email", value: "invented@new.example.com", source: email }, email).length, 0);
+  const foreign = { ...email, url: "https://directory.example.com/contact" };
+  assert.equal(check({ kind: "email", value: "hello@new.example.com", source: foreign }, foreign).length, 0);
+  for (const mailbox of ["no-reply", "privacy", "jobs", "legal"]) {
+    const source = { ...email, quote: `${mailbox}@new.example.com` };
+    assert.equal(check({ kind: "email", value: source.quote, source }, source).length, 0);
+  }
+  const legacy = { ...value, contact: undefined };
+  assert(prospectCacheSchema.safeParse({ reports: { existing: "retained" }, prospects: { "6:en": { source: "old", result: { companies: [legacy], requested: 6, generatedAt: new Date().toISOString() } } } }).success, "Legacy caches still parse without overwriting interview reports");
+});
+
+test("Candidate verification uses distinct exact searched domains in bounded batches and rejects injected paths", () => {
+  const candidates = Array.from({ length: 16 }, (_, i) => ({ name: `Buyer ${i}`, urls: [`https://buyer${i}.example.com/contact`] }));
+  const pages = candidates.map(c => ({ url: c.urls[0]!, title: c.name }));
+  const batches = prospectResearchBatches({ candidates }, pages, ["Buyer 0"], 10);
+  assert.equal(batches.length, 4); assert(batches.every(b => b.length === 3));
+  assert.equal(new Set(batches.flat().flatMap(c => c.urls)).size, 12);
+  assert(!batches.flat().some(c => c.name === "Buyer 0"));
+  assert.equal(prospectResearchBatches({ candidates }, pages, [], 6).flat().length, 9);
+  assert.equal(prospectResearchBatches({ candidates: [{ name: "Invented path", urls: ["https://buyer0.example.com/guessed"] }] }, pages, [], 6).length, 0);
+  assert.equal(prospectResearchBatches(null, [...pages, pages[0]!], [], 10).flat().length, 12);
 });

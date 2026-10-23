@@ -60,12 +60,12 @@ export async function prospectContext(tx: DB, userId: string, scope: Scope) {
   ].filter(Boolean))].sort();
   const icp = readIcp(profile?.icpDetails);
   const criteria = { product: profile?.oneLinePitch || "", industry: profile?.industry || "", customer: icp?.who || "", customerStage: icp?.stage || "", customerLocation: icp?.location || "", problem: icp?.problem || "", summary: icp?.summary || profile?.icp || "", market: "Taiwan" };
-  const source = sourceFingerprint([{ id: "prospects-v1", updatedAt: "2026-10-22T00:00:00Z", insight: { criteria, excluded } }]);
+  const source = sourceFingerprint([{ id: "prospects-contact-v2", updatedAt: "2026-10-23T00:00:00Z", insight: { criteria, excluded } }]);
   return { ...context, criteria, excluded, prospectSource: source };
 }
 export async function currentProspects(tx: DB, userId: string, scope: Scope) {
   const context = await prospectContext(tx, userId, scope), cache = prospectCacheSchema.safeParse(context.cache).data;
-  return Object.fromEntries(Object.entries(cache?.prospects || {}).map(([key, entry]) => [key, { ...entry.result, stale: entry.source !== context.prospectSource, companies: excludeKnownCompanies(entry.result.companies, context.excluded) }]));
+  return Object.fromEntries(Object.entries(cache?.prospects || {}).map(([key, entry]) => [key, { ...entry.result, stale: entry.source !== context.prospectSource, companies: excludeKnownCompanies(entry.result.companies.filter(c => c.contact), context.excluded) }]));
 }
 export async function validationSnapshot(userId: string, scope: Scope) {
   const tx = prisma as unknown as DB;
