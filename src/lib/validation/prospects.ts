@@ -110,9 +110,10 @@ export async function generateProspects(account: Account, input: z.infer<typeof 
     if (invalid.length) console.warn({ event: "validation.prospects.invalid_candidates", issues: invalid.slice(0, 12) });
     const selection = { companies: checked.flatMap(v => v.success ? [v.data] : []) };
     step = "validate";
-    const candidates = selection.companies.flatMap(({ taiwanSource, fitSource, contact, ...company }) => sources[taiwanSource] && sources[fitSource] && sources[contact.source] ? [{ ...company, taiwan: sources[taiwanSource], fit: sources[fitSource], contact: { ...contact, source: sources[contact.source] } }] : []);
-    const companies = groundedProspects({ companies: candidates }, sources, prepared.excluded, input.prospectCount);
-    console.info({ event: "validation.prospects.quality", ...quality, candidates: candidates.length, accepted: companies.length, taiwanEvidence: candidates.filter(c => taiwanEvidence(c.taiwan.quote)).length });
+    const candidates = selection.companies.flatMap(({ taiwanSource, fitSource, contact, ...company }) => sources[taiwanSource] && sources[fitSource] && sources[contact.source] ? [{ ...company, taiwan: sources[taiwanSource], fit: sources[fitSource], contact: { ...contact, value: contact.kind === "page" ? sources[contact.source]!.url : contact.value, source: sources[contact.source] } }] : []);
+    const rejected: Record<string, number> = {};
+    const companies = groundedProspects({ companies: candidates }, sources, prepared.excluded, input.prospectCount, rejected);
+    console.info({ event: "validation.prospects.quality", ...quality, candidates: candidates.length, rejected, accepted: companies.length, taiwanEvidence: candidates.filter(c => taiwanEvidence(c.taiwan.quote)).length });
     if (!companies.length) throw new PlanWriteError("找不到符合 ICP、具台灣官方依據及公開聯絡入口的新公司；次數退回。可調整 ICP 或稍後重試 / No verifiable new Taiwan companies with public contact routes found; request refunded. Adjust your ICP or retry later", 422);
     step = "save";
     await access(account);

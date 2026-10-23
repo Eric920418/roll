@@ -33,9 +33,10 @@ export function excludeKnownCompanies(companies: ProspectCompany[], excluded: st
   });
 }
 export const taiwanEvidence = (text: string) => /taiwan|taipei|taichung|tainan|kaohsiung|hsinchu|taoyuan|keelung|chiayi|changhua|yunlin|miaoli|nantou|pingtung|yilan|hualien|taitung|penghu|kinmen|lienchiang|台灣|臺灣|台北|臺北|新北|台中|臺中|台南|臺南|高雄|新竹|桃園|基隆|嘉義|彰化|雲林|苗栗|南投|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|連江/i.test(text);
-export function groundedProspects(raw: unknown, sources: { url: string; quote: string }[], excluded: string[], count: 6 | 10) {
+export function groundedProspects(raw: unknown, sources: { url: string; quote: string }[], excluded: string[], count: 6 | 10, rejected: Record<string, number> = {}) {
+  const reject = (reason: string) => { rejected[reason] = (rejected[reason] || 0) + 1; return false; };
   const parsed = z.object({ companies: z.array(z.unknown()).max(16) }).strict().parse(raw);
-  const valid = parsed.companies.flatMap(value => { const result = prospectCompanySchema.safeParse(value); return result.success ? [result.data] : []; });
+  const valid = parsed.companies.flatMap(value => { const result = prospectCompanySchema.safeParse(value); if (!result.success) reject("invalid_fields"); return result.success ? [result.data] : []; });
   const normalize = (s: string) => s.normalize("NFKC").replace(/\s+/g, " ").trim();
   return excludeKnownCompanies(valid.filter(c => {
     const host = new URL(c.website).hostname.replace(/^www\./, "");
@@ -43,28 +44,30 @@ export function groundedProspects(raw: unknown, sources: { url: string; quote: s
     const named = (text: string) => [c.name, ...c.aliases].some(n => prospectKey(n).length >= 3 && prospectKey(text).includes(prospectKey(n)));
     const government = (ref: { url: string; quote: string }) => new URL(ref.url).hostname.endsWith(".gov.tw") && named(ref.quote);
     const contact = c.contact;
-    if (!contact || !ownDomain(contact.source.url)) return false;
-    if (/(?:^|[/#_-])(?:privacy|legal|careers?|jobs?|recruitment|terms)(?:$|[/#_-])/i.test(new URL(contact.source.url).pathname)) return false;
+    if (!contact || !ownDomain(contact.source.url)) return reject("contact_not_official");
+    if (/(?:^|[/#_-])(?:privacy|legal|careers?|jobs?|recruitment|terms)(?:$|[/#_-])/i.test(new URL(contact.source.url).pathname)) return reject("specialist_contact");
     const contactValue = contact.value.toLowerCase();
     if (contact.kind === "page") {
-      if (!publicWebsite(contact.value) || contact.value !== contact.source.url) return false;
+      if (!publicWebsite(contact.value) || contact.value !== contact.source.url) return reject("contact_url_mismatch");
       const path = new URL(contact.value).pathname + new URL(contact.value).hash;
-      if (path === "/" || !/contact|聯絡|聯繫|洽詢|inquir|enquir|sales|business|合作/i.test(path + " " + contact.source.quote)) return false;
+      if (path === "/" || !/contact|聯絡|聯繫|洽詢|inquir|enquir|sales|business|合作/i.test(path + " " + contact.source.quote)) return reject("not_contact_page");
     } else {
       const emails = contact.source.quote.match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
-      if (!z.email().safeParse(contact.value).success || !emails.some(e => e.toLowerCase() === contactValue) || /^(?:no.?reply|privacy|dpo|abuse|security|jobs|careers|legal)@/i.test(contact.value)) return false;
+      if (!z.email().safeParse(contact.value).success || !emails.some(e => e.toLowerCase() === contactValue) || /^(?:no.?reply|privacy|dpo|abuse|security|jobs|careers|legal)@/i.test(contact.value)) return reject("email_not_published");
     }
-    return [c.taiwan, c.fit, contact.source].every(ref => sources.some(s => s.url === ref.url && normalize(s.quote).includes(normalize(ref.quote))))
-      && [c.taiwan, c.fit].every(ref => ownDomain(ref.url) || government(ref))
-      && ([c.taiwan, c.fit].some(ref => ownDomain(ref.url)) || sources.some(s => ownDomain(s.url) && named(s.quote)))
-      && taiwanEvidence(c.taiwan.quote);
+    if (![c.taiwan, c.fit, contact.source].every(ref => sources.some(s => s.url === ref.url && normalize(s.quote).includes(normalize(ref.quote))))) return reject("quote_not_found");
+    if (![c.taiwan, c.fit].every(ref => ownDomain(ref.url) || government(ref))) return reject("source_not_official");
+    if (![c.taiwan, c.fit].some(ref => ownDomain(ref.url)) && !sources.some(s => ownDomain(s.url) && named(s.quote))) return reject("website_not_established");
+    return taiwanEvidence(c.taiwan.quote) || reject("missing_taiwan");
   }), excluded).slice(0, count);
 }
 
 export function prospectResearchBatches(raw: unknown, pages: { url: string; title: string }[], excluded: string[], count: 6 | 10) {
   const known = new Set(excluded.map(prospectKey));
   const allowed = new Map(pages.filter(p => publicWebsite(p.url)).map(p => [new URL(p.url).href, p.url]));
-  const candidates = prospectShortlistSchema.safeParse(raw).data?.candidates || pages.map(p => ({ name: p.title, urls: [p.url] }));
+  const candidates = [...(prospectShortlistSchema.safeParse(raw).data?.candidates || []), ...pages.map(p => ({ name: p.title, urls: [p.url] }))];
+  const blockedDomains = new Set(excluded.flatMap(value => publicWebsite(value) ? [new URL(value).hostname.replace(/^www\./, "")] : []));
+  for (const c of candidates) if (known.has(prospectKey(c.name))) for (const value of c.urls) if (publicWebsite(value)) blockedDomains.add(new URL(value).hostname.replace(/^www\./, ""));
   const seen = new Set<string>();
   const accepted = candidates.flatMap(c => {
     if (known.has(prospectKey(c.name))) return [];
@@ -76,7 +79,7 @@ export function prospectResearchBatches(raw: unknown, pages: { url: string; titl
     }))].slice(0, 4);
     if (!urls.length) return [];
     const host = new URL(urls[0]!).hostname.replace(/^www\./, "");
-    if (seen.has(host)) return []; seen.add(host);
+    if (seen.has(host) || blockedDomains.has(host)) return []; seen.add(host);
     return [{ name: c.name, urls }];
   }).slice(0, count === 6 ? 9 : 12);
   return Array.from({ length: Math.ceil(accepted.length / 3) }, (_, i) => accepted.slice(i * 3, i * 3 + 3));
