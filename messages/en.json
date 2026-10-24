@@ -356,7 +356,9 @@
       "terms": "By continuing, you agree to our",
       "termsOfService": "Terms of Service",
       "and": "and",
-      "privacyPolicy": "Privacy Policy"
+      "privacyPolicy": "Privacy Policy",
+      "referralCode": "Referral code (optional; separate from rollon membership code)",
+      "referralHint": "Confirm this code to bind your inviter; it cannot be changed after signup. Both receive 5 AI reward credits 14 days after your first payment, within the inviter’s 10-per-month limit and one invitee per PayPal payer. Refunds withdraw rewards, with any shortfall offset against future referral rewards. You can correct or remove the code before signing up."
     },
     "login": {
       "metaTitle": "Log in",
@@ -2416,5 +2418,53 @@
     "reviewAgain": "Version updated. Review your answers and confirm separately to save.",
     "previous": "Previous",
     "next": "Next"
+  },
+  "Referrals": {
+    "title": "Invite friends",
+    "rules": "Share your personal link or code. A new member must confirm it when signing up. Both receive 5 AI reward credits 14 days after their first verified purchase, including AI top-ups. Up to 10 qualifying referrals per inviter per Taipei calendar month; pending rewards reserve a place. If the limit is reached, neither person earns a reward. Existing members cannot add a code later. One qualifying invitee per PayPal payer account.",
+    "refundRules": "Reward credits do not expire and cannot be withdrawn or applied to subscription fees. They follow existing AI access rules. Any completed partial refund, full refund or payment reversal cancels both rewards. Available reward credits are reclaimed first; any shortfall offsets future referral rewards only, without taking purchased credits or charging money.",
+    "monthly": "{month}: {used} / {limit} referral places used",
+    "debt": "{count} credits will be offset against future referral rewards.",
+    "code": "Your referral code",
+    "link": "Your invitation link",
+    "copy": "Copy link",
+    "copied": "Link copied.",
+    "copyFallback": "Copy failed. Select and copy the link above manually.",
+    "create": "Create my invitation link",
+    "history": "Invitation history",
+    "empty": "No invitations yet. Share your link to get started.",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "eligible": "Scheduled eligibility: {date} (Taipei); payment checks may delay release.",
+    "previous": "Previous",
+    "next": "Next",
+    "direction": {
+      "sent": "Your invitation",
+      "received": "Invitation you accepted"
+    },
+    "status": {
+      "pending_payment": "Awaiting first payment",
+      "pending": "Awaiting reward release",
+      "review": "Needs verification",
+      "granted": "Reward released",
+      "rejected": "Not eligible",
+      "revoked": "Reward withdrawn"
+    },
+    "reason": {
+      "deleted_member": "A member account was deleted before release.",
+      "payment_refunded": "The qualifying payment was refunded or reversed.",
+      "payment_review": "Payment evidence needs verification.",
+      "missing_payer": "Payer identity needs verification.",
+      "self_referral": "Self-referrals are not eligible.",
+      "duplicate_payer": "This PayPal payer has already qualified as an invitee.",
+      "monthly_limit": "The inviter’s monthly limit was reached; no reward for either person.",
+      "admin_rejected": "The invitation did not pass verification.",
+      "payment_unavailable": "Payment verification is temporarily unavailable; we will retry automatically. Do not pay again."
+    },
+    "entry": {
+      "grant": "Added {credits} AI credits; {offset} credits offset a previous referral withdrawal.",
+      "revoke": "AI credit adjustment: {credits}; additional future-reward offset: {debt}."
+    },
+    "verificationFailure": "Last verification: HTTP 503 · payment_unavailable · Reference: {requestId}"
   }
 }

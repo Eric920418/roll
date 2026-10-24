@@ -1,5 +1,27 @@
 # ROLL ON. 企業官網
 
+## 會員邀請與 AI 獎勵（2026-10-25）
+
+本機與候選驗收已完成，正式發布進行中；既有未提交工作完整保留，沒有新增套件、寄信、呼叫真實 AI 或建立正式扣款。Rewards 頁提供雙語邀請碼／連結、複製及手動複製替代、本月名額、待抵扣與匿名分頁紀錄；Email／Google 註冊須確認邀請碼，與 rollon 會員註冊碼分開，可同時使用。註冊及邀請綁定同一交易，既有會員不補綁，註冊後不能更換邀請者；不追蹤單純點擊。
+
+固定規則：受邀新會員的首筆真實付款滿 14 天後，雙方各 5 次 AI 獎勵；所有原本有資格購買的付費項目（含 US$5 AI 加購、訂閱與創始年費）均計入，不因邀請而改變購買資格或方案權限。以權威付款時間及台北月份計算，每位邀請者當月最多 10 筆，待發放占名額，超額雙方均不獲獎且不順延，退款不釋放名額。同一受邀帳號／PayPal 付款身分僅一次；可核對的自我邀請拒絕，不因共用 IP 一律拒絕。獎勵進入既有 rewardBalance，不增加積分、不占現有每月 20 次積分兌換上限、不增加付費功能權限、不混入媒合 token；不過期、不提領、不折抵帳單，AI 消耗順序及失敗原路退回不變。
+
+任何已完成部分退款、全額退款或付款撤銷均取消整筆邀請：未發放取消，已發放則先扣可用獎勵，不足只抵扣未來邀請獎勵，不扣付費加購次數、月配額或現金。撤回原本曾抵扣欠額的獎勵時，同步恢復欠額。邀請專用帳本保留 grant／revoke 唯一紀錄，序列交易、固定鎖順序與唯一約束防重送／並發重複入帳；重新核對以 grantedAt 保留發放墓碑，恢復正常不再次加值，核對中退款仍能撤回。刪帳取消未發放案件、會員關聯設空，保留去識別付款指紋與結算墓碑，仍可撤回存續會員的獎勵。
+
+介面：`/api/referrals` GET 只讀本人摘要／分頁、POST 冪等建立碼；`/api/admin/referrals` GET 管理員清單／付款引用，PATCH 以版本及核對理由核准／拒絕；`/admin/referrals` 為實際管理頁。人工核准仍須最新權威交易、正確金額／歸屬／付款身分，不可改獎勵數字或繞過已知重複身分／月上限；拒絕不依賴供應商可用性。會員 DTO 不提供對方姓名、Email、付款引用、付款身分或核對筆記。所有會員寫入沿用登入、同源、限流及歸屬檢查，回應 `{data}`／`{error, code, requestId}`，不共用快取。付款來源查詢失敗顯示「待核對」、安全 HTTP 503／錯誤碼／追蹤碼與自動重試提示，避免誤說尚未付款或要求再次付款；錯誤保留輸入。
+
+付款返回頁、驗章 webhook 與 `/api/cron/referrals` 共用結算服務。返回頁以本版 Next.js `after` 在付款回應後核對邀請，避免獎勵服務延遲讓成功購買看似失敗；webhook 失敗讓 PayPal 重送。Cron 使用 CRON_SECRET、每 15 分鐘執行，分配到期發放／退款重查／待核對／未付款名額，避免未付款註冊餓死已到期案件；只有權威 Capture 或訂閱實際收款交易可認列，ACTIVE／核准／免費授權不算付款。發放前重查狀態，不能核對便保留，不猜測成功。
+
+上線需求：獨立敏感環境變數 `REFERRAL_PAYER_HMAC_KEY` 至少 32 bytes，付款身分以 HMAC 保存；啟用後不可任意更換此 key，未配置時帶碼註冊／新建邀請碼回明確 503，普通註冊維持原狀。先用明確指定目標連線的 SQL 客戶端核對 schema／資料，再一次套用 `prisma/referrals.sql`，之後 generate／配置環境再發布；不可因 shell 宣告 DATABASE_URL 就略過核對 Prisma config 的實際 datasource。該 SQL 僅建立 ReferralAccount／Referral／ReferralPayment／ReferralEntry 四張新表、索引與外鍵，不改寫原表，重跑必須停止，禁止 reset、seed、db push 或 accept-data-loss。PayPal webhook 訂閱須涵蓋 PAYMENT.SALE.COMPLETED／REFUNDED／REVERSED、PAYMENT.CAPTURE.COMPLETED／REFUNDED／REVERSED 與既有訂閱事件；正式環境已只新增敏感 `REFERRAL_PAYER_HMAC_KEY`，原有 35 個環境變數完整比對未變；私人 Blob 原設定保留。live webhook 原 8 種事件保留，補上 5 種收款／退款／撤銷事件，URL 與 webhook ID 不變；核對只在 Vercel 建置內使用既有金鑰，不下載或輸出。一次性建置操作與腳本已自發布原始碼移除。
+
+驗證：新增邀請相關 19 項測試；完整套件以 `env -u ANTHROPIC_WORKSPACE_ID ROLL_REWARDS_TEST_DATABASE_URL=<loopback QA URL> pnpm exec tsx --test --test-concurrency=1 tests/*.test.ts` 執行，344/344 通過、0 skip，保留檔案內明確的併發測試。一般平行全套曾遇既有測驗 fixture 競態，另一次受終端 workspace 變數影響，沒有修改該功能。TypeScript、建置及 diff 檢查通過；Lint 0 errors／14 既有 warnings。真實隔離 PostgreSQL 覆蓋註冊／OAuth／rollon 共存、首筆付款／14 天／跨月／第十筆名額競態、付款身分去重、重送／亂序、部分／全額退款狀態、欠額恢復、AI 預扣與退款競態／失敗原路退回、人工核對、刪帳與跨會員隔離。最終 SQL 在另一個全新遷移隔離庫驗證：51 張原表指紋不變，只新增四張空表，schema diff 無差異，重跑失敗且交易回滾，測試會員 fixture 已清理。SQL SHA-256：`65bcdfa679074b08066da0aeb99d9f94ef9550ca2946a7de7d925e57575a70fc`。
+
+瀏覽器驗收英文 1440px／繁中 390px、鍵盤建碼、無效邀請碼保留輸入、複製失敗替代、503 完整錯誤／重試、會員與管理員分頁；實際 QA 管理員登入後，無付款證據的核准回 409 並保留表單，拒絕可正常儲存。該管理員測試權限與視窗已關閉，額外一個核對帳號與 22 筆分頁 fixture 已精確清除。報告 `/private/tmp/roll-referrals-result.json`，測試／Lint／TypeScript／建置／遷移證據分別為 `/private/tmp/roll-referrals-all-tests-serial.log`、`roll-referrals-lint.log`、`roll-referrals-tsc.log`、`roll-referrals-build.log`、`roll-referrals-migration-result.json`。截圖在 `/Users/eric/.codex/visualizations/2026/10/24/01a16c9d-99d7-7d70-b04b-0325b07f748e/` 的 `referrals-en-1440.png`、`referrals-zh-tw-390.png`、`referrals-admin-review.png`、`referrals-history-page2.png`。
+
+依使用者要求停止 Sandbox，改為正式部署；Sandbox 僅驗證 OAuth 與未核准訂單，未完成真實付款／退款，不能宣稱金流端到端通過。兩個本機測試帳號、一筆邀請、兩筆未付款本機訂單已精準清理，QA 伺服器與結帳視窗已關閉，外部未核准 Sandbox 訂單自然過期。沒有建立正式付款、呼叫真實 AI、替既有會員補綁或發獎。
+
+正式發布以 `7511560` 建立獨立工作樹 `/private/tmp/roll-referrals-production-20261025`，不帶入其他未發布的逐題引導／ICP 修改。發布版本 339 項隔離測試全通過、0 skip（開發工作樹 344 項含另一批逐題引導），TypeScript／建置／diff 通過、Lint 0 errors／14 既有 warnings。候選 `dpl_6ef57zVf4ezLmCZQsDruv4dFVtFB` READY，17 項 HTTP／實際 DB 檢查通過：雙語、建碼冪等、GET 零建碼、Email 帶碼註冊、Google 授權前確認碼、匿名紀錄、未付款零發獎、同源／跨會員／管理員／排程限制。候選兩個新建獨立測試帳號及邀請已清理，沒有付款或獎勵帳本。正式庫交易內比對 51 張既有表內容與欄位指紋完全相同，只新增四張空表，SQL 已套用，禁止重跑。證據：`/private/tmp/roll-referrals-production-db-verification.json`、`roll-referrals-production-webhook.json`、`roll-referrals-candidate-smoke.json`、`roll-referrals-release-tests.log`。
+
 ## rollon會員註冊碼（2026-10-25）
 
 新增單組、可重複供新會員使用的註冊兌換碼；Email 與 Google 註冊均可選填，正確碼建立 `rollonMember=true`、`plan=pro` 的帳號，會員方案頁與管理後台註記「rollon會員」。這是永久 Pro 授權，不建立 PayPal 訂閱、不偽造 ACTIVE、不依賴試用期限；付費訂閱到期或關閉全站測試不會移除會員標記。享現有 Pro 功能與每月 NOVA 額度，不等於無限 AI。既有帳號不藉登入兌換。錯碼／非字串／配置缺失會顯示錯誤並拒絕建立帳號；空白不兌換、沿用既有註冊。

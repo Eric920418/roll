@@ -1,4 +1,5 @@
 "use client";
+import ReferralPanel from "./ReferralPanel";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
@@ -70,6 +71,7 @@ export default function RewardsPage() {
       </div>
       <section className="mt-6 rounded-2xl border border-dark/10 bg-white p-6"><h2 className="text-lg font-extrabold">{t("history")}</h2>{!data.entries.length ? <p className="mt-4 text-sm text-dark/55">{t("historyEmpty")}</p> : <ul className="mt-3 divide-y divide-dark/10">{[...data.entries,...more].filter((entry,index,list)=>list.findIndex(e=>e.id===entry.id)===index).map(entry => <li key={entry.id} className="flex items-center justify-between gap-4 py-4"><div><p className="text-sm font-semibold">{t(`entry.${entry.kind}`)}</p><time dateTime={entry.createdAt} className="mt-1 block text-xs text-dark/50">{new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(entry.createdAt))}</time></div><span className="text-sm font-bold tabular-nums">{entry.points > 0 ? "+" : ""}{entry.points}</span></li>)}</ul>}{(cursor === undefined ? data.nextCursor : cursor) && <button className={button+" mt-3"} disabled={busy} type="button" onClick={() => void loadMore()}>{t("loadMore")}</button>}</section>
     </>}
+    <ReferralPanel />
     <dialog ref={dialog} className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-2xl border border-dark/10 bg-white p-6 text-dark backdrop:bg-black/40" aria-labelledby="redeem-heading" onCancel={event => { if (busy) event.preventDefault(); }}><h2 id="redeem-heading" className="text-xl font-extrabold">{t("confirmTitle")}</h2><p className="mt-3 text-sm leading-6 text-dark/60">{t("confirmDetail")}</p><div className="mt-6 flex gap-3"><button type="button" className="min-h-11 flex-1 rounded-xl border border-dark/20 text-sm font-bold disabled:opacity-40" disabled={busy} onClick={() => dialog.current?.close()}>{t("cancel")}</button><button type="button" className={button+" flex-1"} disabled={busy} onClick={() => void redeem()}>{busy ? t("working") : t("confirm")}</button></div></dialog>
   </div>;
 }

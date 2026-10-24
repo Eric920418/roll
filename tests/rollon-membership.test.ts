@@ -22,6 +22,9 @@ function harness() {
   const json = (data: unknown, status = 200) => NextResponse.json(data, { status });
   const mocks: Record<string, unknown> = {
     "server-only": {},
+    "@/lib/referrals/registration": { registerWithReferral: async (data: Record<string, unknown>) => (mocks["@/lib/prisma"] as { prisma: { user: { create: (args: { data: Record<string, unknown> }) => unknown } } }).prisma.user.create({ data }), validateReferralCode: async () => undefined },
+    "@/lib/referrals/http": {},
+    "@/lib/referrals/policy": { ReferralError: class extends Error {} },
     "@/lib/prisma": { prisma: { user: {
       findUnique: async () => { state.reads++; return state.existing; },
       create: async ({ data }: { data: Record<string, unknown> }) => { state.writes.push(data); return { ...data, id: randomUUID(), sessionVersion: 0, completed: false, onboardingStep: 2 }; },

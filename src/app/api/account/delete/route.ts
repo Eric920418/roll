@@ -1,3 +1,5 @@
+import { prepareReferralDeletion } from "@/lib/referrals/service";
+import { rewardTransaction } from "@/lib/rewards/service";
 import { browserMutationGuard } from "@/lib/security/http";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
@@ -38,7 +40,10 @@ export async function POST(req: Request) {
     }
 
     // cascade 連帶刪除 profile / quizSubmissions / subscriptions
-    await prisma.user.delete({ where: { id: session.uid } });
+    await rewardTransaction(async tx => {
+      await prepareReferralDeletion(tx, session.uid);
+      await tx.user.delete({ where: { id: session.uid } });
+    });
 
     const res = ok({ deleted: true });
     res.cookies.set(USER_SESSION_COOKIE, "", {

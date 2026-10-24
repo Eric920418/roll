@@ -1,3 +1,6 @@
+import { registerWithReferral } from "@/lib/referrals/registration";
+import { referralFailure } from "@/lib/referrals/http";
+import { ReferralError } from "@/lib/referrals/policy";
 import { browserMutationGuard } from "@/lib/security/http";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -77,22 +80,21 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(password);
-    const user = await prisma.user.create({
-      data: {
+    const user = await registerWithReferral({
         email,
         passwordHash,
         firstName: firstName || null,
         lastName: lastName || null,
         onboardingStep: 2, // 帳號建立完成 → 進入 Step 2（公司資訊）
         ...(membership ?? newDiscoveryTrial()),
-      },
-    });
+    }, body.referralCode);
 
     const token = await createUserSession(user.id, user.email, user.sessionVersion);
     const res = ok({ nextStep: "company" }, 201);
     res.cookies.set(USER_SESSION_COOKIE, token, cookieOptions);
     return res;
   } catch (error) {
+    if (error instanceof ReferralError) return referralFailure(error);
     return failFromError(error);
   }
 }

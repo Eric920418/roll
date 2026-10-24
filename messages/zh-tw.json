@@ -356,7 +356,9 @@
       "terms": "繼續即表示你同意我們的",
       "termsOfService": "服務條款",
       "and": "與",
-      "privacyPolicy": "隱私政策"
+      "privacyPolicy": "隱私政策",
+      "referralCode": "邀請碼（選填，與 rollon 會員註冊碼不同）",
+      "referralHint": "確認此碼即綁定邀請者，註冊後不能更改。首次付款滿 14 天後雙方各獲 5 次 AI 獎勵，限邀請者當月前 10 筆且同一 PayPal 付款身分只限一次；退款會撤回，不足部分抵扣未來邀請獎勵。你可以修正或移除此碼後繼續註冊。"
     },
     "login": {
       "metaTitle": "登入",
@@ -2416,5 +2418,53 @@
     "reviewAgain": "版本已更新，請重新審閱回答並另按確認儲存。",
     "previous": "上一頁",
     "next": "下一頁"
+  },
+  "Referrals": {
+    "title": "邀請朋友",
+    "rules": "分享專屬連結或邀請碼，新會員須在註冊時確認。首次真實付款（含 AI 加購）滿 14 天後，雙方各獲 5 次 AI 獎勵。每位邀請者每個台北月份最多 10 筆，待發放也占名額；達上限時雙方皆不獲獎。既有會員不能補填，同一 PayPal 付款帳號僅限一位合格受邀者。",
+    "refundRules": "獎勵次數不過期、不可提領或折抵訂閱費，使用權限沿用現有 AI 規則。任何已完成的部分退款、全額退款或付款撤銷，都會取消雙方獎勵；先撤回可用獎勵，不足部分只抵扣未來邀請獎勵，不扣付費加購次數、不收取現金。",
+    "monthly": "{month} 已用邀請名額：{used}／{limit} 筆",
+    "debt": "尚有 {count} 次需由未來邀請獎勵抵扣。",
+    "code": "你的邀請碼",
+    "link": "你的邀請連結",
+    "copy": "複製連結",
+    "copied": "連結已複製。",
+    "copyFallback": "複製失敗，請選取上方連結手動複製。",
+    "create": "建立我的邀請連結",
+    "history": "邀請紀錄",
+    "empty": "目前沒有邀請紀錄，建立連結後即可分享。",
+    "loading": "載入中…",
+    "retry": "重試",
+    "eligible": "預計符合發放時間：{date}（台北）；付款核對可能延後入帳。",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "direction": {
+      "sent": "你發出的邀請",
+      "received": "你接受的邀請"
+    },
+    "status": {
+      "pending_payment": "待付款",
+      "pending": "待發放",
+      "review": "待核對",
+      "granted": "已發放",
+      "rejected": "未符合",
+      "revoked": "已撤回"
+    },
+    "reason": {
+      "deleted_member": "發放前有一方已刪除帳號。",
+      "payment_refunded": "合格付款已退款或撤銷。",
+      "payment_review": "付款來源需要核對。",
+      "missing_payer": "付款身分需要核對。",
+      "self_referral": "自我邀請不符合資格。",
+      "duplicate_payer": "此 PayPal 付款帳號已取得過受邀資格。",
+      "monthly_limit": "邀請者當月名額已滿，雙方皆不獲獎。",
+      "admin_rejected": "此邀請未通過核對。",
+      "payment_unavailable": "付款來源暫時無法核對，系統將自動重試；請勿重新付款。"
+    },
+    "entry": {
+      "grant": "已入帳 {credits} 次 AI 獎勵，另有 {offset} 次抵扣先前撤回欠額。",
+      "revoke": "AI 獎勵調整：{credits} 次；新增未來邀請抵扣：{debt} 次。"
+    },
+    "verificationFailure": "上次核對：HTTP 503 · payment_unavailable · 追蹤碼：{requestId}"
   }
 }

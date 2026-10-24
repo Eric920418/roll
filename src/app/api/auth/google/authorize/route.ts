@@ -1,3 +1,6 @@
+import { validateReferralCode } from "@/lib/referrals/registration";
+import { referralFailure } from "@/lib/referrals/http";
+import { ReferralError } from "@/lib/referrals/policy";
 import { browserMutationGuard } from "@/lib/security/http";
 import { checkRateLimit, clientIp, MINUTE_MS } from "@/lib/rate-limit";
 import { fail, failFromError, rateLimited } from "@/lib/api";
@@ -8,7 +11,7 @@ import { buildAuthUrl, localePrefixFromNext } from "@/lib/auth/google";
 
 const GOOGLE_STATE_COOKIE = "g_oauth";
 
-function authorize(req: NextRequest, nextParam: string, rollonCode?: string) {
+function authorize(req: NextRequest, nextParam: string, rollonCode?: string, referralCode?: string) {
   // 防 open redirect：只接受站內相對路徑
   const next = nextParam.startsWith("/") ? nextParam : "/";
 
@@ -16,7 +19,7 @@ function authorize(req: NextRequest, nextParam: string, rollonCode?: string) {
     const state = crypto.randomUUID();
     const url = buildAuthUrl(state);
     const res = req.method === "POST" ? NextResponse.json({ data: { url } }) : NextResponse.redirect(url);
-    res.cookies.set(GOOGLE_STATE_COOKIE, JSON.stringify({ state, next, rollonCode }), {
+    res.cookies.set(GOOGLE_STATE_COOKIE, JSON.stringify({ state, next, rollonCode, referralCode }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -50,8 +53,10 @@ export async function POST(req: NextRequest) {
     } catch {
       return fail(INVALID_ROLLON_CODE, 400);
     }
-    return authorize(req, typeof body.next === "string" ? body.next : "/", body.rollonCode);
+    const referralCode = await validateReferralCode(body.referralCode);
+    return authorize(req, typeof body.next === "string" ? body.next : "/", body.rollonCode, referralCode);
   } catch (error) {
+    if (error instanceof ReferralError) return referralFailure(error);
     return failFromError(error);
   }
 }

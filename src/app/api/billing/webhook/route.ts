@@ -1,3 +1,4 @@
+import { syncUserReferral, recordReferralRefund } from "@/lib/referrals/service";
 import { logSecurityError } from "@/lib/security/log";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -25,6 +26,9 @@ type PaypalEvent = {
   event_type?: string;
   resource?: {
     id?: string;
+    status?: string;
+    state?: string;
+    sale_id?: string;
     billing_agreement_id?: string;
     supplementary_data?: { related_ids?: { order_id?: string } };
     links?: Array<{ rel: string; href: string }>;
@@ -40,6 +44,7 @@ function extractSubscriptionId(event: PaypalEvent): string | null {
   return null;
 }
 
+export const maxDuration = 300;
 export async function POST(req: NextRequest) {
   // 1. 取 raw body（簽章驗證需原始字串）
   const raw = await req.text();
@@ -91,6 +96,8 @@ export async function POST(req: NextRequest) {
     // 4. 對帳（idempotent；以 PayPal 為權威來源）
     if (subId && needsReconcile(eventType)) {
       await reconcileById(subId);
+      const owner = await prisma.subscription.findUnique({ where: { paypalSubscriptionId: subId }, select: { userId: true } });
+      if (owner) await syncUserReferral(owner.userId);
     }
 
     // Orders webhook 與 return URL 可能同時抵達；fulfillCreditOrder 以 order/capture
@@ -103,15 +110,25 @@ export async function POST(req: NextRequest) {
           where: { paypalOrderId: orderId },
           select: { id: true },
         });
-        if (purchase) await fulfillCreditOrder(await getOrder(orderId));
-        else if (await prisma.founderOrder.findUnique({ where: { paypalOrderId: orderId }, select: { id: true } })) await (await import("@/lib/discovery/founder")).fulfillFounderOrder(await getOrder(orderId));
+        if (purchase) { const result = await fulfillCreditOrder(await getOrder(orderId)); await syncUserReferral(result.userId); }
+        else { const founder = await prisma.founderOrder.findUnique({ where: { paypalOrderId: orderId }, select: { userId: true } }); if (founder) { await (await import("@/lib/discovery/founder")).fulfillFounderOrder(await getOrder(orderId)); if (founder.userId) await syncUserReferral(founder.userId); } }
       }
     }
 
     if (eventType === "PAYMENT.CAPTURE.REFUNDED" || eventType === "PAYMENT.CAPTURE.REVERSED") {
       const path = event.resource?.links?.find(link => link.rel === "up")?.href;
       const captureId = eventType === "PAYMENT.CAPTURE.REVERSED" ? event.resource?.id : path?.match(/\/v2\/payments\/captures\/([A-Za-z0-9]+)(?:[/?#]|$)/)?.[1];
-      if (captureId) await (await import("@/lib/discovery/founder")).revokeFounderCapture(captureId, eventType === "PAYMENT.CAPTURE.REVERSED");
+      if (captureId) {
+        if (eventType === "PAYMENT.CAPTURE.REVERSED" || event.resource?.status === "COMPLETED") await recordReferralRefund(`capture:${captureId}`);
+        await (await import("@/lib/discovery/founder")).revokeFounderCapture(captureId, eventType === "PAYMENT.CAPTURE.REVERSED");
+      }
+    }
+
+    if (eventType === "PAYMENT.SALE.REFUNDED" || eventType === "PAYMENT.SALE.REVERSED") {
+      const source = event.resource as (typeof event.resource & { sale_id?: string });
+      const saleId = source?.sale_id ?? (eventType === "PAYMENT.SALE.REVERSED" ? source?.id : null);
+      if (!saleId) throw new Error("Refund event missing sale reference");
+      if (eventType === "PAYMENT.SALE.REVERSED" || event.resource?.state?.toLowerCase() === "completed") await recordReferralRefund(`sale:${saleId}`);
     }
 
     return NextResponse.json({ ok: true });

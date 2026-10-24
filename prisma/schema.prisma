@@ -187,6 +187,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  referralAccount ReferralAccount?
+  receivedReferral Referral? @relation("ReferralInvitee")
+  referralPayments ReferralPayment[]
+
   profile           OnboardingProfile?
   matchmakingProfile MatchmakingProfile?
   mindsetEntries     MindsetEntry[]
@@ -1148,4 +1152,75 @@ model MindsetEntry {
   updatedAt DateTime @updatedAt
   @@unique([userId, createRequestId])
   @@index([userId, deletedAt, createdAt, id])
+}
+
+/// Referral rows retain only payment deduplication/accounting tombstones after deletion.
+model ReferralAccount {
+  id String @id @default(cuid())
+  userId String? @unique
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  code String @unique
+  debt Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  invitations Referral[]
+  entries ReferralEntry[]
+}
+model Referral {
+  id String @id @default(cuid())
+  inviterId String
+  inviter ReferralAccount @relation(fields: [inviterId], references: [id])
+  inviteeId String? @unique
+  invitee User? @relation("ReferralInvitee", fields: [inviteeId], references: [id], onDelete: SetNull)
+  version Int @default(1)
+  revision Int @default(0)
+  status String @default("pending_payment")
+  reason String?
+  paymentKey String? @unique
+  errorRequestId String?
+  payerHash String? @unique
+  paidAt DateTime?
+  eligibleAt DateTime?
+  monthKey String?
+  slot Int?
+  grantedAt DateTime?
+  checkedAt DateTime?
+  reviewedAt DateTime?
+  reviewedBy String?
+  reviewNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  entries ReferralEntry[]
+  @@unique([inviterId, monthKey, slot])
+  @@index([status, checkedAt])
+}
+model ReferralPayment {
+  key String @id
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind String?
+  orderId String?
+  subscriptionId String?
+  payerHash String?
+  amountMinor Int?
+  currency String?
+  paidAt DateTime?
+  status String
+  checkedAt DateTime @default(now())
+  @@index([userId, paidAt])
+  @@index([payerHash])
+}
+model ReferralEntry {
+  id String @id @default(cuid())
+  referralId String
+  referral Referral @relation(fields: [referralId], references: [id])
+  accountId String
+  account ReferralAccount @relation(fields: [accountId], references: [id])
+  kind String
+  credits Int
+  offset Int @default(0)
+  debtDelta Int @default(0)
+  createdAt DateTime @default(now())
+  @@unique([referralId, accountId, kind])
+  @@index([accountId, createdAt])
 }

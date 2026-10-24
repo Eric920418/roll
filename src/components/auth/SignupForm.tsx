@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
@@ -27,6 +27,8 @@ export default function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rollonCode, setRollonCode] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const referralTouched = useRef(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -41,10 +43,10 @@ export default function SignupForm() {
       const res = await fetch("/api/auth/google/authorize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ next, rollonCode }),
+        body: JSON.stringify({ next, rollonCode, referralCode }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || tErr("generic"));
+      if (!res.ok) throw new Error([`HTTP ${res.status}`, json.error || tErr("generic"), json.code, json.requestId].filter(Boolean).join("\n"));
       window.location.assign(json.data.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : tErr("generic"));
@@ -56,6 +58,8 @@ export default function SignupForm() {
   useEffect(() => {
     const e = new URLSearchParams(window.location.search).get("error");
     if (e) setError(e);
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref && !referralTouched.current) setReferralCode(ref.slice(0, 128));
     const requested = safeInvestorInvitePath(
       new URLSearchParams(window.location.search).get("next"),
       locale,
@@ -71,14 +75,12 @@ export default function SignupForm() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, email, password, rollonCode }),
+        body: JSON.stringify({ firstName, lastName, email, password, rollonCode, referralCode }),
       });
       const json = await res.json();
       if (!res.ok) {
         throw new Error(
-          resolveAuthError(json.code, json.error || tErr("generic"), (k) =>
-            tErr(k),
-          ),
+          [`HTTP ${res.status}`, resolveAuthError(json.code, json.error || tErr("generic"), (k) => tErr(k)), json.code, json.requestId].filter(Boolean).join("\n"),
         );
       }
       router.push(next);
@@ -143,6 +145,11 @@ export default function SignupForm() {
           autoComplete="off"
         />
         <p className="mt-2 text-xs text-dark/60">{t("rollonCodeHint")}</p>
+      </div>
+
+      <div className="mt-5">
+        <AuthInput label={t("referralCode")} name="referralCode" value={referralCode} onChange={value => { referralTouched.current = true; setReferralCode(value); }} autoComplete="off" />
+        <p className="mt-2 text-xs leading-5 text-dark/60">{t("referralHint")}</p>
       </div>
 
       {mode === "email" ? (
