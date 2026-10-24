@@ -37,6 +37,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
       },
     ],
-    sitemap: "https://rollgrp.com/sitemap.xml",
+    sitemap: "https://www.rollgrp.com/sitemap.xml",
   };
 }

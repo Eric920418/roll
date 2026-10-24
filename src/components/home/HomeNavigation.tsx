@@ -5,11 +5,12 @@ import Link from "next/link";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import type { Locale } from "@/i18n/routing";
-import { pathForLocale } from "@/lib/routes";
+import { SERVICE_SLUGS, pathForLocale } from "@/lib/routes";
 import styles from "./home.module.css";
 
-export default function HomeNavigation({ locale, current = "home" }: { locale: Locale; current?: "home" | "approach" | "cases" | "taiwan" | "about" }) {
+export default function HomeNavigation({ locale, current = "home" }: { locale: Locale; current?: "home" | "approach" | "cases" | "taiwan" | "about" | "services" | "insights" }) {
   const t = useTranslations("HomeV10.nav");
+  const services = useTranslations("HomeV10.serviceMenu");
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const links = [
@@ -21,6 +22,23 @@ export default function HomeNavigation({ locale, current = "home" }: { locale: L
   ] as const;
 
   const pagePath = current === "home" ? "/" : `/${current}`;
+  const serviceMenu = (
+    <details className={styles.servicesMenu} onKeyDown={(event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.open = false;
+        event.currentTarget.querySelector("summary")?.focus();
+      }
+    }}>
+      <summary aria-current={current === "services" ? "page" : undefined}>{t("services")}</summary>
+      <div className={styles.servicesDropdown}>
+        <Link href={pathForLocale("/services", locale)} onClick={() => setOpen(false)}>{services("all")}</Link>
+        {SERVICE_SLUGS.map((slug) => <Link key={slug} href={pathForLocale(`/services/${slug}`, locale)} onClick={() => setOpen(false)}>{services(slug)}</Link>)}
+        <Link href={pathForLocale("/esg", locale)} onClick={() => setOpen(false)}>{services("esg")}</Link>
+      </div>
+    </details>
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -46,6 +64,7 @@ export default function HomeNavigation({ locale, current = "home" }: { locale: L
               {t(key)}
             </Link>
           ))}
+          {serviceMenu}
           <Link href={pathForLocale("/product", locale)}>NOVA AI</Link>
           <a href="#contact" className={`${styles.button} ${styles.navBook}`}>{t("book")}</a>
         </nav>
@@ -54,9 +73,10 @@ export default function HomeNavigation({ locale, current = "home" }: { locale: L
         </button>
         {open && (
           <nav id="home-mobile-nav" className={styles.mobileNav} aria-label={t("label")}>
-            {links.map(({ key, href }) => (
+              {links.map(({ key, href }) => (
               <Link key={key} href={href} aria-current={key === current ? "page" : undefined} onClick={() => setOpen(false)}>{t(key)}</Link>
             ))}
+            {serviceMenu}
             <Link href={pathForLocale("/product", locale)} onClick={() => setOpen(false)}>NOVA AI</Link>
             <a href="#contact" onClick={() => setOpen(false)}>{t("book")}</a>
             <div className={styles.mobileLanguages}>

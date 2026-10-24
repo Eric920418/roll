@@ -1,7 +1,7 @@
 {
   "Metadata": {
-    "title": "NOVA AI: Startup Operating Partner",
-    "description": "ROLL ON. combines NOVA software, strategic guidance, go-to-market execution, market access, and a founder ecosystem to help companies enter Taiwan and scale across Asia.",
+    "title": "ROLL ON. | Taiwan Market Entry & Sales Partner for Foreign Companies",
+    "description": "ROLL ON. helps foreign companies enter Taiwan and grow across Asia through market entry strategy, sales execution, local partnerships, and hands-on support.",
     "h1": "ROLL ON. — Taiwan & Asia Expansion Partner for Foreign Companies"
   },
   "Nav": {
@@ -203,7 +203,7 @@
     }
   },
   "Product": {
-    "metaTitle": "NOVA | Your Taiwan & Asia Market-Entry Platform",
+    "metaTitle": "NOVA AI: Startup Operating Partner",
     "metaDescription": "NOVA combines software, strategic guidance, go-to-market execution, market access, and a real founder ecosystem to turn Taiwan and Asia expansion into clear action.",
     "nav": {
       "byline": "by ROLL ON",
@@ -1693,7 +1693,35 @@
     }
   },
   "HomeV10": {
+    "meta": {
+      "title": "ROLL ON. | Taiwan Market Entry & Sales Partner for Foreign Companies",
+      "description": "ROLL ON. helps foreign companies enter Taiwan and grow across Asia through market entry strategy, sales execution, local partnerships, and hands-on support."
+    },
+    "indexes": {
+      "services": {
+        "title": "Taiwan Market Entry Services | ROLL ON.",
+        "heading": "Services for entering Taiwan.",
+        "description": "Explore six services for foreign companies, from market entry strategy and company setup to sales channels, fundraising, and investor access."
+      },
+      "insights": {
+        "title": "Taiwan Market Entry Guides & Insights | ROLL ON.",
+        "heading": "Guides for your next market.",
+        "description": "Practical guides for foreign companies entering Taiwan, setting up a local company, and expanding across Asia."
+      },
+      "read": "Read more →"
+    },
+    "serviceMenu": {
+      "all": "All services",
+      "market-entry": "Market entry",
+      "fundraising": "Fundraising",
+      "marketing": "Marketing",
+      "legal": "Legal & compliance",
+      "sales-channel": "Sales channels",
+      "investor-access": "Investor access",
+      "esg": "ESG"
+    },
     "nav": {
+      "services": "Services",
       "home": "Home",
       "approach": "Approach",
       "cases": "Case studies",
@@ -1705,6 +1733,7 @@
       "label": "Main navigation"
     },
     "hero": {
+      "subtitle": "Taiwan market entry & sales execution for foreign companies.",
       "eyebrow": "FROM VISIONS TO BIG IMPACTS",
       "title": "We are here to\nchange the\ngame.",
       "description": "Roll On is a consulting and execution firm. We take brands from vision to big impact through sales in Taiwan and across Asia.",

@@ -1,5 +1,13 @@
 # ROLL ON. 企業官網
 
+## SEO P0／P1 修正（2026-10-25）
+
+依使用者授權核對 PDF 後修正並驗證正式發布。使用從 origin/main 建立的獨立 worktree，未納入主工作區未提交的會員、推薦與付款修改。統一正式網址為 https://www.rollgrp.com，沿用既有網域方向；裸網域改永久 301 並保留各頁路徑與參數。首頁以 HomeV10.meta 獨立中英文 SEO 文案，避免舊 Metadata CMS 覆寫回 NOVA；NOVA AI 保留 /product。保留唯一品牌 H1，新增可見的市場進入／業務執行副標。新增雙語 Services、Insights 列表，直接使用既有 MDX 標題與摘要，Services 選單含六項服務及 ESG，頁尾指南標題連列表。
+
+Sitemap 補齊雙語公開頁與 hreflang；MDX lastmod 採各語系 frontmatter.updatedAt，不再使用部署時間。首頁與新列表採本次實際內容更新日；缺乏可信頁別 CMS 時間的其他靜態頁省略選填 lastmod，避免捏造。Google 不採用 meta keywords，沿用既有欄位，不投入額外維護。未新增產業文章、遷移網域、修改資料庫或提交正式表單。驗收：`pnpm test` 240 項（228 通過、12 項隔離 DB 測試略過）、`pnpm exec tsc --noEmit`、`pnpm build`、`git diff --check` 通過；Lint 0 errors／14 個既有 warnings。新增 SEO 測試覆蓋 50 個 sitemap URL、雙語 hreflang、MDX 日期、首頁 metadata／OG 參數、列表內容與語系。50 項本機 HTTP 檢查確認頁面 200、canonical／hreflang 與 www 一致；主首頁及新列表唯一 H1、雙語 390／768／1440px 共 18 組無水平溢位，桌面 Enter／Escape 服務下拉、手機服務連結與 EN 切換均正常。既有 ESG 有兩個 H1、Product 視覺 Logo 無 H1，屬非本清單要求的既有語意改善，未擅自重排。
+
+GSC 驗證 HTML 已存在，不能據此宣稱尚未串接；未取得 Search Console 帳戶報表權限。程式未找到 GA4 Measurement ID 或載入程式，未冒用 ID 或宣稱轉換事件已啟用；這兩項屬 PDF 的獨立數據追蹤設定，需帳戶資訊後驗收。P2 產業新文、網域遷移與排名追蹤不在本次 P0／P1 範圍。參考：[Google lastmod 準則](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)、[Google canonical 準則](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)、[Vercel 網域設定 API](https://vercel.com/docs/rest-api/projects/update-a-project-domain)。驗收證據 `/private/tmp/roll-seo-{tests,lint,build}.log`、`/private/tmp/roll-seo-local-smoke.json`；正式發布候選與回退部署以 Vercel 專案紀錄為準。
+
 ## Matchmaking 換照預覽與本人卡片修正（2026-10-25）
 
 修正照片選擇按鈕為 18px、檔名及標籤為 16px、至少 48px 點擊區；上傳中與圖片讀取中提供狀態，圖片失敗完整保留錯誤並可重試。照片上傳成功會刷新本人照片與媒合清單；匿名照片 URL 加上卡片版本，換照後重新抓取伺服器模糊圖，繼續走私人授權端點與 no-store。照片公開開關移到上傳區旁，未勾選會清楚解釋「No photo shared」；上傳不會擅自開啟公開照片或公開卡片。

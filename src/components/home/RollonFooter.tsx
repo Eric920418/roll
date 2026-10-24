@@ -40,7 +40,7 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
           </div>
           <div className={styles.footerResources}>
             <nav aria-label={t("footer.insights")}>
-              <h3>{t("footer.insights")}</h3>
+              <h3><Link href={pathForLocale("/insights", locale)}>{t("footer.insights")}</Link></h3>
               {INSIGHT_SLUGS.map((slug) => <Link key={slug} href={pathForLocale(`/insights/${slug}`, locale)}>{t(`footer.${slug}`)}</Link>)}
             </nav>
             {socialLinks.length > 0 && <nav aria-label={t("footer.social")}>

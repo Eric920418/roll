@@ -14,8 +14,8 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const l = locale as Locale;
-  // 標題／描述改由 CMS「文案翻譯 → Metadata」管理（後台可編）
-  const t = await getTranslations({ locale, namespace: "Metadata" });
+  // 標題／描述改由 CMS「新版官網 → HomeV10.meta」管理（後台可編）
+  const t = await getTranslations({ locale, namespace: "HomeV10.meta" });
   const title = t("title");
   const description = t("description");
   const url = absoluteUrl("", l);

@@ -1,7 +1,7 @@
 {
   "Metadata": {
-    "title": "NOVA AI: Startup Operating Partner",
-    "description": "ROLL ON. 結合 NOVA 軟體、策略指引、市場執行、資源對接與創辦人生態系，協助企業進入台灣並拓展亞洲市場。",
+    "title": "ROLL ON. 躒奧｜外商進入台灣市場顧問與業務執行",
+    "description": "ROLL ON. 躒奧協助外商進入台灣並拓展亞洲市場，提供市場進入策略、業務執行、通路開發、在地合作與落地支援。",
     "h1": "ROLL ON. — 外商進入台灣與亞洲市場的拓展夥伴"
   },
   "Nav": {
@@ -203,7 +203,7 @@
     }
   },
   "Product": {
-    "metaTitle": "NOVA｜你的台灣與亞洲市場進入平台",
+    "metaTitle": "NOVA AI: Startup Operating Partner",
     "metaDescription": "NOVA 結合軟體、策略指引、市場執行、資源對接與真實存在的創辦人生態系，將台灣與亞洲拓展轉化為清楚行動。",
     "nav": {
       "byline": "by ROLL ON",
@@ -1693,7 +1693,35 @@
     }
   },
   "HomeV10": {
+    "meta": {
+      "title": "ROLL ON. 躒奧｜外商進入台灣市場顧問與業務執行",
+      "description": "ROLL ON. 躒奧協助外商進入台灣並拓展亞洲市場，提供市場進入策略、業務執行、通路開發、在地合作與落地支援。"
+    },
+    "indexes": {
+      "services": {
+        "title": "外商進入台灣市場服務｜ROLL ON. 躒奧",
+        "heading": "外商進入台灣的完整服務。",
+        "description": "從市場進入策略、公司設立到通路開發、募資與投資人對接，探索六項協助外商在台灣落地成長的服務。"
+      },
+      "insights": {
+        "title": "台灣市場進入與外商設立指南｜ROLL ON. 躒奧",
+        "heading": "為下一個市場做好準備。",
+        "description": "探索外商進入台灣、設立公司及以台灣拓展亞洲市場的實務指南。"
+      },
+      "read": "閱讀更多 →"
+    },
+    "serviceMenu": {
+      "all": "所有服務",
+      "market-entry": "市場進入",
+      "fundraising": "募資顧問",
+      "marketing": "行銷策略",
+      "legal": "法務與合規",
+      "sales-channel": "通路開發",
+      "investor-access": "投資人對接",
+      "esg": "ESG"
+    },
     "nav": {
+      "services": "服務項目",
       "home": "首頁",
       "approach": "合作方式",
       "cases": "成功案例",
@@ -1705,6 +1733,7 @@
       "label": "主要導覽"
     },
     "hero": {
+      "subtitle": "協助外商進入台灣市場，落實業務開發與銷售執行。",
       "eyebrow": "從願景到深遠影響",
       "title": "我們為改變\n市場格局\n而來。",
       "description": "ROLL ON 結合顧問策略與實際執行，透過台灣與亞洲的業務拓展，讓品牌從願景走向實質影響力。",

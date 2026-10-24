@@ -36,6 +36,7 @@ export default async function HomeV10({ locale }: { locale: Locale }) {
             <div className={styles.heroCopy}>
               <p className={styles.eyebrow}>{t("hero.eyebrow")}</p>
               <h1 id="home-title" className={styles.heroTitle}>{t("hero.title")}</h1>
+              <p className={styles.heroSubtitle}>{t("hero.subtitle")}</p>
               <p className={styles.heroDescription}>{t("hero.description")}</p>
               <div className={styles.heroActions}>
                 <a href="#contact" className={styles.button}>{t("nav.book")}</a>

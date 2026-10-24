@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-const SITE_URL = "https://rollgrp.com";
+import { SITE_URL } from "@/lib/routes";
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og?title=${encodeURIComponent("ROLL ON.")}&subtitle=${encodeURIComponent("Taiwan & Asia Expansion Partner")}`;
 
 export const metadata: Metadata = {

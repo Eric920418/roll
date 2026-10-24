@@ -16,7 +16,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "Metadata" });
+  const t = await getTranslations({ locale, namespace: "HomeV10.meta" });
 
   const url = locale === "en" ? SITE_URL : `${SITE_URL}/${locale}`;
   const title = t("title");
@@ -109,9 +109,9 @@ export default async function LocaleLayout({ children, params }: Props) {
               "@graph": [
                 {
                   "@type": "Organization",
-                  "@id": "https://rollgrp.com/#organization",
+                  "@id": `${SITE_URL}/#organization`,
                   name: "ROLL ON. LTD",
-                  url: "https://rollgrp.com",
+                  url: SITE_URL,
                   description:
                     locale === "zh-tw"
                       ? "ROLL ON. 協助外商進入台灣與亞洲市場，打破法規與文化的隔閡，讓台灣成為外商進入亞洲的首選橋樑。"
@@ -135,10 +135,10 @@ export default async function LocaleLayout({ children, params }: Props) {
                 },
                 {
                   "@type": "ProfessionalService",
-                  "@id": "https://rollgrp.com/#service",
+                  "@id": `${SITE_URL}/#service`,
                   name: "ROLL ON.",
-                  provider: { "@id": "https://rollgrp.com/#organization" },
-                  url: "https://rollgrp.com",
+                  provider: { "@id": `${SITE_URL}/#organization` },
+                  url: SITE_URL,
                   serviceType: [
                     "Market Entry Consulting",
                     "Fundraising Advisory",
@@ -157,11 +157,11 @@ export default async function LocaleLayout({ children, params }: Props) {
                 },
                 {
                   "@type": "WebSite",
-                  "@id": "https://rollgrp.com/#website",
-                  url: "https://rollgrp.com",
+                  "@id": `${SITE_URL}/#website`,
+                  url: SITE_URL,
                   name: "ROLL ON Taiwan",
                   alternateName: "ROLL ON.",
-                  publisher: { "@id": "https://rollgrp.com/#organization" },
+                  publisher: { "@id": `${SITE_URL}/#organization` },
                   inLanguage: ["en", "zh-TW"],
                   // Speakable — 提升 Google Assistant / Siri 語音播報引用機率
                   speakable: {
