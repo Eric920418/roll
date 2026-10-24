@@ -55,17 +55,17 @@ export async function writeMyCard(userId: string, input: CardWrite) {
 }
 export async function listCards(userId: string, category: string | null, page: number) {
   const [rows, viewer] = await Promise.all([
-    prisma.matchmakingProfile.findMany({ where: { visible: true, userId: { not: userId }, ...(category && category !== "all" ? { categories: { has: category } } : {}) }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }], skip: (page - 1) * 24, take: 25, include: { user: { select: { profile: { select: sourceSelect } } } } }),
+    prisma.matchmakingProfile.findMany({ where: { visible: true, ...(category && category !== "all" ? { categories: { has: category } } : {}) }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }], skip: (page - 1) * 24, take: 25, include: { user: { select: { profile: { select: sourceSelect } } } } }),
     prisma.onboardingProfile.findUnique({ where: { userId }, select: { industry: true, targetMarkets: true } }),
   ]);
   const selected = rows.slice(0, 24), stats = await statsFor(selected.map(row => row.userId));
-  return { cards: selected.map(row => publicCard({ ...cardDraftSchema.parse({ role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended }, row.user.profile, stats.get(row.userId)!, viewer)), hasMore: rows.length > 24 };
+  return { cards: selected.map(row => publicCard({ ...cardDraftSchema.parse({ role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended }, row.user.profile, stats.get(row.userId)!, viewer)), hasMore: rows.length > 24 };
 }
 export async function getMemberCard(userId: string, id: string) {
   const row = await prisma.matchmakingProfile.findFirst({ where: { id, visible: true }, include: { user: { select: { profile: { select: sourceSelect } } } } });
   if (!row) throw new MemberError("找不到可見卡片 / Visible card not found", 404);
   const [stats, viewer] = await Promise.all([statsFor([row.userId]), prisma.onboardingProfile.findUnique({ where: { userId }, select: { industry: true, targetMarkets: true } })]);
-  return publicCard({ ...cardDraftSchema.parse({ role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended }, row.user.profile, stats.get(row.userId)!, viewer);
+  return publicCard({ ...cardDraftSchema.parse({ role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended }, row.user.profile, stats.get(row.userId)!, viewer);
 }
 export async function recordActivity(userId: string, now = new Date()) {
   await prisma.matchmakingProfile.updateMany({ where: { userId, OR: [{ lastActiveAt: null }, { lastActiveAt: { lte: new Date(now.getTime() - 86400000) } }] }, data: { lastActiveAt: now } });

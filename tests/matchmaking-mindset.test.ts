@@ -33,11 +33,14 @@ test("Card writes require explicit consent and reject client-controlled verifica
   assert.equal(cards.cardDraftSchema.safeParse({ ...draft, categories: [] }).success, false);
 });
 test("Public projection strips private identity, blob paths, hidden fields and uses only visible exact-match reasons", () => {
-  const row = { ...draft, id: "card", name: "Secret Person", org: "Secret Company", email: "secret@invalid.test", originalPhoto: "private/original", blurredPhoto: "private/blurred", verified: true, recommended: true, lastActiveAt: new Date(), visibleFields: ["industry", "photo"] as cards.CardDraft["visibleFields"] };
+  const row = { ...draft, id: "card", revision: 1, name: "Secret Person", org: "Secret Company", email: "secret@invalid.test", originalPhoto: "private/original", blurredPhoto: "private/blurred", verified: true, recommended: true, lastActiveAt: new Date(), visibleFields: ["industry", "photo"] as cards.CardDraft["visibleFields"] };
   const result = cards.publicCard(row, { oneLinePitch: "Private pitch", icp: "Private ICP", targetMarkets: ["Taiwan"] }, { interviews: 3, milestones: 1, payingCustomers: 4 }, { industry: " SaaS ", targetMarkets: ["Taiwan"] });
   assert.deepEqual(result.reasons, ["industry"]); assert.equal(result.verified, false);
   assert.deepEqual(Object.keys(result).sort(), ["activity", "categories", "id", "industry", "photo", "reasons", "recommended", "role", "verified"].sort());
-  assert.equal(result.photo, "/api/matchmaking/members/card/photo");
+  assert.equal(result.photo, "/api/matchmaking/members/card/photo?v=1");
+  const replaced = cards.publicCard({ ...row, revision: 2 }, null, { interviews: 0, milestones: 0, payingCustomers: null }, null);
+  assert.equal(replaced.photo, "/api/matchmaking/members/card/photo?v=2");
+  assert.notEqual(replaced.photo, result.photo);
   assert.doesNotMatch(JSON.stringify(result), /Secret|private\/|secret@|Private/);
   assert.deepEqual(cards.overlapReasons({ industry: "HealthTech", targetMarkets: ["ＴＡＩＷＡＮ"] }, { industry: "Health", markets: [" taiwan "] }), ["market"]);
 });
@@ -98,7 +101,7 @@ test("Matchmaking and Mindset integration in isolated PostgreSQL", { skip: !conn
       assert.equal((await me.PATCH(request("matchmaking/me", { action: "publish", revision: 0, requestId: randomUUID(), draft, confirmed: true }))).status, 403);
       const input = { action: "save" as const, revision: 0, requestId: randomUUID(), draft };
       const result = await service.writeMyCard(user.id, input); cardId = result.id!;
-      assert.equal(result.visible, false); assert.equal((await service.listCards(other.id, "all", 1)).cards.some(card => card.id === cardId), false);
+      assert.equal(result.visible, false); assert.equal((await service.listCards(user.id, "all", 1)).cards.some(card => card.id === cardId), false); assert.equal((await service.listCards(other.id, "all", 1)).cards.some(card => card.id === cardId), false);
       assert.equal((await service.writeMyCard(user.id, input)).revision, 1);
       await assert.rejects(service.writeMyCard(user.id, { ...input, draft: { ...draft, slogan: "Changed replay" } }), /changed/);
       state.limited = true; assert.equal((await me.GET()).status, 429); state.limited = false;
@@ -181,14 +184,17 @@ test("Matchmaking and Mindset integration in isolated PostgreSQL", { skip: !conn
       assert.equal(oversized.headers.get("content-length"), null); assert.equal((await photoRoute.POST(oversized)).status, 413);
       assert.equal((await me.PATCH(new Request("https://example.test/api/matchmaking/me", { method: "PATCH", headers: { Origin: "https://example.test", "Content-Type": "application/json" }, body: "{" }))).status, 400);
     });
-    await t.test("Category pagination and activity ordering stay stable and never include hidden or self cards", async () => {
+    await t.test("Category pagination includes the published owner, excludes hidden cards and preserves stable activity ordering", async () => {
+      const own = await service.getMyCard(user.id);
+      await service.writeMyCard(user.id, { action: "save", revision: own.revision, requestId: randomUUID(), draft: { ...own.draft, categories: ["first-customers"] } });
       const newIds: string[] = [];
       for (let i = 0; i < 26; i++) {
         const member = await createUser(); newIds.push(member.id);
         await db.matchmakingProfile.create({ data: { ...draft, userId: member.id, role: "mentor", categories: ["first-customers"], visible: true, optedInAt: new Date(), lastActiveAt: i === 25 ? null : new Date(Date.UTC(2026, 9, i + 1)) } });
       }
       const first = await service.listCards(user.id, "first-customers", 1), second = await service.listCards(user.id, "first-customers", 2);
-      const expected = await db.matchmakingProfile.findMany({ where: { visible: true, userId: { not: user.id }, categories: { has: "first-customers" } }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }] });
+      const expected = await db.matchmakingProfile.findMany({ where: { visible: true, categories: { has: "first-customers" } }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }] });
+      assert([...first.cards, ...second.cards].some(card => card.id === cardId));
       assert.equal(first.cards.length, 24); assert.equal(second.cards.length, expected.length - 24); assert.equal(first.hasMore, true); assert.equal(second.hasMore, false);
       assert.equal(new Set([...first.cards, ...second.cards].map(c => c.id)).size, expected.length);
       assert.equal(expected.filter(c => newIds.includes(c.userId)).length, 26);

@@ -46,7 +46,7 @@ export type PublicCard = {
   reasons: ReturnType<typeof overlapReasons>;
 };
 // Build the whitelist explicitly: never spread a database member into a client response.
-export function publicCard(row: CardDraft & { id: string; blurredPhoto?: string | null; lastActiveAt: Date | null; verified: boolean; recommended: boolean }, source: CardSources, stats: CardStats, viewer: Parameters<typeof overlapReasons>[0], now = new Date()): PublicCard {
+export function publicCard(row: CardDraft & { id: string; revision?: number; blurredPhoto?: string | null; lastActiveAt: Date | null; verified: boolean; recommended: boolean }, source: CardSources, stats: CardStats, viewer: Parameters<typeof overlapReasons>[0], now = new Date()): PublicCard {
   const fields = new Set(row.visibleFields);
   const card: PublicCard = { id: row.id, role: row.role, categories: row.categories, activity: activityGroup(row.lastActiveAt, now), verified: row.verified && ["investor", "buyer"].includes(row.role), recommended: row.recommended, reasons: [] };
   for (const key of ["country", "industry", "slogan", "offers", "looksFor"] as const) if (fields.has(key)) card[key] = row[key];
@@ -54,7 +54,7 @@ export function publicCard(row: CardDraft & { id: string; blurredPhoto?: string 
   if (fields.has("icp") && source?.icp) card.icp = source.icp;
   if (fields.has("markets") && source) card.markets = source.targetMarkets;
   if (fields.has("stats")) card.stats = stats;
-  if (fields.has("photo") && row.blurredPhoto) card.photo = `/api/matchmaking/members/${row.id}/photo`;
+  if (fields.has("photo") && row.blurredPhoto) card.photo = `/api/matchmaking/members/${row.id}/photo?v=${row.revision ?? 0}`;
   card.reasons = overlapReasons(viewer, card);
   return card;
 }

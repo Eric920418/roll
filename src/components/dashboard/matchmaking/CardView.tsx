@@ -5,8 +5,10 @@ import { useTranslations } from "next-intl";
 import type { PublicCard } from "@/lib/matchmaking/schema";
 
 export function PrivatePhoto({ url, alt }: { url: string; alt: string }) {
-  const [result, setResult] = useState({ url: "", src: "", error: "" });
-  const { src, error } = result.url === url ? result : { src: "", error: "" };
+  const t = useTranslations("Matchmaking");
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState({ url: "", attempt: -1, src: "", error: "" });
+  const { src, error } = result.url === url && result.attempt === attempt ? result : { src: "", error: "" };
   useEffect(() => {
     const abort = new AbortController(); let objectUrl = "";
     void (async () => {
@@ -14,14 +16,15 @@ export function PrivatePhoto({ url, alt }: { url: string; alt: string }) {
         const response = await fetch(url, { cache: "no-store", signal: abort.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}\n${await response.text()}`);
         objectUrl = URL.createObjectURL(await response.blob());
-        if (!abort.signal.aborted) setResult({ url, src: objectUrl, error: "" }); else URL.revokeObjectURL(objectUrl);
-      } catch (cause) { if (!abort.signal.aborted) setResult({ url, src: "", error: cause instanceof Error ? cause.message : String(cause) }); }
+        if (!abort.signal.aborted) setResult({ url, attempt, src: objectUrl, error: "" }); else URL.revokeObjectURL(objectUrl);
+      } catch (cause) { if (!abort.signal.aborted) setResult({ url, attempt, src: "", error: cause instanceof Error ? cause.message : String(cause) }); }
     })();
     return () => { abort.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [url]);
+  }, [url, attempt]);
   return <div className="relative aspect-square overflow-hidden rounded-xl bg-[#e9e9e6]">
     {src && <Image src={src} alt={alt} width={480} height={480} unoptimized className="h-full w-full object-cover object-center" />}
-    {error && <p role="alert" className="absolute inset-0 overflow-auto whitespace-pre-wrap break-words p-4 text-xs text-red-800">{error}</p>}
+    {!src && !error && <p role="status" className="absolute inset-0 flex items-center justify-center p-4 text-sm">{t("loadingPhoto")}</p>}
+    {error && <div role="alert" className="absolute inset-0 overflow-auto whitespace-pre-wrap break-words p-4 text-xs text-red-800"><p>{error}</p><button type="button" className="mt-3 min-h-11 rounded-lg border border-dark/20 bg-white px-4 text-sm" onClick={() => setAttempt(value => value + 1)}>{t("retry")}</button></div>}
   </div>;
 }
 export default function CardView({ card, detail = false }: { card: PublicCard; detail?: boolean }) {
