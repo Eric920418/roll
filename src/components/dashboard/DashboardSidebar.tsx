@@ -20,7 +20,8 @@ type NavKey =
   | "account"
   | "investors"
   | "feedback"
-  | "community"
+  | "matchmaking"
+  | "mindset"
   | "rewards";
 
 // 各 nav 項對應的 path（未加 locale 前綴）。新增頁面時在此擴充即可。
@@ -30,7 +31,8 @@ const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "profile", path: "/dashboard/profile" },
   { key: "agenda", path: "/dashboard/agenda" },
   { key: "insights", path: "/dashboard/insights" },
-  { key: "community", path: "/dashboard/community", soon: true },
+  { key: "matchmaking", path: "/dashboard/matchmaking" },
+  { key: "mindset", path: "/dashboard/mindset" },
   { key: "investors", path: "/dashboard/investors" },
   { key: "rewards", path: "/dashboard/rewards" },
   { key: "account", path: "/dashboard/account" },
@@ -76,10 +78,10 @@ export default function DashboardSidebar({
       <div>
         <Link
           href={pathForLocale("/dashboard", locale)}
-          aria-label="NOVA"
+          aria-label="NOVA AI"
           className="inline-flex"
         >
-          <span className="text-[26px] font-semibold leading-none tracking-[0.04em]">NOVA</span>
+          <span className="text-[26px] font-semibold leading-none tracking-[0.04em]">NOVA AI</span>
         </Link>
         <Link
           href={pathForLocale("/", locale)}

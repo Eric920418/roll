@@ -187,6 +187,8 @@ model User {
   updatedAt DateTime @updatedAt
 
   profile           OnboardingProfile?
+  matchmakingProfile MatchmakingProfile?
+  mindsetEntries     MindsetEntry[]
   quizSubmissions   QuizSubmission[]
   subscriptions     Subscription[]
   aiAllowance       AiAllowance?
@@ -1096,4 +1098,53 @@ model CustomerStageOutcome {
   evidence Json
   confirmedAt DateTime @default(now())
   @@id([userId, stage])
+}
+
+/// Anonymous discovery card. Private identity stays on User / OnboardingProfile.
+model MatchmakingProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role String
+  categories String[]
+  country String
+  industry String
+  slogan String
+  offers String
+  looksFor String
+  visibleFields String[]
+  visible Boolean @default(false)
+  optedInAt DateTime?
+  revision Int @default(0)
+  lastRequestId String?
+  lastRequestHash String?
+  lastActiveAt DateTime?
+  originalPhoto String?
+  blurredPhoto String?
+  verified Boolean @default(false)
+  recommended Boolean @default(false)
+  reviewedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([visible, lastActiveAt, id])
+}
+
+/// Private reflections, never included in investor or matchmaking projections.
+model MindsetEntry {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blocker String
+  controllable String
+  nextAction String
+  revision Int @default(1)
+  createRequestId String
+  createRequestHash String
+  lastRequestId String
+  lastRequestHash String
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, createRequestId])
+  @@index([userId, deletedAt, createdAt, id])
 }

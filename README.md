@@ -1,5 +1,34 @@
 # ROLL ON. 企業官網
 
+## Matchmaking 與 Mindset（2026-10-25）
+
+正式 DB 新增 SQL 已套用：交易內以 SHARE lock 與前後內容指紋／欄位比對確認原有 49 張表未改變，僅新增兩張空表；Prisma schema 比對無差異。SQL SHA-256：`7dd413331e5bfacebe49e83461bfb40f02f94b0f48dbba2ea7656ed9b05231f2`。驗證紀錄在受保護的 `/private/tmp/roll-release-db-verification.json`。私人 Blob 真實寫入／授權讀取 200、匿名讀取 403，內容逐位元一致，僅刪除自行建立的驗收檔案。
+
+正式發布進行中（2026-10-25）：已核對正式基底為 `16b2604`，發布工作樹獨立於目前未提交工作。只帶入 Matchmaking／Mindset 與訪談辨識相容修正，不夾帶前一批逐題引導介面；發布版本的 313 項隔離測試全數通過、Lint 零錯誤／14 個既有警告。已建立新加坡 Private Blob `roll-matchmaking-photos`（`store_4shuuLOs6TK60mul`），只連結此專案 Production，環境變數為 `MATCHMAKING_BLOB_READ_WRITE_TOKEN`，未更換既有公開 CMS 或 Investor Blob。
+
+Community 改為可使用的 Matchmaking，另新增所有登入會員可用的私人三題 Mindset 反思；側欄品牌文字為 NOVA AI。會員入口 `/dashboard/matchmaking`、`/dashboard/mindset`（繁中加 `/zh-tw`），管理員審核 `/admin/matchmaking`。首輪建立真實會員供給，不包含聊天、介紹請求、token、購買、AI 教練、代建會員或自動公開既有會員；不更動 Rewards、AI 額度或既有 Investor Portal。保留原有未提交的訪談／ICP 修改，沒有新增套件。
+
+媒合開放創辦人、mentor、投資人、夥伴、買家，各會員一張卡片；分類為 For you、Mentorship、Collaboration、Investors、Partners、First customers。完整資料可先存私人草稿，必須預覽、選擇公開欄位並另外勾選同意才上線。創辦人公開前需三家不同公司的有效 discover／Prospect 訪談：使用既有 insight schema 與公司名稱正規化，跨工作區去重；其他角色需完整資料與本人同意。修改公開卡片會立即更新已公開內容，再公開時重新檢查門檻；隱藏立即拒絕他人卡片／照片讀取。
+
+匿名 DTO 以白名單逐欄建構，不提供姓名、公司名稱、Email、LinkedIn、Blob 路徑、完整 deck、訪談原文或 Mindset。自行填寫的介紹／可提供／尋找協助在此編輯；已勾選的正式公司介紹、ICP、目標市場隨 Profile 更新，未勾選欄位始終隱藏。獨特介紹仍可能讓他人推知身分，不承諾完全匿名。平台紀錄與會員自述明確標示，付費客戶來自既有 first_sales 回報，不冒稱獨立驗證。投資人／買家驗證與 Roll On 推薦只由管理員設定；換角色清除原角色驗證，不自動發放 Nova Verified。
+
+排序依媒合頁實際活躍時間，7／30 天分組，組內最近活躍優先、ID 穩定排序；同會員每 24 小時最多更新一次，不冒稱整站登入紀錄。不活躍卡片僅淡化照片區至 55%，文字保留可讀對比。推薦理由只用可公開欄位的正規化產業／市場完全相符，不做文字推測或顯示百分比。
+
+Mindset 固定三題：目前卡點、可控制的事、下一個小行動。至少一題、每題最多 2,000 字，審閱後另按確認才儲存；可分頁回顧、修改、刪除。僅本人可存取，不進 AI、媒合、Investor Portal 或 roadmap。UUID／雜湊防止回應遺失後重試重複建立；版本衝突保留輸入、顯示最新內容，比對後仍需另按確認。刪除移除文字並保留最小重送墓碑；不把敏感草稿寫進 localStorage。
+
+API：`/api/matchmaking` 分類／分頁、`/me` 草稿／公開／隱藏、`/activity` 活躍、`/members/[id]` 匿名詳情；`/api/mindset` 與 `/[id]` 提供本人反思 CRUD；`/api/admin/matchmaking` 提供管理員標章審核。各寫入 route 在入口直接檢查同源，再執行登入、歸屬、限流及驗證；回應不共用快取，前端保留完整可公開錯誤、HTTP 狀態與追蹤碼，不外洩堆疊或憑證。
+
+照片需獨立 Private Blob store 的 `MATCHMAKING_BLOB_READ_WRITE_TOKEN`，不能使用公開 CMS 的 token；未配置會明示錯誤，仍可無照片上線。接受 JPEG／PNG／WebP，上限 3 MiB、2,000 萬像素，multipart 在解析前逐塊限量，無 Content-Length 也不能繞過。沿用 Sharp 旋轉、去除 metadata，先縮小再模糊；原圖僅本人可讀，其他會員僅能經授權端點讀取可見卡片已選擇公開的模糊圖。上傳失敗／版本衝突保留舊照片；失敗造成的未關聯檔案留在私人空間，不自動刪除其他資產。
+
+資料庫新增 `MatchmakingProfile`／`MindsetEntry`，單次純新增腳本為 `prisma/matchmaking-mindset.sql`。上線先比對 schema 並在隔離 DB 驗證，再於指定環境執行 `pnpm exec prisma db execute --file prisma/matchmaking-mindset.sql`；腳本重跑應停止，不假設現有結構正確。禁止 reset、accept-data-loss、覆寫正式會員或自動 seed。此輪僅在本機 loopback、`roll_rewards_qa` 開頭的隔離庫驗收，未套用正式 DB、push 或部署。
+
+驗證：`tests/matchmaking-mindset.test.ts` 新增 15 項白名單、去重、同意、角色審核、照片、反思、分頁／排序及併發測試；完整測試 318 項全數通過、零略過。沿用 `ROLL_REWARDS_TEST_DATABASE_URL`，測試只清理自行建立帳號，不假設庫內沒有其他合成資料。純新增 SQL 已在原 schema 的另一個隔離庫成功套用，Prisma 比對完整 schema 無差異。TypeScript、建置與差異檢查通過；Lint 0 errors／14 個既有 warnings。
+
+瀏覽器以實際產品與隔離帳號驗收雙語 × 390／1440px，無水平溢位或頁面執行錯誤；另驗證鍵盤預覽、確認前零寫入、502 已落庫但回應遺失後沿用 UUID 重試、409 比對後另按確認、公開／隱藏、匿名手機個人頁、跨會員反思隔離、未登入拒絕與管理員實際審核儲存。證據：`/private/tmp/roll-matchmaking-browser-results.json`；截圖位於 `/Users/eric/.codex/visualizations/2026/10/24/01a16c9d-99d7-7d70-b04b-0325b07f748e/`，包含 `matchmaking-en-1440.png`、`mindset-zh-tw-390.png`、`matchmaking-zh-detail-mobile.png`、`matchmaking-admin-review.png`。照片使用真實 Sharp 與私人 Blob 記憶體替身測試，未呼叫正式 Blob、AI 或寄信；私人 Blob 真實上傳與正式資料庫端到端驗收仍待部署環境配置。
+
+驗收完成後已停止本機 QA 伺服器，僅依 fixture 主鍵清理五個自行建立的瀏覽器合成帳號；保留隔離資料庫結構與截圖，不更動其他會員資料。測試／Lint／TypeScript／建置紀錄分別在 `/private/tmp/roll-matchmaking-all-tests.log`、`roll-matchmaking-lint.log`、`roll-matchmaking-tsc.log`、`roll-matchmaking-build.log`。
+
+
 ## NOVA AI 入口與聯絡資訊調整（2026-10-21）
 
 五頁官網桌面／手機導覽及頁尾的 NOVA 入口改為「NOVA AI」。公開聯絡區移除手機，新版與既有頁尾都不渲染號碼；既有頁尾也不再將 CMS 手機欄位傳給瀏覽器。同步移除共用 LocalBusiness／FAQ 結構化資料及 `llms.txt` 的手機號碼，保留 CMS 原始資料，不寫入資料庫。預約聯絡區新增使用者提供的「Free 30-min call — see if Asia is the right market for you.」，繁中同步翻譯，使用 13px、`#8a7a7c`、上距 12px；文案沿用 HomeV10 CMS 編輯。提供的 HTML 僅有說明文字，未包含預約日曆或網址，繼續使用現有聯絡表單。沿用正式發布授權更新正式站。
