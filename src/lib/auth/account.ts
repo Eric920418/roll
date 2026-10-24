@@ -29,6 +29,7 @@ export interface Account {
   playbookReads: Record<string, boolean>;
   /** 帳上儲存的方案（未套寬限期）；要判權限請用 gate.ts 的 getEffectivePlan */
   plan: PlanKey;
+  rollonMember?: boolean;
   /** 全站免費測試授權；不覆寫會員原本的付費／試用方案。 */
   betaAccess?: boolean;
   subscriptionStatus: string | null;
@@ -103,6 +104,7 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     playbookReads:
       (user.playbookReads as Record<string, boolean> | null) ?? {},
     plan: toPlanKey(user.plan),
+    rollonMember: user.rollonMember,
     betaAccess,
     subscriptionStatus: user.subscriptionStatus,
     paypalSubscriptionId: user.paypalSubscriptionId,

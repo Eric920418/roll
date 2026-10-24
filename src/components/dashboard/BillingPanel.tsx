@@ -38,6 +38,7 @@ export default function BillingPanel({
   currentInterval,
   betaAccess = false,
   founderUntil,
+  rollonMember = false,
 }: {
   locale: Locale;
   currentPlan: string;
@@ -51,6 +52,7 @@ export default function BillingPanel({
   currentInterval?: BillingInterval;
   betaAccess?: boolean;
   founderUntil?: string;
+  rollonMember?: boolean;
 }) {
   const t = useTranslations("Billing");
   const tPlans = useTranslations("Dashboard.plans");
@@ -223,7 +225,7 @@ export default function BillingPanel({
       )}
 
       {/* 方案選擇 */}
-      {!betaAccess && !founderUntil && <div>
+      {!betaAccess && !founderUntil && !rollonMember && <div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
             {t("choosePlan")}

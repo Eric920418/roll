@@ -9,6 +9,7 @@ import {
 import { hashPassword } from "@/lib/auth/password";
 import { checkRateLimit, clientIp, MINUTE_MS } from "@/lib/rate-limit";
 import { ok, failFromError, rateLimited } from "@/lib/api";
+import { rollonSignupData, INVALID_ROLLON_CODE } from "@/lib/auth/rollon";
 import { newDiscoveryTrial } from "@/lib/discovery/policy";
 
 // 帶穩定錯誤碼的失敗回應（前端依 code 顯示對應語系訊息，fallback 顯示 error 原文）
@@ -59,6 +60,13 @@ export async function POST(req: NextRequest) {
     const rl = await checkRateLimit(`signup:${clientIp(req)}`, 10, 15 * MINUTE_MS);
     if (!rl.ok) return rateLimited(rl.retryAfterMs);
 
+    let membership;
+    try {
+      membership = rollonSignupData(body.rollonCode);
+    } catch {
+      return bad("invalidRollonCode", INVALID_ROLLON_CODE, 400);
+    }
+
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return bad(
@@ -76,7 +84,7 @@ export async function POST(req: NextRequest) {
         firstName: firstName || null,
         lastName: lastName || null,
         onboardingStep: 2, // 帳號建立完成 → 進入 Step 2（公司資訊）
-        ...newDiscoveryTrial(),
+        ...(membership ?? newDiscoveryTrial()),
       },
     });
 

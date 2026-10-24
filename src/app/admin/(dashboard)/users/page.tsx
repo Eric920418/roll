@@ -46,6 +46,7 @@ export default async function UsersPage() {
       googleId: true,
       emailVerified: true,
       plan: true,
+      rollonMember: true,
       subscriptionStatus: true,
       paypalSubscriptionId: true,
       currentPeriodEnd: true,
@@ -66,10 +67,11 @@ export default async function UsersPage() {
   const rows: UserRow[] = users.map((u) => {
     const account = { ...u, plan: toPlanKey(u.plan), trialPlan: u.trialPlan ? toPlanKey(u.trialPlan) : null, betaAccess };
     const grants: string[] = [];
-    if (betaAccess && !isDiscoveryMember(account)) grants.push("免費測試授權（非付費訂閱）");
+    if (u.rollonMember) grants.push("rollon會員（永久 Pro，無需付費）");
+    if (betaAccess && !u.rollonMember && !isDiscoveryMember(account)) grants.push("免費測試授權（非付費訂閱）");
     if (hasActiveTrial(account, now)) grants.push(`${u.trialPlan === "enterprise" ? "Enterprise" : u.trialPlan === "business" ? "Business" : "Pro"} 限時試用`);
     if (u.founderStartedAt && u.founderEndsAt && u.founderStartedAt <= now && u.founderEndsAt > now) grants.push("創始會員年費");
-    const subscriptionPlan = getEffectivePlan({ ...account, betaAccess: false, trialPlan: null, founderStartedAt: null, founderEndsAt: null }, now);
+    const subscriptionPlan = getEffectivePlan({ ...account, betaAccess: false, rollonMember: false, trialPlan: null, founderStartedAt: null, founderEndsAt: null }, now);
     if (subscriptionPlan !== "free") grants.push(u.plan === "enterprise" ? "管理員 Enterprise 授權" : u.paypalSubscriptionId ? "PayPal 訂閱" : "管理員方案授權（無 PayPal 訂閱）");
     if (isDiscoveryMember(account)) {
       if (discoveryTrialActive(account, now) && !hasActiveTrial(account, now)) grants.push("14 天／3 次訪談試用（不含完整 Pro）");

@@ -1,5 +1,20 @@
 # ROLL ON. 企業官網
 
+## rollon會員註冊碼（2026-10-25）
+
+新增單組、可重複供新會員使用的註冊兌換碼；Email 與 Google 註冊均可選填，正確碼建立 `rollonMember=true`、`plan=pro` 的帳號，會員方案頁與管理後台註記「rollon會員」。這是永久 Pro 授權，不建立 PayPal 訂閱、不偽造 ACTIVE、不依賴試用期限；付費訂閱到期或關閉全站測試不會移除會員標記。享現有 Pro 功能與每月 NOVA 額度，不等於無限 AI。既有帳號不藉登入兌換。錯碼／非字串／配置缺失會顯示錯誤並拒絕建立帳號；空白不兌換、沿用既有註冊。
+
+服務端環境變數 `ROLLON_SIGNUP_CODE_SHA256` 保存驗證碼去除頭尾空白、轉大寫後的 SHA-256 十六進位雜湊；原碼不可放進 README、Git、公開前端或 NEXT_PUBLIC 環境變數。Google 使用同源 POST 傳碼，僅存入 10 分鐘 HttpOnly OAuth cookie，callback 再驗碼，成功或失敗都清除該 cookie；不把碼放進 URL 或傳給 Google，且只授予新建帳號。兩種入口共用註冊 IP 限流。移除或替換環境雜湊可停用舊碼，已兌換資格保留。
+
+已隨機產生一組碼，僅將其雜湊加入本機已忽略的 `.env.local`；原碼私下交付。使用者已授權正式發布：以線上 `f80e356` 為基底的獨立 `codex/rollon-production` 工作樹只帶入本功能，排除其他未發布變更；正式 DB 已完成交易內比對：51 張既有表內容與原欄位均未改變，只新增 `User.rollonMember BOOLEAN NOT NULL DEFAULT false`，既有帳號升級數為 0。34 個既有環境變數完整比對未變，只新增 Production Secret `ROLLON_SIGNUP_CODE_SHA256`。保護驗證紀錄為 `/private/tmp/rollon-prod-db-verification.json`；SQL SHA-256 `986f916c91713d9848b91f4aa404ce40dfdd4b6e793d94ce41efe4e1729d5c13`。純新增 SQL 已在 loopback 隔離庫 `roll_rewards_qa_matchmaking_20261024` 成功驗證。
+
+正式 DB 已套用新增欄位腳本，請勿重跑。其他新環境上線前先在目標 DB 執行純新增欄位腳本 `pnpm exec prisma db execute --file prisma/rollon-member.sql`，再 `pnpm exec prisma generate`，配置雜湊後發布。腳本只新增 `User.rollonMember BOOLEAN NOT NULL DEFAULT false`，不更新／回填既有會員或訂閱，不執行 db push、reset、seed 或 accept-data-loss；重跑會停止。此碼可被轉傳，應私下發給指定對象；目前不包含單次使用、次數限制或後台碼管理。新增測試涵蓋驗碼、Email／Google 註冊、錯碼零寫入、既有帳號不升級、限流與永久權限，並補上管理後台標記、重複 Pro 訂閱拒絕、NOVA 額度及 Investor Portal 不誤升權測試。
+
+驗證：本機隔離 PostgreSQL 完整測試 325 項全數通過，零跳過；執行時移除外部 `ANTHROPIC_WORKSPACE_ID`，避免既有 AI 測試的固定 options 斷言受主機環境影響。TypeScript、正式建置與差異檢查通過；Lint 零錯誤、14 個既有警告。瀏覽器驗證雙語註冊欄位、Email／Google 入口的錯碼顯示與保留輸入、正確碼註冊轉入 onboarding、隔離資料庫中的 Pro／會員標記且無訂閱或試用、會員方案頁的永久 Pro 與每月 150 次額度、390px 無水平溢位。成功建立的隔離測試帳號驗證後清理；未使用真實會員、未實際進行 Google 第三方授權或付款，未修改正式 DB、Git push 或部署。
+
+
+發布版本獨立驗證：320 項隔離測試全數通過、零略過，TypeScript 與 diff 檢查通過；數量少於開發工作樹的 325 項，因排除另一批逐題引導介面。候選版本以 Production 環境建置但先不切換網域，驗證後才發布；可回退前一正式部署 `dpl_AHMt5YQvxb9huGyVoHm5tzA6cTm8`，保留新增欄位。
+
 ## Matchmaking 與 Mindset（2026-10-25）
 
 正式 DB 新增 SQL 已套用：交易內以 SHARE lock 與前後內容指紋／欄位比對確認原有 49 張表未改變，僅新增兩張空表；Prisma schema 比對無差異。SQL SHA-256：`7dd413331e5bfacebe49e83461bfb40f02f94b0f48dbba2ea7656ed9b05231f2`。驗證紀錄在受保護的 `/private/tmp/roll-release-db-verification.json`。私人 Blob 真實寫入／授權讀取 200、匿名讀取 403，內容逐位元一致，僅刪除自行建立的驗收檔案。

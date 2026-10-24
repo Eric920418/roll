@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const account = await getCurrentAccount();
     if (!account) return unauthorized();
     if (account.founderEndsAt && account.founderEndsAt > new Date()) return bad("founderActive", "創始年費仍有效，請勿重複訂閱；如需變更方案請聯絡客服 / Your prepaid founding year is active. Contact support before changing plans to avoid duplicate billing.", 409);
-    if (account.betaAccess && account.trialPolicy !== "interviews-3-v1") {
+    if (account.betaAccess && !account.rollonMember && account.trialPolicy !== "interviews-3-v1") {
       return bad("betaAccess", "免費測試期間已開放最高方案權限，無需訂閱。The highest plan is free during testing; no subscription is needed.", 409);
     }
 
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       return bad("unknownPlan", "Unknown plan.", 400);
     }
     const plan = planRaw as PlanKey;
+    if (account.rollonMember && plan === "pro") return bad("rollonMember", "rollon會員已享永久 Pro，無需重複訂閱 / Your rollon membership already includes permanent Pro access.", 409);
     const config = PLAN_CONFIG[plan];
     if (!interval) return bad("invalidInterval", "Billing interval must be month or year.", 400);
     if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) {

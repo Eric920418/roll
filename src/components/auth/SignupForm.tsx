@@ -26,12 +26,31 @@ export default function SignupForm() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rollonCode, setRollonCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [next, setNext] = useState(pathForLocale("/onboarding/company", locale));
   const loginHref = `${pathForLocale("/login", locale)}?next=${encodeURIComponent(next)}`;
-  const googleHref = `/api/auth/google/authorize?next=${encodeURIComponent(next)}`;
+  async function handleGoogle(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    if (loading) return;
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/google/authorize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ next, rollonCode }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || tErr("generic"));
+      window.location.assign(json.data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : tErr("generic"));
+      setLoading(false);
+    }
+  }
 
   // OAuth callback 失敗會帶 ?error= 導回此頁，掛載時顯示
   useEffect(() => {
@@ -52,7 +71,7 @@ export default function SignupForm() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, email, password }),
+        body: JSON.stringify({ firstName, lastName, email, password, rollonCode }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -114,6 +133,18 @@ export default function SignupForm() {
         />
       </div>
 
+      <div className="mt-6">
+        <AuthInput
+          label={t("rollonCode")}
+          name="rollonCode"
+          value={rollonCode}
+          onChange={setRollonCode}
+          placeholder={t("rollonCodePlaceholder")}
+          autoComplete="off"
+        />
+        <p className="mt-2 text-xs text-dark/60">{t("rollonCodeHint")}</p>
+      </div>
+
       {mode === "email" ? (
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
@@ -168,7 +199,7 @@ export default function SignupForm() {
         </form>
       ) : (
         <div className="mt-6 flex flex-col gap-4">
-          <GoogleButton label={t("googleButton")} next={next} />
+          <GoogleButton label={loading ? t("submitting") : t("googleButton")} next={next} onClick={handleGoogle} />
           <p className="px-2 text-center text-xs leading-relaxed text-dark/45">
             {t("googleNote")}
           </p>
@@ -177,7 +208,7 @@ export default function SignupForm() {
               {error}
             </p>
           )}
-          <a href={googleHref} className="mt-1 block">
+          <a href={`/api/auth/google/authorize?next=${encodeURIComponent(next)}`} onClick={handleGoogle} aria-disabled={loading} className="mt-1 block">
             <span className="block w-full rounded-xl bg-primary py-3.5 text-center text-sm font-semibold text-white transition-colors hover:bg-primary-dark font-[family-name:var(--font-heading)]">
               {t("continue")}
             </span>

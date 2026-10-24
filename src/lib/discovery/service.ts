@@ -8,7 +8,7 @@ import { toPlanKey } from "@/lib/billing/plans";
 import { PlanWriteError } from "@/lib/action-plan/service";
 import { DISCOVERY_POLICY, TRIAL_INTERVIEWS, FULL_INTERVIEWS, discoveryTrialActive, discoveryEvidence } from "./policy";
 
-export const discoveryAccountSelect = { id: true, plan: true, subscriptionStatus: true, paypalSubscriptionId: true, currentPeriodEnd: true, planUpdatedAt: true, trialPlan: true, trialStartsAt: true, trialEndsAt: true, trialPolicy: true, founderStartedAt: true, founderEndsAt: true } as const;
+export const discoveryAccountSelect = { id: true, plan: true, rollonMember: true, subscriptionStatus: true, paypalSubscriptionId: true, currentPeriodEnd: true, planUpdatedAt: true, trialPlan: true, trialStartsAt: true, trialEndsAt: true, trialPolicy: true, founderStartedAt: true, founderEndsAt: true } as const;
 export type DiscoveryAccount = NonNullable<Awaited<ReturnType<typeof discoveryAccount>>>;
 export function discoveryAccount(userId: string, db: Pick<Prisma.TransactionClient, "user"> = prisma as unknown as Prisma.TransactionClient) { return db.user.findUnique({ where: { id: userId }, select: discoveryAccountSelect }); }
 export function discoveryPaid(account: DiscoveryAccount) { return getEffectivePlan({ ...account, plan: toPlanKey(account.plan), trialPlan: account.trialPlan ? toPlanKey(account.trialPlan) : null }) !== "free"; }

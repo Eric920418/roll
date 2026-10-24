@@ -21,6 +21,7 @@ export const portalInclude = {
 
 const ownerBillingSelect = {
   plan: true,
+  rollonMember: true,
   subscriptionStatus: true,
   paypalSubscriptionId: true,
   currentPeriodEnd: true,
@@ -33,6 +34,7 @@ const ownerBillingSelect = {
 
 export function ownerHasInvestorAccess(owner: {
   plan: string;
+  rollonMember?: boolean;
   subscriptionStatus: string | null;
   paypalSubscriptionId: string | null;
   currentPeriodEnd: Date | null;

@@ -5,9 +5,11 @@
 export default function GoogleButton({
   label,
   next,
+  onClick,
 }: {
   label: string;
   next?: string;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }) {
   const href = `/api/auth/google/authorize${
     next ? `?next=${encodeURIComponent(next)}` : ""
@@ -15,6 +17,7 @@ export default function GoogleButton({
   return (
     <a
       href={href}
+      onClick={onClick}
       className="flex w-full items-center justify-center gap-3 rounded-xl border border-dark/15 bg-white py-3.5 text-sm font-semibold text-dark transition-colors hover:bg-dark/[0.02] font-[family-name:var(--font-heading)]"
     >
       <GoogleLogo />

@@ -160,6 +160,7 @@ model User {
   gettingStartedCompletedAt DateTime?
 
   // --- 計費 / 訂閱（全部 nullable 或有 default，純疊加；權威狀態由 webhook 對帳，此處為即時快取）---
+  rollonMember         Boolean   @default(false) // 註冊兌換：rollon會員，永久 Pro，獨立於訂閱
   plan                 String    @default("free") // "free" | "pro" | "business" | "enterprise"
   subscriptionStatus   String? // PayPal 訂閱狀態快取：ACTIVE/PAST_DUE/SUSPENDED/CANCELLED/EXPIRED
   paypalSubscriptionId String?   @unique // 目前生效的 PayPal subscription id（I-XXXX）
