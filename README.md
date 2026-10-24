@@ -2,7 +2,7 @@
 
 ## 會員邀請與 AI 獎勵（2026-10-25）
 
-本機與候選驗收已完成，正式發布進行中；既有未提交工作完整保留，沒有新增套件、寄信、呼叫真實 AI 或建立正式扣款。Rewards 頁提供雙語邀請碼／連結、複製及手動複製替代、本月名額、待抵扣與匿名分頁紀錄；Email／Google 註冊須確認邀請碼，與 rollon 會員註冊碼分開，可同時使用。註冊及邀請綁定同一交易，既有會員不補綁，註冊後不能更換邀請者；不追蹤單純點擊。
+正式發布完成：功能提交 `c857be63432880158fd14f0451b553f334848053` 已推送 main，首次正式部署 `dpl_21bBBs7McHMBnooKxnhYNAdy8Kz2` READY，`https://www.rollgrp.com/dashboard/rewards` 已上線；既有未提交工作完整保留，沒有新增套件、寄信、呼叫真實 AI 或建立正式扣款。Rewards 頁提供雙語邀請碼／連結、複製及手動複製替代、本月名額、待抵扣與匿名分頁紀錄；Email／Google 註冊須確認邀請碼，與 rollon 會員註冊碼分開，可同時使用。註冊及邀請綁定同一交易，既有會員不補綁，註冊後不能更換邀請者；不追蹤單純點擊。
 
 固定規則：受邀新會員的首筆真實付款滿 14 天後，雙方各 5 次 AI 獎勵；所有原本有資格購買的付費項目（含 US$5 AI 加購、訂閱與創始年費）均計入，不因邀請而改變購買資格或方案權限。以權威付款時間及台北月份計算，每位邀請者當月最多 10 筆，待發放占名額，超額雙方均不獲獎且不順延，退款不釋放名額。同一受邀帳號／PayPal 付款身分僅一次；可核對的自我邀請拒絕，不因共用 IP 一律拒絕。獎勵進入既有 rewardBalance，不增加積分、不占現有每月 20 次積分兌換上限、不增加付費功能權限、不混入媒合 token；不過期、不提領、不折抵帳單，AI 消耗順序及失敗原路退回不變。
 
@@ -21,6 +21,10 @@
 依使用者要求停止 Sandbox，改為正式部署；Sandbox 僅驗證 OAuth 與未核准訂單，未完成真實付款／退款，不能宣稱金流端到端通過。兩個本機測試帳號、一筆邀請、兩筆未付款本機訂單已精準清理，QA 伺服器與結帳視窗已關閉，外部未核准 Sandbox 訂單自然過期。沒有建立正式付款、呼叫真實 AI、替既有會員補綁或發獎。
 
 正式發布以 `7511560` 建立獨立工作樹 `/private/tmp/roll-referrals-production-20261025`，不帶入其他未發布的逐題引導／ICP 修改。發布版本 339 項隔離測試全通過、0 skip（開發工作樹 344 項含另一批逐題引導），TypeScript／建置／diff 通過、Lint 0 errors／14 既有 warnings。候選 `dpl_6ef57zVf4ezLmCZQsDruv4dFVtFB` READY，17 項 HTTP／實際 DB 檢查通過：雙語、建碼冪等、GET 零建碼、Email 帶碼註冊、Google 授權前確認碼、匿名紀錄、未付款零發獎、同源／跨會員／管理員／排程限制。候選兩個新建獨立測試帳號及邀請已清理，沒有付款或獎勵帳本。正式庫交易內比對 51 張既有表內容與欄位指紋完全相同，只新增四張空表，SQL 已套用，禁止重跑。證據：`/private/tmp/roll-referrals-production-db-verification.json`、`roll-referrals-production-webhook.json`、`roll-referrals-candidate-smoke.json`、`roll-referrals-release-tests.log`。
+
+正式驗收再通過 17 項 HTTP／DB 檢查，實際瀏覽器登入獨立測試帳號，中英文 Rewards 均可複製連結、顯示匿名待付款紀錄與 0 獎勵，分享連結確實帶入邀請碼。正式／候選各兩個測試帳號及其關聯均已清除，另清掉只屬測試會員的限流計數；最終四張邀請表皆為空，User／OnboardingProfile／AiAllowance／AiCreditPurchase／FounderOrder／Subscription 與發布前指紋完全一致，沒有替既有會員補綁或改寫付款、額度。全 schema diff 為空、原 35 項環境變數保留、邀請 cron 每 15 分鐘已啟用，apex 仍 307 轉 www；錯誤日誌初查 0 筆。後續僅交付文件提交不改執行邏輯。可回退 `dpl_8cfTpCWo7ka9GFpuMHn9JuR1g8sp`，保留新增表與既有資料，不執行 drop／reset。正式發布證據：`/private/tmp/roll-referrals-production-smoke.json`、`roll-referrals-final-verification.json`、`roll-referrals-production-release.json`；正式畫面截圖為上述目錄 `referrals-production-zh.png`／`referrals-production-en.png`。
+
+剩餘限制：沒有執行正式扣款、真實退款或等待滿 14 天的入帳驗收；取消 Sandbox 後不能把這些列為已實測。應先以少量真實邀請觀察首筆結算與退款撤回，再擴大推廣；付款服務查詢失敗時保持待核對，不要求重複付款。
 
 ## rollon會員註冊碼（2026-10-25）
 
