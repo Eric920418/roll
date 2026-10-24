@@ -72,10 +72,10 @@ test("New-company discovery and existing follow-up have distinct bilingual label
   const code = ts.transpileModule(readFileSync("src/components/dashboard/ValidationWorkspace.tsx", "utf8"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
   }).outputText;
-  for (const locale of ["zh-tw", "en"]) {
+  for (const [locale, warning] of [["zh-tw", "provider_credits"], ["en", "provider_credits"], ["zh-tw", "budget_limit"], ["en", "budget_limit"]]) {
     let cursor = 0;
     const existing = { company: "CircleWe", name: "Contact", sourceId: "note-1", quote: "Pain", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "" };
-    const snapshot = { source: "ui-source", rows: [], prospects: { [`6:${locale}`]: { companies: [company("New Taiwan Buyer")], stale: false, warning: "provider_credits" } }, priority: [existing, { ...existing, company: "Saved Lead", sourceId: undefined }], summary: { total: 0, paid: 0, signed: 0, amounts: {} }, deals: [], tasks: [], analysis: null };
+    const snapshot = { source: "ui-source", rows: [], prospects: { [`6:${locale}`]: { companies: [company("New Taiwan Buyer")], stale: false, warning } }, priority: [existing, { ...existing, company: "Saved Lead", sourceId: undefined }], summary: { total: 0, paid: 0, signed: 0, amounts: {} }, deals: [], tasks: [], analysis: null };
     const loaded = { exports: {} as { default: (props: object) => ReactNode } };
     runInNewContext(code, {
       module: loaded, exports: loaded.exports,
@@ -94,7 +94,7 @@ test("New-company discovery and existing follow-up have distinct bilingual label
     const followup = html.indexOf(zh ? 'aria-label="既有公司跟進"' : 'aria-label="Follow up existing companies"');
     assert(discovery >= 0 && followup > discovery);
     const newList = html.slice(discovery, followup);
-    assert(newList.includes(zh ? "供應商額度不足" : "provider credits ran out"));
+    assert(newList.includes(warning === "budget_limit" ? (zh ? "用量保護門檻" : "usage protection threshold") : (zh ? "供應商額度不足" : "provider credits ran out")));
     assert(newList.includes(zh ? "重搜也會使用 1 次" : "a new search also uses 1"));
     assert(newList.includes("New Taiwan Buyer") && !newList.includes("CircleWe"));
     assert(newList.includes(zh ? "新推薦 · 平台內無紀錄" : "New prospect · No saved records"));

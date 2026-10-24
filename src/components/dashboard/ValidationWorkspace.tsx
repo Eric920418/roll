@@ -29,6 +29,7 @@ export default function ValidationWorkspace({ userId, planId, journeyId, revisio
     provider_rate_limit: zh ? "搜尋遇到平台 AI 供應商速率限制，請稍後再重搜。" : "Search was interrupted by a provider rate limit. Retry later.",
     provider_config: zh ? "搜尋遇到平台 AI 工具或模型設定問題，請聯絡管理員。" : "Search was interrupted by a platform tool or model configuration issue. Contact the administrator.",
     search_incomplete: zh ? "搜尋未完整完成，已保留通過核對的公司，可稍後重搜。" : "Search did not finish. Verified companies were retained; retry later.",
+    budget_limit: zh ? "搜尋已達本次用量保護門檻並停止追加研究；已保留核對結果。請先縮小 ICP 範圍，避免反覆重搜。" : "Search reached its usage protection threshold. Verified results were retained. Narrow your ICP before running another search.",
   };
   const [data, setData] = useState<Snapshot | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false), [selected, setSelected] = useState<Prospect | null>(null), [newCompany, setNewCompany] = useState(""), [searchError, setSearchError] = useState("");
   const query = planId ? `planId=${encodeURIComponent(planId)}` : `journeyId=${encodeURIComponent(journeyId || "")}`;
