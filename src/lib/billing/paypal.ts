@@ -86,6 +86,7 @@ export interface PaypalSubscription {
   id: string;
   status: string; // APPROVAL_PENDING / ACTIVE / SUSPENDED / CANCELLED / EXPIRED
   plan_id: string;
+  subscriber?: { payer_id?: string };
   billing_info?: {
     next_billing_time?: string;
   };
@@ -94,6 +95,7 @@ export interface PaypalSubscription {
 }
 
 export interface PaypalOrder {
+  payer?: { payer_id?: string };
   id: string;
   status: string;
   links?: { href: string; rel: string; method: string }[];
@@ -355,4 +357,32 @@ export async function verifyWebhookSignature(params: {
   }
   const json = (await res.json()) as { verification_status: string };
   return json.verification_status === "SUCCESS";
+}
+
+/** Read-only referral verification; never captures or initiates a payment. */
+export async function getPaymentCapture(id: string): Promise<{ id: string; status: string; amount?: { currency_code?: string; value?: string }; create_time?: string }> {
+  const response = await paypalFetch(`/v2/payments/captures/${encodeURIComponent(id)}`, { method: "GET", signal: AbortSignal.timeout(15_000) });
+  if (!response.ok) throw new Error(`PayPal capture verification unavailable (${response.status})`);
+  return response.json();
+}
+export interface PaypalTransaction {
+  id: string;
+  status: string;
+  time: string;
+  payer_name?: unknown;
+  amount_with_breakdown?: { gross_amount?: { currency_code?: string; value?: string } };
+}
+export async function getSubscriptionTransactions(id: string, start: Date, end: Date): Promise<PaypalTransaction[]> {
+  const rows: PaypalTransaction[] = [];
+  // Small windows avoid provider range limits; links are never followed to arbitrary hosts.
+  for (let from = start.getTime(); from < end.getTime(); from += 30 * 86400000) {
+    const until = Math.min(end.getTime(), from + 30 * 86400000);
+    const query = new URLSearchParams({ start_time: new Date(from).toISOString(), end_time: new Date(until).toISOString() });
+    const response = await paypalFetch(`/v1/billing/subscriptions/${encodeURIComponent(id)}/transactions?${query}`, { method: "GET", signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) throw new Error(`PayPal subscription transactions unavailable (${response.status})`);
+    const body = await response.json();
+    if (!Array.isArray(body.transactions) || body.total_pages > 1 || body.links?.some((link: { rel?: string }) => link.rel === "next")) throw new Error("Incomplete PayPal subscription transactions; review required");
+    rows.push(...body.transactions);
+  }
+  return [...new Map(rows.map(row => [row.id, row])).values()];
 }

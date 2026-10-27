@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { trySyncUserReferral } from "@/lib/referrals/service";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +10,7 @@ import { cancelSubscription, getSubscription } from "@/lib/billing/paypal";
 
 // 使用者於 PayPal 核准後返回 /dashboard/billing/return，由該頁呼叫此端點即時對帳。
 // （webhook 之後會再次以權威事件確認；confirm 只是讓使用者馬上看到結果。）
+export const maxDuration = 300;
 export async function POST(req: NextRequest) {
   const blocked = browserMutationGuard(req, true);
   if (blocked) return blocked;
@@ -45,6 +48,7 @@ export async function POST(req: NextRequest) {
       if (remote.status === "ACTIVE") await reconcileFromPaypal(remote);
     }
 
+    after(() => trySyncUserReferral(session.uid));
     const status = remote.status;
     return ok({ status });
   } catch (error) {

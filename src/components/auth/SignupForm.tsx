@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
@@ -26,17 +26,40 @@ export default function SignupForm() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rollonCode, setRollonCode] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const referralTouched = useRef(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [next, setNext] = useState(pathForLocale("/onboarding/company", locale));
   const loginHref = `${pathForLocale("/login", locale)}?next=${encodeURIComponent(next)}`;
-  const googleHref = `/api/auth/google/authorize?next=${encodeURIComponent(next)}`;
+  async function handleGoogle(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    if (loading) return;
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/google/authorize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ next, rollonCode, referralCode }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error([`HTTP ${res.status}`, json.error || tErr("generic"), json.code, json.requestId].filter(Boolean).join("\n"));
+      window.location.assign(json.data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : tErr("generic"));
+      setLoading(false);
+    }
+  }
 
   // OAuth callback 失敗會帶 ?error= 導回此頁，掛載時顯示
   useEffect(() => {
     const e = new URLSearchParams(window.location.search).get("error");
     if (e) setError(e);
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref && !referralTouched.current) setReferralCode(ref.slice(0, 128));
     const requested = safeInvestorInvitePath(
       new URLSearchParams(window.location.search).get("next"),
       locale,
@@ -52,14 +75,12 @@ export default function SignupForm() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, email, password }),
+        body: JSON.stringify({ firstName, lastName, email, password, rollonCode, referralCode }),
       });
       const json = await res.json();
       if (!res.ok) {
         throw new Error(
-          resolveAuthError(json.code, json.error || tErr("generic"), (k) =>
-            tErr(k),
-          ),
+          [`HTTP ${res.status}`, resolveAuthError(json.code, json.error || tErr("generic"), (k) => tErr(k)), json.code, json.requestId].filter(Boolean).join("\n"),
         );
       }
       router.push(next);
@@ -112,6 +133,23 @@ export default function SignupForm() {
             { key: "google", label: t("googleTab") },
           ]}
         />
+      </div>
+
+      <div className="mt-6">
+        <AuthInput
+          label={t("rollonCode")}
+          name="rollonCode"
+          value={rollonCode}
+          onChange={setRollonCode}
+          placeholder={t("rollonCodePlaceholder")}
+          autoComplete="off"
+        />
+        <p className="mt-2 text-xs text-dark/60">{t("rollonCodeHint")}</p>
+      </div>
+
+      <div className="mt-5">
+        <AuthInput label={t("referralCode")} name="referralCode" value={referralCode} onChange={value => { referralTouched.current = true; setReferralCode(value); }} autoComplete="off" />
+        <p className="mt-2 text-xs leading-5 text-dark/60">{t("referralHint")}</p>
       </div>
 
       {mode === "email" ? (
@@ -168,7 +206,7 @@ export default function SignupForm() {
         </form>
       ) : (
         <div className="mt-6 flex flex-col gap-4">
-          <GoogleButton label={t("googleButton")} next={next} />
+          <GoogleButton label={loading ? t("submitting") : t("googleButton")} next={next} onClick={handleGoogle} />
           <p className="px-2 text-center text-xs leading-relaxed text-dark/45">
             {t("googleNote")}
           </p>
@@ -177,7 +215,7 @@ export default function SignupForm() {
               {error}
             </p>
           )}
-          <a href={googleHref} className="mt-1 block">
+          <a href={`/api/auth/google/authorize?next=${encodeURIComponent(next)}`} onClick={handleGoogle} aria-disabled={loading} className="mt-1 block">
             <span className="block w-full rounded-xl bg-primary py-3.5 text-center text-sm font-semibold text-white transition-colors hover:bg-primary-dark font-[family-name:var(--font-heading)]">
               {t("continue")}
             </span>

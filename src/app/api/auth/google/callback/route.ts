@@ -1,3 +1,7 @@
+import { registerWithReferral } from "@/lib/referrals/registration";
+import { referralCode } from "@/lib/referrals/policy";
+import { ReferralError } from "@/lib/referrals/policy";
+import { rollonSignupData, INVALID_ROLLON_CODE } from "@/lib/auth/rollon";
 import { newDiscoveryTrial } from "@/lib/discovery/policy";
 import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
 import { NextResponse, type NextRequest } from "next/server";
@@ -18,7 +22,7 @@ export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
 
   // 先解析 state cookie（取得 next，決定錯誤導回的語系）
-  let saved: { state: string; next: string } | null = null;
+  let saved: { state: string; next: string; rollonCode?: unknown; referralCode?: unknown } | null = null;
   try {
     const raw = req.cookies.get(GOOGLE_STATE_COOKIE)?.value;
     if (raw) saved = JSON.parse(raw);
@@ -30,13 +34,17 @@ export async function GET(req: NextRequest) {
   const locale: Locale = prefix === "/zh-tw" ? "zh-tw" : "en";
   const inviteNext = safeInvestorInvitePath(next, locale);
 
-  const redirectError = (msg: string) =>
-    NextResponse.redirect(
+  const redirectError = (msg: string) => {
+    let ref = ""; try { const code = referralCode(saved?.referralCode); if (code) ref = `&ref=${code}`; } catch { /* Keep malformed codes out of redirect URLs. */ }
+    const res = NextResponse.redirect(
       new URL(
-        `${prefix}/signup?error=${encodeURIComponent(msg)}${inviteNext ? `&next=${encodeURIComponent(inviteNext)}` : ""}`,
+        `${prefix}/signup?error=${encodeURIComponent(msg)}${ref}${inviteNext ? `&next=${encodeURIComponent(inviteNext)}` : ""}`,
         req.url,
       ),
     );
+    res.cookies.set(GOOGLE_STATE_COOKIE, "", { path: "/", maxAge: 0 });
+    return res;
+  };
 
   try {
     const oauthError = params.get("error");
@@ -76,8 +84,13 @@ export async function GET(req: NextRequest) {
       if (!profile.emailVerified) {
         return redirectError("你的 Google 帳號 Email 尚未驗證，無法以此註冊");
       }
-      user = await prisma.user.create({
-        data: {
+      let membership;
+      try {
+        membership = rollonSignupData(saved.rollonCode);
+      } catch {
+        return redirectError(INVALID_ROLLON_CODE);
+      }
+      user = await registerWithReferral({
           email: profile.email,
           googleId: profile.sub,
           firstName: profile.firstName,
@@ -85,9 +98,8 @@ export async function GET(req: NextRequest) {
           image: profile.picture,
           emailVerified: new Date(), // Google 已驗證
           onboardingStep: 2, // Google 註冊即完成帳號步驟
-          ...newDiscoveryTrial(),
-        },
-      });
+          ...(membership ?? newDiscoveryTrial()),
+      }, saved.referralCode);
     }
 
     const token = await createUserSession(user.id, user.email, user.sessionVersion);
@@ -108,6 +120,7 @@ export async function GET(req: NextRequest) {
     res.cookies.set(GOOGLE_STATE_COOKIE, "", { path: "/", maxAge: 0 });
     return res;
   } catch (error) {
+    if (error instanceof ReferralError) return redirectError(`HTTP ${error.status}\n${error.message}\n${error.code}\nReference: ${crypto.randomUUID()}`);
     return redirectError(publicErrorMessage(logSecurityError("oauth.callback_failed", error)));
   }
 }

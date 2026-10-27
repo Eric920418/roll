@@ -16,6 +16,7 @@ import { contentJsonPath } from "../src/lib/security/content-path";
 import { logSecurityError } from "../src/lib/security/log";
 
 export function load<T>(file: string, mocks: Record<string, unknown>, env: Record<string, string | undefined> = process.env): T {
+  mocks = { "@/lib/referrals/registration": {}, "@/lib/referrals/policy": { ReferralError: class extends Error {}, referralCode: () => undefined }, "@/lib/referrals/service": {}, ...mocks };
   const require = createRequire(import.meta.url), loaded = { exports: {} };
   const source = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
   runInNewContext(source, { module: loaded, exports: loaded.exports, process: { env }, console, Date, Error, SyntaxError, Buffer, URL, Request, Response, crypto: { randomUUID }, require: (id: string) => id === "server-only" ? {} : id in mocks ? mocks[id] : require(id) });
@@ -143,7 +144,7 @@ test("Errors and OAuth redirects never reveal raw secrets, SQL, cookies or SDK b
     logSecurityError("test.provider", { ...error, message: secret, cause: { token: secret }, stack: secret });
     assert.doesNotMatch(JSON.stringify([body, captured]), /TOP_SECRET|SELECT|postgresql|passwordHash/);
     const route = load<typeof import("../src/app/api/auth/google/callback/route")>("src/app/api/auth/google/callback/route.ts", {
-      "@/lib/prisma": { prisma: {} }, "@/lib/auth/google": { localePrefixFromNext: () => "", exchangeCodeForProfile: async () => { throw error; } },
+      "@/lib/auth/rollon": {}, "@/lib/prisma": { prisma: {} }, "@/lib/auth/google": { localePrefixFromNext: () => "", exchangeCodeForProfile: async () => { throw error; } },
       "@/lib/auth/session": sessions, "@/lib/auth/onboarding": {}, "@/lib/auth/return-path": { safeInvestorInvitePath: () => null },
     });
     const req = new NextRequest("https://example.test/api/auth/google/callback?state=s&code=c"); req.cookies.set("g_oauth", JSON.stringify({ state: "s", next: "/" }));

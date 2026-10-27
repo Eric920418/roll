@@ -54,6 +54,7 @@ test("admin lists stored plan, effective access and grant sources without exposi
     { ...account, id: "paid", plan: "business", subscriptionStatus: "ACTIVE", paypalSubscriptionId: "I-paid", currentPeriodEnd: end },
     { ...account, id: "expired", trialPolicy: discoveryPolicy.DISCOVERY_POLICY, trialPlan: "pro", trialStartsAt: new Date(0), trialEndsAt: start },
     { ...account, id: "manual", plan: "enterprise" },
+    { ...account, id: "rollon", rollonMember: true, plan: "pro" },
   ].map(value => ({ ...value, email: `${value.id}@example.invalid`, firstName: value.id, lastName: null, googleId: null, emailVerified: start, completed: true, onboardingStep: 4, quizCompleted: true, createdAt: start, passwordHash: "never-send-this" }));
   const jsx = (type: unknown, props: { users?: typeof rows }) => {
     if (props.users) rows = props.users;
@@ -84,6 +85,8 @@ test("admin lists stored plan, effective access and grant sources without exposi
   assert.equal(rows[6].effectivePlan, "free");
   assert.match(rows[6].accessLabel, /到期/);
   assert.match(rows[7].accessLabel, /管理員 Enterprise 授權/);
+  assert.equal(rows[8].effectivePlan, "pro");
+  assert.equal(rows[8].accessLabel, "rollon會員（永久 Pro，無需付費）");
   assert(!JSON.stringify(rows).includes("I-private"));
   assert(!JSON.stringify(rows).includes("never-send-this"));
   const list = load<{ default: ComponentType<{ users: typeof rows }> }>("src/components/admin/UsersList.tsx", {
@@ -149,18 +152,23 @@ test("DAL reads the live switch for existing and newly registered users; only bo
   assert.equal(await dal.getCurrentAccount(), null);
 });
 
-test("beta checkout is rejected before calling PayPal or writing a subscription", async () => {
+test("beta and rollon Pro checkout are rejected before calling PayPal or writing a subscription", async () => {
+  let current = { ...account, betaAccess: true };
   const route = load<{ POST: (request: unknown) => Promise<{ status: number; json: () => Promise<{ code: string }> }> }>("src/app/api/billing/subscribe/route.ts", {
     "next/server": { NextResponse: { json: (body: unknown, init: { status: number }) => ({ status: init.status, json: async () => body }) } },
     "@/lib/prisma": { prisma: {} },
     "@/lib/auth/guard": { getUserSession: async () => ({ uid: "existing" }) },
-    "@/lib/auth/account": { getCurrentAccount: async () => ({ ...account, betaAccess: true }) },
+    "@/lib/auth/account": { getCurrentAccount: async () => current },
     "@/lib/api": {}, "@/lib/billing/plans": plans,
     "@/lib/billing/paypal": {}, "@/lib/billing/config": {}, "@/lib/routes": {},
   });
   const response = await route.POST({ url: "https://example.test/api/test", headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), json: () => { throw new Error("Checkout must stop before parsing"); } });
   assert.equal(response.status, 409);
   assert.equal((await response.json()).code, "betaAccess");
+  current = { ...account, betaAccess: true, rollonMember: true };
+  const member = await route.POST({ url: "https://example.test/api/test", headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), json: async () => ({ plan: "pro" }) });
+  assert.equal(member.status, 409);
+  assert.equal((await member.json()).code, "rollonMember");
 });
 
 test("enabling beta preserves a trial user's AI cycle and included allowance", async () => {
@@ -190,6 +198,10 @@ test("enabling beta preserves a trial user's AI cycle and included allowance", a
   assert.equal(anchors[1], trialStartsAt);
   assert.equal(JSON.stringify(during), JSON.stringify(before));
   assert.equal(during?.included, 150);
+  const member = { ...trial, rollonMember: true, trialPlan: null, trialStartsAt: null, trialEndsAt: null };
+  const rollon = await allowance.getAiUsageSummary(member);
+  assert.equal(rollon?.included, 150);
+  assert.equal(anchors[2], member.createdAt);
 });
 
 test("investor sharing respects beta owner access and still requires an accepted invitation", async () => {
@@ -204,6 +216,7 @@ test("investor sharing respects beta owner access and still requires an accepted
       assert.equal(args.where.acceptedByUserId, "investor");
       assert.equal(args.where.status, "accepted");
       assert.equal(args.include.portal.include.user.select.trialPolicy, true);
+      assert.equal(args.include.portal.include.user.select.rollonMember, true);
       return invited ? [{ portalId: "portal", acceptedAt: now, portal: { user: owner } }] : [];
     } } } },
     "@/lib/billing/gate": gate,
@@ -213,6 +226,7 @@ test("investor sharing respects beta owner access and still requires an accepted
   });
   assert.equal(portal.ownerHasInvestorAccess(account, true), true);
   assert.equal(portal.ownerHasInvestorAccess(account, false), false);
+  assert.equal(portal.ownerHasInvestorAccess({ ...account, rollonMember: true }, true), false);
   assert.equal((await portal.listInvestorMemberships("investor")).length, 1);
   owner = { ...account, trialPolicy: "interviews-3-v1", trialPlan: "enterprise", trialStartsAt: new Date(Date.now() - 86400000), trialEndsAt: new Date(Date.now() + 86400000) };
   assert.equal((await portal.listInvestorMemberships("investor")).length, 1);

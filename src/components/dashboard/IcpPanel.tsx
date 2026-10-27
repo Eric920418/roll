@@ -121,7 +121,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
       if (action === "edit" || action === "save") {
         setEditing(false); store(text, form, false); setNotice(t(action === "save" ? "saved" : "draftSaved"));
       }
-      if (action === "save") router.refresh();
+      if (action === "save") { dialog.current?.close(); router.refresh(); }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
       // Reconcile persisted answers after network/provider failure without discarding local edits.
@@ -147,17 +147,17 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="saved-icp-title" className="text-sm font-bold uppercase tracking-wider">{locale === "zh-tw" ? "已儲存的 ICP" : "Saved ICP"}</h2><span className={`rounded-full px-3 py-1 text-xs font-semibold ${hasSaved ? "bg-black text-white" : "bg-dark/5 text-dark/60"}`}>{hasSaved ? (locale === "zh-tw" ? "已儲存 · 待市場驗證" : "Saved · to validate") : (locale === "zh-tw" ? "尚未儲存" : "Not saved")}</span></div>
         {hasSaved ? <><p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-lg font-bold">{current?.summary || currentLegacy || current?.who || t("notProvided")}</p>{current && rows(current, t("unknown"))}<p className="mt-3 text-sm text-dark/60">{locale === "zh-tw" ? "這是你已確認儲存的客戶假設，仍需用市場證據驗證。下方編輯草稿不會自動取代此版本。" : "This is your saved customer hypothesis. Validate it with market evidence. Editing the draft below does not replace this version."}</p></> : <p className="mt-3 text-sm text-dark/60">{workspace.draft && hasIcp(workspace.draft) ? (locale === "zh-tw" ? "你有一份草稿待確認；請編輯、確認並儲存 ICP。" : "You have a draft to review. Edit, confirm and save your ICP.") : (locale === "zh-tw" ? "尚未儲存 ICP。完成任務或訪談不會自動建立；請在下方填寫或整理草稿，再確認儲存。" : "No ICP saved yet. Completing tasks or interviews does not create one automatically. Write or prepare a draft below, then confirm and save.")}</p>}
       </section>
-      <div className="mt-6"><IcpDiscovery key={`${userId}:${Math.max(version, workspace.currentProfileVersion)}`} userId={userId} canUseAi={canUseAi} onUpdated={setWorkspace} /></div>
+      <div className="mt-6"><IcpDiscovery key={userId} userId={userId} savedVersion={Math.max(version, workspace.currentProfileVersion)} canUseAi={canUseAi} onUpdated={setWorkspace} /></div>
       <details className="mt-5 border-t border-dark/10 pt-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">{locale === "zh-tw" ? "更多 ICP 編輯工具" : "More ICP editing tools"}</summary>
       <div className="mt-4 flex flex-wrap gap-2">
-        {canUseAi ? <button ref={trigger} type="button" className={`${button} flex-1`} onClick={() => void show()}>✧ {t("ask")}</button> : <Link className={`${button} flex-1 text-center`} href={pathForLocale("/dashboard/account#plan", locale)}>{t("upgrade")}</Link>}
+        {canUseAi ? <a href="#icp-start" className={`${button} flex-1`}>✧ {t("ask")}</a> : <Link className={`${button} flex-1 text-center`} href={pathForLocale("/dashboard/account#plan", locale)}>{t("upgrade")}</Link>}
         <button type="button" className={button} onClick={() => void show(true)}>{t("edit")}</button>
       </div>
       </details>
     </section>
     <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6 lg:col-span-2">
       {children}
-      <div className="mt-5">{canUseAi ? <button type="button" className={button} onClick={() => void show()}>✧ {t("sharpen")}</button> : <Link className={button} href={pathForLocale("/dashboard/account#plan", locale)}>{t("sharpen")}</Link>}</div>
+      <div className="mt-5">{canUseAi ? <a href="#icp-start" className={button}>✧ {t("sharpen")}</a> : <Link className={button} href={pathForLocale("/dashboard/account#plan", locale)}>{t("sharpen")}</Link>}</div>
     </section>
     {mounted && createPortal(<dialog ref={dialog} aria-labelledby="icp-panel-title" onClose={() => { setOpen(false); trigger.current?.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[900px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-dark/10 bg-white px-5 py-4 sm:px-8">

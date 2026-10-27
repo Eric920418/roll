@@ -9,6 +9,7 @@ import {
 export type BillingAccount = Pick<
   Account,
   | "plan"
+  | "rollonMember"
   | "betaAccess"
   | "subscriptionStatus"
   | "paypalSubscriptionId"
@@ -126,10 +127,10 @@ export function getEffectivePlan(
 /** True paid/legacy entitlement, separate from the new discovery trial. */
 export function getPaidPlan(account: BillingAccount | null, now = new Date()): PlanKey {
   if (!account) return "free";
-  if (account.betaAccess === true && account.trialPolicy !== "interviews-3-v1") return "enterprise";
+  if (account.betaAccess === true && !account.rollonMember && account.trialPolicy !== "interviews-3-v1") return "enterprise";
   const paid = paidPlan(account, now);
   const founder = account.founderStartedAt && account.founderEndsAt && account.founderStartedAt <= now && account.founderEndsAt > now;
-  return founder && PLAN_RANK[paid] < PLAN_RANK.pro ? "pro" : paid;
+  return (founder || account.rollonMember === true) && PLAN_RANK[paid] < PLAN_RANK.pro ? "pro" : paid;
 }
 
 export function hasActiveTrial(account: BillingAccount | null, now = new Date()): boolean {

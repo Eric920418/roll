@@ -26,7 +26,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   const status = account.subscriptionStatus;
 
   const founderActive = !!account.founderStartedAt && account.founderStartedAt <= new Date() && !!account.founderEndsAt && account.founderEndsAt > new Date();
-  const statusLabel = founderActive ? (l === "zh-tw" ? "創始會員年費（一次付款）" : "Founding membership · prepaid year") : account.betaAccess && !isDiscoveryMember(account) && !status
+  const statusLabel = account.rollonMember ? (l === "zh-tw" ? "rollon會員 · 永久 Pro，無需付費" : "rollon會員 · Lifetime Pro, no membership payment required") : founderActive ? (l === "zh-tw" ? "創始會員年費（一次付款）" : "Founding membership · prepaid year") : account.betaAccess && !isDiscoveryMember(account) && !status
     ? t("betaAccess")
     : !status
     ? t("noSubscription")
@@ -73,7 +73,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   const usage = (await getAiUsageSummary(account)) ?? undefined;
   const now = new Date();
   const trialLabel =
-    !founderActive && account.trialPlan &&
+    !account.rollonMember && !founderActive && account.trialPlan &&
     account.trialStartsAt &&
     account.trialEndsAt &&
     account.trialStartsAt <= now &&
@@ -104,7 +104,8 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
         usage={usage}
         trialLabel={trialLabel}
         currentInterval={currentInterval}
-        betaAccess={account.betaAccess && !isDiscoveryMember(account)}
+        betaAccess={account.betaAccess && !account.rollonMember && !isDiscoveryMember(account)}
+        rollonMember={account.rollonMember}
         founderUntil={founderActive ? dateFmt.format(account.founderEndsAt!) : undefined}
       />
     </section>

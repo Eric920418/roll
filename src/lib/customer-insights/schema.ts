@@ -13,7 +13,7 @@ export const STAGE_CONFIG = {
   first_sales: { title: ["First sales", "首次銷售"], goal: ["Close 3 paying customers", "取得 3 位付費客戶"], target: 3, unit: ["conversations", "次對話"], types: ["Buyer", "Decision maker", "Partner", "Mentor"], fields: [["Their role and need", "角色與需求"], ["Price reaction", "對價格的反應"], ["Main objection", "主要疑慮"], ["Next step and date", "下一步與日期"]] },
   angel_round: { title: ["Angel round", "天使輪"], goal: ["Hold 20 investor conversations", "進行 20 次投資人對話"], target: 20, unit: ["conversations", "次對話"], types: ["Angel", "VC scout", "Advisor", "Customer reference"], fields: [["Investor type and focus", "投資人類型與關注"], ["What they liked", "認同的部分"], ["Main concern", "主要顧慮"], ["Next step and date", "下一步與日期"]] },
 } as const;
-export const insightSchema = z.object({
+const insightFieldsSchema = z.object({
   actionId: z.string().trim().min(1).max(200).optional(),
   journeyId: z.string().trim().min(1).max(200).optional(),
   commercial: z.object({
@@ -26,11 +26,16 @@ export const insightSchema = z.object({
     respondedAt: z.iso.datetime().optional(),
   }).strict().optional(),
   challenge: z.enum(["market", "focus", "survival", "other"]).optional(),
-  stage: z.enum(INSIGHT_STAGES), name: z.string().trim().min(1).max(200), company: z.string().trim().max(200), role: z.string().trim().max(200),
+  stage: z.enum(INSIGHT_STAGES), name: z.string().trim().max(200), company: z.string().trim().max(200), role: z.string().trim().max(200),
   type: z.string().max(40), fit: z.enum(["unknown", "yes", "partly", "no"]),
   answers: z.array(z.string().trim().max(4000)).length(4), notes: z.string().trim().max(8000),
   region: z.string().trim().max(200), industry: z.string().trim().max(200), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")),
-}).strict().superRefine((v, ctx) => {
+}).strict();
+export const insightDraftSchema = insightFieldsSchema.extend({
+  commercial: insightFieldsSchema.shape.commercial.unwrap().extend({ amount: z.string().max(4000).optional(), currency: z.string().max(3).optional() }).optional(),
+});
+export const insightSchema = insightFieldsSchema.superRefine((v, ctx) => {
+  if (!v.name && !v.company) ctx.addIssue({ code: "custom", path: ["company"], message: "請提供姓名或公司以辨識訪談 / Add a name or company to identify the interview" });
   if ((v.actionId || v.journeyId) && (!v.company || !(v.answers.some(Boolean) || v.notes))) ctx.addIssue({ code: "custom", path: ["company"], message: "任務訪談須填公司及至少一項回答或筆記 / Task interviews require a company and an answer or notes" });
   if (v.actionId && v.journeyId) ctx.addIssue({ code: "custom", path: ["journeyId"], message: "訪談不可同時關聯兩個工作區 / A conversation cannot link to two workspaces" });
   if (!(STAGE_CONFIG[v.stage].types as readonly string[]).includes(v.type)) ctx.addIssue({ code: "custom", path: ["type"], message: "Invalid conversation type for this stage" });

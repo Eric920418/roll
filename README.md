@@ -1,5 +1,111 @@
 # ROLL ON. 企業官網
 
+## 工作區統一使用 main（2026-10-27）
+
+依使用者明確要求，將目前工作區所有已暫存與未提交的功能統整至 `main`、推送 `origin/main`，完成後此目錄停留在 main。既有分支上的未提交內容先建立保留提交，再與最新遠端 main 合併；不建立新分支、不強制推送、不重設或覆寫其他修改。既有 `AGENTS.md` 已記錄此工作方式，後續直接在 main 開發與提交。忽略的環境變數、私人憑證、建置產物不入版控。
+
+整合範圍包含先前已發布的 Matchmaking／Mindset、rollon 會員、邀請獎勵與照片預覽修正，以及目前尚未上線的 ICP／客戶訪談逐題引導；保留遠端較新的 SEO、公開 Services／Insights、canonical 與 sitemap 變更。本次 schema 與遠端 main 無差異，不重跑任何正式 SQL、不回填既有會員。合併、完整隔離測試、TypeScript／Lint／建置與發布確認進行中。
+
+
+## Matchmaking 換照預覽與本人卡片修正（2026-10-25）
+
+修正照片選擇按鈕為 18px、檔名及標籤為 16px、至少 48px 點擊區；上傳中與圖片讀取中提供狀態，圖片失敗完整保留錯誤並可重試。照片上傳成功會刷新本人照片與媒合清單；匿名照片 URL 加上卡片版本，換照後重新抓取伺服器模糊圖，繼續走私人授權端點與 no-store。照片公開開關移到上傳區旁，未勾選會清楚解釋「No photo shared」；上傳不會擅自開啟公開照片或公開卡片。
+
+本人區在未編輯時直接顯示已儲存卡片預覽，草稿／隱藏狀態明示僅本人可見；可見卡片清單納入本人，仍遵守分類、排序、分頁與公開欄位白名單，並標記「你的卡片」。不修改資料庫結構、不更動既有會員內容、不新增套件。完整隔離測試 339 項通過、0 skip，建置與 diff 通過，Lint 0 errors／14 既有 warnings；本人區亦明示未分享照片的原因。候選部署已通過六項唯讀 HTTP 檢查（雙語註冊頁及會員／照片／邀請權限），TypeScript 通過。
+
+
+正式發布完成：功能提交 `93f0f1dd5349cc5f8ec6f8b76e88b6d94cd21146`，首次正式部署 `dpl_4LwmtojeNGTWwHQWgdr2xuHXfQuL` READY，`https://www.rollgrp.com/dashboard/matchmaking` 已上線。使用全新測試帳號與合成圖片完成 16 項正式流程驗收：JPEG／PNG／WebP、同次上傳重送、真實跨分頁 409、無效／過大／超像素圖片保留舊照、未勾選照片零公開、原圖與模糊圖分流、私人 Blob 直連拒絕、本人卡片與照片不重整刷新、讀圖失敗完整 HTTP／錯誤碼／追蹤碼與重試、隱藏撤回、登出再登入保留照片。390px／1440px 實測選檔按鈕 18px、標籤與檔名 16px、點擊高度 48px，雙語無水平溢位，瀏覽器執行錯誤 0。
+
+第一輪瀏覽器腳本的請求攔截時序使讀圖重試案例未觸發，已先清理資料、調整腳本後重跑，沒有因此修改正式程式；第二輪全部通過。兩輪共建立並清除四個帳號紀錄、16 個私人 Blob，測試卡片／公司檔案殘留 0、登入憑證已清除，20 位既有會員與原有公司／卡片／反思內容指紋一致。沒有 migration、reset、既有會員回填或權限更動。證據：`/private/tmp/roll-photo-fix-production-result.json`、`roll-photo-fix-tests.log`、`roll-photo-fix-browser-final.log`；截圖為既有視覺證據目錄的 `photo-fix-editor-zh-390.png`、`photo-fix-editor-en-1440.png`、`photo-fix-owner-preview.png`、`photo-fix-viewer-mobile.png`。可回退前一正式部署 `dpl_4P7w1VwyhMXHoY57YP4RocsQ3pm1`，不需要資料庫回退。尚未使用實體 iPhone／Safari 驗收，原生選檔文字隨裝置瀏覽器語系顯示；後續只提交本段交付文件。
+
+## 會員邀請與 AI 獎勵（2026-10-25）
+
+正式發布完成：功能提交 `c857be63432880158fd14f0451b553f334848053` 已推送 main，首次正式部署 `dpl_21bBBs7McHMBnooKxnhYNAdy8Kz2` READY，`https://www.rollgrp.com/dashboard/rewards` 已上線；既有未提交工作完整保留，沒有新增套件、寄信、呼叫真實 AI 或建立正式扣款。Rewards 頁提供雙語邀請碼／連結、複製及手動複製替代、本月名額、待抵扣與匿名分頁紀錄；Email／Google 註冊須確認邀請碼，與 rollon 會員註冊碼分開，可同時使用。註冊及邀請綁定同一交易，既有會員不補綁，註冊後不能更換邀請者；不追蹤單純點擊。
+
+固定規則：受邀新會員的首筆真實付款滿 14 天後，雙方各 5 次 AI 獎勵；所有原本有資格購買的付費項目（含 US$5 AI 加購、訂閱與創始年費）均計入，不因邀請而改變購買資格或方案權限。以權威付款時間及台北月份計算，每位邀請者當月最多 10 筆，待發放占名額，超額雙方均不獲獎且不順延，退款不釋放名額。同一受邀帳號／PayPal 付款身分僅一次；可核對的自我邀請拒絕，不因共用 IP 一律拒絕。獎勵進入既有 rewardBalance，不增加積分、不占現有每月 20 次積分兌換上限、不增加付費功能權限、不混入媒合 token；不過期、不提領、不折抵帳單，AI 消耗順序及失敗原路退回不變。
+
+任何已完成部分退款、全額退款或付款撤銷均取消整筆邀請：未發放取消，已發放則先扣可用獎勵，不足只抵扣未來邀請獎勵，不扣付費加購次數、月配額或現金。撤回原本曾抵扣欠額的獎勵時，同步恢復欠額。邀請專用帳本保留 grant／revoke 唯一紀錄，序列交易、固定鎖順序與唯一約束防重送／並發重複入帳；重新核對以 grantedAt 保留發放墓碑，恢復正常不再次加值，核對中退款仍能撤回。刪帳取消未發放案件、會員關聯設空，保留去識別付款指紋與結算墓碑，仍可撤回存續會員的獎勵。
+
+介面：`/api/referrals` GET 只讀本人摘要／分頁、POST 冪等建立碼；`/api/admin/referrals` GET 管理員清單／付款引用，PATCH 以版本及核對理由核准／拒絕；`/admin/referrals` 為實際管理頁。人工核准仍須最新權威交易、正確金額／歸屬／付款身分，不可改獎勵數字或繞過已知重複身分／月上限；拒絕不依賴供應商可用性。會員 DTO 不提供對方姓名、Email、付款引用、付款身分或核對筆記。所有會員寫入沿用登入、同源、限流及歸屬檢查，回應 `{data}`／`{error, code, requestId}`，不共用快取。付款來源查詢失敗顯示「待核對」、安全 HTTP 503／錯誤碼／追蹤碼與自動重試提示，避免誤說尚未付款或要求再次付款；錯誤保留輸入。
+
+付款返回頁、驗章 webhook 與 `/api/cron/referrals` 共用結算服務。返回頁以本版 Next.js `after` 在付款回應後核對邀請，避免獎勵服務延遲讓成功購買看似失敗；webhook 失敗讓 PayPal 重送。Cron 使用 CRON_SECRET、每 15 分鐘執行，分配到期發放／退款重查／待核對／未付款名額，避免未付款註冊餓死已到期案件；只有權威 Capture 或訂閱實際收款交易可認列，ACTIVE／核准／免費授權不算付款。發放前重查狀態，不能核對便保留，不猜測成功。
+
+上線需求：獨立敏感環境變數 `REFERRAL_PAYER_HMAC_KEY` 至少 32 bytes，付款身分以 HMAC 保存；啟用後不可任意更換此 key，未配置時帶碼註冊／新建邀請碼回明確 503，普通註冊維持原狀。先用明確指定目標連線的 SQL 客戶端核對 schema／資料，再一次套用 `prisma/referrals.sql`，之後 generate／配置環境再發布；不可因 shell 宣告 DATABASE_URL 就略過核對 Prisma config 的實際 datasource。該 SQL 僅建立 ReferralAccount／Referral／ReferralPayment／ReferralEntry 四張新表、索引與外鍵，不改寫原表，重跑必須停止，禁止 reset、seed、db push 或 accept-data-loss。PayPal webhook 訂閱須涵蓋 PAYMENT.SALE.COMPLETED／REFUNDED／REVERSED、PAYMENT.CAPTURE.COMPLETED／REFUNDED／REVERSED 與既有訂閱事件；正式環境已只新增敏感 `REFERRAL_PAYER_HMAC_KEY`，原有 35 個環境變數完整比對未變；私人 Blob 原設定保留。live webhook 原 8 種事件保留，補上 5 種收款／退款／撤銷事件，URL 與 webhook ID 不變；核對只在 Vercel 建置內使用既有金鑰，不下載或輸出。一次性建置操作與腳本已自發布原始碼移除。
+
+驗證：新增邀請相關 19 項測試；完整套件以 `env -u ANTHROPIC_WORKSPACE_ID ROLL_REWARDS_TEST_DATABASE_URL=<loopback QA URL> pnpm exec tsx --test --test-concurrency=1 tests/*.test.ts` 執行，344/344 通過、0 skip，保留檔案內明確的併發測試。一般平行全套曾遇既有測驗 fixture 競態，另一次受終端 workspace 變數影響，沒有修改該功能。TypeScript、建置及 diff 檢查通過；Lint 0 errors／14 既有 warnings。真實隔離 PostgreSQL 覆蓋註冊／OAuth／rollon 共存、首筆付款／14 天／跨月／第十筆名額競態、付款身分去重、重送／亂序、部分／全額退款狀態、欠額恢復、AI 預扣與退款競態／失敗原路退回、人工核對、刪帳與跨會員隔離。最終 SQL 在另一個全新遷移隔離庫驗證：51 張原表指紋不變，只新增四張空表，schema diff 無差異，重跑失敗且交易回滾，測試會員 fixture 已清理。SQL SHA-256：`65bcdfa679074b08066da0aeb99d9f94ef9550ca2946a7de7d925e57575a70fc`。
+
+瀏覽器驗收英文 1440px／繁中 390px、鍵盤建碼、無效邀請碼保留輸入、複製失敗替代、503 完整錯誤／重試、會員與管理員分頁；實際 QA 管理員登入後，無付款證據的核准回 409 並保留表單，拒絕可正常儲存。該管理員測試權限與視窗已關閉，額外一個核對帳號與 22 筆分頁 fixture 已精確清除。報告 `/private/tmp/roll-referrals-result.json`，測試／Lint／TypeScript／建置／遷移證據分別為 `/private/tmp/roll-referrals-all-tests-serial.log`、`roll-referrals-lint.log`、`roll-referrals-tsc.log`、`roll-referrals-build.log`、`roll-referrals-migration-result.json`。截圖在 `/Users/eric/.codex/visualizations/2026/10/24/01a16c9d-99d7-7d70-b04b-0325b07f748e/` 的 `referrals-en-1440.png`、`referrals-zh-tw-390.png`、`referrals-admin-review.png`、`referrals-history-page2.png`。
+
+依使用者要求停止 Sandbox，改為正式部署；Sandbox 僅驗證 OAuth 與未核准訂單，未完成真實付款／退款，不能宣稱金流端到端通過。兩個本機測試帳號、一筆邀請、兩筆未付款本機訂單已精準清理，QA 伺服器與結帳視窗已關閉，外部未核准 Sandbox 訂單自然過期。沒有建立正式付款、呼叫真實 AI、替既有會員補綁或發獎。
+
+正式發布以 `7511560` 建立獨立工作樹 `/private/tmp/roll-referrals-production-20261025`，不帶入其他未發布的逐題引導／ICP 修改。發布版本 339 項隔離測試全通過、0 skip（開發工作樹 344 項含另一批逐題引導），TypeScript／建置／diff 通過、Lint 0 errors／14 既有 warnings。候選 `dpl_6ef57zVf4ezLmCZQsDruv4dFVtFB` READY，17 項 HTTP／實際 DB 檢查通過：雙語、建碼冪等、GET 零建碼、Email 帶碼註冊、Google 授權前確認碼、匿名紀錄、未付款零發獎、同源／跨會員／管理員／排程限制。候選兩個新建獨立測試帳號及邀請已清理，沒有付款或獎勵帳本。正式庫交易內比對 51 張既有表內容與欄位指紋完全相同，只新增四張空表，SQL 已套用，禁止重跑。證據：`/private/tmp/roll-referrals-production-db-verification.json`、`roll-referrals-production-webhook.json`、`roll-referrals-candidate-smoke.json`、`roll-referrals-release-tests.log`。
+
+正式驗收再通過 17 項 HTTP／DB 檢查，實際瀏覽器登入獨立測試帳號，中英文 Rewards 均可複製連結、顯示匿名待付款紀錄與 0 獎勵，分享連結確實帶入邀請碼。正式／候選各兩個測試帳號及其關聯均已清除，另清掉只屬測試會員的限流計數；最終四張邀請表皆為空，User／OnboardingProfile／AiAllowance／AiCreditPurchase／FounderOrder／Subscription 與發布前指紋完全一致，沒有替既有會員補綁或改寫付款、額度。全 schema diff 為空、原 35 項環境變數保留、邀請 cron 每 15 分鐘已啟用，apex 仍 307 轉 www；錯誤日誌初查 0 筆。後續僅交付文件提交不改執行邏輯。可回退 `dpl_8cfTpCWo7ka9GFpuMHn9JuR1g8sp`，保留新增表與既有資料，不執行 drop／reset。正式發布證據：`/private/tmp/roll-referrals-production-smoke.json`、`roll-referrals-final-verification.json`、`roll-referrals-production-release.json`；正式畫面截圖為上述目錄 `referrals-production-zh.png`／`referrals-production-en.png`。
+
+剩餘限制：沒有執行正式扣款、真實退款或等待滿 14 天的入帳驗收；取消 Sandbox 後不能把這些列為已實測。應先以少量真實邀請觀察首筆結算與退款撤回，再擴大推廣；付款服務查詢失敗時保持待核對，不要求重複付款。
+
+## rollon會員註冊碼（2026-10-25）
+
+正式上線完成（2026-10-25）：`https://www.rollgrp.com/zh-tw/signup` 已提供 rollon會員驗證碼欄位，正式部署 `dpl_8cfTpCWo7ka9GFpuMHn9JuR1g8sp` 為 READY，提交 `75115605b82bc3e68a2ccae5a143dda2c8cc55ba` 已推送 `origin/main`。候選與正式網域各通過 13 項檢查，正確的既有碼已由 Production 後端接受、錯碼拒絕、跨站拒絕；檢查僅使用 Google 授權起始端點驗碼，不建立正式會員、不呼叫第三方 Google 授權或付款。兩輪驗收的合成 Email 均確認沒有帳號；會員與付款只在本機隔離環境做完整成功流程。正式手機註冊頁有欄位且無水平溢位，apex 保留 307 導向 www。候選與正式錯誤日誌初查各 0 筆。完整發布紀錄在 `/private/tmp/rollon-production-release.json`。
+
+新增單組、可重複供新會員使用的註冊兌換碼；Email 與 Google 註冊均可選填，正確碼建立 `rollonMember=true`、`plan=pro` 的帳號，會員方案頁與管理後台註記「rollon會員」。這是永久 Pro 授權，不建立 PayPal 訂閱、不偽造 ACTIVE、不依賴試用期限；付費訂閱到期或關閉全站測試不會移除會員標記。享現有 Pro 功能與每月 NOVA 額度，不等於無限 AI。既有帳號不藉登入兌換。錯碼／非字串／配置缺失會顯示錯誤並拒絕建立帳號；空白不兌換、沿用既有註冊。
+
+服務端環境變數 `ROLLON_SIGNUP_CODE_SHA256` 保存驗證碼去除頭尾空白、轉大寫後的 SHA-256 十六進位雜湊；原碼不可放進 README、Git、公開前端或 NEXT_PUBLIC 環境變數。Google 使用同源 POST 傳碼，僅存入 10 分鐘 HttpOnly OAuth cookie，callback 再驗碼，成功或失敗都清除該 cookie；不把碼放進 URL 或傳給 Google，且只授予新建帳號。兩種入口共用註冊 IP 限流。移除或替換環境雜湊可停用舊碼，已兌換資格保留。
+
+已隨機產生一組碼，僅將其雜湊加入本機已忽略的 `.env.local`；原碼私下交付。使用者已授權正式發布：以線上 `f80e356` 為基底的獨立 `codex/rollon-production` 工作樹只帶入本功能，排除其他未發布變更；正式 DB 已完成交易內比對：51 張既有表內容與原欄位均未改變，只新增 `User.rollonMember BOOLEAN NOT NULL DEFAULT false`，既有帳號升級數為 0。34 個既有環境變數完整比對未變，只新增 Production Secret `ROLLON_SIGNUP_CODE_SHA256`。保護驗證紀錄為 `/private/tmp/rollon-prod-db-verification.json`；SQL SHA-256 `986f916c91713d9848b91f4aa404ce40dfdd4b6e793d94ce41efe4e1729d5c13`。純新增 SQL 已在 loopback 隔離庫 `roll_rewards_qa_matchmaking_20261024` 成功驗證。
+
+正式 DB 已套用新增欄位腳本，請勿重跑。其他新環境上線前先在目標 DB 執行純新增欄位腳本 `pnpm exec prisma db execute --file prisma/rollon-member.sql`，再 `pnpm exec prisma generate`，配置雜湊後發布。腳本只新增 `User.rollonMember BOOLEAN NOT NULL DEFAULT false`，不更新／回填既有會員或訂閱，不執行 db push、reset、seed 或 accept-data-loss；重跑會停止。此碼可被轉傳，應私下發給指定對象；目前不包含單次使用、次數限制或後台碼管理。新增測試涵蓋驗碼、Email／Google 註冊、錯碼零寫入、既有帳號不升級、限流與永久權限，並補上管理後台標記、重複 Pro 訂閱拒絕、NOVA 額度及 Investor Portal 不誤升權測試。
+
+驗證：本機隔離 PostgreSQL 完整測試 325 項全數通過，零跳過；執行時移除外部 `ANTHROPIC_WORKSPACE_ID`，避免既有 AI 測試的固定 options 斷言受主機環境影響。TypeScript、正式建置與差異檢查通過；Lint 零錯誤、14 個既有警告。瀏覽器驗證雙語註冊欄位、Email／Google 入口的錯碼顯示與保留輸入、正確碼註冊轉入 onboarding、隔離資料庫中的 Pro／會員標記且無訂閱或試用、會員方案頁的永久 Pro 與每月 150 次額度、390px 無水平溢位。成功建立的隔離測試帳號驗證後清理；開發驗證未使用真實會員或執行第三方付款；後續正式發布與純新增 DB 變更狀態以上方紀錄為準。
+
+發布版本獨立驗證：320 項隔離測試全數通過、零略過，TypeScript 與 diff 檢查通過；數量少於開發工作樹的 325 項，因排除另一批逐題引導介面。候選 `dpl_2BANWhQpGijU7XdfUPknQrfvzyGq` 使用 Production 環境但先不切換正式網域，驗證後推送相同提交至 main，由 Git 整合建置正式版本；可回退前一正式部署 `dpl_AHMt5YQvxb9huGyVoHm5tzA6cTm8`，保留新增欄位。
+
+## Matchmaking 與 Mindset（2026-10-25）
+
+正式發布完成（2026-10-25）：`https://www.rollgrp.com` 已提供 Matchmaking／Mindset，`rollgrp.com` 保留導向 www。正式部署 `dpl_AHMt5YQvxb9huGyVoHm5tzA6cTm8`（`roll-b37u0d7r3`）為 READY，程式提交 `f80e3564e4ddb680908c98c92edc682256fbfae4` 已推送 `origin/main`。候選 `dpl_AXpTokfdMHk2EAurus4sNHe8UUJ6` 與正式網域各通過 19 項入口／登入／同源檢查；正式部署錯誤日誌初查 0 筆，綜合發布紀錄在 `/private/tmp/roll-matchmaking-production-release.json`。必要時可回退先前 `dpl_FLZQNXCZvZeEYYLSgyUXAGuTa5Td`，保留新增表，不執行破壞性 SQL。
+
+正式 DB 新增 SQL 已套用：交易內以 SHARE lock 與前後內容指紋／欄位比對確認原有 49 張表未改變，僅新增兩張空表；Prisma schema 比對無差異。SQL SHA-256：`7dd413331e5bfacebe49e83461bfb40f02f94b0f48dbba2ea7656ed9b05231f2`。驗證紀錄在受保護的 `/private/tmp/roll-release-db-verification.json`，部署用暫存正式環境檔已清除。私人 Blob 真實寫入／授權讀取 200、匿名讀取 403，內容逐位元一致，僅刪除自行建立的驗收檔案。既有 33 個環境變數逐一比對未改變，只新增 Production 的媒合 Blob token。
+
+發布範圍（2026-10-25）：已核對正式基底為 `16b2604`，發布工作樹獨立於目前未提交工作。只帶入 Matchmaking／Mindset 與訪談辨識相容修正，不夾帶前一批逐題引導介面；發布版本（不含未發布的逐題引導）的 313 項隔離測試全數通過、Lint 零錯誤／14 個既有警告。已建立新加坡 Private Blob `roll-matchmaking-photos`（`store_4shuuLOs6TK60mul`），只連結此專案 Production，環境變數為 `MATCHMAKING_BLOB_READ_WRITE_TOKEN`，未更換既有公開 CMS 或 Investor Blob。
+
+Community 改為可使用的 Matchmaking，另新增所有登入會員可用的私人三題 Mindset 反思；側欄品牌文字為 NOVA AI。會員入口 `/dashboard/matchmaking`、`/dashboard/mindset`（繁中加 `/zh-tw`），管理員審核 `/admin/matchmaking`。首輪建立真實會員供給，不包含聊天、介紹請求、token、購買、AI 教練、代建會員或自動公開既有會員；不更動 Rewards、AI 額度或既有 Investor Portal。保留原有未提交的訪談／ICP 修改，沒有新增套件。
+
+媒合開放創辦人、mentor、投資人、夥伴、買家，各會員一張卡片；分類為 For you、Mentorship、Collaboration、Investors、Partners、First customers。完整資料可先存私人草稿，必須預覽、選擇公開欄位並另外勾選同意才上線。創辦人公開前需三家不同公司的有效 discover／Prospect 訪談：使用既有 insight schema 與公司名稱正規化，跨工作區去重；其他角色需完整資料與本人同意。修改公開卡片會立即更新已公開內容，再公開時重新檢查門檻；隱藏立即拒絕他人卡片／照片讀取。
+
+匿名 DTO 以白名單逐欄建構，不提供姓名、公司名稱、Email、LinkedIn、Blob 路徑、完整 deck、訪談原文或 Mindset。自行填寫的介紹／可提供／尋找協助在此編輯；已勾選的正式公司介紹、ICP、目標市場隨 Profile 更新，未勾選欄位始終隱藏。獨特介紹仍可能讓他人推知身分，不承諾完全匿名。平台紀錄與會員自述明確標示，付費客戶來自既有 first_sales 回報，不冒稱獨立驗證。投資人／買家驗證與 Roll On 推薦只由管理員設定；換角色清除原角色驗證，不自動發放 Nova Verified。
+
+排序依媒合頁實際活躍時間，7／30 天分組，組內最近活躍優先、ID 穩定排序；同會員每 24 小時最多更新一次，不冒稱整站登入紀錄。不活躍卡片僅淡化照片區至 55%，文字保留可讀對比。推薦理由只用可公開欄位的正規化產業／市場完全相符，不做文字推測或顯示百分比。
+
+Mindset 固定三題：目前卡點、可控制的事、下一個小行動。至少一題、每題最多 2,000 字，審閱後另按確認才儲存；可分頁回顧、修改、刪除。僅本人可存取，不進 AI、媒合、Investor Portal 或 roadmap。UUID／雜湊防止回應遺失後重試重複建立；版本衝突保留輸入、顯示最新內容，比對後仍需另按確認。刪除移除文字並保留最小重送墓碑；不把敏感草稿寫進 localStorage。
+
+API：`/api/matchmaking` 分類／分頁、`/me` 草稿／公開／隱藏、`/activity` 活躍、`/members/[id]` 匿名詳情；`/api/mindset` 與 `/[id]` 提供本人反思 CRUD；`/api/admin/matchmaking` 提供管理員標章審核。各寫入 route 在入口直接檢查同源，再執行登入、歸屬、限流及驗證；回應不共用快取，前端保留完整可公開錯誤、HTTP 狀態與追蹤碼，不外洩堆疊或憑證。
+
+照片需獨立 Private Blob store 的 `MATCHMAKING_BLOB_READ_WRITE_TOKEN`，不能使用公開 CMS 的 token；未配置會明示錯誤，仍可無照片上線。接受 JPEG／PNG／WebP，上限 3 MiB、2,000 萬像素，multipart 在解析前逐塊限量，無 Content-Length 也不能繞過。沿用 Sharp 旋轉、去除 metadata，先縮小再模糊；原圖僅本人可讀，其他會員僅能經授權端點讀取可見卡片已選擇公開的模糊圖。上傳失敗／版本衝突保留舊照片；失敗造成的未關聯檔案留在私人空間，不自動刪除其他資產。
+
+資料庫新增 `MatchmakingProfile`／`MindsetEntry`，單次純新增腳本為 `prisma/matchmaking-mindset.sql`。上線先比對 schema 並在隔離 DB 驗證，再於指定環境執行 `pnpm exec prisma db execute --file prisma/matchmaking-mindset.sql`；腳本重跑應停止，不假設現有結構正確。禁止 reset、accept-data-loss、覆寫正式會員或自動 seed。已先在本機 loopback、`roll_rewards_qa` 開頭的隔離庫驗收，再以同一份 SQL 套用正式庫；請勿重跑新增表腳本。發布交易內確認原有 49 張表內容及欄位未變，新表起始皆為空，沒有 seed、回填或更動現有會員。
+
+驗證：`tests/matchmaking-mindset.test.ts` 新增 15 項白名單、去重、同意、角色審核、照片、反思、分頁／排序及併發測試；完整測試 318 項全數通過、零略過。沿用 `ROLL_REWARDS_TEST_DATABASE_URL`，測試只清理自行建立帳號，不假設庫內沒有其他合成資料。純新增 SQL 已在原 schema 的另一個隔離庫成功套用，Prisma 比對完整 schema 無差異。TypeScript、建置與差異檢查通過；Lint 0 errors／14 個既有 warnings。
+
+瀏覽器以實際產品與隔離帳號驗收雙語 × 390／1440px，無水平溢位或頁面執行錯誤；另驗證鍵盤預覽、確認前零寫入、502 已落庫但回應遺失後沿用 UUID 重試、409 比對後另按確認、公開／隱藏、匿名手機個人頁、跨會員反思隔離、未登入拒絕與管理員實際審核儲存。證據：`/private/tmp/roll-matchmaking-browser-results.json`；截圖位於 `/Users/eric/.codex/visualizations/2026/10/24/01a16c9d-99d7-7d70-b04b-0325b07f748e/`，包含 `matchmaking-en-1440.png`、`mindset-zh-tw-390.png`、`matchmaking-zh-detail-mobile.png`、`matchmaking-admin-review.png`。照片使用真實 Sharp 與私人 Blob 記憶體替身測試，本機測試未呼叫正式 Blob、AI 或寄信；發布時另完成私人 Blob 真實寫入／授權讀取 200／匿名拒絕 403／內容比對／驗收檔清理。以下追加正式會員介面的完整照片流程驗收，不使用既有會員帳號。
+
+正式照片端到端驗收完成（2026-10-25）：在 `www.rollgrp.com` 以公開註冊介面建立獨立上傳者／瀏覽者帳號，使用無真人的合成圖片，真實完成草稿、JPEG／PNG／WebP 上傳與替換、桌面英文預覽及 390px 繁中匿名頁、照片欄位公開、隱藏、登出與重新登入。原圖去除 EXIF，只有本人可讀；模糊圖為伺服器產生的 480×480 衍生圖，並核對其他會員回應與衍生圖完全一致。未勾選照片時即使卡片公開仍回 404；隱藏立即使其他會員的卡片／照片回 404，未登入回 401、直接 Blob 網址回 403，授權照片回應為 `private, no-store`。偽造 PNG、SVG、超過 3 MiB、超過 2,000 萬像素皆回 400 且保留舊照片；真實跨分頁 409 需比對後再重試。成功上傳後僅在瀏覽器模擬 502 回應遺失，沿用相同 UUID／版本重送回 200，沒有新增重複檔案；不是正式伺服器發生 502。頁面執行錯誤與本次部署近 30 分鐘 error 日誌均為 0。
+
+清理總核對：包含測試工具修正後重跑的四輪，共 8 個獨立測試帳號、14 個私人照片檔及 3 筆帳號專屬登入限流紀錄均已清除；卡片、Profile、Mindset 與照片殘留皆為 0，舊 session 已無權限，測試密碼與暫存正式環境檔已移除。既有 20 位會員及 `User`／`OnboardingProfile`／`MatchmakingProfile`／`MindsetEntry` 四表內容指紋前後一致，共用 IP 安全計數不動；沒有 schema 更新、重設、AI 呼叫、寄信或更動會員權益。完整去密驗收紀錄：`/private/tmp/roll-photo-e2e-result.json`；截圖為上述目錄的 `production-photo-e2e-owner-preview.png`、`production-photo-e2e-viewer-mobile.png`。本輪僅更新本文件，沒有重新部署。另確認現有一般刪帳號端點尚未自動清除媒合照片（包含替換後舊檔）；這次是在刪除自建帳號前，依精確卡片 ID 清除其整個私人照片前綴並核對為空，不能把測試清理當成產品已具備完整照片生命週期清理。
+
+本機驗收完成後已停止 QA 伺服器，僅依 fixture 主鍵清理五個自行建立的瀏覽器合成帳號；保留隔離資料庫結構與截圖，不更動其他會員資料。測試／Lint／TypeScript／建置紀錄分別在 `/private/tmp/roll-matchmaking-all-tests.log`、`roll-matchmaking-lint.log`、`roll-matchmaking-tsc.log`、`roll-matchmaking-build.log`。
+
+## 客戶訪談與 ICP 逐題引導（2026-10-24）
+
+客戶訪談紀錄與 ICP 改為一次一題，已填資料不重問，可選「不知道／跳過」、查看摘要並逐項修改，最後確認才呼叫正式儲存 API。回答、目前題目與已跳過項目沿用會員本機草稿，重新開啟可續填；固定引導不呼叫 AI、不消耗分析額度。沿用原雙語、元件樣式、資料格式、AI 分析與儲存 API，不新增套件或資料庫結構。
+
+訪談先收完整筆記；已有筆記就不再追問四項細節，已有結構化回答則只補缺少的項目。編輯已存紀錄直接顯示摘要，不要求重填。未知姓名可留白，以公司作為紀錄標題；仍須能以姓名或公司辨識紀錄，任務／探索工作區另須公司及實際回答或筆記才計算進度。選填分類、角色、價格、地區與任務關聯保留在摘要的展開區。草稿可恢復未填完的身分、價格與幣別，正式儲存仍通過原驗證，版本衝突及失敗保留輸入與同一新增請求識別碼。
+
+ICP 帶入已存客戶、問題與現有解法，AI 建議也沿用公司檔案的產品介紹；保留客戶階段、市場與管道，不從公司所在地猜客戶市場。空白／跳過不清空已存欄位，未修改時保留原摘要；選擇起點不寫入工作區，AI 產生的方向需採用、審閱及確認才儲存。原 POLARIS 入口統一指向逐題引導，進階手動編輯保留。草稿記住原 Profile 版本，跨分頁變更須比較後再確認；Profile 更新不重新掛載引導，完整 HTTP 錯誤與追蹤碼不會被清除。儲存成功停留摘要，不立刻重啟問題。
+
+驗證：`pnpm exec tsc --noEmit`、最新 `pnpm build`、`git diff --check` 通過；`pnpm lint` 為 0 errors／14 個既有 warnings。完整測試 226 項：216 通過、10 項隔離資料庫測試因未提供專用資料庫而略過。首次一般 `pnpm test` 有一項既有 Action Plan 測試假設未設定 Anthropic workspace，與執行環境變數衝突；以 `env -u ANTHROPIC_WORKSPACE_ID pnpm test` 隔離該變數後全數通過，未更改正式環境設定。新增回歸測試涵蓋雙語逐題／跳過／修改／最後確認、草稿型別與未完成價格恢復、空白證據拒絕、ICP 空白欄位保留、會員產品資料隔離與元件生命週期。
+
+瀏覽器以實際元件、實際建置 CSS 及記憶體 API 替身驗證：已有公司／回答不重問、未知姓名跳過、完整筆記直達摘要、確認前零寫入、重整續填、502 完整錯誤與重試沿用請求識別碼、ICP 已存欄位及產品介紹帶入、409 保留錯誤／追蹤碼與草稿、比較後仍需另按確認，成功停留摘要。雙語及 390px 手機／1440px 桌面無水平溢位，檢查期間瀏覽器無警告或執行錯誤。證據：`/Users/eric/.codex/visualizations/2026/10/24/01a16c04-d9c3-7422-9659-99d8601b83c5/icp-guided-mobile.png`、同目錄 `interview-guided-review.png`；測試、Lint、建置紀錄在 `/private/tmp/roll-guided-*-final.log`。未呼叫真實 AI 或連線寫入會員資料，未執行 migration／seed／資料回填，未 push 或部署；不將替身驗收宣稱為正式資料庫端到端驗收。
+
 ## NOVA AI 入口與聯絡資訊調整（2026-10-21）
 
 五頁官網桌面／手機導覽及頁尾的 NOVA 入口改為「NOVA AI」。公開聯絡區移除手機，新版與既有頁尾都不渲染號碼；既有頁尾也不再將 CMS 手機欄位傳給瀏覽器。同步移除共用 LocalBusiness／FAQ 結構化資料及 `llms.txt` 的手機號碼，保留 CMS 原始資料，不寫入資料庫。預約聯絡區新增使用者提供的「Free 30-min call — see if Asia is the right market for you.」，繁中同步翻譯，使用 13px、`#8a7a7c`、上距 12px；文案沿用 HomeV10 CMS 編輯。提供的 HTML 僅有說明文字，未包含預約日曆或網址，繼續使用現有聯絡表單。沿用正式發布授權更新正式站。

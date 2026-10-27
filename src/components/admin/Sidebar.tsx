@@ -17,6 +17,8 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/messages", label: "聯絡訊息" },
   { href: "/admin/feedback", label: "問題回報" },
   { href: "/admin/users", label: "註冊帳戶" },
+  { href: "/admin/referrals", label: "邀請獎勵核對" },
+  { href: "/admin/matchmaking", label: "Matchmaking 審核" },
   { href: "/admin/quiz-submissions", label: "測驗提交紀錄" },
   { href: "/admin/quiz-questions", label: "測驗題目" },
   { href: "/admin/founders", label: "創辦人" },

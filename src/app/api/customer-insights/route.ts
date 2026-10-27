@@ -21,7 +21,7 @@ function errorResponse(error: unknown) {
   return failFromError(error);
 }
 function noteData(insight: Insight) {
-  return { title: insight.name, body: insightBody(insight), insight: insight as unknown as Prisma.InputJsonValue, meetingAt: insight.date ? new Date(`${insight.date}T00:00:00Z`) : null };
+  return { title: insight.name || insight.company, body: insightBody(insight), insight: insight as unknown as Prisma.InputJsonValue, meetingAt: insight.date ? new Date(`${insight.date}T00:00:00Z`) : null };
 }
 function sameInsight(value: unknown, insight: Insight) { return JSON.stringify(insightSchema.safeParse(value).data) === JSON.stringify(insight); }
 

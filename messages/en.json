@@ -220,11 +220,26 @@
     "positioning": {
       "title": "One operating system for moving from strategy to market traction.",
       "intro": "NOVA connects the software and human support founders need to diagnose bottlenecks, choose the next move, execute go-to-market work, and reach the right market relationships.",
-      "software": { "title": "Software", "body": "A live dashboard, AI guidance, Action Plan, CRM, and measurable milestones." },
-      "guidance": { "title": "Strategic guidance", "body": "Stage-aware recommendations that explain what matters now and why." },
-      "execution": { "title": "Go-to-market execution", "body": "Concrete next actions for validation, sales, fundraising, and expansion." },
-      "access": { "title": "Market access", "body": "Practical pathways to Taiwan and Asia customers, partners, and investors." },
-      "ecosystem": { "title": "Founder ecosystem", "body": "Use the podcast, current events, and direct contact channels that exist today." },
+      "software": {
+        "title": "Software",
+        "body": "A live dashboard, AI guidance, Action Plan, CRM, and measurable milestones."
+      },
+      "guidance": {
+        "title": "Strategic guidance",
+        "body": "Stage-aware recommendations that explain what matters now and why."
+      },
+      "execution": {
+        "title": "Go-to-market execution",
+        "body": "Concrete next actions for validation, sales, fundraising, and expansion."
+      },
+      "access": {
+        "title": "Market access",
+        "body": "Practical pathways to Taiwan and Asia customers, partners, and investors."
+      },
+      "ecosystem": {
+        "title": "Founder ecosystem",
+        "body": "Use the podcast, current events, and direct contact channels that exist today."
+      },
       "goalTitle": "Shared execution goal: the first Asia order within six months.",
       "goalBody": "This is a working target, not a sales guarantee. Results depend on product readiness, market conditions, customer demand, and the member's execution.",
       "podcast": "Podcast",
@@ -345,6 +360,9 @@
       "email": "Email",
       "emailPlaceholder": "you@startup.com",
       "password": "Password",
+      "rollonCode": "rollon membership code (optional)",
+      "rollonCodePlaceholder": "Enter your membership code",
+      "rollonCodeHint": "A valid code grants permanent Pro access as a rollon會員, with no membership payment required.",
       "passwordPlaceholder": "At least 8 characters",
       "continue": "Continue",
       "submitting": "Creating account…",
@@ -353,7 +371,9 @@
       "terms": "By continuing, you agree to our",
       "termsOfService": "Terms of Service",
       "and": "and",
-      "privacyPolicy": "Privacy Policy"
+      "privacyPolicy": "Privacy Policy",
+      "referralCode": "Referral code (optional; separate from rollon membership code)",
+      "referralHint": "Confirm this code to bind your inviter; it cannot be changed after signup. Both receive 5 AI reward credits 14 days after your first payment, within the inviter’s 10-per-month limit and one invitee per PayPal payer. Refunds withdraw rewards, with any shortfall offset against future referral rewards. You can correct or remove the code before signing up."
     },
     "login": {
       "metaTitle": "Log in",
@@ -635,6 +655,8 @@
       "investors": "Share with investors",
       "feedback": "Feedback",
       "community": "Community",
+      "matchmaking": "Matchmaking",
+      "mindset": "Mindset",
       "rewards": "Rewards"
     },
     "insights": {
@@ -762,83 +784,88 @@
         "quizCta": "Start the quiz",
         "upgradeTitle": "Unlock your market-entry tools",
         "upgradeBody": "Upgrade to Pro to open your personalized Taiwan landing checklist.",
-      "upgradeCta": "See plans",
-      "buildTitle": "Turn your diagnosis into an action plan",
-      "buildBody": "Let NOVA identify your current stage and bottleneck, then rank the moves that matter now.",
-      "buildCta": "Build action plan",
-      "actionCta": "Open action plan",
-      "blockedTitle": "Resolve your required dependencies",
-      "blockedBody": "{count} actions are waiting on required work before they can enter your Next 3.",
-      "blockedCta": "Resolve dependencies",
-      "completeBody": "Every action in your current plan is complete. Review the result or generate the next version.",
-      "completeCta": "Review action plan",
-      "readyTitle": "You're all set for now",
-      "readyBody": "Explore Taiwan company intelligence and keep your checklist moving.",
-      "readyCta": "Browse companies"
-    },
-    "actionSummary": {
-      "statusEyebrow": "Your company now",
-      "confidence": "{value}% confidence",
-      "stage": {
-        "label": "Company stage",
-        "empty": "Not diagnosed",
-        "emptyPaidDetail": "Build an Action Plan so NOVA can identify your current stage.",
-        "emptyFreeDetail": "Upgrade to Pro to unlock NOVA's company-stage diagnosis.",
-        "next": "Next: {stage}",
-        "final": "Final defined stage"
+        "upgradeCta": "See plans",
+        "buildTitle": "Turn your diagnosis into an action plan",
+        "buildBody": "Let NOVA identify your current stage and bottleneck, then rank the moves that matter now.",
+        "buildCta": "Build action plan",
+        "actionCta": "Open action plan",
+        "blockedTitle": "Resolve your required dependencies",
+        "blockedBody": "{count} actions are waiting on required work before they can enter your Next 3.",
+        "blockedCta": "Resolve dependencies",
+        "completeBody": "Every action in your current plan is complete. Review the result or generate the next version.",
+        "completeCta": "Review action plan",
+        "readyTitle": "You're all set for now",
+        "readyBody": "Explore Taiwan company intelligence and keep your checklist moving.",
+        "readyCta": "Browse companies"
       },
-      "bottleneck": {
-        "label": "Current bottleneck",
-        "empty": "No diagnosis",
-        "emptyDetail": "NOVA has not identified the constraint holding back your next stage yet."
+      "actionSummary": {
+        "statusEyebrow": "Your company now",
+        "confidence": "{value}% confidence",
+        "stage": {
+          "label": "Company stage",
+          "empty": "Not diagnosed",
+          "emptyPaidDetail": "Build an Action Plan so NOVA can identify your current stage.",
+          "emptyFreeDetail": "Upgrade to Pro to unlock NOVA's company-stage diagnosis.",
+          "next": "Next: {stage}",
+          "final": "Final defined stage"
+        },
+        "bottleneck": {
+          "label": "Current bottleneck",
+          "empty": "No diagnosis",
+          "emptyDetail": "NOVA has not identified the constraint holding back your next stage yet."
+        },
+        "subscription": {
+          "label": "Subscription",
+          "manage": "Manage billing",
+          "upgrade": "Upgrade to Pro",
+          "noSubscription": "No active subscription"
+        },
+        "next": {
+          "outcomeTitle": "Awaiting outcome confirmation",
+          "outcomeBody": "Your tasks are complete. Confirm the actual business result in your roadmap.",
+          "nextStageTitle": "Next milestone is unlocked",
+          "nextStageBody": "Generate and confirm five tasks for the next stage of your goal.",
+          "eyebrow": "Action plan",
+          "title": "Next Three Moves",
+          "viewAll": "View complete action plan",
+          "ready": "Ready",
+          "after": "Prerequisite completed",
+          "missingDependency": "Prerequisite ID is missing; edit this action to link it",
+          "actionTime": "Action time",
+          "score": "Priority score",
+          "priority": {
+            "Critical": "Critical",
+            "High": "High",
+            "Medium": "Medium",
+            "Low": "Low"
+          },
+          "completeEyebrow": "Plan completed",
+          "blockedEyebrow": "Dependencies required",
+          "completeTitle": "All current actions are complete",
+          "blockedTitle": "No action is ready yet",
+          "completeBody": "Review the completed plan or ask NOVA to generate the next version.",
+          "blockedBody": "{count} actions are blocked by required dependencies. Complete or edit those dependencies to refresh the ranking.",
+          "openPlan": "Open action plan",
+          "emptyEyebrow": "No active plan",
+          "emptyTitle": "Diagnose your next moves with NOVA",
+          "emptyBody": "Answer three focused questions about your bottleneck, progress, and goal. Confirm your diagnosis, then generate five actions.",
+          "upgrade": "Upgrade to Pro",
+          "fewerBlocked": "{count} actions are waiting on prerequisites. Waiting cards are previews; only Ready actions can be started.",
+          "fewerAvailable": "Only {count} executable moves remain in this plan."
+        },
+        "progress": {
+          "eyebrow": "Action completion",
+          "title": "Your progress",
+          "product": "Product",
+          "sales": "Sales",
+          "fundraising": "Fundraising",
+          "expansion": "Expansion",
+          "aria": "{group} action completion",
+          "emptyAria": "No {group} actions in the current plan",
+          "count": "{done} of {total} done",
+          "noActions": "No applicable actions"
+        }
       },
-      "subscription": {
-        "label": "Subscription",
-        "manage": "Manage billing",
-        "upgrade": "Upgrade to Pro",
-        "noSubscription": "No active subscription"
-      },
-      "next": {
-        "outcomeTitle": "Awaiting outcome confirmation",
-        "outcomeBody": "Your tasks are complete. Confirm the actual business result in your roadmap.",
-        "nextStageTitle": "Next milestone is unlocked",
-        "nextStageBody": "Generate and confirm five tasks for the next stage of your goal.",
-        "eyebrow": "Action plan",
-        "title": "Next Three Moves",
-        "viewAll": "View complete action plan",
-        "ready": "Ready",
-        "after": "Prerequisite completed",
-        "missingDependency": "Prerequisite ID is missing; edit this action to link it",
-        "actionTime": "Action time",
-        "score": "Priority score",
-        "priority": { "Critical": "Critical", "High": "High", "Medium": "Medium", "Low": "Low" },
-        "completeEyebrow": "Plan completed",
-        "blockedEyebrow": "Dependencies required",
-        "completeTitle": "All current actions are complete",
-        "blockedTitle": "No action is ready yet",
-        "completeBody": "Review the completed plan or ask NOVA to generate the next version.",
-        "blockedBody": "{count} actions are blocked by required dependencies. Complete or edit those dependencies to refresh the ranking.",
-        "openPlan": "Open action plan",
-        "emptyEyebrow": "No active plan",
-        "emptyTitle": "Diagnose your next moves with NOVA",
-        "emptyBody": "Answer three focused questions about your bottleneck, progress, and goal. Confirm your diagnosis, then generate five actions.",
-        "upgrade": "Upgrade to Pro",
-        "fewerBlocked": "{count} actions are waiting on prerequisites. Waiting cards are previews; only Ready actions can be started.",
-        "fewerAvailable": "Only {count} executable moves remain in this plan."
-      },
-      "progress": {
-        "eyebrow": "Action completion",
-        "title": "Your progress",
-        "product": "Product",
-        "sales": "Sales",
-        "fundraising": "Fundraising",
-        "expansion": "Expansion",
-        "aria": "{group} action completion",
-        "emptyAria": "No {group} actions in the current plan",
-        "count": "{done} of {total} done",
-        "noActions": "No applicable actions"
-      }
-    },
       "metrics": {
         "sectionTitle": "Key metrics",
         "companies": "Companies tracked",
@@ -1075,7 +1102,13 @@
       "meetingAt": "Date",
       "meetingType": "Meeting type",
       "typePlaceholder": "Select a type",
-      "types": { "client": "Client", "investor": "Investor", "partner": "Partner", "internal": "Internal", "other": "Other" },
+      "types": {
+        "client": "Client",
+        "investor": "Investor",
+        "partner": "Partner",
+        "internal": "Internal",
+        "other": "Other"
+      },
       "empty": "No notes yet. Add your first one.",
       "count": "{count} notes",
       "discardChanges": "You have unsaved changes. Discard them?",
@@ -1135,7 +1168,12 @@
       "actionProgress": "Action progress",
       "confidence": "{value}% confidence",
       "score": "Priority score",
-      "priority": { "Critical": "Critical", "High": "High", "Medium": "Medium", "Low": "Low" },
+      "priority": {
+        "Critical": "Critical",
+        "High": "High",
+        "Medium": "Medium",
+        "Low": "Low"
+      },
       "days": "days",
       "whyNow": "Why now",
       "details": "Details",
@@ -1197,8 +1235,8 @@
         "dependencyNotes": "Dependency notes",
         "dependsOn": "Depends on actions",
         "difficulty": "Difficulty",
-      "actionTimeMin": "Action time min. (minutes)",
-      "actionTimeMax": "Action time max. (minutes)",
+        "actionTimeMin": "Action time min. (minutes)",
+        "actionTimeMax": "Action time max. (minutes)",
         "companyStage": "Company stage",
         "stageFit": "Stage fit (1–5)",
         "stageFitReason": "Stage fit reason",
@@ -1212,10 +1250,32 @@
         "outcomeTimeMax": "Outcome time max. (days)",
         "estimatedTime": "Estimated time"
       },
-      "urgency": { "immediate": "Immediate", "urgent": "Urgent", "scheduled": "Scheduled" },
-      "dependency": { "0": "None", "1": "Helpful", "2": "Significant", "3": "Required" },
-      "difficulty": { "1": "Very easy", "2": "Easy", "3": "Moderate", "4": "Hard", "5": "Very hard" },
-      "outcome": { "revenue": "Revenue", "customers": "Customers", "product": "Product / service", "fundraising": "Fundraising", "expansion": "Expansion", "custom": "Custom" },
+      "urgency": {
+        "immediate": "Immediate",
+        "urgent": "Urgent",
+        "scheduled": "Scheduled"
+      },
+      "dependency": {
+        "0": "None",
+        "1": "Helpful",
+        "2": "Significant",
+        "3": "Required"
+      },
+      "difficulty": {
+        "1": "Very easy",
+        "2": "Easy",
+        "3": "Moderate",
+        "4": "Hard",
+        "5": "Very hard"
+      },
+      "outcome": {
+        "revenue": "Revenue",
+        "customers": "Customers",
+        "product": "Product / service",
+        "fundraising": "Fundraising",
+        "expansion": "Expansion",
+        "custom": "Custom"
+      },
       "editor": {
         "addTitle": "Add action",
         "editTitle": "Edit action",
@@ -1247,7 +1307,10 @@
         "userAdjusted": "Adjusted by the user during diagnosis confirmation.",
         "genericError": "NOVA could not complete the Action Plan. Please try again."
       },
-      "errors": { "save": "Could not save the action.", "delete": "Could not delete the action." }
+      "errors": {
+        "save": "Could not save the action.",
+        "delete": "Could not delete the action."
+      }
     },
     "feedback": {
       "title": "Report an issue or suggestion",
@@ -1479,7 +1542,7 @@
     "addPoint": "Add period",
     "periodPlaceholder": "Period, e.g. 2025-Q1",
     "numericValue": "Value",
-    "noPoints": "No history yet \u2014 the investor page shows a single figure without a trend chart.",
+    "noPoints": "No history yet — the investor page shows a single figure without a trend chart.",
     "fields": {
       "profile": {
         "industry": "Industry",
@@ -1492,7 +1555,10 @@
         "needs": "Service needs",
         "notes": "Additional notes"
       },
-      "strategy": { "stage": "Company stage", "bottleneck": "Current bottleneck" },
+      "strategy": {
+        "stage": "Company stage",
+        "bottleneck": "Current bottleneck"
+      },
       "actionPlan": {
         "nextMoves": "Next 3 moves",
         "progress": "Progress",
@@ -2291,5 +2357,180 @@
         "description": ""
       }
     }
+  },
+  "Matchmaking": {
+    "intro": "Find founders, mentors, investors, partners and first customers. We are building the member network; introductions and messaging are coming in a later release.",
+    "yourCard": "Your card",
+    "visible": "Visible to signed-in members",
+    "notVisible": "Hidden",
+    "editCard": "Edit my card",
+    "hide": "Hide my card",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "retryPhoto": "Retry photo upload",
+    "role": "Role",
+    "roles": {
+      "founder": "Founder",
+      "mentor": "Mentor",
+      "investor": "Investor",
+      "partner": "Partner",
+      "buyer": "Buyer"
+    },
+    "fields": {
+      "country": "Country",
+      "industry": "Industry / expertise",
+      "slogan": "Your introduction",
+      "companyPitch": "Company introduction from Profile",
+      "icp": "ICP from Profile",
+      "markets": "Target markets from Profile",
+      "offers": "What I can offer",
+      "looksFor": "What I am looking for",
+      "stats": "Recorded progress",
+      "photo": "Blurred photo"
+    },
+    "categoriesLabel": "Matchmaking categories",
+    "categories": {
+      "all": "For you",
+      "mentorship": "Mentorship",
+      "collaboration": "Collaboration",
+      "investors": "Investors",
+      "partners": "Partners",
+      "first-customers": "First customers"
+    },
+    "visibilityLabel": "Show on my card",
+    "privacy": "Your name, company name, email, LinkedIn and private documents are never included. Distinctive wording may still identify you: leave company names and contact details out of your public text. Complete anonymity cannot be guaranteed.",
+    "syncNotice": "If selected, your saved company introduction, ICP and target markets update automatically when you change Profile. Unselected fields stay hidden. Your own introduction, offers and needs are edited here.",
+    "publishRules": "Founders need valid interviews with three different companies before publishing. Other roles need a complete card and consent. You can save a private draft first.",
+    "visibleEditWarning": "This card is visible. Saving changes also updates what other members can see. Review the preview before saving.",
+    "photoTitle": "Your photo",
+    "sharePhoto": "Show the blurred photo on my card",
+    "photoHidden": "Your photo is saved privately. The anonymous preview shows “No photo shared” until you select the photo checkbox and save the card.",
+    "ownVisiblePreview": "Your saved card, as signed-in members see it.",
+    "ownHiddenPreview": "Your saved card preview. This card is hidden; only you can see this preview.",
+    "uploadingPhoto": "Uploading and preparing your photo…",
+    "loadingPhoto": "Loading photo…",
+    "photoNotice": "Before introductions are available, other members only see a server-blurred photo. JPEG, PNG or WebP; up to 3 MiB and 20 million pixels. Your original is private. Uploading does not turn on photo visibility.",
+    "ownPhoto": "Your private original photo",
+    "blurredPhoto": "Anonymous blurred member photo",
+    "noPhoto": "No photo shared",
+    "upload": "Choose a photo (optional)",
+    "saveBeforePhoto": "Save a private draft before uploading your photo.",
+    "preview": "Preview my card",
+    "anonymousPreview": "Your anonymous card preview",
+    "saveDraft": "Save private draft",
+    "saveVisible": "Confirm changes to visible card",
+    "consent": "I agree to make these selected fields visible to signed-in members.",
+    "publish": "Turn on Matchmaking",
+    "published": "Your card is now visible.",
+    "hidden": "Your card is hidden. Other members can no longer open it.",
+    "saved": "Your card has been saved.",
+    "photoSaved": "Photo updated. Review your card and save any photo visibility changes.",
+    "conflict": "This card changed elsewhere. Your input is retained. Compare with the latest version before choosing whether to save your answers.",
+    "loadLatest": "Load latest version",
+    "latestVisibility": "Latest visibility",
+    "keepMine": "I compared; keep my answers for review",
+    "reviewAgain": "Latest version loaded. Your answers are retained. Preview and confirm again before saving.",
+    "viewCard": "View anonymous profile",
+    "memberTitle": "Anonymous member profile",
+    "back": "Back to Matchmaking",
+    "empty": "No visible cards in this category yet. Members appear after they complete their profiles and choose to publish.",
+    "previous": "Previous",
+    "next": "Next",
+    "activity": {
+      "week": "Active in Matchmaking this week",
+      "month": "Active in Matchmaking this month",
+      "inactive": "Inactive in Matchmaking for 30+ days"
+    },
+    "verifiedInvestor": "Verified Investor",
+    "verifiedBuyer": "Verified Buyer",
+    "interviews": "Customer interviews recorded",
+    "milestones": "Milestones marked complete",
+    "payingCustomers": "Paying customers reported",
+    "selfReported": "Member reported · not independently verified",
+    "recordSource": "Counts come from saved Nova activity. Recording progress does not independently verify business results.",
+    "profileSource": "From the member’s saved company profile",
+    "reasons": {
+      "industry": "You share the same industry / expertise.",
+      "market": "You share a target market."
+    }
+  },
+  "Mindset": {
+    "intro": "Take a moment to name the blocker, focus on what you can control, and choose one small next action.",
+    "private": "Only you can access these reflections. They are not shared with members, investors or AI.",
+    "questions": {
+      "blocker": "What are you stuck on right now?",
+      "controllable": "What is within your control?",
+      "nextAction": "What is one small next action?"
+    },
+    "new": "New reflection",
+    "edit": "Edit reflection",
+    "cancel": "Cancel",
+    "review": "Review answers",
+    "backToEdit": "Back to editing",
+    "confirmSave": "Confirm and save",
+    "history": "Your reflections",
+    "empty": "No reflections yet. Start with any one question.",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "saved": "Your private reflection has been saved.",
+    "deleted": "Reflection deleted.",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this reflection? Its text will be removed.",
+    "confirmDelete": "Confirm deletion",
+    "conflict": "This reflection changed elsewhere. Your answers are retained. Compare before saving again.",
+    "loadLatest": "Load latest version",
+    "latest": "Latest saved answers",
+    "keepMine": "I compared; keep my answers for review",
+    "reviewAgain": "Version updated. Review your answers and confirm separately to save.",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "Referrals": {
+    "title": "Invite friends",
+    "rules": "Share your personal link or code. A new member must confirm it when signing up. Both receive 5 AI reward credits 14 days after their first verified purchase, including AI top-ups. Up to 10 qualifying referrals per inviter per Taipei calendar month; pending rewards reserve a place. If the limit is reached, neither person earns a reward. Existing members cannot add a code later. One qualifying invitee per PayPal payer account.",
+    "refundRules": "Reward credits do not expire and cannot be withdrawn or applied to subscription fees. They follow existing AI access rules. Any completed partial refund, full refund or payment reversal cancels both rewards. Available reward credits are reclaimed first; any shortfall offsets future referral rewards only, without taking purchased credits or charging money.",
+    "monthly": "{month}: {used} / {limit} referral places used",
+    "debt": "{count} credits will be offset against future referral rewards.",
+    "code": "Your referral code",
+    "link": "Your invitation link",
+    "copy": "Copy link",
+    "copied": "Link copied.",
+    "copyFallback": "Copy failed. Select and copy the link above manually.",
+    "create": "Create my invitation link",
+    "history": "Invitation history",
+    "empty": "No invitations yet. Share your link to get started.",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "eligible": "Scheduled eligibility: {date} (Taipei); payment checks may delay release.",
+    "previous": "Previous",
+    "next": "Next",
+    "direction": {
+      "sent": "Your invitation",
+      "received": "Invitation you accepted"
+    },
+    "status": {
+      "pending_payment": "Awaiting first payment",
+      "pending": "Awaiting reward release",
+      "review": "Needs verification",
+      "granted": "Reward released",
+      "rejected": "Not eligible",
+      "revoked": "Reward withdrawn"
+    },
+    "reason": {
+      "deleted_member": "A member account was deleted before release.",
+      "payment_refunded": "The qualifying payment was refunded or reversed.",
+      "payment_review": "Payment evidence needs verification.",
+      "missing_payer": "Payer identity needs verification.",
+      "self_referral": "Self-referrals are not eligible.",
+      "duplicate_payer": "This PayPal payer has already qualified as an invitee.",
+      "monthly_limit": "The inviter’s monthly limit was reached; no reward for either person.",
+      "admin_rejected": "The invitation did not pass verification.",
+      "payment_unavailable": "Payment verification is temporarily unavailable; we will retry automatically. Do not pay again."
+    },
+    "entry": {
+      "grant": "Added {credits} AI credits; {offset} credits offset a previous referral withdrawal.",
+      "revoke": "AI credit adjustment: {credits}; additional future-reward offset: {debt}."
+    },
+    "verificationFailure": "Last verification: HTTP 503 · payment_unavailable · Reference: {requestId}"
   }
 }

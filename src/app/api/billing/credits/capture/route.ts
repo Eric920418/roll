@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { trySyncUserReferral } from "@/lib/referrals/service";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -6,6 +8,7 @@ import { fulfillCreditOrder } from "@/lib/billing/credits";
 import { getUserSession } from "@/lib/auth/guard";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 
+export const maxDuration = 300;
 export async function POST(req: NextRequest) {
   const blocked = browserMutationGuard(req, true);
   if (blocked) return blocked;
@@ -21,6 +24,7 @@ export async function POST(req: NextRequest) {
     });
     if (!local || local.userId !== session.uid) return fail("找不到這筆額度訂單。", 404);
     if (local.status === "COMPLETED") {
+      after(() => trySyncUserReferral(session.uid));
       return ok({ status: "COMPLETED", added: false });
     }
 
@@ -33,6 +37,7 @@ export async function POST(req: NextRequest) {
       if (order.status !== "COMPLETED") throw error;
     }
     const result = await fulfillCreditOrder(order);
+    after(() => trySyncUserReferral(session.uid));
     return ok({ status: order.status, added: result.added });
   } catch (error) {
     return failFromError(error);

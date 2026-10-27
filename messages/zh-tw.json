@@ -220,11 +220,26 @@
     "positioning": {
       "title": "從策略走到市場成果，只用一套營運系統。",
       "intro": "NOVA 把創辦人需要的軟體與真人支援串在一起，協助診斷瓶頸、選出下一步、執行市場進入工作，並接觸正確的市場關係。",
-      "software": { "title": "Software", "body": "即時 Dashboard、AI 指引、Action Plan、CRM 與可衡量的里程碑。" },
-      "guidance": { "title": "Strategic guidance", "body": "依公司階段提出建議，說清楚現在最重要的是什麼，以及原因。" },
-      "execution": { "title": "Go-to-market execution", "body": "針對驗證、銷售、募資與擴張提供可立即執行的下一步。" },
-      "access": { "title": "Market access", "body": "建立接觸台灣與亞洲客戶、夥伴及投資人的實際路徑。" },
-      "ecosystem": { "title": "Founder ecosystem", "body": "只串接目前真實存在的 Podcast、活動與直接聯絡管道。" },
+      "software": {
+        "title": "Software",
+        "body": "即時 Dashboard、AI 指引、Action Plan、CRM 與可衡量的里程碑。"
+      },
+      "guidance": {
+        "title": "Strategic guidance",
+        "body": "依公司階段提出建議，說清楚現在最重要的是什麼，以及原因。"
+      },
+      "execution": {
+        "title": "Go-to-market execution",
+        "body": "針對驗證、銷售、募資與擴張提供可立即執行的下一步。"
+      },
+      "access": {
+        "title": "Market access",
+        "body": "建立接觸台灣與亞洲客戶、夥伴及投資人的實際路徑。"
+      },
+      "ecosystem": {
+        "title": "Founder ecosystem",
+        "body": "只串接目前真實存在的 Podcast、活動與直接聯絡管道。"
+      },
       "goalTitle": "共同執行目標：六個月內取得亞洲第一張訂單。",
       "goalBody": "這是共同工作目標，不是成交保證。結果取決於產品準備度、市場條件、客戶需求與會員的執行。",
       "podcast": "Podcast",
@@ -345,6 +360,9 @@
       "email": "電子信箱",
       "emailPlaceholder": "you@startup.com",
       "password": "密碼",
+      "rollonCode": "rollon會員驗證碼（選填）",
+      "rollonCodePlaceholder": "請輸入會員驗證碼",
+      "rollonCodeHint": "驗證成功後即為「rollon會員」，永久享有 Pro 會員權限，無需支付會員費。",
       "passwordPlaceholder": "至少 8 個字元",
       "continue": "繼續",
       "submitting": "建立帳號中…",
@@ -353,7 +371,9 @@
       "terms": "繼續即表示你同意我們的",
       "termsOfService": "服務條款",
       "and": "與",
-      "privacyPolicy": "隱私政策"
+      "privacyPolicy": "隱私政策",
+      "referralCode": "邀請碼（選填，與 rollon 會員註冊碼不同）",
+      "referralHint": "確認此碼即綁定邀請者，註冊後不能更改。首次付款滿 14 天後雙方各獲 5 次 AI 獎勵，限邀請者當月前 10 筆且同一 PayPal 付款身分只限一次；退款會撤回，不足部分抵扣未來邀請獎勵。你可以修正或移除此碼後繼續註冊。"
     },
     "login": {
       "metaTitle": "登入",
@@ -635,6 +655,8 @@
       "investors": "分享給投資人",
       "feedback": "試用回饋",
       "community": "社群",
+      "matchmaking": "Matchmaking 媒合",
+      "mindset": "Mindset 心態",
       "rewards": "獎勵積分"
     },
     "insights": {
@@ -762,83 +784,88 @@
         "quizCta": "開始測驗",
         "upgradeTitle": "解鎖你的進入市場工具",
         "upgradeBody": "升級 Pro，開啟你的個人化台灣落地查核清單。",
-      "upgradeCta": "查看方案",
-      "buildTitle": "把診斷轉成可執行的 Action Plan",
-      "buildBody": "讓 NOVA 判斷公司階段與當前瓶頸，再排出現在最重要的行動。",
-      "buildCta": "建立 Action Plan",
-      "actionCta": "開啟 Action Plan",
-      "blockedTitle": "先解除必要依賴",
-      "blockedBody": "有 {count} 個 Actions 正等待必要工作完成，暫時無法進入 Next 3。",
-      "blockedCta": "解除依賴",
-      "completeBody": "目前計畫中的 Actions 已全部完成，可檢視成果或生成下一版計畫。",
-      "completeCta": "檢視 Action Plan",
-      "readyTitle": "目前一切就緒",
-      "readyBody": "探索台灣百大企業情報，並持續推進你的查核清單。",
-      "readyCta": "瀏覽企業"
-    },
-    "actionSummary": {
-      "statusEyebrow": "公司目前狀態",
-      "confidence": "信心值 {value}%",
-      "stage": {
-        "label": "公司階段",
-        "empty": "尚未診斷",
-        "emptyPaidDetail": "建立 Action Plan，讓 NOVA 判斷你目前的公司階段。",
-        "emptyFreeDetail": "升級 Pro，解鎖 NOVA 公司階段診斷。",
-        "next": "下一階段：{stage}",
-        "final": "已達目前定義的最後階段"
+        "upgradeCta": "查看方案",
+        "buildTitle": "把診斷轉成可執行的 Action Plan",
+        "buildBody": "讓 NOVA 判斷公司階段與當前瓶頸，再排出現在最重要的行動。",
+        "buildCta": "建立 Action Plan",
+        "actionCta": "開啟 Action Plan",
+        "blockedTitle": "先解除必要依賴",
+        "blockedBody": "有 {count} 個 Actions 正等待必要工作完成，暫時無法進入 Next 3。",
+        "blockedCta": "解除依賴",
+        "completeBody": "目前計畫中的 Actions 已全部完成，可檢視成果或生成下一版計畫。",
+        "completeCta": "檢視 Action Plan",
+        "readyTitle": "目前一切就緒",
+        "readyBody": "探索台灣百大企業情報，並持續推進你的查核清單。",
+        "readyCta": "瀏覽企業"
       },
-      "bottleneck": {
-        "label": "目前瓶頸",
-        "empty": "尚無診斷",
-        "emptyDetail": "NOVA 尚未判斷阻礙公司進入下一階段的主要限制。"
+      "actionSummary": {
+        "statusEyebrow": "公司目前狀態",
+        "confidence": "信心值 {value}%",
+        "stage": {
+          "label": "公司階段",
+          "empty": "尚未診斷",
+          "emptyPaidDetail": "建立 Action Plan，讓 NOVA 判斷你目前的公司階段。",
+          "emptyFreeDetail": "升級 Pro，解鎖 NOVA 公司階段診斷。",
+          "next": "下一階段：{stage}",
+          "final": "已達目前定義的最後階段"
+        },
+        "bottleneck": {
+          "label": "目前瓶頸",
+          "empty": "尚無診斷",
+          "emptyDetail": "NOVA 尚未判斷阻礙公司進入下一階段的主要限制。"
+        },
+        "subscription": {
+          "label": "訂閱方案",
+          "manage": "管理帳務",
+          "upgrade": "升級 Pro",
+          "noSubscription": "目前沒有有效訂閱"
+        },
+        "next": {
+          "outcomeTitle": "待確認里程碑成果",
+          "outcomeBody": "任務已完成，請到目標規劃確認實際商業成果。",
+          "nextStageTitle": "下一個里程碑已解鎖",
+          "nextStageBody": "生成並確認下一階段五項任務，繼續推進目標。",
+          "eyebrow": "Action Plan",
+          "title": "Next 3 moves",
+          "viewAll": "查看完整 Action Plan",
+          "ready": "可執行",
+          "after": "已完成前置任務",
+          "missingDependency": "缺少前置任務 ID，請編輯此任務並建立連結",
+          "actionTime": "執行時間",
+          "score": "優先分數",
+          "priority": {
+            "Critical": "Critical",
+            "High": "High",
+            "Medium": "Medium",
+            "Low": "Low"
+          },
+          "completeEyebrow": "計畫已完成",
+          "blockedEyebrow": "需要先完成依賴",
+          "completeTitle": "目前 Actions 已全部完成",
+          "blockedTitle": "目前沒有可執行的 Action",
+          "completeBody": "查看已完成的計畫，或請 NOVA 生成下一個版本。",
+          "blockedBody": "有 {count} 個 Actions 受到必要依賴阻擋。完成或編輯依賴後，系統會重新排序。",
+          "openPlan": "開啟 Action Plan",
+          "emptyEyebrow": "尚無有效計畫",
+          "emptyTitle": "讓 NOVA 診斷你的下一步",
+          "emptyBody": "逐題回答瓶頸、實際進展與目標，共三題；確認診斷後生成五項任務。",
+          "upgrade": "升級 Pro",
+          "fewerBlocked": "另有 {count} 項任務等待前置條件。灰色卡片僅供預覽，只有可執行任務才能開始。",
+          "fewerAvailable": "此計畫目前只剩 {count} 個可執行 Actions。"
+        },
+        "progress": {
+          "eyebrow": "Action 完成率",
+          "title": "你的進度",
+          "product": "產品",
+          "sales": "銷售",
+          "fundraising": "募資",
+          "expansion": "市場拓展",
+          "aria": "{group} Action 完成率",
+          "emptyAria": "目前計畫沒有{group}類 Actions",
+          "count": "已完成 {done} / {total}",
+          "noActions": "沒有適用的 Actions"
+        }
       },
-      "subscription": {
-        "label": "訂閱方案",
-        "manage": "管理帳務",
-        "upgrade": "升級 Pro",
-        "noSubscription": "目前沒有有效訂閱"
-      },
-      "next": {
-        "outcomeTitle": "待確認里程碑成果",
-        "outcomeBody": "任務已完成，請到目標規劃確認實際商業成果。",
-        "nextStageTitle": "下一個里程碑已解鎖",
-        "nextStageBody": "生成並確認下一階段五項任務，繼續推進目標。",
-        "eyebrow": "Action Plan",
-        "title": "Next 3 moves",
-        "viewAll": "查看完整 Action Plan",
-        "ready": "可執行",
-        "after": "已完成前置任務",
-        "missingDependency": "缺少前置任務 ID，請編輯此任務並建立連結",
-        "actionTime": "執行時間",
-        "score": "優先分數",
-        "priority": { "Critical": "Critical", "High": "High", "Medium": "Medium", "Low": "Low" },
-        "completeEyebrow": "計畫已完成",
-        "blockedEyebrow": "需要先完成依賴",
-        "completeTitle": "目前 Actions 已全部完成",
-        "blockedTitle": "目前沒有可執行的 Action",
-        "completeBody": "查看已完成的計畫，或請 NOVA 生成下一個版本。",
-        "blockedBody": "有 {count} 個 Actions 受到必要依賴阻擋。完成或編輯依賴後，系統會重新排序。",
-        "openPlan": "開啟 Action Plan",
-        "emptyEyebrow": "尚無有效計畫",
-        "emptyTitle": "讓 NOVA 診斷你的下一步",
-        "emptyBody": "逐題回答瓶頸、實際進展與目標，共三題；確認診斷後生成五項任務。",
-        "upgrade": "升級 Pro",
-        "fewerBlocked": "另有 {count} 項任務等待前置條件。灰色卡片僅供預覽，只有可執行任務才能開始。",
-        "fewerAvailable": "此計畫目前只剩 {count} 個可執行 Actions。"
-      },
-      "progress": {
-        "eyebrow": "Action 完成率",
-        "title": "你的進度",
-        "product": "產品",
-        "sales": "銷售",
-        "fundraising": "募資",
-        "expansion": "市場拓展",
-        "aria": "{group} Action 完成率",
-        "emptyAria": "目前計畫沒有{group}類 Actions",
-        "count": "已完成 {done} / {total}",
-        "noActions": "沒有適用的 Actions"
-      }
-    },
       "metrics": {
         "sectionTitle": "關鍵指標",
         "companies": "追蹤企業",
@@ -1075,7 +1102,13 @@
       "meetingAt": "日期",
       "meetingType": "會議類型",
       "typePlaceholder": "選擇類型",
-      "types": { "client": "客戶", "investor": "投資人", "partner": "合作夥伴", "internal": "內部", "other": "其他" },
+      "types": {
+        "client": "客戶",
+        "investor": "投資人",
+        "partner": "合作夥伴",
+        "internal": "內部",
+        "other": "其他"
+      },
       "empty": "尚無記錄，新增第一筆吧。",
       "count": "{count} 筆記錄",
       "discardChanges": "目前有尚未儲存的內容，確定放棄這些變更嗎？",
@@ -1135,7 +1168,12 @@
       "actionProgress": "任務進度",
       "confidence": "信心值 {value}%",
       "score": "優先分數",
-      "priority": { "Critical": "Critical", "High": "High", "Medium": "Medium", "Low": "Low" },
+      "priority": {
+        "Critical": "Critical",
+        "High": "High",
+        "Medium": "Medium",
+        "Low": "Low"
+      },
       "days": "天",
       "whyNow": "為何現在做",
       "details": "詳細資訊",
@@ -1197,8 +1235,8 @@
         "dependencyNotes": "依賴說明",
         "dependsOn": "依賴哪些 Actions",
         "difficulty": "難度",
-      "actionTimeMin": "執行時間最少（分鐘）",
-      "actionTimeMax": "執行時間最多（分鐘）",
+        "actionTimeMin": "執行時間最少（分鐘）",
+        "actionTimeMax": "執行時間最多（分鐘）",
         "companyStage": "公司階段",
         "stageFit": "階段符合度（1–5）",
         "stageFitReason": "階段符合原因",
@@ -1212,10 +1250,32 @@
         "outcomeTimeMax": "成果時間最多（天）",
         "estimatedTime": "預估時間"
       },
-      "urgency": { "immediate": "立即", "urgent": "緊急", "scheduled": "排定" },
-      "dependency": { "0": "無", "1": "有幫助", "2": "重要", "3": "必要" },
-      "difficulty": { "1": "非常容易", "2": "容易", "3": "中等", "4": "困難", "5": "非常困難" },
-      "outcome": { "revenue": "營收", "customers": "客戶", "product": "產品／服務", "fundraising": "募資", "expansion": "市場拓展", "custom": "自訂" },
+      "urgency": {
+        "immediate": "立即",
+        "urgent": "緊急",
+        "scheduled": "排定"
+      },
+      "dependency": {
+        "0": "無",
+        "1": "有幫助",
+        "2": "重要",
+        "3": "必要"
+      },
+      "difficulty": {
+        "1": "非常容易",
+        "2": "容易",
+        "3": "中等",
+        "4": "困難",
+        "5": "非常困難"
+      },
+      "outcome": {
+        "revenue": "營收",
+        "customers": "客戶",
+        "product": "產品／服務",
+        "fundraising": "募資",
+        "expansion": "市場拓展",
+        "custom": "自訂"
+      },
       "editor": {
         "addTitle": "新增 Action",
         "editTitle": "編輯 Action",
@@ -1247,7 +1307,10 @@
         "userAdjusted": "使用者在確認診斷時手動調整。",
         "genericError": "NOVA 無法完成 Action Plan，請再試一次。"
       },
-      "errors": { "save": "無法儲存 Action。", "delete": "無法刪除 Action。" }
+      "errors": {
+        "save": "無法儲存 Action。",
+        "delete": "無法刪除 Action。"
+      }
     },
     "feedback": {
       "title": "回報問題或建議",
@@ -1492,7 +1555,10 @@
         "needs": "服務需求",
         "notes": "補充說明"
       },
-      "strategy": { "stage": "公司階段", "bottleneck": "當前瓶頸" },
+      "strategy": {
+        "stage": "公司階段",
+        "bottleneck": "當前瓶頸"
+      },
       "actionPlan": {
         "nextMoves": "Next 3 moves",
         "progress": "完成進度",
@@ -2291,5 +2357,180 @@
         "description": ""
       }
     }
+  },
+  "Matchmaking": {
+    "intro": "尋找創辦人、mentor、投資人、夥伴及首批客戶。目前先建立真實會員網絡，介紹請求與站內聊天將在後續階段開放。",
+    "yourCard": "你的卡片",
+    "visible": "已對登入會員公開",
+    "notVisible": "隱藏中",
+    "editCard": "編輯我的卡片",
+    "hide": "隱藏我的卡片",
+    "loading": "載入中…",
+    "retry": "重試",
+    "retryPhoto": "重試照片上傳",
+    "role": "角色",
+    "roles": {
+      "founder": "創辦人",
+      "mentor": "Mentor／導師",
+      "investor": "投資人",
+      "partner": "夥伴",
+      "buyer": "買家"
+    },
+    "fields": {
+      "country": "國家",
+      "industry": "產業／專長",
+      "slogan": "你的介紹",
+      "companyPitch": "公司檔案的一句話介紹",
+      "icp": "公司檔案的 ICP",
+      "markets": "公司檔案的目標市場",
+      "offers": "我能提供的協助",
+      "looksFor": "我正在尋找的協助",
+      "stats": "已記錄的進度",
+      "photo": "模糊照片"
+    },
+    "categoriesLabel": "媒合分類",
+    "categories": {
+      "all": "為你推薦",
+      "mentorship": "導師協助",
+      "collaboration": "合作",
+      "investors": "投資人",
+      "partners": "夥伴",
+      "first-customers": "首批客戶"
+    },
+    "visibilityLabel": "卡片公開欄位",
+    "privacy": "系統不會提供姓名、公司名稱、Email、LinkedIn 或私人文件。獨特文字仍可能讓人推知身分，請勿在公開介紹放入公司名稱或聯絡方式；無法保證完全匿名。",
+    "syncNotice": "勾選的公司介紹、ICP 與目標市場會隨正式公司檔案更新；未勾選的欄位維持隱藏。你自行填寫的介紹、可提供與正在尋找的協助，請在這裡修改。",
+    "publishRules": "創辦人須先有三家不同公司的有效客戶訪談。其他角色須填完整資料並同意公開；你可以先儲存私人草稿。",
+    "visibleEditWarning": "卡片目前公開中。儲存變更會同步更新其他會員能看到的內容，請先審閱預覽。",
+    "photoTitle": "你的照片",
+    "sharePhoto": "在卡片顯示模糊照片",
+    "photoHidden": "照片已私人儲存。勾選照片選項並儲存卡片後，匿名預覽才會顯示照片；未勾選時會顯示「未分享照片」。",
+    "ownVisiblePreview": "這是已儲存的卡片，顯示其他登入會員能看見的內容。",
+    "ownHiddenPreview": "這是已儲存的卡片預覽。目前卡片隱藏，只有你能看見此預覽。",
+    "uploadingPhoto": "正在上傳並處理照片…",
+    "loadingPhoto": "正在載入照片…",
+    "photoNotice": "介紹功能開放前，其他會員只會看到伺服器產生的模糊照片。接受 JPEG、PNG、WebP，上限 3 MiB、2,000 萬像素。原圖保持私人；上傳不會自動開啟照片公開欄位。",
+    "ownPhoto": "你私人的原始照片",
+    "blurredPhoto": "匿名會員的模糊照片",
+    "noPhoto": "未分享照片",
+    "upload": "選擇照片（選填）",
+    "saveBeforePhoto": "先儲存私人卡片草稿，才能上傳照片。",
+    "preview": "預覽我的卡片",
+    "anonymousPreview": "你的匿名卡片預覽",
+    "saveDraft": "儲存私人草稿",
+    "saveVisible": "確認更新公開卡片",
+    "consent": "我同意將勾選的欄位提供給登入會員查看。",
+    "publish": "開啟 Matchmaking",
+    "published": "你的卡片已公開。",
+    "hidden": "你的卡片已隱藏，其他會員無法再開啟。",
+    "saved": "卡片已儲存。",
+    "photoSaved": "照片已更新。請預覽卡片，並儲存你調整的照片公開設定。",
+    "conflict": "卡片已由其他地方更新，你的輸入已保留。請與最新版比對後，再決定是否儲存你的回答。",
+    "loadLatest": "載入最新版",
+    "latestVisibility": "最新公開狀態",
+    "keepMine": "已比對，保留我的回答再審閱",
+    "reviewAgain": "已載入最新版本，保留你的回答。請重新預覽並另按確認儲存。",
+    "viewCard": "查看匿名個人頁",
+    "memberTitle": "匿名會員個人頁",
+    "back": "返回 Matchmaking",
+    "empty": "此分類還沒有公開卡片。會員完成資料並同意上線後，才會出現在這裡。",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "activity": {
+      "week": "本週在媒合頁活躍",
+      "month": "本月在媒合頁活躍",
+      "inactive": "超過 30 天未在媒合頁活躍"
+    },
+    "verifiedInvestor": "已驗證投資人",
+    "verifiedBuyer": "已驗證買家",
+    "interviews": "已記錄客戶訪談",
+    "milestones": "已標記完成里程碑",
+    "payingCustomers": "回報的付費客戶",
+    "selfReported": "會員自述・未經獨立驗證",
+    "recordSource": "數字來自 Nova 儲存的活動紀錄；記錄進度不代表商業成果已經獨立驗證。",
+    "profileSource": "來自會員已儲存的公司檔案",
+    "reasons": {
+      "industry": "你們的產業／專長相同。",
+      "market": "你們有相同的目標市場。"
+    }
+  },
+  "Mindset": {
+    "intro": "花一點時間，寫下卡點、找出能控制的事，再選一個小行動。",
+    "private": "只有你能存取這些反思，不會分享給其他會員、投資人或 AI。",
+    "questions": {
+      "blocker": "目前卡在哪裡？",
+      "controllable": "哪些事是你可以控制的？",
+      "nextAction": "下一個小行動是什麼？"
+    },
+    "new": "新增反思",
+    "edit": "修改反思",
+    "cancel": "取消",
+    "review": "審閱回答",
+    "backToEdit": "返回修改",
+    "confirmSave": "確認並儲存",
+    "history": "你的反思紀錄",
+    "empty": "還沒有反思紀錄，先回答任一題即可。",
+    "loading": "載入中…",
+    "retry": "重試",
+    "saved": "私人反思已儲存。",
+    "deleted": "反思已刪除。",
+    "delete": "刪除",
+    "deleteConfirm": "確定刪除這筆反思？文字內容將被移除。",
+    "confirmDelete": "確認刪除",
+    "conflict": "這筆反思已由其他地方更新，你的回答已保留。請比對後再儲存。",
+    "loadLatest": "載入最新版",
+    "latest": "最新儲存內容",
+    "keepMine": "已比對，保留我的回答再審閱",
+    "reviewAgain": "版本已更新，請重新審閱回答並另按確認儲存。",
+    "previous": "上一頁",
+    "next": "下一頁"
+  },
+  "Referrals": {
+    "title": "邀請朋友",
+    "rules": "分享專屬連結或邀請碼，新會員須在註冊時確認。首次真實付款（含 AI 加購）滿 14 天後，雙方各獲 5 次 AI 獎勵。每位邀請者每個台北月份最多 10 筆，待發放也占名額；達上限時雙方皆不獲獎。既有會員不能補填，同一 PayPal 付款帳號僅限一位合格受邀者。",
+    "refundRules": "獎勵次數不過期、不可提領或折抵訂閱費，使用權限沿用現有 AI 規則。任何已完成的部分退款、全額退款或付款撤銷，都會取消雙方獎勵；先撤回可用獎勵，不足部分只抵扣未來邀請獎勵，不扣付費加購次數、不收取現金。",
+    "monthly": "{month} 已用邀請名額：{used}／{limit} 筆",
+    "debt": "尚有 {count} 次需由未來邀請獎勵抵扣。",
+    "code": "你的邀請碼",
+    "link": "你的邀請連結",
+    "copy": "複製連結",
+    "copied": "連結已複製。",
+    "copyFallback": "複製失敗，請選取上方連結手動複製。",
+    "create": "建立我的邀請連結",
+    "history": "邀請紀錄",
+    "empty": "目前沒有邀請紀錄，建立連結後即可分享。",
+    "loading": "載入中…",
+    "retry": "重試",
+    "eligible": "預計符合發放時間：{date}（台北）；付款核對可能延後入帳。",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "direction": {
+      "sent": "你發出的邀請",
+      "received": "你接受的邀請"
+    },
+    "status": {
+      "pending_payment": "待付款",
+      "pending": "待發放",
+      "review": "待核對",
+      "granted": "已發放",
+      "rejected": "未符合",
+      "revoked": "已撤回"
+    },
+    "reason": {
+      "deleted_member": "發放前有一方已刪除帳號。",
+      "payment_refunded": "合格付款已退款或撤銷。",
+      "payment_review": "付款來源需要核對。",
+      "missing_payer": "付款身分需要核對。",
+      "self_referral": "自我邀請不符合資格。",
+      "duplicate_payer": "此 PayPal 付款帳號已取得過受邀資格。",
+      "monthly_limit": "邀請者當月名額已滿，雙方皆不獲獎。",
+      "admin_rejected": "此邀請未通過核對。",
+      "payment_unavailable": "付款來源暫時無法核對，系統將自動重試；請勿重新付款。"
+    },
+    "entry": {
+      "grant": "已入帳 {credits} 次 AI 獎勵，另有 {offset} 次抵扣先前撤回欠額。",
+      "revoke": "AI 獎勵調整：{credits} 次；新增未來邀請抵扣：{debt} 次。"
+    },
+    "verificationFailure": "上次核對：HTTP 503 · payment_unavailable · 追蹤碼：{requestId}"
   }
 }

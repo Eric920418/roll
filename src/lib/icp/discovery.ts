@@ -19,8 +19,13 @@ export type DiscoveryInput = z.infer<typeof discoveryInputSchema>;
 export type DiscoveryResult = z.infer<typeof discoveryResultSchema>;
 export type DiscoveryState = { path: "guess" | "suggest" | "discovery"; guess?: IcpGuess; input?: DiscoveryInput; result?: DiscoveryResult };
 export const discoveryStateSchema = z.object({ path: z.enum(["guess", "suggest", "discovery"]), guess: guessSchema.optional(), input: discoveryInputSchema.optional(), result: discoveryResultSchema.optional() }).strict();
+export function icpToGuess(base: IcpDraft | null, guess: IcpGuess = EMPTY_GUESS): IcpGuess {
+  return { customer: guess.customer.trim() || base?.who || "", struggle: guess.struggle.trim() || base?.problem || "", situation: guess.situation.trim(), workaround: guess.workaround.trim() || base?.workaround || "" };
+}
 export function guessToIcp(guess: IcpGuess, base: IcpDraft = EMPTY_ICP): IcpDraft {
-  return { ...base, summary: [guess.customer, guess.struggle, guess.situation, guess.workaround].filter(Boolean).join(" · ").slice(0, 2000), who: guess.customer, problem: guess.struggle, workaround: guess.workaround };
+  const filled = icpToGuess(base, guess);
+  const unchanged = !filled.situation && filled.customer === base.who && filled.struggle === base.problem && filled.workaround === base.workaround;
+  return { ...base, summary: unchanged && base.summary ? base.summary : [filled.customer, filled.struggle, filled.situation, filled.workaround].filter(Boolean).join(" · ").slice(0, 2000) || base.summary, who: filled.customer, problem: filled.struggle, workaround: filled.workaround };
 }
 export function validateDiscoveryResult(raw: unknown, mode: DiscoveryInput["mode"], conversations: { id: string; body: string }[] = [], excluded: string[] = []): DiscoveryResult {
   const result = discoveryResultSchema.parse(raw);
