@@ -115,7 +115,7 @@ function harness() {
     },
   };
   const api = load<{
-    getIcpWorkspace(id: string, locale: string): Promise<{ revision: number; draft: IcpDraft | null; messages: IcpMessage[]; saved: IcpDraft | null; profileVersion: number }>;
+    getIcpWorkspace(id: string, locale: string): Promise<IcpWorkspaceView>;
     runIcp(account: Account, input: object): Promise<unknown>;
     patchIcp(id: string, input: object): Promise<unknown>;
   }>("src/lib/icp/service.ts", {
@@ -128,6 +128,14 @@ function harness() {
 }
 const post = { action: "answer", text: "Founders with no paying customers", revision: 0, requestId: "one", locale: "en" };
 const patch = { action: "save", draft, revision: 1, profileVersion: 0, requestId: "save", locale: "en" };
+
+test("ICP guidance reads only the owner's existing product description without writing a draft", async () => {
+  const h = harness();
+  h.profiles.get("a")!.oneLinePitch = "Existing product description";
+  assert.equal((await h.api.getIcpWorkspace("a", "en")).productDescription, "Existing product description");
+  assert.equal((await h.api.getIcpWorkspace("b", "en")).productDescription, "");
+  assert.equal(h.workspaces.size, 0);
+});
 
 test("ICP end-to-end draft/save/reload preserves company data; duplicate request bills once", async () => {
   const h = harness();
@@ -357,8 +365,9 @@ test("Saved ICP remains visible outside tools and uses the newest saved profile 
   const react = require("react") as typeof import("react");
   type Node = import("react").ReactNode;
   function render(saved: IcpDraft | null, version: number, workspace: Partial<IcpWorkspaceView> = {}, legacy: string | null = null) {
+    const guidance = () => null;
     const panel = load<{ default(props: object): Node }>("src/components/dashboard/IcpPanel.tsx", {
-      "./IcpDiscovery": { default: () => null },
+      "./IcpDiscovery": { default: guidance },
       react: { useEffect() {}, useRef: () => ({ current: null }), useState: (initial: unknown) => [initial && typeof initial === "object" && "currentProfileVersion" in initial ? { ...initial, ...workspace } : initial, () => {}] },
       "react-dom": { createPortal: (node: Node) => node },
       "next/link": { default: "a" },
@@ -368,16 +377,23 @@ test("Saved ICP remains visible outside tools and uses the newest saved profile 
       "@/lib/icp/schema": require("../src/lib/icp/schema"),
     });
     const visible: string[] = [], hidden: string[] = [];
+    const guides: Array<{ key: string | null; savedVersion?: number }> = [];
     function visit(node: Node, collapsed = false) {
       react.Children.forEach(node, child => {
         if (typeof child === "string") (collapsed ? hidden : visible).push(child);
-        else if (react.isValidElement<{ children?: Node }>(child)) visit(child.props.children, collapsed || child.type === "details");
+        else if (react.isValidElement<{ children?: Node; savedVersion?: number }>(child)) {
+          if (child.type === guidance) guides.push({ key: child.key, savedVersion: child.props.savedVersion });
+          visit(child.props.children, collapsed || child.type === "details");
+        }
       });
     }
     visit(panel.default({ userId: "owner", saved, version, legacy, canUseAi: true, children: null }));
-    return { visible: visible.join(" "), hidden: hidden.join(" ") };
+    return { visible: visible.join(" "), hidden: hidden.join(" "), guides };
   }
   const saved = render(draft, 1);
+  const refreshed = render(draft, 1, { currentProfileVersion: 2 });
+  assert.equal(saved.guides[0].key, refreshed.guides[0].key, "A profile version refresh must not remount guidance and discard errors or unsent answers");
+  assert.equal(refreshed.guides[0].savedVersion, 2);
   assert.match(saved.visible, /Founders without paying customers/);
   assert.match(saved.visible, /Saved · to validate/);
   assert(!saved.hidden.includes(draft.summary));

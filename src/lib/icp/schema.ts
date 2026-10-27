@@ -74,6 +74,7 @@ export const profilePatchSchema = z.object({
 }).strict();
 
 export type IcpWorkspaceView = {
+  productDescription?: string;
   customerConversationCount?: number;
   discovery?: import("./discovery").DiscoveryState | null;
   revision: number; profileVersion: number; currentProfileVersion: number;

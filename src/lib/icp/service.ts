@@ -21,13 +21,14 @@ const json = (value: IcpDraft | IcpMessage[]) => value as unknown as Prisma.Inpu
 export async function getIcpWorkspace(userId: string, locale: "en" | "zh-tw"): Promise<IcpWorkspaceView> {
   const [workspace, profile, notes] = await Promise.all([
     prisma.icpWorkspace.findUnique({ where: { userId } }),
-    prisma.onboardingProfile.findUnique({ where: { userId }, select: { icp: true, icpDetails: true, icpVersion: true } }),
+    prisma.onboardingProfile.findUnique({ where: { userId }, select: { icp: true, icpDetails: true, icpVersion: true, oneLinePitch: true } }),
     prisma.meetingNote.findMany({ where: { userId }, select: { insight: true } }),
   ]);
   const saved = readIcp(profile?.icpDetails);
   const draft = readIcp(workspace?.draft);
   const messages = workspace ? workspace.messages as IcpMessage[] : [nextIcpQuestion(null, [], locale)!];
   return {
+    productDescription: profile?.oneLinePitch || "",
     customerConversationCount: notes.filter(n => { const p = insightSchema.safeParse(n.insight); return p.success && p.data.stage !== "angel_round" && !["Internal", "Mentor", "Industry expert", "Advisor"].includes(p.data.type) && (p.data.answers.some(Boolean) || p.data.notes); }).length,
     revision: workspace?.revision ?? 0, profileVersion: workspace?.profileVersion ?? profile?.icpVersion ?? 0,
     currentProfileVersion: profile?.icpVersion ?? 0, messages, draft, saved, legacy: profile?.icp ?? null,
