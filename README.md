@@ -2077,3 +2077,5 @@ NOVA 商業計畫書提供登入本人固定版型列印／儲存 PDF，使用�
 Email 隔離上線模式：MEMBER_NETWORK_EMAIL_ENABLED=test 時，必須同時設定 MEMBER_NETWORK_EMAIL_TEST_USER_ID 與 MEMBER_NETWORK_EMAIL_TEST_TO；只處理該測試帳號並寄到指定測試收件者，主旨加 [NOVA TEST]。缺少設定即停止，收件者變更也不重寫已存送信內容。驗收完成清理 QA 資料後改 true，並移除測試限定變數；false 一律不傳送。
 
 發布驗收：pnpm test 361/361 通過、pnpm lint 無錯誤（14 項既有警告）、pnpm build 成功；21 個既有帳號、3 個有效權益來源、20 張缺卡已相容回填，原手填卡片未變。正式 Email 先使用兩個隱藏 QA 帳號，限定 Vivian.lee@roll-grp.com；公開會員寄送仍未開啟，待真實收信及退訂驗收。
+
+分享升級邊界：已接受舊分享維持原授權；所有尚未接受的舊邀請補上新制 metadata，接受時必須進入聊天及新創逐人同意。快照建立後停用新網絡時，舊 Email 接受入口也不得產生新私人授權，避免停用再啟用時繞過同意。

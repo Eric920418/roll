@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       include: { portal: { include: { user: true } } },
     });
     if (!invitation || invitation.status !== "pending") return fail("邀請不存在、已使用或已撤銷。", 404);
-    if (invitation.networkPolicy === 2 && !networkEnabled()) return fail("新制分享暫時停用，請稍後再試 / Sharing is temporarily unavailable", 503);
+    if (!networkEnabled() && (invitation.networkPolicy === 2 || await prisma.setting.findUnique({ where: { key: "member_network_v2_snapshot" } }))) return fail("新制分享暫時停用，請稍後再試 / Sharing is temporarily unavailable", 503);
     if (invitation.portal.userId === session.uid) return fail("不可接受自己的邀請 / Cannot accept your own invitation", 403);
     if (!ownerHasInvestorAccess(invitation.portal.user, await getBetaAccess())) {
       return fail("此 Investor Portal 目前無法使用。", 404);
@@ -44,6 +44,7 @@ export async function POST(req: Request) {
         where: { id: invitation.id, status: "pending", tokenHash },
         data: {
           status: "accepted",
+          ...(networkEnabled() ? { networkPolicy: 2 } : {}),
           acceptedByUserId: session.uid,
           acceptedAt: new Date(),
           activeKey: null,
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
         where: { id: session.uid, emailVerified: null },
         data: { emailVerified: new Date() },
       });
-      if (networkEnabled() && invitation.networkPolicy === 2) {
+      if (networkEnabled()) {
         const key = pairKey(invitation.portal.userId, session.uid);
         await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
         const prior = await tx.networkConnection.findUnique({ where: { pairKey: key } });
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
       return true;
     });
     if (!accepted) return fail("此邀請已被使用，請重新整理頁面。", 409);
-    return ok({ portalId: invitation.portalId, awaitingConsent: networkEnabled() && invitation.networkPolicy === 2 });
+    return ok({ portalId: invitation.portalId, awaitingConsent: networkEnabled() });
   } catch (error) {
     return failFromError(error);
   }

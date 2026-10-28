@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     if (!planAtLeast(getEffectivePlan(account), "business")) {
       return fail("Investor Portal 邀請需要 Business 以上方案。", 403);
     }
+    if (!networkEnabled() && await prisma.setting.findUnique({ where: { key: "member_network_v2_snapshot" } })) return fail("新制分享暫時停用 / Sharing is temporarily unavailable", 503);
     const parsed = inviteSchema.safeParse(await req.json());
     if (!parsed.success) return fail(parsed.error.issues.map((item) => item.message).join("\n"));
     if (networkEnabled() && parsed.data.email.toLowerCase() === account.email.toLowerCase()) return fail("不可邀請自己 / Cannot invite yourself", 400);

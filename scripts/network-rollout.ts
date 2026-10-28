@@ -14,6 +14,7 @@ async function main() {
     if (!process.argv.includes("--apply")) return;
     await prisma.$transaction(async tx => {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('member-network-rollout-v2'))::text`;
+      await tx.investorInvitation.updateMany({ where: { status: "pending", networkPolicy: null }, data: { networkPolicy: 2 } });
       const marker = await tx.setting.findUnique({ where: { key: "member_network_v2_snapshot" } });
       if (!marker) {
         for (const user of eligible) for (const sourceKey of sources(user)) for (const feature of ["network", "prospects"]) await tx.legacyFeatureGrant.upsert({ where: { userId_feature_sourceKey: { userId: user.id, feature, sourceKey } }, create: { userId: user.id, feature, sourceKey }, update: {} });
