@@ -43,6 +43,7 @@ export async function writeMyCard(userId: string, input: CardWrite) {
       await tx.matchmakingProfile.update({ where: { userId }, data: { visible: false, ...(networkEnabled() ? { hiddenByUserAt: new Date() } : {}), revision: { increment: 1 }, lastRequestId: input.requestId, lastRequestHash: hash } });
       return;
     }
+    if (row?.sourcePolicy !== 2 && ["country", "industry", "slogan", "offers", "looksFor"].some(key => !input.draft[key as keyof typeof input.draft].length)) throw new MemberError("請填妥手動卡片必填欄位 / Complete the required manual-card fields", 400);
     // A visible founder cannot bypass the evidence gate through edits or a role change.
     let visible = input.action === "publish" || Boolean(row?.visible);
     if (visible && input.draft.role === "founder" && !networkEnabled()) {

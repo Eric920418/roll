@@ -8,16 +8,18 @@ import { pathForLocale } from "@/lib/routes";
 const button = "inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/20 px-5 py-3 text-sm font-semibold disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-2";
 export default function FounderOffer() {
   const locale = useLocale() as Locale, zh = locale === "zh-tw";
-  const [offer, setOffer] = useState<{ enabled: boolean; remaining: number; capacity: number; pending?: { orderId: string | null; confirming: boolean } | null } | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false), [confirmed, setConfirmed] = useState(false);
+  const [offer, setOffer] = useState<{ pricingPolicy?: number | null; enabled: boolean; remaining: number; capacity: number; pending?: { orderId: string | null; confirming: boolean } | null } | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false), [confirmed, setConfirmed] = useState(false);
   const requestId = useRef("");
   const load = useCallback(async () => { try { const response = await fetch("/api/billing/founder/orders", { cache: "no-store" }), json = await response.json(); if (!response.ok) throw new Error(json.error || `HTTP ${response.status}`); setOffer(json.data); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } }, []);
-  useEffect(() => { const first = setTimeout(() => void load(), 0), timer = setInterval(() => void load(), 60_000); return () => { clearTimeout(first); clearInterval(timer); }; }, [load]);
+  useEffect(() => { if (offer?.pricingPolicy === 2) return; const first = setTimeout(() => void load(), 0), timer = setInterval(() => void load(), 60_000); return () => { clearTimeout(first); clearInterval(timer); }; }, [load, offer?.pricingPolicy]);
   async function checkout() {
     if (busy || !confirmed) return; setBusy(true); setError("");
     requestId.current ||= crypto.randomUUID();
     try { const response = await fetch("/api/billing/founder/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: requestId.current, locale, prepaidYearConfirmed: true }) }), json = await response.json(); if (!response.ok) throw new Error(json.error || `HTTP ${response.status}`); window.location.assign(json.data.approveUrl); }
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setBusy(false); }
   }
+  if (!offer) return <section className="space-y-3 rounded-2xl border border-dark/15 bg-white p-5"><p role="status">{zh ? "載入升級選項…" : "Loading upgrade options…"}</p>{error && <><p role="alert" className="whitespace-pre-wrap text-red-700">{error}</p><button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></>}</section>;
+  if (offer.pricingPolicy === 2) return <section className="space-y-4 rounded-2xl border-2 border-black bg-white p-5 sm:p-7"><h3 className="text-2xl font-bold">{zh ? "選擇下一階段的方案" : "Choose your next-stage plan"}</h3><p>{zh ? "SPARK 適合繼續驗證想法；NOVA 再加上新公司名單、會員網絡與投資人分享。已儲存的訪談會保留。" : "Continue validating with SPARK, or choose NOVA for new prospect companies, the member network and investor sharing. Saved interviews are retained."}</p><Link className={`${button} bg-black text-white`} href={pathForLocale("/dashboard/account#plan", locale)}>{zh ? "比較 SPARK、NOVA 與 ROLL ON" : "Compare SPARK, NOVA and ROLL ON"}</Link>{offer.pending?.orderId && <Link className={button} href={`${pathForLocale("/dashboard/billing/founder-return", locale)}?token=${encodeURIComponent(offer.pending.orderId)}`}>{zh ? "確認既有創始方案付款（請勿重付）" : "Confirm an existing founding payment (do not pay again)"}</Link>}{error && <p role="alert" className="whitespace-pre-wrap text-red-700">{error}</p>}</section>;
   return <section aria-label={zh ? "創始會員年費" : "Founding membership"} className="space-y-4 rounded-2xl border-2 border-black bg-white p-5 sm:p-7">
     <p className="text-xs font-semibold uppercase tracking-[0.15em]">{zh ? "限前 10 位創始會員" : "Limited to 10 founding members"}</p>
     <h3 className="text-2xl font-bold">{zh ? "把初步訊號，推進成更完整的證據" : "Turn an early signal into stronger evidence"}</h3>

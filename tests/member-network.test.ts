@@ -55,6 +55,10 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
     userIds.push(row.id); return row;
   }
   try {
+    const founder = load<typeof import("../src/lib/discovery/founder")>("src/lib/discovery/founder.ts");
+    assert.equal((await founder.founderOfferSnapshot()).pricingPolicy, 2);
+    assert.equal((await founder.founderOfferSnapshot()).enabled, false);
+    await assert.rejects(founder.reserveFounderOrder("qa-no-new-founding-order", randomUUID()));
     const owner = await user("business"), investor = await user("free", true), stranger = await user(), spark = await user("pro");
     const photo = load<typeof import("../src/lib/matchmaking/photo")>("src/lib/matchmaking/photo.ts");
     await db.matchmakingProfile.update({ where: { userId: owner.id }, data: { originalPhoto: "qa/original.webp", blurredPhoto: "qa/blurred.webp" } });

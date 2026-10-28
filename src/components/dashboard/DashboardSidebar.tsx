@@ -74,7 +74,7 @@ export default function DashboardSidebar({
   }
 
   return (
-    <aside style={{ fontFamily: `${inter.style.fontFamily}, var(--font-chinese), sans-serif` }} className="flex shrink-0 flex-col gap-4 border-b border-dark/10 bg-white p-5 md:w-60 md:gap-7 md:border-b-0 md:border-r">
+    <aside style={{ fontFamily: `${inter.style.fontFamily}, var(--font-chinese), sans-serif` }} className="print:hidden flex shrink-0 flex-col gap-4 border-b border-dark/10 bg-white p-5 md:w-60 md:gap-7 md:border-b-0 md:border-r">
       <div>
         <Link
           href={pathForLocale("/dashboard", locale)}
