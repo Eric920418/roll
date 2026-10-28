@@ -1,3 +1,4 @@
+import { networkEnabled } from "@/lib/network/policy";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -55,10 +56,15 @@ export async function PATCH(req: NextRequest) {
         website: webUrl(data.website),
         country: str(data.country),
       };
-      await prisma.onboardingProfile.upsert({
-        where: { userId: session.uid },
-        create: { userId: session.uid, ...fields },
-        update: fields,
+      await prisma.$transaction(async tx => {
+        await tx.onboardingProfile.upsert({ where: { userId: session.uid }, create: { userId: session.uid, ...fields }, update: fields });
+        if (networkEnabled()) {
+          const { ensureCard } = await import("@/lib/network/access");
+          const db = tx as unknown as import("@prisma/client").Prisma.TransactionClient;
+          await ensureCard(session.uid, db);
+          if (typeof data.matchmakingHidden === "boolean") await tx.matchmakingProfile.updateMany({ where: { userId: session.uid, sourcePolicy: 2 }, data: { hiddenByUserAt: data.matchmakingHidden ? new Date() : null, ...(data.matchmakingHidden ? { visible: false } : {}) } });
+          await (await import("@/lib/network/cards")).syncAutomaticCard(session.uid, db);
+        }
       });
       await advanceTo(3); // 公司資訊填完 → Step 3
       return ok({ nextStep: "requirements" });

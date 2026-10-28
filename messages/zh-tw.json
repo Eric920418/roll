@@ -265,7 +265,7 @@
     },
     "pricing": {
       "title": "選擇方案",
-      "badge": "推薦",
+      "badge": "最受歡迎",
       "billingInterval": "付款週期",
       "month": "月繳",
       "year": "年繳",
@@ -281,28 +281,28 @@
         "cta": "免費開始"
       },
       "pro": {
-        "name": "Pro",
+        "name": "SPARK",
         "price": "US$49",
         "unit": "/ 月",
-        "f1": "每月 150 次 NOVA 回答",
+        "f1": "最優先的三個下一步",
         "f2": "Action Plan 與 Milestone 管理",
         "f3": "市場進入策略指引",
         "cta": "立即開始"
       },
       "business": {
-        "name": "Business",
+        "name": "NOVA",
         "price": "US$149",
         "unit": "/ 月",
-        "f1": "包含 Pro 全部功能",
+        "f1": "包含 SPARK 全部功能",
         "f2": "私密 Investor Portal",
         "f3": "投資人更新與 Business Plan 分享",
         "cta": "立即開始"
       },
       "enterprise": {
-        "name": "Enterprise",
+        "name": "ROLL ON",
         "price": "客製",
         "unit": "",
-        "f1": "包含 Business 全部功能",
+        "f1": "包含 NOVA 全部功能",
         "f2": "客製化市場資源媒合",
         "f3": "量身打造的市場進入方案",
         "cta": "聯絡我們"
@@ -620,9 +620,9 @@
     "logout": "登出",
     "plans": {
       "free": "免費",
-      "pro": "Pro",
-      "business": "Business",
-      "enterprise": "Enterprise"
+      "pro": "SPARK",
+      "business": "NOVA",
+      "enterprise": "ROLL ON"
     },
     "nav": {
       "overview": "首頁",
@@ -2329,7 +2329,7 @@
     }
   },
   "Matchmaking": {
-    "intro": "尋找創辦人、mentor、投資人、夥伴及首批客戶。目前先建立真實會員網絡，介紹請求與站內聊天將在後續階段開放。",
+    "intro": "透過公司摘要認識會員；私人資料需接受聊天及明確同意分享後才會開放。",
     "yourCard": "你的卡片",
     "visible": "已對登入會員公開",
     "notVisible": "隱藏中",

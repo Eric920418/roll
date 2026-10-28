@@ -114,6 +114,7 @@ export async function persistGeneratedPlan(input: {
       }
       await assertGenerationAllowance(input.userId, tx);
 
+      if (process.env.MEMBER_NETWORK_ENABLED === "true" && input.basePlan) await tx.investorWatch.updateMany({ where: { startupId: input.userId, scopeKey: `plan:${input.basePlan.id}`, status: { notIn: ["disabled", "merged"] } }, data: { status: "paused" } });
       await tx.actionPlan.updateMany({
         where: { userId: input.userId, activeKey: input.userId, archivedAt: null },
         data: { activeKey: null, archivedAt: new Date(), revision: { increment: 1 } },

@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { SecurityUnavailableError } from "./security/http";
 import { logSecurityError } from "./security/log";
 import { prisma } from "@/lib/prisma";
@@ -42,9 +43,10 @@ export async function checkRateLimit(
   limit: number,
   windowMs: number,
   failOpen = false,
+  db: Pick<Prisma.TransactionClient, "$queryRaw"> = prisma,
 ): Promise<RateLimitResult> {
   try {
-    const rows = await prisma.$queryRaw<{ count: number; windowStart: Date }[]>`
+    const rows = await db.$queryRaw<{ count: number; windowStart: Date }[]>`
       INSERT INTO "RateCounter" ("key", "windowStart", "count", "updatedAt")
       VALUES (${key}, now(), 1, now())
       ON CONFLICT ("key") DO UPDATE SET

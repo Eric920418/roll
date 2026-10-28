@@ -1,3 +1,4 @@
+import { networkEnabled, pairKey } from "@/lib/network/policy";
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -219,11 +220,19 @@ export async function getInvestorView(portalId: string, userId: string) {
   if (!invitation || !ownerHasInvestorAccess(invitation.portal.user, await getBetaAccess())) return null;
 
   const portal = invitation.portal;
+  if (invitation.networkPolicy === 2 && !networkEnabled()) return null;
+  const consent = networkEnabled() ? await prisma.networkShare.findUnique({ where: { ownerId_viewerId: { ownerId: portal.userId, viewerId: userId } } }) : null;
+  if (networkEnabled()) {
+    const link = await prisma.networkConnection.findUnique({ where: { pairKey: pairKey(portal.userId, userId) } });
+    if (link?.status === "blocked" || consent?.revokedAt) return null;
+    if (invitation.networkPolicy === 2 && (!consent || consent.revokedAt || link?.status !== "accepted" || !(await (await import("@/lib/network/access")).networkAccount(userId)).verifiedInvestor)) return null;
+  }
+  const allowed = (section: string, legacy: boolean) => (invitation.networkPolicy === 2 || consent) && networkEnabled() ? Boolean(consent?.sections.includes(section)) : legacy;
   const hidden = toHideableFields(portal.hiddenFields);
   const visible = (key: Parameters<typeof isFieldHidden>[1]) => !isFieldHidden(hidden, key);
 
   const actionPlan =
-    portal.shareActionPlan || portal.shareStrategy
+    allowed("actionPlan", portal.shareActionPlan) || allowed("strategy", portal.shareStrategy)
       ? await getActiveActionPlan(portal.userId)
       : null;
 
@@ -231,7 +240,7 @@ export async function getInvestorView(portalId: string, userId: string) {
 
   // 公司檔案：逐欄位挑，被隱藏的 key 完全不建立。
   const profile: InvestorProfileView = {};
-  if (portal.shareProfile) {
+  if (allowed("profile", portal.shareProfile)) {
     if (visible("profile.industry")) profile.industry = p?.industry ?? null;
     if (visible("profile.companySize")) profile.companySize = p?.companySize ?? null;
     if (visible("profile.country")) profile.country = p?.country ?? null;
@@ -245,7 +254,7 @@ export async function getInvestorView(portalId: string, userId: string) {
   }
 
   const strategy: InvestorStrategyView = {};
-  if (portal.shareStrategy && actionPlan) {
+  if (allowed("strategy", portal.shareStrategy) && actionPlan) {
     const d = actionPlan.diagnosis;
     if (visible("strategy.stage")) {
       strategy.stage = { companyStage: d.companyStage, stageReason: d.stageReason };
@@ -260,7 +269,7 @@ export async function getInvestorView(portalId: string, userId: string) {
   }
 
   const plan: InvestorActionPlanView = {};
-  if (portal.shareActionPlan && actionPlan) {
+  if (allowed("actionPlan", portal.shareActionPlan) && actionPlan) {
     if (visible("actionPlan.nextMoves")) {
       plan.nextMoves = actionPlan.nextMoves.map(toActionView);
     }
@@ -272,7 +281,7 @@ export async function getInvestorView(portalId: string, userId: string) {
     }
   }
 
-  const kpis: InvestorKpiView[] = portal.shareKpis
+  const kpis: InvestorKpiView[] = allowed("kpis", portal.shareKpis)
     ? portal.kpis
         .filter((item) => !item.hidden)
         .map((item) => ({
@@ -285,7 +294,7 @@ export async function getInvestorView(portalId: string, userId: string) {
         }))
     : [];
 
-  const milestones = portal.shareMilestones
+  const milestones = allowed("milestones", portal.shareMilestones)
     ? portal.milestones
         .filter((item) => !item.hidden)
         .map((item) => ({
@@ -297,7 +306,7 @@ export async function getInvestorView(portalId: string, userId: string) {
         }))
     : [];
 
-  const updates = portal.shareUpdates
+  const updates = allowed("updates", portal.shareUpdates)
     ? portal.updates
         .filter((item) => !item.hidden)
         .map((item) => ({
@@ -321,7 +330,7 @@ export async function getInvestorView(portalId: string, userId: string) {
     milestones: listOrNull(milestones),
     updates: listOrNull(updates),
     businessPlan:
-      portal.shareBusinessPlan && portal.businessPlanPath
+      allowed("businessPlan", portal.shareBusinessPlan) && portal.businessPlanPath
         ? {
             filename: portal.businessPlanFilename,
             size: portal.businessPlanSize,

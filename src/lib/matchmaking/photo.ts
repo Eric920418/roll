@@ -1,3 +1,4 @@
+import { networkEnabled } from "@/lib/network/policy";
 import "server-only";
 import sharp from "sharp";
 import { get, put } from "@vercel/blob";
@@ -43,8 +44,12 @@ export async function savePhoto(userId: string, revision: number, requestId: str
   return { saved: true };
 }
 export async function readPhoto(userId: string, id?: string, ownBlurred = false) {
-  const row = id ? await prisma.matchmakingProfile.findFirst({ where: { id, visible: true, visibleFields: { has: "photo" } }, select: { blurredPhoto: true, originalPhoto: true } }) : await prisma.matchmakingProfile.findUnique({ where: { userId }, select: { blurredPhoto: true, originalPhoto: true } });
-  const path = id || ownBlurred ? row?.blurredPhoto : row?.originalPhoto;
+  const row = id ? await prisma.matchmakingProfile.findFirst({ where: { id, visibleFields: { has: "photo" } }, select: { sourcePolicy: true, userId: true, visible: true, blurredPhoto: true, originalPhoto: true } }) : await prisma.matchmakingProfile.findUnique({ where: { userId }, select: { blurredPhoto: true, originalPhoto: true } });
+  if (id && row && "sourcePolicy" in row && row.sourcePolicy === 2 && !networkEnabled()) throw new MemberError("照片尚未公開 / Photo not available", 404);
+  const peer = id && row && "userId" in row && networkEnabled() ? await (await import("@/lib/network/access")).acceptedConnection(String(row.userId), userId) : null;
+  if (id && row && "visible" in row && !row.visible && !peer) throw new MemberError("找不到照片 / Photo not found", 404);
+  if (id && row && "userId" in row && networkEnabled() && row.userId !== userId && !peer) await (await import("@/lib/network/access")).requireNetwork(userId);
+  const path = id ? (peer ? row?.originalPhoto : row?.blurredPhoto) : ownBlurred ? row?.blurredPhoto : row?.originalPhoto;
   if (!path) throw new MemberError("找不到照片 / Photo not found", 404);
   const blob = await get(path, { access: "private", token: privateToken(), useCache: false });
   if (!blob || blob.statusCode !== 200) throw new MemberError("照片暫時無法讀取 / Photo is temporarily unavailable", 502);

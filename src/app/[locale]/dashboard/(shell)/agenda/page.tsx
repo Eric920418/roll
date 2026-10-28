@@ -1,3 +1,4 @@
+import { InvestorProgress } from "@/components/dashboard/network/NetworkPanels";
 import { requireUserPage } from "@/lib/auth/guard";
 import GettingStartedHint from "@/components/dashboard/GettingStartedHint";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -27,6 +28,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
   if (!account) {
     return (
       <div className="font-[family-name:var(--font-body)]">
+      <InvestorProgress />
         <h1 className="text-4xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
           {t("title")}
         </h1>
@@ -41,6 +43,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
 
   return (
     <div className="font-[family-name:var(--font-body)]">
+      <InvestorProgress />
       <h1 className="text-4xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
         {t("title")}
       </h1>

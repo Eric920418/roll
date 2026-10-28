@@ -9,7 +9,7 @@ import { generateBodySchema } from "../src/lib/action-plan/schemas";
 function load<T>(path: string, mocks: Record<string, unknown>): T {
   const require = createRequire(import.meta.url), loaded = { exports: {} };
   const source = ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
-  runInNewContext(source, { module: loaded, exports: loaded.exports, console, Date, Error, require: (id: string) => id in mocks ? mocks[id] : require(id) });
+  runInNewContext(source, { module: loaded, exports: loaded.exports, process: { env: {} }, console, Date, Error, require: (id: string) => id in mocks ? mocks[id] : require(id) });
   return loaded.exports as T;
 }
 const diagnosis = { companyStage: "MVP", stageReason: "Working MVP", stageConfidence: 80, bottleneckGroup: "Sales", bottleneckCode: "no_leads", bottleneckReason: "No paying customers", bottleneckConfidence: 80 };

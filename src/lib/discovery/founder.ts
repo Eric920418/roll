@@ -1,3 +1,4 @@
+import { networkEnabled } from "@/lib/network/policy";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -15,9 +16,10 @@ export async function founderOfferSnapshot(userId?: string) {
   const occupied = await prisma.founderOrder.count({ where: { seat: { not: null }, OR: [{ status: { in: ["paid", "capturing", "refunded", "review"] } }, { status: "reserved", reservedUntil: { gt: now } }] } });
   let configured = false; try { configured = isPaypalConfigured(); } catch { /* No payment CTA until environment is configured. */ }
   const own = userId ? await prisma.founderOrder.findFirst({ where: { userId, seat: { not: null }, OR: [{ status: "capturing" }, { status: "reserved", reservedUntil: { gt: now } }] }, orderBy: { createdAt: "desc" }, select: { paypalOrderId: true, status: true } }) : null;
-  return { pending: own ? { orderId: own.paypalOrderId, confirming: own.status === "capturing" } : null, enabled: process.env.FOUNDER_OFFER_ENABLED === "true" && configured, remaining: Math.max(0, FOUNDER_SEATS - occupied), capacity: FOUNDER_SEATS };
+  return { pending: own ? { orderId: own.paypalOrderId, confirming: own.status === "capturing" } : null, enabled: !networkEnabled() && process.env.FOUNDER_OFFER_ENABLED === "true" && configured, remaining: Math.max(0, FOUNDER_SEATS - occupied), capacity: FOUNDER_SEATS };
 }
 export async function reserveFounderOrder(userId: string, requestId: string) {
+  if (networkEnabled()) throw new PlanWriteError("創始優惠已停止新購，請選擇 SPARK 或 NOVA / Founding offer closed; choose SPARK or NOVA", 409);
   if (!(await founderOfferSnapshot()).enabled) throw new PlanWriteError("創始年費結帳尚未開放 / Founding checkout is not available yet", 503);
   return prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient; await lockSeats(tx);

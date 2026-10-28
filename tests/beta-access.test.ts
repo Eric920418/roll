@@ -209,6 +209,7 @@ test("investor sharing respects beta owner access and still requires an accepted
   let invited = true;
   let owner: BillingAccount = account;
   const portal = load<typeof import("../src/lib/investor/portal")>("src/lib/investor/portal.ts", {
+    "@/lib/network/policy": { networkEnabled: () => false },
     "@/lib/prisma": { prisma: { investorInvitation: { findMany: async (args: {
       where: { acceptedByUserId: string; status: string };
       include: { portal: { include: { user: { select: Record<string, unknown> } } } };

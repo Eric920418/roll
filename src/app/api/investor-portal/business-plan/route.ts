@@ -6,7 +6,8 @@ import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
 import { prisma } from "@/lib/prisma";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
-import { getOrCreateOwnerPortal, ownerHasInvestorAccess } from "@/lib/investor/portal";
+import { getOrCreateOwnerPortal, ownerHasInvestorAccess, getInvestorView } from "@/lib/investor/portal";
+import { networkEnabled } from "@/lib/network/policy";
 import { validateInvestorPdf } from "@/lib/investor/pdf";
 
 function token() {
@@ -145,18 +146,18 @@ export async function GET(req: Request) {
     const session = await getUserSession();
     if (!session) return unauthorized();
     const portalId = new URL(req.url).searchParams.get("portalId");
-    const portal = portalId
-      ? (await prisma.investorInvitation.findFirst({
+    const invitation = portalId ? await prisma.investorInvitation.findFirst({
           where: { portalId, acceptedByUserId: session.uid, status: "accepted" },
           include: { portal: { include: { user: true } } },
-        }))?.portal
-      : await prisma.investorPortal.findUnique({
+        }) : null;
+    const portal = portalId ? invitation?.portal : await prisma.investorPortal.findUnique({
           where: { userId: session.uid },
           include: { user: true },
         });
     if (!portal || !ownerHasInvestorAccess(portal.user, await getBetaAccess())) return fail("找不到 Business Plan。", 404);
     const isOwner = portal.userId === session.uid;
-    if ((!isOwner && !portal.shareBusinessPlan) || !portal.businessPlanPath) {
+    const canRead = isOwner || (networkEnabled() ? Boolean((await getInvestorView(portal.id, session.uid))?.businessPlan) : invitation?.networkPolicy !== 2 && portal.shareBusinessPlan);
+    if (!canRead || !portal.businessPlanPath) {
       return fail("找不到 Business Plan。", 404);
     }
     const result = await get(portal.businessPlanPath, {

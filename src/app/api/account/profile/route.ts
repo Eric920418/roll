@@ -1,3 +1,4 @@
+import { networkEnabled } from "@/lib/network/policy";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { getUserSession } from "@/lib/auth/guard";
@@ -20,6 +21,7 @@ export async function PATCH(req: NextRequest) {
     await tx.onboardingProfile.upsert({
       where: { userId: session.uid }, create: { userId: session.uid, targetMarkets: [], needs: [], ...parsed.data }, update: parsed.data,
     });
+    if (networkEnabled()) await (await import("@/lib/network/cards")).syncAutomaticCard(session.uid, tx);
     await awardProfile(tx, session.uid);
     });
     return ok({ saved: true });

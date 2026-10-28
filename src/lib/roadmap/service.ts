@@ -122,6 +122,7 @@ export async function patchRoadmap(userId: string, input: z.infer<typeof roadmap
       await insertActions(tx, active.id, stage.id, draft, offset);
     } else {
       if (draft.deadline <= today()) throw new PlanWriteError("目標期限已過，請調整日期 / The deadline has passed; adjust the dates", 400);
+      if (active && process.env.MEMBER_NETWORK_ENABLED === "true") await tx.investorWatch.updateMany({ where: { startupId: userId, scopeKey: `plan:${active.id}`, status: { notIn: ["disabled", "merged"] } }, data: { status: "paused" } });
       if (active) await tx.actionPlan.update({ where: { id: active.id }, data: { activeKey: null, archivedAt: new Date() } });
       const plan = await tx.actionPlan.create({ data: { userId, locale: input.locale, requestId: input.requestId, activeKey: userId, ...draft.diagnosis, goal: draft.goal, goalStartsAt: new Date(draft.startsAt), goalDeadline: new Date(draft.deadline), goalAssumptions: asJson(draft.assumptions), milestones: { create: draft.milestones.map((m, position) => ({ ...m, position, targetDate: new Date(m.targetDate) })) } }, include: { milestones: { orderBy: { position: "asc" } } } });
       await insertActions(tx, plan.id, plan.milestones[0].id, draft, 0);

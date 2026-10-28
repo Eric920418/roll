@@ -142,6 +142,7 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  featurePolicy Int? // 2 after a new-policy purchase; existing entitlement sources remain unchanged
   sessionVersion Int @default(0)
   id             String    @id @default(cuid())
   email          String    @unique
@@ -193,6 +194,18 @@ model User {
 
   profile           OnboardingProfile?
   matchmakingProfile MatchmakingProfile?
+  networkSent NetworkConnection[] @relation("NetworkSender")
+  networkReceived NetworkConnection[] @relation("NetworkRecipient")
+  networkMessages NetworkMessage[]
+  networkShares NetworkShare[] @relation("NetworkOwner")
+  networkReceivedShares NetworkShare[] @relation("NetworkViewer")
+  investorWatches InvestorWatch[] @relation("WatchInvestor")
+  startupWatches InvestorWatch[] @relation("WatchStartup")
+  memberVisits MemberVisit[] @relation("VisitViewer")
+  receivedVisits MemberVisit[] @relation("VisitOwner")
+  memberNotifications MemberNotification[]
+  notificationPreference MemberNotificationPreference?
+  legacyFeatures LegacyFeatureGrant[]
   mindsetEntries     MindsetEntry[]
   quizSubmissions   QuizSubmission[]
   subscriptions     Subscription[]
@@ -240,6 +253,7 @@ model User {
 
 /// 新試用的三次初步訪談與付費後十次完整分析；不覆寫舊計畫或訪談。
 model DiscoveryJourney {
+  interviewsConfirmedAt DateTime?
   validationAnalysis Json?
   id String @id @default(cuid())
   userId String @unique
@@ -716,6 +730,7 @@ model ActionDependency {
 // ============================================
 
 model InvestorPortal {
+  fundraisingOpenAt DateTime?
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation("InvestorPortalOwner", fields: [userId], references: [id], onDelete: Cascade)
@@ -821,6 +836,7 @@ model InvestorUpdate {
 }
 
 model InvestorInvitation {
+  networkPolicy Int?
   id       String         @id @default(cuid())
   portalId String
   portal   InvestorPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
@@ -1107,6 +1123,8 @@ model CustomerStageOutcome {
 
 /// Anonymous discovery card. Private identity stays on User / OnboardingProfile.
 model MatchmakingProfile {
+  hiddenByUserAt DateTime?
+  sourcePolicy Int?
   id String @id @default(cuid())
   userId String @unique
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1223,4 +1241,130 @@ model ReferralEntry {
   createdAt DateTime @default(now())
   @@unique([referralId, accountId, kind])
   @@index([accountId, createdAt])
+}
+
+
+model NetworkConnection {
+  id String @id @default(cuid())
+  pairKey String @unique
+  senderId String
+  sender User @relation("NetworkSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient User @relation("NetworkRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  status String @default("pending")
+  revision Int @default(1)
+  acceptedAt DateTime?
+  blockedBy String?
+  senderReadAt DateTime?
+  recipientReadAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages NetworkMessage[]
+  shares NetworkShare[]
+  watches InvestorWatch[]
+  @@index([recipientId, status])
+  @@index([senderId, status])
+}
+model NetworkMessage {
+  id String @id @default(cuid())
+  connectionId String
+  connection NetworkConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  senderId String
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  requestId String
+  body String
+  createdAt DateTime @default(now())
+  @@unique([senderId, requestId])
+  @@index([connectionId, createdAt, id])
+}
+model NetworkShare {
+  id String @id @default(cuid())
+  connectionId String
+  connection NetworkConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner User @relation("NetworkOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  viewerId String
+  viewer User @relation("NetworkViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+  sections String[]
+  scope Json?
+  revision Int @default(1)
+  grantedAt DateTime @default(now())
+  revokedAt DateTime?
+  @@unique([ownerId, viewerId])
+  @@index([connectionId])
+}
+model InvestorWatch {
+  id String @id @default(cuid())
+  connectionId String
+  connection NetworkConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  investorId String
+  investor User @relation("WatchInvestor", fields: [investorId], references: [id], onDelete: Cascade)
+  startupId String
+  startup User @relation("WatchStartup", fields: [startupId], references: [id], onDelete: Cascade)
+  condition String
+  scopeKey String @default("pending")
+  status String @default("pending")
+  notifiedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([investorId, startupId, condition, scopeKey])
+  @@index([startupId, status])
+}
+model MemberVisit {
+  id String @id @default(cuid())
+  viewerId String
+  viewer User @relation("VisitViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner User @relation("VisitOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  week String
+  role String
+  createdAt DateTime @default(now())
+  @@unique([viewerId, ownerId, week])
+  @@index([week, ownerId])
+}
+model MemberNotification {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventKey String @unique
+  kind String
+  payload Json
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  delivery MemberNotificationDelivery?
+  @@index([userId, createdAt, id])
+}
+model MemberNotificationPreference {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weeklyEmail Boolean @default(true)
+  watchEmail Boolean @default(true)
+  locale String @default("en")
+  version String @default(uuid())
+  updatedAt DateTime @updatedAt
+}
+model MemberNotificationDelivery {
+  id String @id @default(cuid())
+  notificationId String @unique
+  notification MemberNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  status String @default("pending")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseToken String?
+  leaseUntil DateTime?
+  payload Json?
+  providerId String?
+  acceptedAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  @@index([status, nextAttemptAt])
+}
+model LegacyFeatureGrant {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature String
+  sourceKey String
+  createdAt DateTime @default(now())
+  @@unique([userId, feature, sourceKey])
 }

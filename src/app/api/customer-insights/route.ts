@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
         await tx.meetingNote.create({ data: { id, userId: session.uid, ...noteData(insight), meetingType: "other" } });
         if (insight.actionId) await refreshInterviewProgress(tx, session.uid, insight.actionId);
         if (insight.journeyId) await (await import("@/lib/discovery/service")).invalidateDiscovery(tx, insight.journeyId);
+        if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, session.uid);
       });
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
@@ -94,6 +95,7 @@ export async function PATCH(req: NextRequest) {
       if (!updated.count) throw new PlanWriteError("紀錄已由其他分頁更新；輸入保留，請重新載入後比對 / Conversation changed in another tab; reload and compare", 409);
       if (input.insight.actionId) await refreshInterviewProgress(tx, session.uid, input.insight.actionId);
       if (input.insight.journeyId) await (await import("@/lib/discovery/service")).invalidateDiscovery(tx, input.insight.journeyId);
+        if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, session.uid);
     });
     return ok({ id: input.id, ...(input.insight.actionId ? { plan: await getActiveActionPlan(session.uid) } : {}) });
   } catch (error) { return errorResponse(error); }

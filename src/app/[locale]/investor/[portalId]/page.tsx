@@ -1,3 +1,4 @@
+import { VisitRecorder } from "@/components/dashboard/network/NetworkPanels";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getUserSession } from "@/lib/auth/guard";
@@ -39,7 +40,7 @@ export default async function InvestorCompanyPage({
 
   return (
     <main className="min-h-screen bg-cream px-5 py-12 font-[family-name:var(--font-body)]">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-6xl"><VisitRecorder portalId={portalId} />
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("eyebrow")}</p>
         <h1 className="mt-2 text-4xl font-extrabold tracking-[-0.04em] text-dark font-[family-name:var(--font-heading)]">
           {view.companyName}

@@ -1,5 +1,6 @@
 "use client";
 
+import { planContent } from "@/lib/billing/catalog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -55,6 +56,7 @@ export default function BillingPanel({
   rollonMember?: boolean;
 }) {
   const t = useTranslations("Billing");
+  const catalog = planContent(locale === "zh-tw");
   const tPlans = useTranslations("Dashboard.plans");
   const tPricing = useTranslations("Product.pricing");
   const tErr = useTranslations("Billing.errors");
@@ -263,6 +265,7 @@ export default function BillingPanel({
               >
                 <p className="text-lg font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">
                   {tPlans(plan)}
+                  {plan === "business" && <span className="ml-2 text-xs">{locale === "zh-tw" ? "最受歡迎" : "Most popular"}</span>}
                 </p>
                 <p className="mt-1 text-sm text-dark/70">
                   <span className="text-xl font-bold text-dark">
@@ -284,6 +287,8 @@ export default function BillingPanel({
                     {t("investorPortalIncluded")}
                   </p>
                 )}
+                <p className="mt-3 text-sm">{catalog[plan].audience}</p>
+                <ul className="my-3 space-y-2 text-sm">{catalog[plan].features.map(f => <li key={f}>✓ {f}</li>)}</ul>
                 <button
                   type="button"
                   onClick={() => subscribe(plan)}
@@ -312,6 +317,8 @@ export default function BillingPanel({
             <p className="mt-1 text-sm text-dark/70">
               {tPricing("enterprise.price")}
             </p>
+            <p className="mt-3 text-sm">{catalog.enterprise.audience}</p>
+            <ul className="my-3 space-y-2 text-sm">{catalog.enterprise.features.map(f => <li key={f}>✓ {f}</li>)}</ul>
             <Link
               href={`${pathForLocale("/", locale)}#contact`}
               className="mt-5 rounded-xl border border-dark/15 px-4 py-3 text-center text-sm font-semibold text-dark/80 transition-colors hover:bg-dark/[0.03] font-[family-name:var(--font-heading)]"

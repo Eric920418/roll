@@ -153,6 +153,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       await tx.actionItem.update({ where: { id }, data: { done: parsed.data.done, completedAt: parsed.data.done ? (current.done ? undefined : new Date()) : null } });
       if (!current.done && parsed.data.done) await completeGettingStarted(tx, session.uid);
       if (!current.done && parsed.data.done) await awardReward(tx, session.uid, "action", id);
+      if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, session.uid);
       return;
     }
 
@@ -210,6 +211,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       });
       if (!current.done && action.done) await completeGettingStarted(tx, session.uid);
       if (!current.done && action.done) await awardReward(tx, session.uid, "action", id);
+      if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, session.uid);
       await tx.actionDependency.deleteMany({ where: { actionId: id } });
       if (action.dependencyActionIds.length) {
         await tx.actionDependency.createMany({

@@ -1,3 +1,4 @@
+import { networkEnabled } from "@/lib/network/policy";
 import { browserMutationGuard } from "@/lib/security/http";
 import { createHash, randomBytes } from "node:crypto";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     }
     const parsed = inviteSchema.safeParse(await req.json());
     if (!parsed.success) return fail(parsed.error.issues.map((item) => item.message).join("\n"));
+    if (networkEnabled() && parsed.data.email.toLowerCase() === account.email.toLowerCase()) return fail("不可邀請自己 / Cannot invite yourself", 400);
     const portal = await getOrCreateOwnerPortal(account.id);
     const companyName = account.profile?.companyName || account.firstName || "ROLL ON. member";
     const emailHash = hash(parsed.data.email).slice(0, 24);
@@ -52,10 +54,11 @@ export async function POST(req: Request) {
     const invitation = existing
       ? await prisma.investorInvitation.update({
           where: { id: existing.id },
-          data: { tokenHash, expiresAt, status: "pending", revokedAt: null },
+          data: { tokenHash, expiresAt, status: "pending", revokedAt: null, ...(networkEnabled() ? { networkPolicy: 2 } : {}) },
         })
       : await prisma.investorInvitation.create({
           data: {
+            ...(networkEnabled() ? { networkPolicy: 2 } : {}),
             portalId: portal.id,
             invitedEmail: parsed.data.email,
             activeKey,

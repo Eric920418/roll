@@ -1,3 +1,4 @@
+import { autoCardData, networkEnabled } from "@/lib/network/policy";
 import "server-only";
 import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
@@ -18,6 +19,7 @@ export async function validateReferralCode(value: unknown) {
 }
 export async function registerWithReferral(data: Prisma.UserCreateInput, value: unknown) {
   const code = referralCode(value);
+  if (networkEnabled()) data = { ...data, matchmakingProfile: { create: autoCardData } };
   if (!code) return prisma.user.create({ data });
   requireReferralConfig();
   return rewardTransaction(async tx => {

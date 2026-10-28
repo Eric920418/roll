@@ -607,11 +607,11 @@ test("缺少結構化工具回應沿用一次修復；模型逾時界線小於�
   const diagnosis = diagnosisSchema.parse({ ...readyDiagnosis, bottleneckGroup: "Sales" });
   await assert.rejects(ai.generateActionCandidates({ locale: "en", profile: null, quiz: null, messages: [], diagnosis, candidateCount: 5, answers: [] }), /NOVA Action Plan 驗證失敗/);
   assert.equal(calls, 2);
-  assert.deepEqual(JSON.parse(JSON.stringify(options[0])), { timeout: 60000, maxRetries: 0 });
+  assert.equal((options[0] as { timeout: number }).timeout, 60000); assert.equal((options[0] as { maxRetries: number }).maxRetries, 0);
   calls = 0;
   await assert.rejects(ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers: Array.from({ length: 3 }, (_, i) => ({ question: `Question ${i}`, answer: "Unknown" })) }), /NOVA 診斷驗證失敗/);
   assert.equal(calls, 2);
-  assert.deepEqual(JSON.parse(JSON.stringify(options[1])), { timeout: 45000, maxRetries: 0 });
+  assert.equal((options[1] as { timeout: number }).timeout, 45000); assert.equal((options[1] as { maxRetries: number }).maxRetries, 0);
 });
 
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { planContent } from "@/lib/billing/catalog";
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, useReducedMotion, type Variants } from "motion/react";
@@ -33,7 +34,6 @@ const PLANS: Plan[] = [
   { key: "enterprise" },
 ];
 
-const FEATS = ["f1", "f2", "f3"] as const;
 
 function Check({ featured }: { featured?: boolean }) {
   return (
@@ -59,6 +59,7 @@ export default function Pricing() {
   const t = useTranslations("Product.pricing");
   const locale = useLocale() as Locale;
   const reduceMotion = useReducedMotion();
+  const catalog = planContent(locale === "zh-tw");
   const [interval, setInterval] = useState<BillingInterval>("month");
 
   // 公開行銷頁：訪客尚未登入，無法直接觸發 PayPal。
@@ -148,6 +149,7 @@ export default function Pricing() {
                 {t(`${key}.name`)}
               </h3>
 
+              <p className="mt-2 text-sm">{catalog[key].audience}</p>
               <div className="mt-4 flex items-end gap-2">
                 <span className="text-4xl lg:text-5xl font-extrabold tracking-[-0.04em] leading-none whitespace-nowrap font-[family-name:var(--font-heading)]">
                   {key === "enterprise"
@@ -175,7 +177,7 @@ export default function Pricing() {
               )}
 
               <ul className="mt-8 flex flex-col gap-4">
-                {FEATS.map((f) => (
+                {catalog[key].features.map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <Check featured={featured} />
                     <span
@@ -183,7 +185,7 @@ export default function Pricing() {
                         featured ? "text-white/90" : "text-dark/70"
                       }`}
                     >
-                      {t(`${key}.${f}`)}
+                      {f}
                     </span>
                   </li>
                 ))}

@@ -265,7 +265,7 @@
     },
     "pricing": {
       "title": "Choose your plan",
-      "badge": "Popular",
+      "badge": "Most popular",
       "billingInterval": "Billing interval",
       "month": "Monthly",
       "year": "Yearly",
@@ -281,28 +281,28 @@
         "cta": "Get started"
       },
       "pro": {
-        "name": "Pro",
+        "name": "SPARK",
         "price": "$49",
         "unit": "/ month",
-        "f1": "150 NOVA answers every month",
+        "f1": "Your three priority next steps",
         "f2": "Action Plan and milestone tracking",
         "f3": "Go-to-market guidance",
         "cta": "Get started"
       },
       "business": {
-        "name": "Business",
+        "name": "NOVA",
         "price": "$149",
         "unit": "/ month",
-        "f1": "Everything in Pro",
+        "f1": "Everything in SPARK",
         "f2": "Private Investor Portal",
         "f3": "Investor updates and business plan sharing",
         "cta": "Get started"
       },
       "enterprise": {
-        "name": "Enterprise",
+        "name": "ROLL ON",
         "price": "Custom",
         "unit": "",
-        "f1": "Everything in Business",
+        "f1": "Everything in NOVA",
         "f2": "Custom market access support",
         "f3": "Tailored market-entry program",
         "cta": "Contact sales"
@@ -620,9 +620,9 @@
     "logout": "Log out",
     "plans": {
       "free": "Free",
-      "pro": "Pro",
-      "business": "Business",
-      "enterprise": "Enterprise"
+      "pro": "SPARK",
+      "business": "NOVA",
+      "enterprise": "ROLL ON"
     },
     "nav": {
       "overview": "Home",
@@ -2329,7 +2329,7 @@
     }
   },
   "Matchmaking": {
-    "intro": "Find founders, mentors, investors, partners and first customers. We are building the member network; introductions and messaging are coming in a later release.",
+    "intro": "Connect with members through company summaries. Private data requires an accepted chat and explicit sharing consent.",
     "yourCard": "Your card",
     "visible": "Visible to signed-in members",
     "notVisible": "Hidden",

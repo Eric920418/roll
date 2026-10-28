@@ -1,3 +1,4 @@
+import { CardPrivacySettings } from "@/components/dashboard/network/NetworkPanels";
 import { requireUserPage } from "@/lib/auth/guard";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { planAtLeast } from "@/lib/billing/plans";
@@ -46,6 +47,7 @@ export default async function AccountPage({ params, searchParams }: Props) {
       />
 
       <div className="mt-12 border-t border-dark/10 pt-10"><BillingOverview locale={locale} embedded /></div>
+      <CardPrivacySettings />
       <AccountSecurityForm hasPassword={account.hasPassword} />
       <AccountDangerZone />
     </div>

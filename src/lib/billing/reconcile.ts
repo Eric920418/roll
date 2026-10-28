@@ -72,10 +72,14 @@ export async function reconcileFromPaypal(
     currentUser?.plan !== storedPlan ||
     currentUser?.subscriptionStatus !== status;
 
+  const rollout = process.env.MEMBER_NETWORK_ENABLED === "true" && status === "ACTIVE"
+    ? await prisma.setting.findUnique({ where: { key: "member_network_v2_snapshot" } }) : null;
+  const newPolicy = Boolean(rollout && (local.paypalPlanId !== paypalSub.plan_id || (local.createdAt && local.createdAt >= new Date(String(rollout.value)))));
   await prisma.user.update({
     where: { id: userId },
     data: {
       plan: storedPlan,
+      ...(newPolicy ? { featurePolicy: 2 } : {}),
       subscriptionStatus: status,
       paypalSubscriptionId: paypalSub.id,
       // 與上方 Subscription 表一致：PayPal 對已取消/非活躍訂閱常不回 next_billing_time

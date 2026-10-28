@@ -29,7 +29,7 @@ export default function AcceptInvestorInvitation({ token, locale }: { token: str
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error || "Error");
-            router.push(pathForLocale(`/investor/${json.data.portalId}`, locale));
+            router.push(pathForLocale(json.data.awaitingConsent ? "/dashboard/messages" : `/investor/${json.data.portalId}`, locale));
             router.refresh();
           } catch (cause) {
             setError(cause instanceof Error ? cause.message : "Error");

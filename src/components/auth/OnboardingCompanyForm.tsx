@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
@@ -38,8 +38,13 @@ export default function OnboardingCompanyForm({
   const [companySize, setCompanySize] = useState(initial.companySize ?? "");
   const [website, setWebsite] = useState(initial.website ?? "");
   const [country, setCountry] = useState(initial.country ?? "");
+  const hiddenTouched = useRef(false);
+  const [matchmakingHidden, setMatchmakingHidden] = useState(false);
+  const [networkEnabled, setNetworkEnabled] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => { void fetch("/api/network/features").then(r => r.json()).then(v => { setNetworkEnabled(Boolean(v.data?.enabled)); if (v.data?.enabled) return fetch("/api/matchmaking/me").then(r => r.json()).then(x => { if (!hiddenTouched.current) setMatchmakingHidden(Boolean(x.data?.hiddenByUser)); }); }).catch(e => setError(e instanceof Error ? e.message : String(e))); }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,7 +56,7 @@ export default function OnboardingCompanyForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           step: "company",
-          data: { companyName, industry, companySize, website, country },
+          data: { companyName, industry, companySize, website, country, ...(networkEnabled && hiddenTouched.current ? { matchmakingHidden } : {}) },
         }),
       });
       const json = await res.json();
@@ -82,6 +87,7 @@ export default function OnboardingCompanyForm({
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
       <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
+        {networkEnabled && <section className="rounded-xl border p-4 text-sm"><p>{locale === "zh-tw" ? "填妥後，平台將自動建立公司卡片，向符合權限的登入會員顯示公司名稱、簡介、產業、國家及已填 ICP；照片維持模糊，私人進度仍需另行同意分享。" : "Your company card is created automatically for eligible signed-in members, using your company name, pitch, industry, country and saved ICP. Photos stay blurred and private progress requires separate consent."}</p><label className="mt-2 flex min-h-11 items-center gap-3"><input type="checkbox" checked={matchmakingHidden} onChange={e => { hiddenTouched.current = true; setMatchmakingHidden(e.target.checked); }} />{locale === "zh-tw" ? "隱藏我的卡片（之後可在帳號設定修改）" : "Hide my card (change later in account settings)"}</label></section>}
         <AuthInput
           label={t("companyName")}
           name="companyName"

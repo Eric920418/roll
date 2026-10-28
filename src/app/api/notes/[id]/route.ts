@@ -78,6 +78,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
       const deleted = await tx.meetingNote.deleteMany({ where: { id, userId: session.uid, updatedAt: row.updatedAt } });
       if (!deleted.count) throw new PlanWriteError("紀錄已更新，請重新載入 / Conversation changed; reload", 409);
       if (actionId) await refreshInterviewProgress(tx, session.uid, actionId);
+      if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, session.uid);
       if (journeyId) await (await import("@/lib/discovery/service")).invalidateDiscovery(tx, journeyId);
     });
     return ok({ deleted: true });

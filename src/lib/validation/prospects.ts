@@ -1,3 +1,4 @@
+import { networkEnabled } from "@/lib/network/policy";
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
@@ -23,6 +24,7 @@ export const prospectInputSchema = z.object({ scope: scopeSchema, prospectCount:
 const cacheSchema = prospectCacheSchema;
 type DB = Prisma.TransactionClient;
 async function access(account: Account) {
+  if (networkEnabled()) { if (!(await (await import("@/lib/network/access")).features(account.id)).prospects) throw new PlanWriteError("公司名單需要 NOVA 或既有權益 / NOVA or existing entitlement required", 403); return; }
   const fresh = await discoveryAccount(account.id);
   if (!fresh || !planAtLeast(getEffectivePlan({ ...fresh, betaAccess: account.betaAccess, plan: toPlanKey(fresh.plan), trialPlan: fresh.trialPlan ? toPlanKey(fresh.trialPlan) : null }), "pro")) throw new PlanWriteError("升級或有效完整試用後可尋找新公司 / Upgrade or use an active full trial to find new companies", 403);
 }

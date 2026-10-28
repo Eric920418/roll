@@ -146,6 +146,7 @@ export async function saveSalesRecord(userId: string, input: SalesMutation) {
     const data = { stage: input.status === "signed" || input.status === "paid" ? "won" : input.status === "declined" ? "lost" : input.status === "quoted" || input.status === "considering" ? "proposal" : "contacted", title: input.company, contactId: input.contactId || existing?.contactId || null, validation: record as Prisma.InputJsonValue };
     await tx.deal.upsert({ where: { id }, create: { ...data, id, userId }, update: data });
     await refreshCommercialProgress(tx, userId, input.scope);
+    if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, userId);
     // A journey may already feed a plan; update that plan's counts using the same canonical rows.
     if (input.scope.journeyId) {
       const plans = await tx.actionPlan.findMany({ where: { userId, activeKey: userId, sourceJourneyId: input.scope.journeyId } });
@@ -169,5 +170,6 @@ export async function linkJourney(userId: string, planId: string, journeyId: str
       if (target) await tx.actionItem.update({ where: { id: action.id }, data: { recordingMode: "interview", metricTarget: target, metricCurrent: interviewSummary(action.id, await interviewRows(tx, userId, action.id)).total, metricUnit: "companies" } });
     }
     await refreshCommercialProgress(tx, userId, { planId });
+    if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, userId);
   });
 }

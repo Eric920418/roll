@@ -38,6 +38,7 @@ export async function invalidateDiscovery(tx: Prisma.TransactionClient, journeyI
   const linkedActions = await tx.actionItem.findMany({ where: { recordingMode: "interview", actionPlan: { userId: journey.userId, activeKey: journey.userId, sourceJourneyId: journeyId } }, select: { id: true } });
   for (const action of linkedActions) await refreshInterviewProgress(tx, journey.userId, action.id);
   await tx.discoveryJourney.update({ where: { id: journeyId }, data: { version: { increment: 1 }, preview: Prisma.DbNull, previewVersion: null, report: Prisma.DbNull, reportVersion: null } });
+  if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, journey.userId);
 }
 export async function getDiscoverySnapshot(userId: string) {
   const account = await discoveryAccount(userId);
