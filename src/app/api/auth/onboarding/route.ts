@@ -1,3 +1,5 @@
+import { canonicalCountry, countryCode, industryCode } from "@/lib/member-options";
+import { MemberError } from "@/lib/member-http";
 import { networkEnabled } from "@/lib/network/policy";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
@@ -57,6 +59,11 @@ export async function PATCH(req: NextRequest) {
         country: str(data.country),
       };
       await prisma.$transaction(async tx => {
+        const previous = await tx.onboardingProfile.findUnique({ where: { userId: session.uid } });
+        if (fields.country && !countryCode(fields.country) && fields.country !== previous?.country) throw new MemberError("請從選單選擇國家 / Select a country from the list", 400);
+        if (fields.industry && !industryCode(fields.industry) && fields.industry !== previous?.industry) throw new MemberError("請從選單選擇產業 / Select an industry from the list", 400);
+        if (fields.country) fields.country = canonicalCountry(fields.country);
+        if (fields.industry) fields.industry = industryCode(fields.industry) || fields.industry;
         await tx.onboardingProfile.upsert({ where: { userId: session.uid }, create: { userId: session.uid, ...fields }, update: fields });
         if (networkEnabled()) {
           const { ensureCard } = await import("@/lib/network/access");
@@ -88,6 +95,7 @@ export async function PATCH(req: NextRequest) {
 
     return fail("未知的 onboarding 步驟", 400);
   } catch (error) {
+    if (error instanceof MemberError) return fail(error.message, error.status);
     return failFromError(error);
   }
 }

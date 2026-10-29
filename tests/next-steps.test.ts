@@ -52,7 +52,7 @@ test("Survey requires every question and Yes usage; No clears stale conditional 
 });
 test("Survey CSV keeps stable columns, quotes newlines and rejects spreadsheet formula injection", () => {
   const csv = policy.trialFeedbackCsv([{ email: "qa@example.invalid", createdAt: "2026-10-10", answers: policy.trialAnswersSchema.parse({ ...answers, goal: '  =HYPERLINK("bad")', painPoint: "Two\nlines", linkedinSharing: "yes", linkedinDraft: "@Nova AI\nMy own words" }) }]);
-  assert(csv.startsWith("email,submitted_at,goal,motivation,first_step,continue_using,reason,usage,pain_point,indispensable,linkedin_sharing_willingness,linkedin_draft\r\n"));
+  assert(csv.startsWith("email,submitted_at,goal,motivation,first_step,continue_using,reason,usage,pain_point,indispensable,linkedin_sharing_willingness,linkedin_draft,survey_version,liked_product,no_reason,trial_extension_until\r\n"));
   assert(csv.includes('"\'=HYPERLINK(""bad"")"'));
   assert(csv.includes('"Two\nlines"'));
   assert(csv.includes('"yes","\'@Nova AI\nMy own words"'));
@@ -116,7 +116,8 @@ test("Trial feedback API in isolated PostgreSQL: eligibility, ownership, concurr
   let uid: string | null = null, limited = false, blocked = false;
   const json = (data: unknown, status = 200) => Response.json({ data }, { status });
   const fail = (error: string, status = 400) => Response.json({ error }, { status });
-  const mocks: Record<string, unknown> = { "@/lib/prisma": { prisma: db }, "@/lib/dashboard/next-steps": policy, "@/lib/dashboard/feedback": feedback, "@/lib/dashboard/schemas": schemas,
+  class FeedbackError extends Error {}
+  const mocks: Record<string, unknown> = { "@/lib/member-http": { MemberError: FeedbackError }, "@/lib/dashboard/trial-feedback": { trialFeedbackStatus: async (id: string) => { const user = await db.user.findUniqueOrThrow({ where: { id } }); const trial = policy.trialWindow(user); return { trial, submitted: Boolean(trial && await db.feedbackReport.findUnique({ where: { trialKey: `${id}:${trial.startsAt}` } })) }; } }, "@/lib/prisma": { prisma: db }, "@/lib/dashboard/next-steps": policy, "@/lib/dashboard/feedback": feedback, "@/lib/dashboard/schemas": schemas,
     "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null }, "@/lib/security/http": { browserMutationGuard: () => blocked ? fail("Blocked", 403) : null },
     "@/lib/rate-limit": { checkRateLimit: async () => ({ ok: !limited }) }, "@/lib/api": { ok: json, fail, unauthorized: () => fail("Login required", 401), failFromError: () => fail("Safe server error", 500) } };
   runInNewContext(ts.transpileModule(readFileSync("src/app/api/feedback/route.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,

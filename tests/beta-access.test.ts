@@ -180,7 +180,7 @@ test("enabling beta preserves a trial user's AI cycle and included allowance", a
   };
   const allowance = load<typeof import("../src/lib/ai/allowance")>("src/lib/ai/allowance.ts", {
     "@prisma/client": { Prisma: { TransactionIsolationLevel: { Serializable: "Serializable" } } },
-    "@/lib/prisma": { prisma: { $transaction: async (work: (value: unknown) => unknown) => work(tx) } },
+    "@/lib/prisma": { prisma: { trialFeedbackGrant: { findUnique: async () => null }, $transaction: async (work: (value: unknown) => unknown) => work(tx) } },
     "@/lib/billing/gate": gate,
     "./allowance-cycle": { monthlyCycle: (anchor: Date) => {
       anchors.push(anchor);

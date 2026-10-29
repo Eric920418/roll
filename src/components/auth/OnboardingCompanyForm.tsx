@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
+import CountrySelect from "@/components/ui/CountrySelect";
 import AuthInput from "./AuthInput";
 import AuthButton from "./AuthButton";
 import { resolveAuthError } from "./error-codes";
@@ -142,14 +143,7 @@ export default function OnboardingCompanyForm({
           placeholder={t("websitePlaceholder")}
           autoComplete="url"
         />
-        <AuthInput
-          label={t("country")}
-          name="country"
-          value={country}
-          onChange={setCountry}
-          placeholder={t("countryPlaceholder")}
-          autoComplete="country-name"
-        />
+        <CountrySelect label={t("country")} value={country} onChange={setCountry} locale={locale} disabled={loading} />
 
         {error && (
           <p className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">

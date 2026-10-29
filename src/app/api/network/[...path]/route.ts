@@ -5,7 +5,7 @@ import { memberAccess, memberError, privateOk, MemberError } from "@/lib/member-
 import { prisma } from "@/lib/prisma";
 import { features } from "@/lib/network/access";
 import { connectionSchema, inviteSchema, messageSchema, networkEnabled, scope, shareSchema } from "@/lib/network/policy";
-import { changeConnection, invite, listConnections, messages, recordVisit, requireEnabled, sendMessage, share, visitorSummary } from "@/lib/network/service";
+import { connectionForProfile, changeConnection, invite, listConnections, messages, recordVisit, requireEnabled, sendMessage, share, visitorSummary } from "@/lib/network/service";
 import { notificationList } from "@/lib/network/notifications";
 import { evaluateWatches, updateProgress, watchSummary } from "@/lib/network/watches";
 export const maxDuration = 60;
@@ -18,6 +18,7 @@ async function handle(req: Request, context: Context) {
     if (req.method === "GET" && action === "features") return privateOk({ enabled: networkEnabled(), ...await features(uid) });
     requireEnabled();
     if (req.method === "GET") {
+      if (path[0] === "profiles" && path.length === 3 && path[2] === "connection") return privateOk(await connectionForProfile(uid, path[1]!));
       if (action === "connections") return privateOk(await listConnections(uid));
       if (path[0] === "connections" && path[2] === "messages" && path.length === 3) return privateOk(await messages(uid, path[1]!, new URL(req.url).searchParams.get("cursor") || undefined));
       if (action === "visitors") return privateOk(await visitorSummary(uid));

@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useTranslations } from "next-intl";
+import { countryLabel, industryLabel } from "@/lib/member-options";
+import { useLocale, useTranslations } from "next-intl";
 import type { PublicCard } from "@/lib/matchmaking/schema";
 
 export function PrivatePhoto({ url, alt }: { url: string; alt: string }) {
@@ -28,13 +29,12 @@ export function PrivatePhoto({ url, alt }: { url: string; alt: string }) {
   </div>;
 }
 export default function CardView({ card, detail = false }: { card: PublicCard; detail?: boolean }) {
-  const t = useTranslations("Matchmaking");
+  const t = useTranslations("Matchmaking"), locale = useLocale();
   return <article className="min-w-0 flex-1 rounded-2xl border border-dark/15 bg-white p-4">
     <div className={card.activity === "inactive" ? "opacity-55" : ""}>{card.photo ? <PrivatePhoto url={card.photo} alt={t("blurredPhoto")} /> : <div className="flex aspect-[4/3] items-center justify-center rounded-xl bg-[#e9e9e6] text-sm text-dark/65">{t("noPhoto")}</div>}</div>
-    <p className="mt-4 text-xs text-dark/65">{t(`roles.${card.role}`)}{card.country ? ` · ${card.country}` : ""}{card.industry ? ` · ${card.industry}` : ""}</p>
+    <p className="mt-4 text-xs text-dark/65">{t(`roles.${card.role}`)}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}{card.industry ? ` · ${industryLabel(card.industry, locale)}` : ""}</p>
     {card.companyName && <p className="mt-3 text-lg font-bold">{card.companyName}</p>}
     <h2 className="mt-2 break-words text-xl font-semibold [overflow-wrap:anywhere]">{card.companyPitch || card.slogan || t(`roles.${card.role}`)}</h2>
-    {card.companyPitch && <p className="mt-1 text-xs text-dark/65">{t("profileSource")}</p>}
     {card.icp && <p className="mt-3 whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]"><span className="font-semibold">ICP · </span>{card.icp}</p>}
     {card.markets?.length ? <p className="mt-2 break-words text-sm">{t("fields.markets")} · {card.markets.join(" · ")}</p> : null}
     <div className="mt-3 flex flex-wrap gap-2 text-xs">

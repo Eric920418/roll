@@ -20,6 +20,7 @@ export default async function AdminFeedbackPage() {
           firstName: true,
           lastName: true,
           plan: true,
+          trialFeedbackGrant: { select: { grantedEndsAt: true } },
         },
       },
     },
@@ -42,6 +43,7 @@ export default async function AdminFeedbackPage() {
       [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || null,
     userPlan: r.user.plan,
     surveyAnswers: r.surveyAnswers,
+    trialExtensionUntil: r.user.trialFeedbackGrant?.grantedEndsAt.toISOString() || null,
   }));
 
   const pending = items.filter((i) =>

@@ -1,3 +1,4 @@
+import { countryLabel } from "@/lib/member-options";
 import { getTranslations } from "next-intl/server";
 import { Info, Section } from "./Section";
 import type { InvestorProfileView } from "@/lib/investor/portal";
@@ -40,7 +41,7 @@ export default async function ProfileSection({
         {"companySize" in profile && (
           <Info label={t("companySize")} value={opt("companySize", profile.companySize)} />
         )}
-        {"country" in profile && <Info label={t("country")} value={profile.country} />}
+        {"country" in profile && <Info label={t("country")} value={profile.country ? countryLabel(profile.country, locale) : profile.country} />}
         {"companyAge" in profile && (
           <Info label={t("companyAge")} value={opt("timeline", profile.companyAge)} />
         )}

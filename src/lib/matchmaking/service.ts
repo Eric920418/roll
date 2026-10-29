@@ -1,9 +1,10 @@
+import { canonicalCountry, countryCode, industryCode } from "@/lib/member-options";
 import { networkEnabled } from "@/lib/network/policy";
 import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { changed, MemberError } from "@/lib/member-http";
-import { cardDraftSchema, interviewCompanies, publicCard, type CardDraft, type CardSources, type CardStats, type CardWrite } from "./schema";
+import { cardDraftSchema, interviewCompanies, publicCard, listingSchema, matchesPublicCard, type CardFilters, type CardDraft, type CardSources, type CardStats, type CardWrite } from "./schema";
 
 export const requestHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export const sourceSelect = { companyName: true, country: true, industry: true, oneLinePitch: true, icp: true, targetMarkets: true } as const;
@@ -51,20 +52,34 @@ export async function writeMyCard(userId: string, input: CardWrite) {
       if (interviewCompanies(notes.map(n => n.insight)) < 3) throw new MemberError("創辦人須先完成三家不同公司的有效客戶訪談 / Founders need valid customer interviews with three different companies", 403);
     }
     if (visible && networkEnabled() && row?.sourcePolicy === 2) { const profile = await tx.onboardingProfile.findUnique({ where: { userId } }); if (!profile?.companyName || !profile.industry || !profile.country) visible = false; }
-    const data = { ...input.draft, visible, ...(networkEnabled() && input.action === "publish" ? { hiddenByUserAt: null } : {}), ...(input.action === "publish" ? { optedInAt: new Date() } : {}), ...(row?.role !== input.draft.role ? { verified: false, reviewedAt: null } : {}), lastRequestId: input.requestId, lastRequestHash: hash };
+    const draft = { ...input.draft };
+    if (draft.country && !countryCode(draft.country) && draft.country !== row?.country) throw new MemberError("請從選單選擇國家 / Select a country from the list", 400);
+    if (draft.industry && !industryCode(draft.industry) && draft.industry !== row?.industry) throw new MemberError("請從選單選擇產業 / Select an industry from the list", 400);
+    draft.country = canonicalCountry(draft.country); draft.industry = industryCode(draft.industry) || draft.industry;
+    const data = { ...draft, visible, ...(networkEnabled() && input.action === "publish" ? { hiddenByUserAt: null } : {}), ...(input.action === "publish" ? { optedInAt: new Date() } : {}), ...(row?.role !== input.draft.role ? { verified: false, reviewedAt: null } : {}), lastRequestId: input.requestId, lastRequestHash: hash };
     if (row) await tx.matchmakingProfile.update({ where: { userId }, data: { ...data, revision: { increment: 1 } } });
     else await tx.matchmakingProfile.create({ data: { ...data, userId, revision: 1 } });
   });
   return getMyCard(userId);
 }
-export async function listCards(userId: string, category: string | null, page: number) {
+export async function listCards(userId: string, category: string | null, page: number, options: Partial<CardFilters> = {}) {
   if (networkEnabled()) await (await import("@/lib/network/access")).requireNetwork(userId);
-  const [rows, viewer] = await Promise.all([
-    prisma.matchmakingProfile.findMany({ where: { visible: true, ...(!networkEnabled() ? { sourcePolicy: null } : {}), ...(category && category !== "all" ? { categories: { has: category } } : {}) }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }], skip: (page - 1) * 24, take: 25, include: { user: { select: { profile: { select: sourceSelect } } } } }),
-    prisma.onboardingProfile.findUnique({ where: { userId }, select: { industry: true, targetMarkets: true } }),
-  ]);
-  const selected = rows.slice(0, 24), stats = await statsFor(selected.map(row => row.userId));
-  return { cards: selected.map(row => publicCard({ ...cardDraftSchema.parse({ role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, sourcePolicy: row.sourcePolicy, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended }, row.user.profile, stats.get(row.userId)!, viewer, new Date(), networkEnabled())), hasMore: rows.length > 24 };
+  const filters = listingSchema.parse({ ...options, category: category || "all", page });
+  const viewer = await prisma.onboardingProfile.findUnique({ where: { userId }, select: { industry: true, targetMarkets: true } });
+  const selected: import("./schema").PublicCard[] = [], offset = (page - 1) * 24;
+  let cursor: string | undefined, matched = 0;
+  // shortcut: scan public projections in batches; add an indexed public search projection when the network grows.
+  for (;;) {
+    const rows = await prisma.matchmakingProfile.findMany({ where: { visible: true, ...(!networkEnabled() ? { sourcePolicy: null } : {}), ...(filters.category !== "all" ? { categories: { has: filters.category } } : {}), ...(filters.role !== "all" ? { role: filters.role } : {}) }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }], take: 100, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), include: { user: { select: { profile: { select: sourceSelect } } } } });
+    const stats = networkEnabled() ? null : await statsFor(rows.map(r => r.userId));
+    for (const row of rows) {
+      const card = publicCard({ ...cardDraftSchema.parse({ role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, sourcePolicy: row.sourcePolicy, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended }, row.user.profile, stats?.get(row.userId) || { interviews: 0, payingCustomers: null, milestones: 0 }, viewer, new Date(), networkEnabled());
+      if (matchesPublicCard(card, filters) && matched++ >= offset) selected.push(card);
+      if (selected.length > 24) return { cards: selected.slice(0, 24), hasMore: true };
+    }
+    if (rows.length < 100) return { cards: selected, hasMore: false };
+    cursor = rows.at(-1)!.id;
+  }
 }
 export async function getMemberCard(userId: string, id: string) {
   const row = await prisma.matchmakingProfile.findFirst({ where: { id, visible: true, ...(!networkEnabled() ? { sourcePolicy: null } : {}) }, include: { user: { select: { profile: { select: sourceSelect } } } } });

@@ -49,7 +49,6 @@ export default function RewardsPage() {
   return <div className="font-[family-name:var(--font-body)]">
     <p className="text-xs font-bold uppercase tracking-[0.18em] text-dark/45">{t("eyebrow")}</p>
     <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] font-[family-name:var(--font-heading)]">{t("title")}</h1>
-    <p className="mt-2 max-w-xl text-sm leading-6 text-dark/60">{t("subtitle")}</p>
     {(error || localError) && <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{localError || error}</p><button type="button" className="min-h-11 underline" onClick={() => { setLocalError(""); void refresh(); }}>{t("retry")}</button></div>}
     {(notice || data?.confirmedRedemptionRequestId) && <p role="status" className="mt-5 rounded-xl border border-dark/15 bg-white p-4 text-sm font-semibold">✓ {notice || t("redeemed")}</p>}
     {loading ? <p role="status" className="mt-8 text-sm text-dark/50">{t("loading")}</p> : data && <>

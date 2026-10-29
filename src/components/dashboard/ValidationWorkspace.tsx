@@ -1,4 +1,5 @@
 "use client";
+import { analyticsFetch } from "@/lib/analytics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,7 @@ const button = "inline-flex min-h-11 items-center justify-center rounded-xl bord
 const field = "mt-1 min-h-11 w-full rounded-xl border border-dark/20 bg-white px-3 py-2 text-sm focus-visible:outline-2";
 const statusEn = ["Contacted", "Awaiting reply", "Quoted", "Considering", "Declined", "Signed paid contract", "Payment received"], statusZh = ["已聯絡", "待回覆", "已報價", "考慮中", "拒絕", "已簽付費合約", "已收款"];
 async function request(path: string, body?: object, method = "POST") {
-  const res = await fetch(path, body ? { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
+  const res = await analyticsFetch(path, body ? { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
   let json; try { json = await res.json(); } catch { throw new Error(`HTTP ${res.status}: ${res.statusText || "Invalid response / 回應無效"}`); }
   if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
   return json.data;

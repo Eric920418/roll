@@ -5,22 +5,22 @@ import { getUserSession } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { feedbackCreateSchema, zodMessage } from "@/lib/dashboard/schemas";
-import { trialWindow, trialSubmissionSchema } from "@/lib/dashboard/next-steps";
+import { simpleTrialSubmissionSchema, trialSubmissionSchema } from "@/lib/dashboard/next-steps";
 import {
   FEEDBACK_LIMIT_PER_DAY,
   FEEDBACK_WINDOW_MS,
 } from "@/lib/dashboard/feedback";
 
+import { z } from "zod";
+import { MemberError } from "@/lib/member-http";
+import { trialFeedbackStatus, submitTrialFeedback } from "@/lib/dashboard/trial-feedback";
+import { trialWindow } from "@/lib/dashboard/next-steps";
 const trialSelect = { trialPlan: true, trialStartsAt: true, trialEndsAt: true } as const;
 export async function GET() {
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
-    const user = await prisma.user.findUnique({ where: { id: session.uid }, select: trialSelect });
-    if (!user) return unauthorized();
-    const trial = trialWindow(user);
-    const report = trial ? await prisma.feedbackReport.findUnique({ where: { trialKey: `${session.uid}:${trial.startsAt}` }, select: { id: true } }) : null;
-    return ok({ trial, submitted: Boolean(report) });
+    const response = ok(await trialFeedbackStatus(session.uid)); response.headers.set("Cache-Control", "private, no-store"); return response;
   } catch (error) { return failFromError(error); }
 }
 
@@ -52,6 +52,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    if (body?.action === "claimTrialIncentive") {
+      const input = z.object({ action: z.literal("claimTrialIncentive"), startsAt: z.iso.datetime(), locale: z.enum(["en", "zh-tw"]) }).strict().parse(body);
+      return ok(await submitTrialFeedback(session.uid, { ...input, claim: true }));
+    }
+    if (body?.action === "trialSurvey" && body.version === 3) {
+      const parsed = simpleTrialSubmissionSchema.safeParse(body);
+      if (!parsed.success) return fail(zodMessage(parsed.error), 400);
+      return ok(await submitTrialFeedback(session.uid, parsed.data));
+    }
     if (body?.action === "trialSurvey") {
       const parsed = trialSubmissionSchema.safeParse(body);
       if (!parsed.success) return fail(zodMessage(parsed.error), 400);
@@ -96,6 +105,8 @@ export async function POST(req: NextRequest) {
     });
     return ok(row, 201);
   } catch (error) {
+    if (error instanceof MemberError) return fail(error.message, error.status);
+    if (error instanceof z.ZodError) return fail(zodMessage(error), 400);
     return failFromError(error);
   }
 }

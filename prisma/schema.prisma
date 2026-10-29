@@ -142,6 +142,7 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  trialFeedbackGrant TrialFeedbackGrant?
   featurePolicy Int? // 2 after a new-policy purchase; existing entitlement sources remain unchanged
   sessionVersion Int @default(0)
   id             String    @id @default(cuid())
@@ -1367,4 +1368,16 @@ model LegacyFeatureGrant {
   sourceKey String
   createdAt DateTime @default(now())
   @@unique([userId, feature, sourceKey])
+}
+
+/// One feedback incentive per account; retained when the feedback report is removed.
+model TrialFeedbackGrant {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trialStartsAt DateTime
+  originalEndsAt DateTime
+  grantedEndsAt DateTime
+  aiCycleStart DateTime?
+  aiCycleEnd DateTime?
+  createdAt DateTime @default(now())
 }

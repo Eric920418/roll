@@ -1,4 +1,5 @@
 "use client";
+import { analyticsFetch } from "@/lib/analytics";
 
 import { planContent } from "@/lib/billing/catalog";
 import { useState } from "react";
@@ -77,7 +78,7 @@ export default function BillingPanel({
     const busyKey = `${plan}:${interval}`;
     setBusy(busyKey);
     try {
-      const res = await fetch("/api/billing/subscribe", {
+      const res = await analyticsFetch("/api/billing/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -102,7 +103,7 @@ export default function BillingPanel({
     setError("");
     setBusy("cancel");
     try {
-      const res = await fetch("/api/billing/cancel", { method: "POST" });
+      const res = await analyticsFetch("/api/billing/cancel", { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(resolveErr(json.code, json.error));
       router.refresh();
@@ -176,6 +177,7 @@ export default function BillingPanel({
               <p className="mt-2 text-2xl font-extrabold text-dark font-[family-name:var(--font-heading)]">
                 {t("aiUsageRemaining", { count: usage.remaining + rewardRemaining + usage.bonusRemaining })}
               </p>
+              <details className="mt-2"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{locale === "zh-tw" ? "用量明細" : "Usage details"}</summary>
               <p className="mt-1 text-sm text-dark/60">
                 {currentPlan === "free" ? t("aiRewardUsageDetail", { reward: rewardRemaining }) : t("aiUsageDetail", {
                   used: usage.used,
@@ -188,6 +190,7 @@ export default function BillingPanel({
                   }).format(new Date(usage.resetsAt)) : "—",
                 })}
               </p>
+              </details>
             </div>
             {currentPlan !== "free" && <button
               type="button"
@@ -195,7 +198,7 @@ export default function BillingPanel({
                 setError("");
                 setBusy("credits");
                 try {
-                  const res = await fetch("/api/billing/credits/orders", {
+                  const res = await analyticsFetch("/api/billing/credits/orders", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

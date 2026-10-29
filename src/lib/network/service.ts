@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { changed, MemberError } from "@/lib/member-http";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { acceptedConnection, activeShare, features, networkAccount, requireNetwork } from "./access";
-import { CONDITIONS, connectionSchema, inviteSchema, messageSchema, networkEnabled, pairKey, shareSchema, weekKey } from "./policy";
+import { CONDITIONS, connectionSchema, inviteSchema, messageSchema, networkEnabled, pairKey, shareSchema, weekKey, visitorPeriods } from "./policy";
 import { progressSnapshot, evaluateWatches } from "./watches";
 import { queueNotification } from "./notifications";
 import type { z } from "zod";
@@ -134,9 +134,25 @@ export async function recordVisit(userId: string, input: { profileId?: string; p
   await prisma.memberVisit.createMany({ data: [{ ownerId, viewerId: userId, week: weekKey(), role: viewer.verifiedInvestor ? "investor" : viewer.matchmakingProfile?.role === "founder" ? "founder" : "other" }], skipDuplicates: true });
   return { recorded: true };
 }
-export async function visitorSummary(userId: string, week = weekKey()) {
-  const rows = await prisma.memberVisit.groupBy({ by: ["role"], where: { ownerId: userId, week }, _count: true });
-  return { week, investors: rows.find(r => r.role === "investor")?._count || 0, founders: rows.find(r => r.role === "founder")?._count || 0, others: rows.find(r => r.role === "other")?._count || 0 };
+export async function visitorSummary(userId: string, week = weekKey(), now = new Date()) {
+  const periods = visitorPeriods(now);
+  const [rows, previous, marker] = await Promise.all([
+    prisma.memberVisit.groupBy({ by: ["role"], where: { ownerId: userId, week, createdAt: { lte: now } }, _count: true }),
+    prisma.memberVisit.groupBy({ by: ["role"], where: { ownerId: userId, week: periods.previousWeek, createdAt: { lte: periods.previousCutoff } }, _count: true }),
+    prisma.setting.findUnique({ where: { key: "member_network_v2_snapshot" }, select: { value: true } }),
+  ]);
+  const counts = (values: typeof rows) => ({ investors: values.find(r => r.role === "investor")?._count || 0, founders: values.find(r => r.role === "founder")?._count || 0, others: values.find(r => r.role === "other")?._count || 0 });
+  const coverage = typeof marker?.value === "string" ? Date.parse(marker.value) : NaN;
+  return { week, ...counts(rows), previous: counts(previous), comparable: Number.isFinite(coverage) && coverage <= periods.previousStart.getTime(), asOf: now.toISOString(), previousAsOf: periods.previousCutoff.toISOString() };
+}
+export async function connectionForProfile(userId: string, profileId: string) {
+  const profile = await prisma.matchmakingProfile.findUnique({ where: { id: profileId }, select: { userId: true, visible: true } });
+  if (!profile) throw new MemberError("找不到卡片 / Card not found", 404);
+  if (profile.userId === userId) return { own: true, connection: null };
+  const row = await prisma.networkConnection.findUnique({ where: { pairKey: pairKey(userId, profile.userId) } });
+  if (!row && !profile.visible) throw new MemberError("找不到卡片 / Card not found", 404);
+  if (!row) await requireNetwork(userId);
+  return { own: false, connection: row ? { id: row.id, status: row.status, revision: row.revision, outgoing: row.senderId === userId } : null };
 }
 export async function canReadSection(ownerId: string, viewerId: string, section: string) { return Boolean(await activeShare(ownerId, viewerId, section)); }
 export { CONDITIONS };

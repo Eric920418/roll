@@ -365,17 +365,17 @@ test("Saved ICP remains visible outside tools and uses the newest saved profile 
   const react = require("react") as typeof import("react");
   type Node = import("react").ReactNode;
   function render(saved: IcpDraft | null, version: number, workspace: Partial<IcpWorkspaceView> = {}, legacy: string | null = null) {
-    const guidance = () => null;
+    const guidance = () => null; let stateIndex = 0;
     const panel = load<{ default(props: object): Node }>("src/components/dashboard/IcpPanel.tsx", {
       "./IcpDiscovery": { default: guidance },
-      react: { useEffect() {}, useRef: () => ({ current: null }), useState: (initial: unknown) => [initial && typeof initial === "object" && "currentProfileVersion" in initial ? { ...initial, ...workspace } : initial, () => {}] },
+      react: { useEffect() {}, useRef: () => ({ current: null }), useState: (initial: unknown) => [stateIndex++ === 0 ? true : initial && typeof initial === "object" && "currentProfileVersion" in initial ? { ...initial, ...workspace } : initial, () => {}] },
       "react-dom": { createPortal: (node: Node) => node },
       "next/link": { default: "a" },
       "next/navigation": { useRouter: () => ({ refresh() {} }) },
       "next-intl": { useLocale: () => "en", useTranslations: () => (key: string) => key },
       "@/lib/routes": require("../src/lib/routes"),
       "@/lib/icp/schema": require("../src/lib/icp/schema"),
-    });
+    }, { document: { body: {} } });
     const visible: string[] = [], hidden: string[] = [];
     const guides: Array<{ key: string | null; savedVersion?: number }> = [];
     function visit(node: Node, collapsed = false) {
@@ -383,7 +383,7 @@ test("Saved ICP remains visible outside tools and uses the newest saved profile 
         if (typeof child === "string") (collapsed ? hidden : visible).push(child);
         else if (react.isValidElement<{ children?: Node; savedVersion?: number }>(child)) {
           if (child.type === guidance) guides.push({ key: child.key, savedVersion: child.props.savedVersion });
-          visit(child.props.children, collapsed || child.type === "details");
+          visit(child.props.children, collapsed || child.type === "details" || child.type === "dialog");
         }
       });
     }
@@ -395,12 +395,12 @@ test("Saved ICP remains visible outside tools and uses the newest saved profile 
   assert.equal(saved.guides[0].key, refreshed.guides[0].key, "A profile version refresh must not remount guidance and discard errors or unsent answers");
   assert.equal(refreshed.guides[0].savedVersion, 2);
   assert.match(saved.visible, /Founders without paying customers/);
-  assert.match(saved.visible, /Saved · to validate/);
+  assert.match(saved.visible, /Saved ICP/);
   assert(!saved.hidden.includes(draft.summary));
   assert.match(render({ ...draft, summary: "New server version" }, 2, { currentProfileVersion: 1, saved: draft }).visible, /New server version/);
   assert.match(render(draft, 1, { currentProfileVersion: 2, saved: { ...draft, summary: "Just confirmed version" } }).visible, /Just confirmed version/);
   const unsigned = render(null, 0, { draft });
-  assert.match(unsigned.visible, /Not saved/); assert.match(unsigned.visible, /draft to review/);
+  assert.match(unsigned.visible, /No saved ICP yet/); assert.match(unsigned.visible, /\+ Add/);
   assert(!unsigned.visible.includes(draft.summary));
   assert.match(render(null, 0, {}, "Legacy saved ICP").visible, /Legacy saved ICP/);
 });

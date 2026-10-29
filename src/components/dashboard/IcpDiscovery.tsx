@@ -1,4 +1,5 @@
 "use client";
+import { analyticsFetch } from "@/lib/analytics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -27,7 +28,7 @@ export default function IcpDiscovery({ userId, canUseAi, onUpdated, savedVersion
   const key = `nova:icp-discovery:${userId}`;
   const accept = useCallback((v: IcpWorkspaceView) => { setWorkspace(v); onUpdated(v); }, [onUpdated]);
   async function request(method = "GET", data?: object) {
-    return await readAdminResponse(await fetch(`/api/account/icp?locale=${locale}`, { method, cache: "no-store", ...(data ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) } : {}) })) as IcpWorkspaceView;
+    return await readAdminResponse(await analyticsFetch(`/api/account/icp?locale=${locale}`, { method, cache: "no-store", ...(data ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) } : {}) })) as IcpWorkspaceView;
   }
   async function reload(restore = false) {
     try {
@@ -101,7 +102,7 @@ export default function IcpDiscovery({ userId, canUseAi, onUpdated, savedVersion
   const labels = zh ? ["你最想幫助哪一種客戶？", "他們最想解決什麼困難？", "什麼情況下會遇到這個困難？", "他們現在如何解決？"] : ["Who do you most want to help?", "What problem do they most want to solve?", "When does this problem occur?", "How do they solve it today?"];
   const button = "inline-flex min-h-11 items-center justify-center rounded-lg border border-dark/20 px-4 py-2 text-sm font-medium disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
   const field = "mt-2 min-h-11 w-full rounded-lg border border-dark/15 bg-white px-3 py-3 text-sm text-dark placeholder:text-dark/40 focus-visible:outline-2 focus-visible:outline-offset-2";
-  return <div id="icp-start" tabIndex={-1} className="scroll-mt-8">
+  return <div id="icp-guidance" tabIndex={-1} className="scroll-mt-8">
     <h2 className="text-sm font-semibold uppercase tracking-wider">{zh ? "建立或更新 ICP" : "Create or update your ICP"}</h2>
     <p className="mt-3 text-sm text-dark/60">{zh ? "一次回答一題；已有資料不重問，不知道可以跳過。最後確認後才更新已儲存的 ICP。" : "One question at a time. Known details are carried over; skip anything unknown. Your saved ICP changes only after you confirm."}</p>
     {!loaded && !error && <p role="status" className="mt-4 text-sm">{zh ? "載入已知資料…" : "Loading known details…"}</p>}

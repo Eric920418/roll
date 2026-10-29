@@ -53,7 +53,20 @@ export function trialLinkedInDraft(answers: { reason: string; usage: string }, l
     : `I've been trying @Nova AI.\n\nWhy I want to keep using it:\n${excerpt(answers.reason)}\n\nHow I plan to use it:\n${excerpt(answers.usage)}\n\nhttps://www.rollgrp.com/product`;
 }
 
-export function trialFeedbackCsv(rows: Array<{ email: string; createdAt: string; answers: TrialAnswers }>) {
+export type TrialFeedbackCsvRow = { email: string; createdAt: string; answers: TrialAnswers | SimpleTrialAnswers; version?: number; grantedEndsAt?: string };
+export function trialFeedbackCsv(rows: TrialFeedbackCsvRow[]) {
   const cell = (value: string) => `"${(/^[\s]*[=+@-]/.test(value) ? "'" : "") + value.replaceAll('"', '""')}"`;
-  return ["email,submitted_at,goal,motivation,first_step,continue_using,reason,usage,pain_point,indispensable,linkedin_sharing_willingness,linkedin_draft", ...rows.map(row => [row.email, row.createdAt, ...(["goal", "motivation", "firstStep", "continueUsing", "reason", "usage", "painPoint", "indispensable", "linkedinSharing", "linkedinDraft"] as const).map(key => row.answers[key] || "")].map(cell).join(","))].join("\r\n");
+  const headers = "email,submitted_at,goal,motivation,first_step,continue_using,reason,usage,pain_point,indispensable,linkedin_sharing_willingness,linkedin_draft,survey_version,liked_product,no_reason,trial_extension_until";
+  return [headers, ...rows.map(row => {
+    const legacy = "continueUsing" in row.answers ? row.answers : null, simple = "liked" in row.answers ? row.answers : null;
+    return [row.email, row.createdAt, ...(["goal", "motivation", "firstStep", "continueUsing", "reason", "usage", "painPoint", "indispensable", "linkedinSharing", "linkedinDraft"] as const).map(key => legacy?.[key] || ""), String(row.version || (simple ? 3 : 2)), simple?.liked || "", simple?.reason || "", row.grantedEndsAt || ""].map(cell).join(",");
+  })].join("\r\n");
 }
+
+export const SIMPLE_FEEDBACK_REASONS = ["needs", "complexity", "price"] as const;
+export const simpleTrialAnswersSchema = z.object({ liked: z.enum(["yes", "no"]), reason: z.enum(SIMPLE_FEEDBACK_REASONS).nullable().default(null) }).strict().superRefine((v, ctx) => {
+  if (v.liked === "no" && !v.reason) ctx.addIssue({ code: "custom", path: ["reason"], message: "請選擇原因 / Select a reason" });
+}).transform(v => ({ ...v, reason: v.liked === "yes" ? null : v.reason }));
+export type SimpleTrialAnswers = z.output<typeof simpleTrialAnswersSchema>;
+export const simpleTrialSubmissionSchema = z.object({ action: z.literal("trialSurvey"), version: z.literal(3), startsAt: z.iso.datetime(), locale: z.enum(["en", "zh-tw"]), answers: simpleTrialAnswersSchema }).strict();
+export const trialIncentiveEnd = (oldEnd: Date, now = new Date()) => new Date(Math.max(oldEnd.getTime(), now.getTime()) + 72 * 3600000);

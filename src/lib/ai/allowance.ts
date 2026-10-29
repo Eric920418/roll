@@ -40,7 +40,13 @@ async function allowanceCycleFor(account: Account, now: Date) {
     account.trialEndsAt > now &&
     getEffectivePlan({ ...account, betaAccess: false }, now) === account.trialPlan &&
     paidPlan !== account.trialPlan;
-  if (trialActive) return monthlyCycle(account.trialStartsAt!, now);
+  if (trialActive) {
+    const grant = await prisma.trialFeedbackGrant.findUnique({ where: { userId: account.id } });
+    if (grant && grant.trialStartsAt.getTime() === account.trialStartsAt!.getTime() && grant.originalEndsAt <= now && grant.aiCycleStart && grant.aiCycleEnd) {
+      return grant.createdAt < grant.originalEndsAt ? monthlyCycle(account.trialStartsAt!, new Date(grant.originalEndsAt.getTime() - 1)) : { start: grant.aiCycleStart, end: grant.aiCycleEnd };
+    }
+    return monthlyCycle(account.trialStartsAt!, now);
+  }
 
   const sub = account.paypalSubscriptionId
     ? await prisma.subscription.findUnique({
@@ -207,6 +213,6 @@ export async function getAiUsageSummary(account: Account): Promise<AiUsageSummar
     ),
     bonusRemaining: cycle ? allowance.bonusBalance : 0,
     rewardRemaining: allowance.rewardBalance,
-    resetsAt: cycle?.end.toISOString() ?? null,
+    resetsAt: cycle && cycle.end > now ? cycle.end.toISOString() : null,
   };
 }

@@ -1,20 +1,19 @@
 "use client";
+import { analyticsFetch } from "@/lib/analytics";
 
 import IcpDiscovery from "./IcpDiscovery";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import { EMPTY_ICP, ICP_FIELDS, hasIcp, nextIcpQuestion, readIcp, persistedIcpAnswer, type IcpDraft, type IcpWorkspaceView } from "@/lib/icp/schema";
 
 const button = "rounded-xl border border-dark/15 bg-white px-4 py-3 text-sm font-semibold text-dark transition hover:bg-dark/[0.04] disabled:opacity-50";
 const inputClass = "w-full rounded-xl border border-dark/15 bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
 
-export default function IcpPanel({ userId, saved, legacy, version, canUseAi, children }: {
-  userId: string; saved: IcpDraft | null; legacy: string | null; version: number; canUseAi: boolean; children: ReactNode;
+export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
+  userId: string; saved: IcpDraft | null; legacy: string | null; version: number; canUseAi: boolean; children?: ReactNode;
 }) {
   const t = useTranslations("Dashboard.icp");
   const locale = useLocale() as Locale;
@@ -50,7 +49,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
   }, [open, workspace.pending]);
 
   async function request(method = "GET", data?: object): Promise<IcpWorkspaceView> {
-    const response = await fetch(`/api/account/icp?locale=${locale}`, {
+    const response = await analyticsFetch(`/api/account/icp?locale=${locale}`, {
       method, cache: "no-store", ...(data ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) } : {}),
     });
     const raw = await response.text();
@@ -142,22 +141,9 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
   }
 
   return <>
-    <section className="min-w-0 rounded-2xl border border-sky-300 bg-white p-6">
-      <section id="icp-saved" aria-labelledby="saved-icp-title" className="scroll-mt-8 rounded-xl border border-dark/15 bg-dark/[0.02] p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="saved-icp-title" className="text-sm font-bold uppercase tracking-wider">{locale === "zh-tw" ? "已儲存的 ICP" : "Saved ICP"}</h2><span className={`rounded-full px-3 py-1 text-xs font-semibold ${hasSaved ? "bg-black text-white" : "bg-dark/5 text-dark/60"}`}>{hasSaved ? (locale === "zh-tw" ? "已儲存 · 待市場驗證" : "Saved · to validate") : (locale === "zh-tw" ? "尚未儲存" : "Not saved")}</span></div>
-        {hasSaved ? <><p className="mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-lg font-bold">{current?.summary || currentLegacy || current?.who || t("notProvided")}</p>{current && rows(current, t("unknown"))}<p className="mt-3 text-sm text-dark/60">{locale === "zh-tw" ? "這是你已確認儲存的客戶假設，仍需用市場證據驗證。下方編輯草稿不會自動取代此版本。" : "This is your saved customer hypothesis. Validate it with market evidence. Editing the draft below does not replace this version."}</p></> : <p className="mt-3 text-sm text-dark/60">{workspace.draft && hasIcp(workspace.draft) ? (locale === "zh-tw" ? "你有一份草稿待確認；請編輯、確認並儲存 ICP。" : "You have a draft to review. Edit, confirm and save your ICP.") : (locale === "zh-tw" ? "尚未儲存 ICP。完成任務或訪談不會自動建立；請在下方填寫或整理草稿，再確認儲存。" : "No ICP saved yet. Completing tasks or interviews does not create one automatically. Write or prepare a draft below, then confirm and save.")}</p>}
-      </section>
-      <div className="mt-6"><IcpDiscovery key={userId} userId={userId} savedVersion={Math.max(version, workspace.currentProfileVersion)} canUseAi={canUseAi} onUpdated={setWorkspace} /></div>
-      <details className="mt-5 border-t border-dark/10 pt-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">{locale === "zh-tw" ? "更多 ICP 編輯工具" : "More ICP editing tools"}</summary>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {canUseAi ? <a href="#icp-start" className={`${button} flex-1`}>✧ {t("ask")}</a> : <Link className={`${button} flex-1 text-center`} href={pathForLocale("/dashboard/account#plan", locale)}>{t("upgrade")}</Link>}
-        <button type="button" className={button} onClick={() => void show(true)}>{t("edit")}</button>
-      </div>
-      </details>
-    </section>
-    <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6 lg:col-span-2">
-      {children}
-      <div className="mt-5">{canUseAi ? <a href="#icp-start" className={button}>✧ {t("sharpen")}</a> : <Link className={button} href={pathForLocale("/dashboard/account#plan", locale)}>{t("sharpen")}</Link>}</div>
+    <section id="icp-saved" aria-labelledby="saved-icp-title" className="min-w-0 scroll-mt-8 rounded-2xl border border-dark/15 bg-white p-5 sm:p-6">
+      <header className="flex items-center justify-between gap-4"><h2 id="saved-icp-title" className="text-lg font-bold">Saved ICP</h2><button id="icp-start" className={button} onClick={() => void show(false)}>{hasSaved ? (locale === "zh-tw" ? "編輯" : "Edit") : "+ Add"}</button></header>
+      {hasSaved ? <><p className="mt-4 whitespace-pre-wrap break-words text-lg font-semibold">{current?.summary || currentLegacy || current?.who}</p>{current && <details className="mt-3"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{locale === "zh-tw" ? "查看完整 ICP" : "View full ICP"}</summary>{rows(current)}</details>}</> : <p className="mt-5 text-sm">{locale === "zh-tw" ? "尚未儲存 ICP" : "No saved ICP yet"}</p>}
     </section>
     {mounted && createPortal(<dialog ref={dialog} aria-labelledby="icp-panel-title" onClose={() => { setOpen(false); trigger.current?.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[900px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-dark/10 bg-white px-5 py-4 sm:px-8">
@@ -165,7 +151,10 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
         <button type="button" aria-label={t("close")} className={button} onClick={() => dialog.current?.close()}>{t("close")}</button>
       </div>
       <div className="space-y-5 p-5 sm:p-8">
-        <p className="text-sm text-dark/60">{t("panelHint")}</p>
+        <IcpDiscovery key={userId} userId={userId} savedVersion={Math.max(version, workspace.currentProfileVersion)} canUseAi={canUseAi} onUpdated={setWorkspace} />
+        <details><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "手動編輯與草稿工具" : "Manual editing & draft tools"}</summary>
+        <button className={`${button} my-3`} onClick={beginEdit}>{t("edit")}</button>
+
         {workspace.messages.map((message, index) => <p key={index} className={`max-w-[95%] whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === "user" ? "ml-auto bg-sky-100 text-sky-950" : "border border-dark/10 bg-white text-dark"}`}>{index === 0 && message.role === "assistant" ? `${t("opening")} ${message.content}` : message.content}</p>)}
         {workspace.pending && <p role="status" className="text-sm text-dark/60">{t("analysing")}</p>}
         {canUseAi && awaitingAnswer && !editing && <form onSubmit={event => { event.preventDefault(); void mutate("answer"); }} className="space-y-3">
@@ -192,6 +181,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi, chi
             {canUseAi && !awaitingAnswer && <button type="button" disabled={blocked} className={button} onClick={() => void mutate("retry")}>{t("retry")}</button>}</div>
         </div>}
         {notice && <p role="status" className="whitespace-pre-wrap rounded-xl bg-dark/[0.04] p-3 text-sm">{notice}</p>}
+        </details>
       </div>
     </dialog>, document.body)}
   </>;

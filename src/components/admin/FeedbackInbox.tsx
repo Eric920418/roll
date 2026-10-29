@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { trialAnswersSchema, trialFeedbackCsv } from "@/lib/dashboard/next-steps";
+import { simpleTrialAnswersSchema, trialAnswersSchema, trialFeedbackCsv, type TrialFeedbackCsvRow } from "@/lib/dashboard/next-steps";
 import {
   FEEDBACK_STATUSES,
   PENDING_STATUSES,
@@ -29,6 +29,7 @@ export type FeedbackItem = {
   userName: string | null;
   userPlan: string;
   surveyAnswers?: unknown;
+  trialExtensionUntil?: string | null;
 };
 
 type Filter = "pending" | "all" | (typeof FEEDBACK_STATUSES)[number];
@@ -103,10 +104,10 @@ export default function FeedbackInbox({ items }: { items: FeedbackItem[] }) {
   }
 
   function exportSurvey() {
-    const rows = items.flatMap(item => {
-      const stored = item.surveyAnswers as { answers?: unknown } | null;
-      const parsed = trialAnswersSchema.safeParse(stored?.answers);
-      return parsed.success ? [{ email: item.userEmail, createdAt: item.createdAt, answers: parsed.data }] : [];
+    const rows: TrialFeedbackCsvRow[] = items.flatMap(item => {
+      const stored = item.surveyAnswers as { version?: number; answers?: unknown } | null;
+      const parsed = stored?.version === 3 ? simpleTrialAnswersSchema.safeParse(stored.answers) : trialAnswersSchema.safeParse(stored?.answers);
+      return parsed.success ? [{ email: item.userEmail, createdAt: item.createdAt, answers: parsed.data, version: stored?.version || 1, grantedEndsAt: item.trialExtensionUntil || "" }] : [];
     });
     const url = URL.createObjectURL(new Blob(["\uFEFF", trialFeedbackCsv(rows)], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url; link.download = "nova-trial-feedback.csv"; link.click(); URL.revokeObjectURL(url);

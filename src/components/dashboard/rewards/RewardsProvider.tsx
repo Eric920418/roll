@@ -1,9 +1,10 @@
 "use client";
+import { analyticsFetch } from "@/lib/analytics";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { RewardSummary } from "@/lib/rewards/service";
 import { rewardKeys } from "@/lib/rewards/policy";
 export async function rewardRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...init });
+  const response = await analyticsFetch(url, { cache: "no-store", ...init });
   const raw = await response.text();
   let body; try { body = JSON.parse(raw); } catch { throw new Error(`HTTP ${response.status}: ${raw || response.statusText}`); }
   if (!response.ok) throw new Error(`${body.error || response.statusText}${body.code ? ` (${body.code})` : ""}`);

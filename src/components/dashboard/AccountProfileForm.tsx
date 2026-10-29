@@ -1,5 +1,6 @@
 "use client";
 
+import CountrySelect from "@/components/ui/CountrySelect";
 import { useEffect, useRef, useState } from "react";
 import { useDashboardUser } from "./DashboardUserProvider";
 import { notifyPlanChanged } from "./PlanRefresh";
@@ -236,14 +237,7 @@ export default function AccountProfileForm({
               className={fieldClass}
             />
           </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelClass}>{t("country")}</span>
-            <input
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className={fieldClass}
-            />
-          </label>
+          <CountrySelect label={t("country")} value={country} onChange={setCountry} locale={locale} disabled={loading} />
         </div>
         <label className="flex flex-col gap-1.5">
           <span className={labelClass}>{tIcp("pitch")}</span>

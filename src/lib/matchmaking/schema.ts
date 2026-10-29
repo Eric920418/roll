@@ -1,3 +1,4 @@
+import { countryCode, countryLabel, industryCode, industryLabel } from "@/lib/member-options";
 import { z } from "zod";
 import { insightSchema } from "@/lib/customer-insights/schema";
 import { companyKey } from "@/lib/customer-insights/interviews";
@@ -61,4 +62,20 @@ export function publicCard(row: CardDraft & { id: string; sourcePolicy?: number 
   if (fields.has("photo") && row.blurredPhoto) card.photo = `/api/matchmaking/members/${row.id}/photo?v=${row.revision ?? 0}`;
   card.reasons = overlapReasons(viewer, card);
   return card;
+}
+
+export const listingSchema = z.object({
+  q: z.string().trim().max(100).default(""), role: z.enum(["all", ...ROLES]).default("all"),
+  category: z.enum(["all", ...CATEGORIES]).default("all"), country: z.string().max(2).refine(v => !v || countryCode(v) === v, "Invalid country").default(""),
+  industry: z.enum(["", "saas", "hardware", "biotech", "consumer", "fintech", "other"]).default(""), page: z.coerce.number().int().min(1).max(10000).default(1),
+});
+export type CardFilters = z.infer<typeof listingSchema>;
+export function matchesPublicCard(card: PublicCard, filters: Pick<CardFilters, "q" | "country" | "industry">) {
+  if (filters.country && countryCode(card.country) !== filters.country) return false;
+  if (filters.industry && industryCode(card.industry) !== filters.industry) return false;
+  const haystack = [card.companyName, card.slogan, card.companyPitch, card.icp, card.offers, card.looksFor, card.industry, card.country,
+    ...(card.industry ? [industryLabel(card.industry), industryLabel(card.industry, "zh-tw")] : []),
+    ...(card.country && countryCode(card.country) ? [countryLabel(countryCode(card.country)!), countryLabel(countryCode(card.country)!, "zh-tw")] : []),
+  ].filter(Boolean).join(" ").normalize("NFKC").toLowerCase();
+  return filters.q.normalize("NFKC").toLowerCase().split(/\s+/).every(word => haystack.includes(word));
 }
