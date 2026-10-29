@@ -27,10 +27,24 @@ export function safeAnalyticsPayload(type: string, payload: Record<string, unkno
   if (name === null || name && !data.feature) return null;
   return { website: payload.website, hostname: payload.hostname, language: payload.language, screen: payload.screen, url: path, title: path, referrer, ...(name ? { name, data } : {}) };
 }
-type Tracker = { track: (name: string, data: AnalyticsData) => unknown };
+type Tracker = { track: (payload: (defaults: Record<string, unknown>) => Record<string, unknown>) => unknown };
+const pending: Array<{ name: string; data: AnalyticsData; path: string }> = [];
+export function flushAnalytics() {
+  if (typeof window === "undefined") return;
+  const sdk = (window as unknown as { umami?: Tracker }).umami;
+  if (!sdk) return;
+  for (const event of pending.splice(0)) {
+    try { void Promise.resolve(sdk.track(defaults => ({ ...defaults, url: event.path, title: event.path, name: event.name, data: event.data }))).catch(() => {}); }
+    catch { /* Analytics must never block product actions. */ }
+  }
+}
 export function track(event: "flow_start" | "flow_success" | "flow_error" | "search_empty" | "card_open" | "feature_time", data: AnalyticsData) {
   if (typeof window === "undefined" || process.env.NEXT_PUBLIC_UMAMI_ENABLED !== "true") return;
-  try { void Promise.resolve((window as unknown as { umami?: Tracker }).umami?.track(event.startsWith("flow_") ? `${data.feature}_${event.slice(5)}` : event, data)).catch(() => {}); } catch { /* Analytics must never block product actions. */ }
+  const path = analyticsPath(window.location.href);
+  if (!path) return;
+  pending.push({ name: event.startsWith("flow_") ? `${data.feature}_${event.slice(5)}` : event, data, path });
+  if (pending.length > 20) pending.shift();
+  flushAnalytics();
 }
 export const analyticsError = (status: number): NonNullable<AnalyticsData["outcome"]> => status === 400 || status === 409 ? "validation" : status === 401 || status === 402 || status === 403 ? "permission" : status === 429 ? "limit" : status >= 500 ? "service" : "network";
 

@@ -62,6 +62,19 @@ test("Analytics strips private paths, text, query strings, referrers and arbitra
   assert.equal(requestFeature("/api/network/connections/id", { method: "PATCH", body: '{"action":"accept"}' }), "chat_accept");
   assert.equal(requestFeature("/api/network/connections/id/messages", { method: "POST", body: '{"body":"Private"}' }), null);
 });
+test("Early actions wait for the tracker and retain the sanitized source route across navigation", () => {
+  const compiled = { exports: {} }, browser: { location: { href: string }; umami?: { track: (build: (defaults: object) => object) => void } } = { location: { href: "https://www.rollgrp.com/dashboard/matchmaking/private-id?q=secret" } };
+  runInNewContext(ts.transpileModule(readFileSync("src/lib/analytics.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { module: compiled, exports: compiled.exports, window: browser, process: { env: { NEXT_PUBLIC_UMAMI_ENABLED: "true" } }, URL, Date, Promise });
+  const analytics = compiled.exports as typeof import("../src/lib/analytics"), events: object[] = [];
+  analytics.track("flow_start", { feature: "chat_invite" });
+  browser.location.href = "https://www.rollgrp.com/login?password=secret";
+  browser.umami = { track: build => { events.push(build({ url: browser.location.href, title: "Private" })); } };
+  analytics.flushAnalytics(); analytics.flushAnalytics();
+  assert.equal(events.length, 1); assert.equal((events[0] as { url: string }).url, "/dashboard/matchmaking/:member");
+  assert.doesNotMatch(JSON.stringify(analytics.safeAnalyticsPayload("event", events[0] as Record<string, unknown>)), /private-id|secret|Private/);
+  analytics.track("flow_start", { feature: "icp" }); assert.equal(events.length, 1, "Private routes do not enter the queue");
+});
+
 test("Engagement excludes hidden and idle time; Taipei comparison uses identical week elapsed time", () => {
   assert.equal(engagementInterval(0, 90000, 0, true), 60000);
   assert.equal(engagementInterval(60000, 90000, 0, true), 0);

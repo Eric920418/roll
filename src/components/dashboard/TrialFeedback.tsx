@@ -57,7 +57,7 @@ export default function TrialFeedback({ userId, discovery = false }: { userId: s
     finally { sending.current = false; setBusy(false); }
   }
   const trial = status?.trial;
-  function show() { dialog.current?.showModal(); focus.current?.focus(); track("flow_start", { feature: "feedback" }); }
+  function show() { dialog.current?.showModal(); focus.current?.focus(); }
   const defaultDraft = zh ? "我正在試用 @Nova AI。\n\n[請填入自己的使用心得]\n\nhttps://www.rollgrp.com/product" : "I've been trying @Nova AI.\n\n[Add your own experience here]\n\nhttps://www.rollgrp.com/product";
   const incentive = zh ? "完成回饋，延長原試用 3 天（每帳號一次）" : "Complete feedback for 3 extra days of your original trial (once per account)";
   return <>
@@ -67,7 +67,7 @@ export default function TrialFeedback({ userId, discovery = false }: { userId: s
       {discovery && status?.eligible && <p className="mt-2 text-sm">{zh ? "三家訪談上限維持不變。" : "The three-company interview limit stays the same."}</p>}
     </section>}
     {error && inNextSteps && !opened && <div role="alert" className="mb-4 whitespace-pre-wrap rounded-xl bg-red-50 p-4 text-red-800">{error}<button className={`${button} ml-3`} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></div>}
-    <dialog onToggle={e => setOpened(e.currentTarget.open)} id="trial-feedback-dialog" ref={dialog} aria-labelledby="trial-feedback-title" onCancel={e => { if (busy) e.preventDefault(); }} onClose={() => { try { sessionStorage.setItem(`${key}:dismissed`, "true"); } catch { /* In-memory guard remains active. */ } }} className="nova-theme fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto rounded-3xl border-0 bg-white p-6 text-dark shadow-xl backdrop:bg-black/40 sm:p-9">
+    <dialog onToggle={e => { setOpened(e.currentTarget.open); if (e.currentTarget.open && status?.trial?.available && !status.submitted) track("flow_start", { feature: "feedback" }); }} id="trial-feedback-dialog" ref={dialog} aria-labelledby="trial-feedback-title" onCancel={e => { if (busy) e.preventDefault(); }} onClose={() => { try { sessionStorage.setItem(`${key}:dismissed`, "true"); } catch { /* In-memory guard remains active. */ } }} className="nova-theme fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto rounded-3xl border-0 bg-white p-6 text-dark shadow-xl backdrop:bg-black/40 sm:p-9">
       <header className="flex items-center justify-between gap-4"><p className="font-semibold tracking-[0.2em]">NOVA</p><button disabled={busy} className={button} aria-label={zh ? "關閉回饋" : "Close feedback"} onClick={() => dialog.current?.close()}>×</button></header>
       <h2 id="trial-feedback-title" ref={focus} tabIndex={-1} className="mt-6 text-2xl font-bold outline-none">{status?.submitted ? (zh ? "感謝你的回饋" : "Thank you for your feedback") : (zh ? "你喜歡這個產品嗎？" : "Did you like the product?")}</h2>
       {!status ? <button className={`${button} mt-5`} onClick={() => void load()}>{zh ? "載入／重試" : "Load / retry"}</button> : status.submitted ? <div className="mt-5 space-y-4">

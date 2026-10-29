@@ -1,5 +1,5 @@
 "use client";
-import { analyticsFetch } from "@/lib/analytics";
+import { analyticsFetch, track } from "@/lib/analytics";
 
 import IcpDiscovery from "./IcpDiscovery";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -86,6 +86,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
   async function show(manual = false) {
     if (busyRef.current) return;
     if (document.activeElement instanceof HTMLButtonElement) trigger.current = document.activeElement;
+    track("flow_start", { feature: "icp" });
     setOpen(true); setNotice(""); setLoaded(false);
     dialog.current?.showModal();
     let local: { text?: string; form?: IcpDraft; editing?: boolean; revision?: number; answerIndex?: number } | null = null;
