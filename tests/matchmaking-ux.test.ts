@@ -60,6 +60,8 @@ test("Analytics strips private paths, text, query strings, referrers and arbitra
   assert.equal(safeAnalyticsPayload("identify", { url: "/dashboard" }), null);
   assert.equal(requestFeature("/api/discovery/analyse", { method: "POST", body: JSON.stringify({ prospectCount: 6, company: "Private" }) }), "prospects");
   assert.equal(requestFeature("/api/network/connections/id", { method: "PATCH", body: '{"action":"accept"}' }), "chat_accept");
+  assert.equal(requestFeature("/api/account/icp", { method: "PATCH", body: '{"action":"save"}' }), "icp");
+  assert.equal(requestFeature("/api/account/icp", { method: "POST", body: '{"action":"answer"}' }), null);
   assert.equal(requestFeature("/api/network/connections/id/messages", { method: "POST", body: '{"body":"Private"}' }), null);
 });
 test("Early actions wait for the tracker and retain the sanitized source route across navigation", () => {
