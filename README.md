@@ -15,15 +15,15 @@ Umami Cloud：Hobby 免費方案、美國區、網站 NOVA · ROLL ON（www.roll
 
 驗收：376 項測試全過、0 skip；TypeScript 通過，Lint 0 errors／14 既有 warnings，建置通過。真實隔離 DB 驗證公開搜尋與分頁、隱私、同期比較、No／Yes 同獎、重送／並行／回滾、撤銷及已付費、舊問卷領獎、刪問卷不重領、長期到期 AI 不重置與失敗退款。瀏覽器實測邀請→回覆→接受、單份 Saved ICP→編輯側欄、手機 No→原因→送出、國家搜尋與零訪客；390px 無水平溢位、搜尋控制至少 44px，三家上限保留，3 個本機測試帳號已精確清理。最後一輪測試先前受 UI fixture 卡片影響，清理 fixture 後完整重跑全過，沒有放寬測試斷言。
 
-正式畫面另發現既有官網／Billing 的第三方案標題仍讀舊 ALLIANCE 翻譯，已改讀共用 catalog 的 ROLL ON，避免標題與內容不一致。
+正式畫面另發現既有官網／Billing 的第三方案標題仍讀舊 ALLIANCE 翻譯，官網、Billing 及後台側欄均改讀共用 catalog 的 ROLL ON，避免舊 CMS 翻譯造成標題與內容不一致。
 
 正式登入過早送出時發現既有表單的原生 GET 後備會把憑證放進 URL；僅 QA 帳號曾觸發，將精確清理。登入／註冊表單加上 POST 後備與 hydration 完成前提交防護，帳號安全表單同樣限定 POST，加入避免憑證進 URL 的回歸測試。
 
 Next dev 自動更新既有 AGENTS.md 的框架說明區塊，保留並納入提交；未新增其他說明文件。
 
-第一批程式 577b7cb 已正式 READY；22 項正式 API 驗收通過：並行延長只一次、AI 剩餘 1 次不增加、三家上限與第 4 家拒絕、ICP 手動儲存與版本衝突、未知國家與跨權限拒絕。Umami 即時分析已實際收到 /product、/dashboard/profile、upgrade_start、feature_time 與行動版瀏覽。實際驗收發現新版 SDK 送完整 URL，隱私過濾器已修正並加入回歸測試，沒有停用隱私過濾。僅建立兩個隱藏 QA 帳號，仍待最終瀏覽器驗收後清理。
+第一批程式 577b7cb 已正式 READY；22 項正式 API 驗收通過：並行延長只一次、AI 剩餘 1 次不增加、三家上限與第 4 家拒絕、ICP 手動儲存與版本衝突、未知國家與跨權限拒絕。Umami 即時分析已實際收到 /product、/dashboard/profile、upgrade_start、feature_time 與行動版瀏覽。實際驗收發現新版 SDK 送完整 URL，隱私過濾器已修正並加入回歸測試，沒有停用隱私過濾。僅建立兩個隱藏 QA 帳號，已通過正式瀏覽器 Yes／No、Saved ICP 與不重複發獎驗收並精確清理，原有 21 名會員保留、無 QA 待寄郵件。
 
-發布驗收進行中：先完成純新增 schema 與環境變數，再由 main 推送發布，接著驗證正式頁與 Umami 事件／漏斗。沒有執行真實付費 AI 搜尋或金流；Omrade 等 API 文件另行串接，供應商 POC 免費及成本說明不視為已驗證。
+正式已依序完成純新增 schema、環境變數、main 推送與 Production READY（功能版本 f1f141f）。Umami 已收到 feedback_start／success、icp_start／success、upgrade_start、feature_time；已儲存 60 分鐘視窗的 Product → Upgrade、Feedback → Submit、ICP → Save 三個漏斗。當前樣本含驗收流量，不視為真實會員轉換率；升級入口也不等同付款。沒有執行真實付費 AI 搜尋或金流；Omrade 等 API 文件另行串接，供應商 POC 免費及成本說明不視為已驗證。
 
 # ROLL ON. 企業官網
 

@@ -7,6 +7,7 @@ import TrialFeedback from "@/components/dashboard/TrialFeedback";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
+import { planContent } from "@/lib/billing/catalog";
 import { pathForLocale } from "@/lib/routes";
 import { isDiscoveryMember } from "@/lib/discovery/policy";
 import type { Locale } from "@/i18n/routing";
@@ -30,7 +31,7 @@ export default async function DashboardLayout({ children, params }: Props) {
 
   const t = await getTranslations({ locale, namespace: "Dashboard" });
   const effectivePlan = getEffectivePlan(account);
-  const planLabel = t(`plans.${effectivePlan}`);
+  const planLabel = effectivePlan === "free" ? t("plans.free") : planContent(l === "zh-tw")[effectivePlan].name;
   const userLabel =
     [account.firstName, account.lastName].filter(Boolean).join(" ") ||
     account.email;
