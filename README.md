@@ -1,7 +1,7 @@
 ## Matchmaking、Feedback 與 Profile UX（2026-10-29）
 
 - Matchmaking 新增公開欄位關鍵字搜尋與身份／國家／產業／需求組合篩選，先篩選再分頁；隱藏欄位不參與搜尋。身份分類為卡片，移除 Your card 與冗餘介紹。公開投影以 100 筆批次掃描，會員規模成長後改為索引化公開搜尋投影，不查私人原文。
-- 共用固定 ISO 國家代碼及中英文名稱，註冊、公司設定與手動卡片使用可搜尋選單；產業固定選項，需求使用多選按鈕。已知舊名稱可明確對應，未知舊值保留並提示選擇，不批次覆寫。固定名稱／排序避免 Node 與瀏覽器 ICU 不同造成 hydration 錯誤；公司頁、卡片、投資人頁及 PDF 均格式化展示。
+- 共用固定 ISO 國家代碼及中英文名稱，註冊、公司設定與手動卡片使用可搜尋選單；產業固定選項，需求使用多選按鈕；手動舊卡片也不再要求選填的補充需求文字，並有真實 DB 回歸測試。已知舊名稱可明確對應，未知舊值保留並提示選擇，不批次覆寫。固定名稱／排序避免 Node 與瀏覽器 ICU 不同造成 hydration 錯誤；公司頁、卡片、投資人頁及 PDF 均格式化展示。
 - 個人頁頂端 Request to chat 依本人／待接受／收件／已接受／封鎖顯示正確操作，回覆入口直接選中對象；本輪不扣積分或 AI 次數，沿用方案、投資人驗證、每日邀請上限與逐人分享同意。
 - 訪客改為匿名身份數字卡，總數 0 隱藏。台北週一至現在對比上週相同經過時間，增加綠、減少紅、持平原色並顯示正負數；上週 0 不算百分比，啟用資料未涵蓋上週起點時顯示資料不足，不公開姓名／ID。週報原規則保持。
 - 試用問卷改為 Did you like the product? Yes／No；No 選 needs／complexity／price，可返回修改。問卷題目／原因支援中英文，領獎前明示原方案、AI 用量與訪談上限維持。兩種答案同樣在儲存交易內延長原試用 72 小時，每帳號終身一次，起點為原到期日與領取日較晚者。不改方案／試用政策／訪談上限，不新增 AI 配額、不重置已用量；長期到期後領取也固定沿用原額度。已付費、無試用、未開始或撤銷試用不獲延長。狀態每分鐘／回到頁面重查，已付費不自動彈出到期問卷或試用倒數。舊問卷答案保留，合資格已填會員主動領取免重填；刪問卷不能重領。LinkedIn 改為送出後選填、自行編輯／複製，不自動發布、不虛構心得。
@@ -13,9 +13,11 @@ Schema：`prisma/matchmaking-ux.sql` 僅建立 TrialFeedbackGrant 與 User 外�
 
 Umami Cloud：Hobby 免費方案、美國區、網站 NOVA · ROLL ON（www.rollgrp.com）已建立，不購買付費方案、不錄製畫面。Production 與本機忽略的環境檔配置 `NEXT_PUBLIC_UMAMI_ENABLED=true`、`NEXT_PUBLIC_UMAMI_WEBSITE_ID`、`NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://cloud.umami.is/script.js`；缺設定或設 false 就不載入。官網方案 CTA 亦記錄 upgrade_start，無需登入即可驗證入口。只允許 www.rollgrp.com／rollgrp.com，排除本機、Preview、管理員、登入與退訂頁；尊重 Do Not Track。實際 Cloud SDK 的完整網址與相對路徑都可處理，外站網址拒絕；移除 query/hash、私人 URL ID、標題與外部 referrer，不傳 Email、會員 ID、聊天、訪談、ICP 內容或搜尋字詞。固定功能事件如 icp_start／success／error、chat_invite_*、chat_accept_*、interview_*、prospects_*、rewards_*、feedback_*、trial_incentive_*、upgrade_*，另有搜尋無結果、卡片開啟及有效停留摘要。僅累計可見／聚焦且最近 60 秒有操作的時間，離開操作區段彙整送出，無高頻 heartbeat；分析失敗不阻斷產品。事件是瀏覽器操作訊號，精準會員留存、金流、發獎仍以平台 DB 為準。
 
-驗收：373 項測試全過、0 skip；TypeScript 通過，Lint 0 errors／14 既有 warnings，建置通過。真實隔離 DB 驗證公開搜尋與分頁、隱私、同期比較、No／Yes 同獎、重送／並行／回滾、撤銷及已付費、舊問卷領獎、刪問卷不重領、長期到期 AI 不重置與失敗退款。瀏覽器實測邀請→回覆→接受、單份 Saved ICP→編輯側欄、手機 No→原因→送出、國家搜尋與零訪客；390px 無水平溢位、搜尋控制至少 44px，三家上限保留，3 個本機測試帳號已精確清理。最後一輪測試先前受 UI fixture 卡片影響，清理 fixture 後完整重跑全過，沒有放寬測試斷言。
+驗收：375 項測試全過、0 skip；TypeScript 通過，Lint 0 errors／14 既有 warnings，建置通過。真實隔離 DB 驗證公開搜尋與分頁、隱私、同期比較、No／Yes 同獎、重送／並行／回滾、撤銷及已付費、舊問卷領獎、刪問卷不重領、長期到期 AI 不重置與失敗退款。瀏覽器實測邀請→回覆→接受、單份 Saved ICP→編輯側欄、手機 No→原因→送出、國家搜尋與零訪客；390px 無水平溢位、搜尋控制至少 44px，三家上限保留，3 個本機測試帳號已精確清理。最後一輪測試先前受 UI fixture 卡片影響，清理 fixture 後完整重跑全過，沒有放寬測試斷言。
 
 正式畫面另發現既有官網／Billing 的第三方案標題仍讀舊 ALLIANCE 翻譯，已改讀共用 catalog 的 ROLL ON，避免標題與內容不一致。
+
+正式登入過早送出時發現既有表單的原生 GET 後備會把憑證放進 URL；僅 QA 帳號曾觸發，將精確清理。登入／註冊表單加上 POST 後備與 hydration 完成前提交防護，帳號安全表單同樣限定 POST，加入避免憑證進 URL 的回歸測試。
 
 Next dev 自動更新既有 AGENTS.md 的框架說明區塊，保留並納入提交；未新增其他說明文件。
 

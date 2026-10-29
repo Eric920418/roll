@@ -106,6 +106,9 @@ export default function SignupForm() {
     </p>
   );
 
+  const [ready, setReady] = useState(false);
+  useEffect(() => { void Promise.resolve().then(() => setReady(true)); }, []);
+
   return (
     <div className="font-[family-name:var(--font-body)]">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary font-[family-name:var(--font-heading)]">
@@ -153,7 +156,7 @@ export default function SignupForm() {
       </div>
 
       {mode === "email" ? (
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        <form method="post" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <AuthInput
               label={t("firstName")}
@@ -198,7 +201,7 @@ export default function SignupForm() {
             </p>
           )}
           <div className="mt-1">
-            <AuthButton loading={loading}>
+            <AuthButton loading={loading || !ready}>
               {loading ? t("submitting") : t("continue")}
             </AuthButton>
           </div>

@@ -71,6 +71,9 @@ export default function LoginForm() {
     }
   }
 
+  const [ready, setReady] = useState(false);
+  useEffect(() => { void Promise.resolve().then(() => setReady(true)); }, []);
+
   return (
     <div className="font-[family-name:var(--font-body)]">
       <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)] md:text-[2rem]">
@@ -78,7 +81,7 @@ export default function LoginForm() {
       </h1>
       <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
-      <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
+      <form method="post" onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
         <AuthInput
           label={t("email")}
           name="email"
@@ -105,7 +108,7 @@ export default function LoginForm() {
           </p>
         )}
         <div className="mt-1">
-          <AuthButton loading={loading}>
+          <AuthButton loading={loading || !ready}>
             {loading ? t("submitting") : t("submit")}
           </AuthButton>
         </div>

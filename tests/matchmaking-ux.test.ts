@@ -14,6 +14,13 @@ import { simpleTrialAnswersSchema, trialIncentiveEnd, trialFeedbackCsv } from ".
 import { analyticsPath, safeAnalyticsPayload, engagementInterval, requestFeature } from "../src/lib/analytics";
 import { visitorPeriods } from "../src/lib/network/policy";
 
+test("Credential forms always use POST before hydration so secrets cannot enter the URL", () => {
+  for (const file of ["src/components/auth/LoginForm.tsx", "src/components/auth/SignupForm.tsx", "src/components/dashboard/AccountSecurityForm.tsx"]) {
+    const source = readFileSync(file, "utf8"), forms = [...source.matchAll(/<form\b([^>]+)>/g)];
+    assert(forms.length > 0); for (const form of forms) assert.match(form[1]!, /method="post"/);
+  }
+});
+
 test("Country and industry aliases are deterministic and unknown legacy values are retained", () => {
   for (const value of [" TW ", "Taiwan", "台灣", "臺灣", "ＴＷ"]) assert.equal(countryCode(value), "TW");
   assert.equal(countryCode("United States of America"), "US"); assert.equal(countryCode("UK"), "GB");
@@ -98,6 +105,13 @@ test("UX transactions on isolated PostgreSQL: search, weekly stats, one-time ext
       assert.equal((await cards.listCards(owner.id, "investors", 1, { q: suffix })).cards.length, 0);
       await db.matchmakingProfile.updateMany({ where: { userId: { in: ids } }, data: { visibleFields: ["slogan"] } });
       assert.equal((await cards.listCards(owner.id, "all", 1, { q: suffix, country: "TW" })).cards.length, 0);
+    });
+    await t.test("Manual cards use selected needs without requiring optional free text", async () => {
+      const member = await user();
+      await db.matchmakingProfile.create({ data: { userId: member.id, role: "founder", categories: ["collaboration"], country: "TW", industry: "saas", slogan: "QA founder", offers: "QA help", looksFor: "Old detail", visibleFields: [], visible: false } });
+      const card = await cards.getMyCard(member.id);
+      const updated = await cards.writeMyCard(member.id, { action: "save", revision: card.revision, requestId: randomUUID(), draft: { ...card.draft, looksFor: "", categories: ["investors"] } });
+      assert.equal(updated.draft.looksFor, ""); assert.deepEqual([...updated.draft.categories], ["investors"]);
     });
     await t.test("Anonymous weekly totals compare the same cutoff and exclude later last-week visits", async () => {
       const p = visitorPeriods(now), original = await db.setting.findUnique({ where: { key: "member_network_v2_snapshot" } });

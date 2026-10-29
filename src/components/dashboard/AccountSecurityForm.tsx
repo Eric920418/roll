@@ -67,7 +67,7 @@ export default function AccountSecurityForm({
       {!hasPassword && (
         <p className="mt-2 text-sm text-dark/55">{t("googleNote")}</p>
       )}
-      <form onSubmit={handleSubmit} className="mt-5 flex max-w-sm flex-col gap-4">
+      <form method="post" onSubmit={handleSubmit} className="mt-5 flex max-w-sm flex-col gap-4">
         {hasPassword && (
           <label className="flex flex-col gap-1.5">
             <span className={labelClass}>{t("current")}</span>
