@@ -4,16 +4,22 @@
 - 共用固定 ISO 國家代碼及中英文名稱，註冊、公司設定與手動卡片使用可搜尋選單；產業固定選項，需求使用多選按鈕。已知舊名稱可明確對應，未知舊值保留並提示選擇，不批次覆寫。固定名稱／排序避免 Node 與瀏覽器 ICU 不同造成 hydration 錯誤；公司頁、卡片、投資人頁及 PDF 均格式化展示。
 - 個人頁頂端 Request to chat 依本人／待接受／收件／已接受／封鎖顯示正確操作，回覆入口直接選中對象；本輪不扣積分或 AI 次數，沿用方案、投資人驗證、每日邀請上限與逐人分享同意。
 - 訪客改為匿名身份數字卡，總數 0 隱藏。台北週一至現在對比上週相同經過時間，增加綠、減少紅、持平原色並顯示正負數；上週 0 不算百分比，啟用資料未涵蓋上週起點時顯示資料不足，不公開姓名／ID。週報原規則保持。
-- 試用問卷改為 Did you like the product? Yes／No；No 選 needs／complexity／price，可返回修改。兩種答案同樣在儲存交易內延長原試用 72 小時，每帳號終身一次，起點為原到期日與領取日較晚者。不改方案／試用政策／訪談上限，不新增 AI 配額、不重置已用量；長期到期後領取也固定沿用原額度。已付費、無試用、未開始或撤銷試用不獲延長。舊問卷答案保留，合資格已填會員主動領取免重填；刪問卷不能重領。LinkedIn 改為送出後選填、自行編輯／複製，不自動發布、不虛構心得。
+- 試用問卷改為 Did you like the product? Yes／No；No 選 needs／complexity／price，可返回修改。問卷題目／原因支援中英文，領獎前明示原方案、AI 用量與訪談上限維持。兩種答案同樣在儲存交易內延長原試用 72 小時，每帳號終身一次，起點為原到期日與領取日較晚者。不改方案／試用政策／訪談上限，不新增 AI 配額、不重置已用量；長期到期後領取也固定沿用原額度。已付費、無試用、未開始或撤銷試用不獲延長。狀態每分鐘／回到頁面重查，已付費不自動彈出到期問卷或試用倒數。舊問卷答案保留，合資格已填會員主動領取免重填；刪問卷不能重領。LinkedIn 改為送出後選填、自行編輯／複製，不自動發布、不虛構心得。
 - Profile 保留公司基本資料與單份 Saved ICP，Add／Edit 後才載入既有引導／手動草稿；移除重複需求區與冗餘教學，保留資料與版本衝突保護。用量明細收合，Rewards 移除重複副標，價格、扣次數、分享同意、必要規則與安全錯誤保留。
 
 接口：`GET /api/matchmaking?q=&role=&country=&industry=&category=&page=`；`GET /api/network/profiles/:profileId/connection`；`GET /api/network/visitors` 增加 previous／comparable／同期截止時間。`GET /api/feedback`（private/no-store）回傳試用、問卷與領獎狀態；`POST /api/feedback` 支援 version=3 trialSurvey 與 claimTrialIncentive，仍保留舊問卷格式。後台 CSV 兼容各版本，附領獎狀態與公式注入防護。所有會員寫入保留登入、同源、限流、歸屬與安全錯誤。
 
 Schema：`prisma/matchmaking-ux.sql` 僅建立 TrialFeedbackGrant 與 User 外鍵，每帳號唯一；不修改既有欄位、不回填會員。SQL SHA-256 `c122c60983e9045c9291712b6fda22dd118332e0413e4d65b401346aa03eb349`。loopback 隔離庫與正式庫已套用，禁止重跑。正式交易比對 64 張既有表逐表內容指紋完全相同，21 名會員未變、新表 0 筆；證據 `/tmp/roll-ux-production-migration.json`。新環境先檢查 schema 差異、套用純新增 SQL，再 generate／部署；禁止 reset、seed、覆寫或 accept-data-loss。回退須保留領獎表及額度相容邏輯，不能刪帳本。
 
-Umami Cloud：Hobby 免費方案、美國區、網站 NOVA · ROLL ON（www.rollgrp.com）已建立，不購買付費方案、不錄製畫面。Production 與本機忽略的環境檔配置 `NEXT_PUBLIC_UMAMI_ENABLED=true`、`NEXT_PUBLIC_UMAMI_WEBSITE_ID`、`NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://cloud.umami.is/script.js`；缺設定或設 false 就不載入。只允許 www.rollgrp.com／rollgrp.com，排除本機、Preview、管理員、登入與退訂頁；尊重 Do Not Track。移除 query/hash、私人 URL ID、標題與外部 referrer，不傳 Email、會員 ID、聊天、訪談、ICP 內容或搜尋字詞。固定功能事件如 icp_start／success／error、chat_invite_*、chat_accept_*、interview_*、prospects_*、rewards_*、feedback_*、trial_incentive_*、upgrade_*，另有搜尋無結果、卡片開啟及有效停留摘要。僅累計可見／聚焦且最近 60 秒有操作的時間，離開操作區段彙整送出，無高頻 heartbeat；分析失敗不阻斷產品。事件是瀏覽器操作訊號，精準會員留存、金流、發獎仍以平台 DB 為準。
+Umami Cloud：Hobby 免費方案、美國區、網站 NOVA · ROLL ON（www.rollgrp.com）已建立，不購買付費方案、不錄製畫面。Production 與本機忽略的環境檔配置 `NEXT_PUBLIC_UMAMI_ENABLED=true`、`NEXT_PUBLIC_UMAMI_WEBSITE_ID`、`NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://cloud.umami.is/script.js`；缺設定或設 false 就不載入。官網方案 CTA 亦記錄 upgrade_start，無需登入即可驗證入口。只允許 www.rollgrp.com／rollgrp.com，排除本機、Preview、管理員、登入與退訂頁；尊重 Do Not Track。實際 Cloud SDK 的完整網址與相對路徑都可處理，外站網址拒絕；移除 query/hash、私人 URL ID、標題與外部 referrer，不傳 Email、會員 ID、聊天、訪談、ICP 內容或搜尋字詞。固定功能事件如 icp_start／success／error、chat_invite_*、chat_accept_*、interview_*、prospects_*、rewards_*、feedback_*、trial_incentive_*、upgrade_*，另有搜尋無結果、卡片開啟及有效停留摘要。僅累計可見／聚焦且最近 60 秒有操作的時間，離開操作區段彙整送出，無高頻 heartbeat；分析失敗不阻斷產品。事件是瀏覽器操作訊號，精準會員留存、金流、發獎仍以平台 DB 為準。
 
 驗收：373 項測試全過、0 skip；TypeScript 通過，Lint 0 errors／14 既有 warnings，建置通過。真實隔離 DB 驗證公開搜尋與分頁、隱私、同期比較、No／Yes 同獎、重送／並行／回滾、撤銷及已付費、舊問卷領獎、刪問卷不重領、長期到期 AI 不重置與失敗退款。瀏覽器實測邀請→回覆→接受、單份 Saved ICP→編輯側欄、手機 No→原因→送出、國家搜尋與零訪客；390px 無水平溢位、搜尋控制至少 44px，三家上限保留，3 個本機測試帳號已精確清理。最後一輪測試先前受 UI fixture 卡片影響，清理 fixture 後完整重跑全過，沒有放寬測試斷言。
+
+正式畫面另發現既有官網／Billing 的第三方案標題仍讀舊 ALLIANCE 翻譯，已改讀共用 catalog 的 ROLL ON，避免標題與內容不一致。
+
+Next dev 自動更新既有 AGENTS.md 的框架說明區塊，保留並納入提交；未新增其他說明文件。
+
+第一批程式 577b7cb 已正式 READY；22 項正式 API 驗收通過：並行延長只一次、AI 剩餘 1 次不增加、三家上限與第 4 家拒絕、ICP 手動儲存與版本衝突、未知國家與跨權限拒絕。Umami 實際驗收發現新版 SDK 送完整 URL，隱私過濾器已修正並加入回歸測試，沒有停用隱私過濾。僅建立兩個隱藏 QA 帳號，仍待最終瀏覽器驗收後清理。
 
 發布驗收進行中：先完成純新增 schema 與環境變數，再由 main 推送發布，接著驗證正式頁與 Umami 事件／漏斗。沒有執行真實付費 AI 搜尋或金流；Omrade 等 API 文件另行串接，供應商 POC 免費及成本說明不視為已驗證。
 

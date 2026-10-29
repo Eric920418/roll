@@ -2,6 +2,11 @@ export const ANALYTICS_FEATURES = ["matchmaking", "chat_invite", "chat_accept", 
 export type AnalyticsFeature = typeof ANALYTICS_FEATURES[number];
 type AnalyticsData = { feature: AnalyticsFeature; outcome?: "empty" | "validation" | "permission" | "limit" | "service" | "network"; seconds?: number };
 export function analyticsPath(path: string): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) {
+    try { const url = new URL(path); if (!["www.rollgrp.com", "rollgrp.com"].includes(url.hostname)) return null; path = url.pathname; }
+    catch { return null; }
+  }
   const clean = path.split(/[?#]/)[0]!.replace(/^\/zh-tw(?=\/|$)/, "") || "/";
   if (/^\/dashboard\/matchmaking\/[^/]+$/.test(clean)) return "/dashboard/matchmaking/:member";
   if (/^\/investor\/[^/]+$/.test(clean)) return "/investor/:company";

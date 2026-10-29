@@ -42,6 +42,8 @@ test("Simple survey has fixed reasons, safe CSV, and exactly 72-hour extension",
   assert(csv.includes('"3","no","price","2026-11-05T01:00:00.000Z"'));
 });
 test("Analytics strips private paths, text, query strings, referrers and arbitrary event data", () => {
+  assert.equal(analyticsPath("https://www.rollgrp.com/zh-tw/dashboard/matchmaking/private-id?q=Secret"), "/dashboard/matchmaking/:member");
+  assert.equal(analyticsPath("https://example.com/product"), null);
   assert.equal(analyticsPath("/zh-tw/dashboard/matchmaking/private-id?q=Secret"), "/dashboard/matchmaking/:member");
   for (const path of ["/api/secret", "/admin/users", "/network/unsubscribe", "/login?email=secret"]) assert.equal(analyticsPath(path), null);
   const payload = safeAnalyticsPayload("event", { website: "id", hostname: "www.rollgrp.com", url: "/dashboard/profile?email=secret", title: "Secret company", referrer: "https://example.com/private", name: "flow_success", data: { feature: "icp", text: "Secret answer", seconds: 10 }, email: "secret@example.com", distinctId: "member-id" });

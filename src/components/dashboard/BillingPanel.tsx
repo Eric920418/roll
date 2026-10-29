@@ -315,7 +315,7 @@ export default function BillingPanel({
           {/* Enterprise — 洽詢 */}
           <div className="flex flex-col rounded-2xl border border-dark/10 bg-white p-5">
             <p className="text-lg font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">
-              {tPricing("enterprise.name")}
+              {catalog.enterprise.name}
             </p>
             <p className="mt-1 text-sm text-dark/70">
               {tPricing("enterprise.price")}

@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/analytics";
 import { planContent } from "@/lib/billing/catalog";
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
@@ -146,7 +147,7 @@ export default function Pricing() {
                   featured ? "text-white" : "text-dark"
                 }`}
               >
-                {t(`${key}.name`)}
+                {catalog[key].name}
               </h3>
 
               <p className="mt-2 text-sm">{catalog[key].audience}</p>
@@ -194,6 +195,7 @@ export default function Pricing() {
               <div className="mt-9 md:mt-auto md:pt-9">
                 <a
                   href={ctaHref(key)}
+                  onClick={() => track("flow_start", { feature: "upgrade" })}
                   className={`flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold font-[family-name:var(--font-heading)] transition-colors duration-300 ${
                     featured
                       ? "bg-white text-primary hover:bg-cream"

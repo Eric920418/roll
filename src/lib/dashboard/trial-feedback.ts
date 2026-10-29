@@ -13,11 +13,11 @@ async function statusIn(db: Prisma.TransactionClient, userId: string, now: Date)
   const trial = trialWindow(user, now);
   const report = trial ? await db.feedbackReport.findUnique({ where: { trialKey: `${userId}:${trial.startsAt}` }, select: { id: true, surveyAnswers: true } }) : null;
   const paid = getPaidPlan({ ...user, plan: toPlanKey(user.plan), trialPlan: user.trialPlan ? toPlanKey(user.trialPlan) : null, betaAccess: false }, now) !== "free";
-  return { user, trial, report, eligible: Boolean(trial?.available && !paid && !user.trialFeedbackGrant) };
+  return { user, trial, report, paid, eligible: Boolean(trial?.available && !paid && !user.trialFeedbackGrant) };
 }
 export async function trialFeedbackStatus(userId: string, db = prisma as unknown as Prisma.TransactionClient, now = new Date()) {
-  const { user, trial, report, eligible } = await statusIn(db, userId, now);
-  return { trial, submitted: Boolean(report), eligible, grantedEndsAt: user.trialFeedbackGrant?.grantedEndsAt.toISOString() || null, granted: Boolean(user.trialFeedbackGrant) };
+  const { user, trial, report, paid, eligible } = await statusIn(db, userId, now);
+  return { trial, paid, submitted: Boolean(report), eligible, grantedEndsAt: user.trialFeedbackGrant?.grantedEndsAt.toISOString() || null, granted: Boolean(user.trialFeedbackGrant) };
 }
 export async function submitTrialFeedback(userId: string, input: { startsAt: string; locale: string; answers?: SimpleTrialAnswers; claim?: boolean }, now = new Date()) {
   return prisma.$transaction(async raw => {
