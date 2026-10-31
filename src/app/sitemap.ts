@@ -5,11 +5,12 @@ import { loadContent } from "@/lib/mdx";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [];
+  const staticDates: Record<string, string> = { "": "2026-10-31", "/services": "2026-10-25", "/insights": "2026-10-25" };
   const staticPaths = ["", "/approach", "/cases", "/taiwan", "/about", "/esg", "/product", "/services", "/insights"];
   for (const locale of routing.locales) {
     for (const path of staticPaths) {
       // shortcut: CMS has no reliable per-page edit date; add lastmod when page-level timestamps exist.
-      const updated = ["", "/services", "/insights"].includes(path) ? "2026-10-25" : undefined;
+      const updated = staticDates[path];
       entries.push({
         url: absoluteUrl(path, locale),
         ...(updated ? { lastModified: updated } : {}),

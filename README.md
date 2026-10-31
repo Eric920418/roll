@@ -1,6 +1,6 @@
 ## 首頁主標題調整（2026-10-31）
 
-首頁唯一 H1 的 HomeV10.hero.title 改為英文「Speak their language.」、繁中「說他們的語言。」；使用自然換行適配桌面與手機，不保留原標題的三行斷行。SEO title／OG 與市場進入副標保留。此次只提交雙語文案與本 README 記錄，不納入工作區其他未提交功能。
+首頁唯一 H1 的 HomeV10.hero.title 改為英文「Speak their language.」、繁中「說他們的語言。」；使用自然換行適配桌面與手機，不保留原標題的三行斷行。SEO title／OG 與市場進入副標保留，首頁 sitemap lastmod 同步為 2026-10-31。此次只提交雙語文案、首頁 sitemap 更新日與本 README 記錄，不納入工作區其他未提交功能。
 
 驗收：既有 SEO／CMS 測試 11 項全數通過，git diff --check 通過；瀏覽器檢查中英文 390／768／1440px，各有唯一 H1 且無水平溢位，SEO title 維持 ROLL ON.。只修改文案，未重跑完整測試套件；正式建置與上線結果由 Vercel 發布紀錄驗證。
 
