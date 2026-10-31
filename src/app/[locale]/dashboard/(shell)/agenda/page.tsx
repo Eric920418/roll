@@ -32,7 +32,6 @@ export default async function AgendaPage({ params, searchParams }: Props) {
         <h1 className="text-4xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
           {t("title")}
         </h1>
-        <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
         {discovery && current ? <div className="mt-7"><DiscoveryJourney userId={current.id} /></div> : <PlanPaywall locale={l} />}
       </div>
     );
@@ -47,7 +46,6 @@ export default async function AgendaPage({ params, searchParams }: Props) {
       <h1 className="text-4xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
         {t("title")}
       </h1>
-      <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
       <GettingStartedHint mode="next" />
       {discovery && <div className="my-7"><DiscoveryJourney userId={account.id} planId={actionPlan?.id} showCommercial={!actionPlan} /></div>}

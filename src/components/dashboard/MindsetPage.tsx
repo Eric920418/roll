@@ -44,7 +44,7 @@ export default function MindsetPage() {
   }
   function reset() { setValues(empty); setEditing(null); setReviewing(false); setConflict(false); setLatest(null); setDeleting(null); pending.current = { key: "", id: "" }; }
   return <div className="mx-auto max-w-3xl space-y-7">
-    <header><h1 className="text-3xl font-semibold sm:text-4xl">Mindset</h1><p className="mt-3 text-sm leading-6 text-dark/70">{t("intro")}</p></header>
+    <header><h1 className="text-3xl font-semibold sm:text-4xl">Mindset</h1></header>
     {error && <div role="alert" className="whitespace-pre-wrap break-words rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
     {notice && <p role="status" className="rounded-xl border border-dark/15 bg-white p-4 text-sm">{notice}</p>}
     <form ref={formRef} tabIndex={-1} className="space-y-5 rounded-2xl border border-dark/15 bg-white p-5 sm:p-7" onSubmit={e => { e.preventDefault(); const result = reflectionSchema.safeParse(values); if (!result.success) { setError(result.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("\n")); return; } setReviewing(true); }}>

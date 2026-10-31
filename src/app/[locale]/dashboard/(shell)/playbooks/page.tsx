@@ -25,7 +25,6 @@ export default async function PlaybooksPage({ params }: Props) {
       <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
         {t("title")}
       </h1>
-      <p className="mt-2 max-w-2xl text-sm text-dark/60">{t("subtitle")}</p>
 
       {items.length === 0 ? (
         <div className="mt-7 rounded-2xl border border-dark/10 bg-white p-7 text-sm text-dark/60">

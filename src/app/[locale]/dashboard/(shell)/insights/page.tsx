@@ -40,7 +40,6 @@ export default async function CustomerInsightsPage({ params }: { params: Promise
   return (
     <div className="font-[family-name:var(--font-body)]">
       <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("title")}</h1>
-      <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
       {!account ? discovery && current ? <div className="mt-8"><DiscoveryJourney userId={current.id} /></div> : <PlanPaywall locale={locale as Locale} /> : (
         <div className="mt-8 flex flex-col gap-12">
           {discovery ? <DiscoveryJourney userId={account.id} planId={plan?.sourceJourneyId ? plan.id : undefined} /> : <CustomerDiscovery tasks={plan?.actions ?? []} userId={account.id} rows={rows.map(r => ({ ...r, updatedAt: r.updatedAt.toISOString() }))} outcomes={outcomes.map(o => ({ ...o, confirmedAt: o.confirmedAt.toISOString() }))} />}

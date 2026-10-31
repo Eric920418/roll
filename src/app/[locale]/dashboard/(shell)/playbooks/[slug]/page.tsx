@@ -55,7 +55,6 @@ export default async function PlaybookDetailPage({ params }: Props) {
       <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
         {pickDual(pb.title, locale)}
       </h1>
-      <p className="mt-2 max-w-2xl text-sm text-dark/60">{pickDual(pb.summary, locale)}</p>
 
       <PlaybookReader slug={slug} segments={segments} initialReads={reads} />
     </div>

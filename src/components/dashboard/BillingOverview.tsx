@@ -92,7 +92,6 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   return (
     <section id="plan" className="scroll-mt-8 font-[family-name:var(--font-body)]">
       {embedded ? <h2 className="text-2xl font-extrabold text-dark font-[family-name:var(--font-heading)]">{t("title")}</h2> : <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("title")}</h1>}
-      <p className="mt-2 text-sm text-dark/60">{t("subtitle")}</p>
 
       <BillingPanel
         locale={l}
