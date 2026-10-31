@@ -33,6 +33,7 @@ export async function readPublicPage(value: string, website: string): Promise<{ 
   }
   return null;
 }
+const sharedInbox = (email: string) => /^(?:info|hello|contact|sales|support|admin|office|team|service|enquiries|inquiries|business|marketing)(?:[+._-].*)?$/i.test(email.split("@")[0]);
 function text(html: string) {
   return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ").replace(/&#(?:x([0-9a-f]+)|(\d+));?/gi, (_, hex, dec) => { const n = parseInt(hex || dec, hex ? 16 : 10); return n <= 0x10ffff ? String.fromCodePoint(n) : ""; }).replace(/&commat;/gi, "@").replace(/&period;/gi, ".");
 }
@@ -42,20 +43,26 @@ export async function verifyCompany(raw: unknown, country: string, read = readPu
   const c = parsed.data;
   if (c.country_code !== country) return { rejection: "wrong_country" };
   if (c.domain.toLowerCase().replace(/^www\./, "").replace(/\.$/, "") !== host(c.website_url)) return { rejection: "domain_mismatch" };
+  // A provider label is not a quote: verify that at least one public fit source is readable.
+  const fit = c.fit_evidence[0], fitPage = await read(fit.source_url, new URL(fit.source_url).origin);
+  if (!fitPage || !text(fitPage.html).replace(/<[^>]*>/g, " ").trim()) return { rejection: "unavailable_fit_source" };
   const routes = [
     ...c.contacts.people.filter(p => p.email && p.email_status === "published" && p.email_source_url).map(p => ({ email: p.email!, url: p.email_source_url!, name: p.role_status === "published" ? p.name : null, role: p.role_status === "published" ? p.role || null : null })),
     ...c.contacts.emails.filter(e => e.status === "published").map(e => ({ email: e.value, url: e.source_url, name: null, role: null })),
   ].filter(r => official(r.url, c.website_url));
   const urls = [...new Set([...routes.map(r => r.url), ...c.fit_evidence.filter(e => official(e.source_url, c.website_url) && contactPath(e.source_url)).map(e => e.source_url), c.website_url])].slice(0, 2);
   const pages = new Map<string, { url: string; html: string }>();
-  for (const url of urls) { const page = await read(url, c.website_url); if (page) pages.set(url, page); }
+  for (const url of urls) { const page = url === fit.source_url ? fitPage : await read(url, c.website_url); if (page) pages.set(url, page); }
   let contact: PublicProspect["contact"] | undefined;
   for (const route of routes) {
     const page = pages.get(route.url); if (!page) continue;
     const published = text(page.html).match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
-    if (published.some(v => v.toLowerCase() === route.email.toLowerCase())) { contact = { kind: "email", value: route.email, source: page.url, name: route.name, role: route.role }; break; }
+    if (published.some(v => v.toLowerCase() === route.email.toLowerCase())) { contact = { kind: "email", value: route.email, source: page.url, name: !sharedInbox(route.email) && route.name && text(page.html).includes(route.name) ? route.name : null, role: !sharedInbox(route.email) && route.name && route.role && text(page.html).includes(route.name) && text(page.html).includes(route.role) ? route.role : null }; break; }
   }
-  const qualifies = (page: { url: string; html: string }) => contactPath(page.url) && /<form\b|mailto:|tel:/i.test(page.html);
+  const qualifies = (page: { url: string; html: string }) => contactPath(page.url) && (
+    /href\s*=\s*["']mailto:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text(page.html)) ||
+    /<form\b[^>]*>[\s\S]*?(?:<textarea\b|name\s*=\s*["'](?:message|subject|enquiry|inquiry)["'])[\s\S]*?<\/form>/i.test(text(page.html))
+  );
   if (!contact) {
     let page = [...pages.values()].find(qualifies);
     if (!page) {

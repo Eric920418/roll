@@ -16,7 +16,7 @@ import CardView, { PrivatePhoto } from "./CardView";
 const button = "min-h-11 rounded-lg border border-dark/20 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
 const input = "mt-2 w-full min-w-0 rounded-lg border border-dark/20 bg-white p-3 text-sm";
 type Listing = { cards: PublicCard[]; hasMore: boolean };
-export default function MatchmakingPage() {
+export default function MatchmakingPage({ active = true }: { active?: boolean }) {
   const { value: network } = useNetwork();
   const [role, setRole] = useState("all"), [country, setCountry] = useState(""), [industry, setIndustry] = useState(""), [query, setQuery] = useState(""), [q, setQ] = useState("");
   const t = useTranslations("Matchmaking"), locale = useLocale() as Locale;
@@ -34,9 +34,9 @@ export default function MatchmakingPage() {
   const loadOwner = useCallback((signal?: AbortSignal) => memberFetch<CardOwner>("/api/matchmaking/me", { signal })
     .then(result => { if (!signal?.aborted) { setOwner(result); setDraft(result.draft); } })
     .catch(cause => { if (!signal?.aborted) setError(cause instanceof Error ? cause.message : String(cause)); }), []);
-  useEffect(() => { const abort = new AbortController(); void loadOwner(abort.signal); return () => abort.abort(); }, [loadOwner]);
-  useEffect(() => { const abort = new AbortController(); void loadList(abort.signal); return () => abort.abort(); }, [loadList]);
-  useEffect(() => { const abort = new AbortController(); void memberFetch("/api/matchmaking/activity", { method: "POST", body: "{}", signal: abort.signal }).catch(cause => { if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause)); }); return () => abort.abort(); }, []);
+  useEffect(() => { if (!active || owner) return; const abort = new AbortController(); void loadOwner(abort.signal); return () => abort.abort(); }, [loadOwner, active, owner]);
+  useEffect(() => { if (!active) return; const abort = new AbortController(); void loadList(abort.signal); return () => abort.abort(); }, [loadList, active]);
+  useEffect(() => { if (!active) return; const abort = new AbortController(); void memberFetch("/api/matchmaking/activity", { method: "POST", body: "{}", signal: abort.signal }).catch(cause => { if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause)); }); return () => abort.abort(); }, [active]);
   useEffect(() => { if (previewing) previewRef.current?.focus(); }, [previewing]);
   function update<K extends keyof CardDraft>(key: K, value: CardDraft[K]) { setDraft(old => old ? { ...old, [key]: value } : old); setPreviewing(false); setConsent(false); }
   async function compareLatest() {
@@ -73,7 +73,7 @@ export default function MatchmakingPage() {
   const preview = owner && previewDraft && cardDraftSchema.safeParse(previewDraft).success ? publicCard({ ...previewDraft, id: owner.id || "preview", sourcePolicy: owner.sourcePolicy, blurredPhoto: owner.hasPhoto ? "present" : null, lastActiveAt: owner.lastActiveAt ? new Date(owner.lastActiveAt) : new Date(), verified: owner.verified && previewDraft.role === owner.draft.role, recommended: owner.recommended }, owner.source, owner.stats, null, new Date(), Boolean(network?.enabled)) : null;
   if (preview?.photo) preview.photo = `/api/matchmaking/me/photo?variant=blurred&v=${owner?.revision}`;
   return <div className="min-w-0 space-y-7">
-    <header><h1 className="text-3xl font-semibold sm:text-4xl">Matchmaking</h1></header><VisitorStats />
+    {active && <VisitorStats />}
     {error && <div role="alert" className="whitespace-pre-wrap break-words rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><p>{error}</p>{!owner && <button className={`${button} mt-3`} onClick={() => void loadOwner()}>{t("retry")}</button>}{retryPhoto && <button className={`${button} mt-3`} disabled={busy || conflict} onClick={() => void uploadPhoto(retryPhoto)}>{t("retryPhoto")}</button>}</div>}
     {notice && <p role="status" className="rounded-xl border border-dark/15 bg-white p-4 text-sm">{notice}</p>}
     <section className="rounded-2xl border border-dark/15 bg-white p-5">

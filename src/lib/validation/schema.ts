@@ -30,12 +30,13 @@ export type SalesRecord = z.infer<typeof salesRecordSchema>;
 export const salesMutationSchema = z.object({
   scope: scopeSchema, requestId: z.string().uuid(), version: z.number().int().nonnegative(),
   company: z.string().trim().min(1).max(200), name: z.string().trim().max(200), sourceId: z.string().max(200).optional(), contactId: z.string().min(1).max(200).optional(),
+  prospectOrderId: z.string().uuid().optional(), prospectCompanyId: z.string().uuid().optional(),
   status: z.enum(salesStatuses), quote: z.string().trim().max(4000), reason: z.string().trim().max(4000),
   amount: salesEventSchema.shape.amount, currency: salesEventSchema.shape.currency,
   proof: proofSchema.omit({ revokedAt: true, revokeReason: true }).optional(),
   revoke: z.object({ id: z.string().uuid(), reason: z.string().trim().min(1).max(2000) }).optional(),
   scripts: z.record(z.string(), z.string().max(8000)).optional(),
-}).strict().superRefine((value, ctx) => { if (value.proof && value.proof.kind !== value.status) ctx.addIssue({ code: "custom", path: ["proof", "kind"], message: "證據類型須與付款／簽約狀態一致 / Proof kind must match payment or signing status" }); });
+}).strict().superRefine((value, ctx) => { if (Boolean(value.prospectOrderId) !== Boolean(value.prospectCompanyId)) ctx.addIssue({ code: "custom", path: ["prospectOrderId"], message: "請選擇完整名單來源 / Select a complete prospect source" }); if (value.proof && value.proof.kind !== value.status) ctx.addIssue({ code: "custom", path: ["proof", "kind"], message: "證據類型須與付款／簽約狀態一致 / Proof kind must match payment or signing status" }); });
 export type SalesMutation = z.infer<typeof salesMutationSchema>;
 export function sameScope(a: Scope, b: Scope) { return a.planId === b.planId && a.journeyId === b.journeyId; }
 export function validProofs(record: SalesRecord) { return record.proofs.filter(p => !p.revokedAt); }
@@ -67,6 +68,11 @@ export function priorityCompanies(rows: InterviewRow[], contacts: { id: string; 
     if (companies.has(key)) continue;
     const linked = contacts.find(c => c.id === v.commercial?.contactId && companyKey(c.company || "") === key) || contacts.find(c => companyKey(c.company || "") === key && companyKey(c.name) === companyKey(v.name));
     companies.set(key, { company: v.company, name: linked?.name || v.name, sourceId: row.id, contactId: linked?.id, quote: v.commercial?.quote || v.answers.find(Boolean) || v.notes, amount: v.commercial?.amount || "", currency: v.commercial?.currency || "", willingness: v.commercial?.willingness || "not_asked", heat: v.commercial?.heat || "unknown", respondedAt: v.commercial?.respondedAt || (v.date ? `${v.date}T00:00:00Z` : "") });
+  }
+  for (const contact of contacts) {
+    if (!contact.company?.trim()) continue;
+    const key = companyKey(contact.company);
+    if (!companies.has(key)) companies.set(key, { company: contact.company, name: contact.id.startsWith("omrade_") && contact.name === `${contact.company} · Company contact` ? "" : contact.name, contactId: contact.id, quote: "", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "" });
   }
   for (const record of records) {
     const key = companyKey(record.company), last = record.events.at(-1);

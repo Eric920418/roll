@@ -72,7 +72,7 @@ export async function analyticsFetch(url: string, init?: RequestInit) {
   if (feature) track("flow_start", { feature });
   try {
     const response = await fetch(url, init);
-    if (feature) track(response.ok ? "flow_success" : "flow_error", { feature, ...(!response.ok ? { outcome: analyticsError(response.status) } : {}) });
+    if (feature && !(feature === "prospects" && response.status === 202)) track(response.ok ? "flow_success" : "flow_error", { feature, ...(!response.ok ? { outcome: analyticsError(response.status) } : {}) });
     return response;
   } catch (error) { if (feature && !(error instanceof Error && error.name === "AbortError")) track("flow_error", { feature, outcome: "network" }); throw error; }
 }

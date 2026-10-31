@@ -26,9 +26,9 @@ export async function eligibility(userId: string, tx: DB = prisma as unknown as 
 export async function exclusions(userId: string, tx: DB = prisma as unknown as DB) {
   const [profile, notes, contacts, deals] = await Promise.all([
     tx.onboardingProfile.findUnique({ where: { userId } }), tx.meetingNote.findMany({ where: { userId }, select: { insight: true } }),
-    tx.contact.findMany({ where: { userId }, select: { company: true } }), tx.deal.findMany({ where: { userId }, select: { title: true, validation: true } }),
+    tx.contact.findMany({ where: { userId }, select: { company: true, notes: true } }), tx.deal.findMany({ where: { userId }, select: { title: true, validation: true } }),
   ]);
-  const names = [profile?.companyName || "", profile?.website || "", ...notes.map(n => (n.insight as { company?: unknown } | null)?.company).filter((v): v is string => typeof v === "string"), ...contacts.map(c => c.company || ""), ...deals.flatMap(d => {
+  const names = [profile?.companyName || "", profile?.website || "", ...notes.map(n => (n.insight as { company?: unknown } | null)?.company).filter((v): v is string => typeof v === "string"), ...contacts.flatMap(c => [c.company || "", ...(c.notes?.startsWith("Omrade public source: ") ? [c.notes.match(/\nCompany: (https:\/\/\S+)/)?.[1] || ""] : [])]), ...deals.flatMap(d => {
     const v = d.validation as { company?: unknown; prospect?: { name?: unknown; aliases?: unknown; website?: unknown } } | null;
     return [d.title, v?.company, v?.prospect?.name, v?.prospect?.website, ...(Array.isArray(v?.prospect?.aliases) ? v.prospect.aliases : [])].filter((s): s is string => typeof s === "string");
   })].filter(Boolean);
@@ -43,6 +43,7 @@ export function orderView(order: ProspectingOrder, excluded: string[], workspace
   const companies = uniqueProspects(storedCompanies(order), excluded);
   return { id: order.id, submissionId: order.requestId, country: order.country, description: order.description, requested: order.count, delivered: order.deliveredCount, usable: companies.length, status: order.status, poc: order.poc, period: order.period,
     createdAt: order.createdAt.toISOString(), checkedAt: order.checkedAt?.toISOString() || null, nextAttemptAt: order.nextAttemptAt.toISOString(),
+    needsRecheck: !order.checkedAt || Date.now() - order.checkedAt.getTime() >= 86400000,
     stale: !order.checkedAt || Date.now() - order.checkedAt.getTime() >= 86400000 || Boolean(workspace && (workspace.country !== order.country || workspace.description !== order.description)),
     companies, rejections: order.rejections, error: order.failureMessage, code: order.failureCode, requestId: order.providerRequestId };
 }

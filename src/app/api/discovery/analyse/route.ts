@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (body.prospectCount !== undefined) {
       const parsed = prospectInputSchema.safeParse(body);
       if (!parsed.success) return fail(parsed.error.issues.map(i => i.message).join("; "), 400);
-      return ok(await generateProspects(account, parsed.data));
+      return ok(await generateProspects(account, parsed.data), 202);
     }
     if (body.scope) {
       const parsed = analysisInputSchema.safeParse(body);

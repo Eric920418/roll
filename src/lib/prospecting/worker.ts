@@ -39,8 +39,8 @@ async function completeCheck(order: ProspectingOrder, token: string) {
     return eligible.length;
   }, { timeout: 15000 });
 }
-async function acceptResponse(order: ProspectingOrder, token: string, raw: unknown, retryAfter: number, requestId?: string) {
-  const parsed = orderResponse.safeParse(raw);
+async function acceptResponse(order: ProspectingOrder, token: string, payload: unknown, retryAfter: number, requestId?: string) {
+  const parsed = orderResponse.safeParse(payload);
   if (!parsed.success) throw new OmradeError(503, "provider_invalid_response", 60, requestId);
   const data = parsed.data;
   if (data.requested_count !== order.count || data.icp_id !== order.omradeIcpId || data.icp_version !== order.omradeIcpVersion || (order.providerOrderId && data.order_id !== order.providerOrderId) || data.billing.period !== data.created_at.slice(0, 7) ||
@@ -50,7 +50,7 @@ async function acceptResponse(order: ProspectingOrder, token: string, raw: unkno
     const tx = raw as unknown as Prisma.TransactionClient;
     await lockMember(tx, order.userId);
     const saved = await tx.prospectingOrder.updateMany({ where: { id: order.id, leaseToken: token }, data: {
-      providerOrderId: data.order_id, providerResult: json(raw), providerRequestId: requestId || null, acceptedAt: new Date(data.created_at), period: data.billing.period,
+      providerOrderId: data.order_id, providerResult: json(payload), providerRequestId: requestId || null, acceptedAt: new Date(data.created_at), period: data.billing.period,
       deliveredAt: data.delivered_at ? new Date(data.delivered_at) : null, deliveredCount: data.delivered_count,
       reservedCount: data.status === "completed" || data.status === "failed" ? 0 : order.count,
       status: data.status === "completed" ? "checking" : data.status,
@@ -65,7 +65,7 @@ async function acceptResponse(order: ProspectingOrder, token: string, raw: unkno
 async function submitGate(order: ProspectingOrder, token: string) {
   await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291734)`;
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291734)::text`;
     const fresh = await tx.prospectingOrder.findUniqueOrThrow({ where: { id: order.id } });
     if (fresh.leaseToken !== token) throw new ProspectingError("處理權已變更 / Processing lease changed", 409, "lease_changed");
     if (fresh.submittedAt) return;
@@ -122,13 +122,13 @@ async function failedAttempt(order: ProspectingOrder, token: string, error: unkn
   if (definite && provider && error.status === 404 && order.audienceParentId) await prisma.prospectingWorkspace.updateMany({ where: { userId: order.userId, omradeIcpId: order.audienceParentId }, data: { omradeIcpId: null, omradeIcpVersion: null, audienceHash: null } });
 }
 export async function runProspecting() {
-  if (!process.env.OMRADE_API_KEY) return { enabled: false, processed: 0 };
+  if (process.env.OMRADE_WORKER_ENABLED === "false" || !process.env.OMRADE_API_KEY) return { enabled: false, processed: 0 };
   const enabled = configured(), deadline = Date.now() + 200000; let processed = 0;
   const seen: string[] = [];
   while (processed < 5 && Date.now() < deadline - 105000) {
     const claimed = await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291735)`;
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291735)::text`;
       const order = await tx.prospectingOrder.findFirst({ where: { id: { notIn: seen }, status: { in: activeOrderStatuses }, nextAttemptAt: { lte: new Date() }, OR: [{ leaseUntil: null }, { leaseUntil: { lt: new Date() } }], ...(!enabled ? { providerOrderId: { not: null } } : {}) }, orderBy: { nextAttemptAt: "asc" } });
       if (!order) return null;
       const token = randomUUID(); await tx.prospectingOrder.update({ where: { id: order.id }, data: { leaseToken: token, leaseUntil: new Date(Date.now() + leaseMs), attempts: { increment: 1 } } });

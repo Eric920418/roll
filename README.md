@@ -4,11 +4,26 @@
 
 驗收：既有 SEO／CMS 測試 11 項全數通過，git diff --check 通過；瀏覽器檢查中英文 390／768／1440px，各有唯一 H1 且無水平溢位，SEO title 維持 ROLL ON.。只修改文案，未重跑完整測試套件；正式建置與上線結果由 Vercel 發布紀錄驗證。
 
-## Omrade 共用公司搜尋（2026-10-31，開發驗收中）
+## Omrade 共用公司搜尋（2026-10-31）
 
-Matchmaking「會員交流／找新公司」與 Next Steps 共用本人名單；新公司不是平台會員。公司搜尋改用 Omrade，不呼叫 Anthropic、不扣 AI、不自動回退。每筆費用上限固定 0，UTC 月每會員最多交付 10 家，預留中的訂單計入；讀取與同鍵重試不重計。一般有效三家試用可領一次最多五家，至少一筆合格結果才算領取，零合格仍消耗供應商已交付量。原 NOVA／ROLL ON／合法舊權益及其他 AI 功能維持。
+Matchmaking 分為「會員交流」與「找新公司」；外部公司不建立會員卡片或聊天邀請。Next Steps 與 Matchmaking 共用本人搜尋工作區、五／十家訂單及歷史結果，舊 Anthropic 名單即使超過二十四小時仍保留為唯讀歷史並標示未重新核對；POLARIS、ICP、訪談及拒絕分析維持原服務。公司搜尋不扣 AI、不回退 Anthropic、不自動補單或付費。
 
-新增三個 Prospecting 資料表；僅新增 schema，不覆寫既有計畫／訪談／帳本。正式功能預設關閉；環境變數 OMRADE_ENABLED／OMRADE_API_KEY（read+write），API https://omrade.app/api/v1/prospecting，金鑰不進前端。預計每分鐘 cron／租約處理最長 40 分鐘訂單，異常不重建訂單；已加入純新增的三表 schema、固定 API client、請求／回應驗證及安全錯誤；每筆訂單明確鎖定零付費，寫入須先持久化 UUID 冪等鍵。已新增不使用 AI 的聯絡來源檢查：公開 IPv4 DNS 固定連線、HTTPS／同公司範圍、7 秒／256 KiB／兩次轉向限制，Email 需出現在官方 HTML；只採用實際公開的聯絡頁連結。已加入會員交易鎖、五／十家零付費建單、UTC 月預留與交付上限、POC 資格與重送防重、兩頁共用本人工作區與分頁歷史；GET 不建單、不送外部資料。已加入每會員單一未確認訂單、處理租約、組織每分鐘／每小時／並行護欄、零付費收據驗證、明確拒單釋放與未知狀態保留、24 小時來源手動核對，暫停新建單時仍可對帳已接受訂單。已加入 /api/prospects、orders、本人訂單、recheck 與每分鐘 /api/cron/prospecting；公司搜尋舊分支轉接共用服務，六家請求提示改選五／十家。保留終身 POC 帳本，即使個別訂單刪除也不會重領。沿用現有 Prisma 交易型別轉接，不更動讀寫重試邊界；頁面介面接續實作。已加入共用 ProspectSearch 介面、可搜尋國家、可編輯買方描述、明確資料傳送確認、背景／隱藏頁停止輪詢、草稿與重送 UUID 保存、條件衝突比對、交付／可用量分開呈現、來源重查與明確確認後建立 lead。CRM 擴充伺服器驗證的來源加入，使用確定性 ID 防重送，不自動寄信或標成已聯絡。既有程式與完整驗收仍在進行中。每批更新此 README，禁止 reset、accept-data-loss 或覆寫會員資料。
+- 每會員 UTC 月最多交付十家，未確認訂單先預留；以供應商接單月份及原始交付數結算，不能以過濾結果退回用量。有效一般訪談試用完成同工作區三家不同公司後，可領終身一次五家 POC；零合格可在剩餘月額度手動重試，至少一家合格才寫入不可重領帳本。完整試用與既有搜尋授權沿用，不擴張其他付費權限。
+- 搜尋前由 Saved ICP 預填可編輯買方描述、單一 ISO 國家（預設台灣）及資料傳送確認；只送確認條件及排除網域，不送訪談原文、私人聯絡人、付款或附件。每筆持久保存 UUID、完整請求及雜湊，條件更新建立新 ICP 版本；逾時沿用原鍵與內容。
+- 訂單狀態區分等待提交／接單／搜尋／核對／完成／失敗／待對帳；處理租約、會員交易鎖、全站每分鐘六十請求、滾動每小時十新單及五筆進行中護欄；遵守 Retry-After，每會員最多一筆未確認單。超過四十分鐘仍未確認只對帳，不換鍵重買；只有明確拒單／失敗才釋放預留。已保存交付不受供應商 410 影響。
+- 公開來源限 HTTPS、公開 IPv4 固定連線、每頁七秒／256 KiB／兩次同來源轉向；適配來源需可讀、Email 必須實際出現在官方 HTML，共用 info／sales 等信箱不標為個人，具名窗口需來源有姓名。聯絡頁須有可辨識的留言表單或公開 Email 入口；訂閱電子報、空表單與僅電話資料不單獨作為合格判斷。strong／possible 清楚區分，供應商說明不冒充原文、需求或購買意願。
+- 每次讀取重新排除本人、已訪談、聯絡人、商機及本批重複公司。分開顯示供應商交付數及目前可用數；條件變更或核對逾二十四小時標示，來源重查不呼叫供應商／AI。確認加入 Contact 後立即從新名單排除，Next Steps 顯示於「已訪談／已加入公司」；不標為已聯絡、不寄信。POC 僅能查看與自行聯絡，不解鎖進階跟進。
+- 草稿、重試 UUID 與版本衝突保留輸入；可見頁面每十五秒讀取未完成單，隱藏頁籤停止輪詢。兩入口及跨分頁沿用既有更新事件。Umami 僅記固定操作／安全代碼，兩個建單介面均回 202；僅本頁建立或觀察過處理中的訂單完成才記成功，不把舊歷史重複算成新完成，不傳 ICP、名單或聯絡資料。
+
+API：`GET /api/prospects`（含本人歷史游標）、`POST /api/prospects/orders`、`GET /api/prospects/orders/:id`、`POST /api/prospects/orders/:id/recheck`；均驗證登入、歸屬、輸入與安全錯誤。舊 `/api/discovery/analyse` 公司分支轉接共用訂單，六家請求提示改選五／十家；其他分析維持原授權及 AI 次數。`/api/cron/prospecting` 每分鐘、maxDuration 240 秒、沿用 CRON_SECRET；網路不放進長交易。管理員 Matchmaking 提供訂單用量、耗時、過濾與安全錯誤，供應商免費量只在按鈕讀取；`GET /api/admin/prospecting` 不回傳 ICP 或名單。
+
+資料：只新增 ProspectingWorkspace／ProspectingOrder／ProspectingTrialGrant 三表，SQL 為 `prisma/omrade-prospecting.sql`。正式差異已與此純新增 SQL 比對一致；先套用 loopback 隔離 DB 並驗收，正式三表已套用，交易前後 User 全欄資料指紋相同；沒有覆寫會員資料。POC 帳本在個別訂單刪除後保留，不覆寫既有計畫／訪談／會員／積分。禁止 reset、accept-data-loss；每批只更新本 README，僅用 pnpm。
+
+設定：伺服器 `OMRADE_API_KEY`、`OMRADE_ENABLED`（預設 false）、`OMRADE_WORKER_ENABLED` 與既有 CRON_SECRET。初次待驗收時兩開關皆 false，cron 直接返回、不每分鐘喚醒資料庫；上線時兩者設 true。日後暫停新建單只關 OMRADE_ENABLED，保留 worker true 對帳既有接受單；worker false 是完整停用處理的保留開關。已授權建立 NOVA Prospecting 專用金鑰，安全存入本機 .env.local 與 Vercel Production Secret；不進 Git／前端。依 PDF 的固定 API 為 https://omrade.app/api/v1/prospecting，每筆強制 max_charge_cents:0，須 prospecting:read＋prospecting:write。全組織免費量先到先用，不保證三十人都有額度。
+
+**正式啟用阻礙：** Omrade 實際設定頁現列 `/api/v1/prospect-searches/`，同一把新金鑰在該讀取介面可驗證（不存在測試 ID 回 404，未帶金鑰回 401），但 PDF 舊 usage 介面回 401；無法把新舊契約視為相容。尚需供應商確認新版的零付費上限、免費用量、分頁交付計量及冪等契約。未取得前 OMRADE_ENABLED=false，不送真實搜尋，不自行猜參數。已建立金鑰但沒有建立真實 Omrade 訂單、消耗免費公司或付費研究。
+
+驗收：最終 pnpm test 三百九十二項全過、零 skip；TypeScript／pnpm build 通過，pnpm lint 零 errors、十四個既有 warnings。已補瀏覽器驗收發現的 Contact→Next Steps 跟進顯示與既有商機後續編輯回歸。測試涵蓋公開來源安全、公司去重、200／202、429／410、四十分鐘待對帳、原單同鍵重試、ICP 版本、額度並行、POC 零合格重試／終身一次、重疊 worker 及最後儲存失敗回滾。桌面以隔離帳號確認兩入口共用交付及加入後排除；390px 手機中英文無橫向溢出，鍵盤方向鍵可切換頁籤；已實測會員卡片在切回頁籤時不重新覆蓋草稿或悄悄更新其版本；隔離瀏覽器帳號與臨時明文金鑰檔已清理。正式真實五家公司驗收待契約確認，最多只允許一筆免費五家，不追加。
 
 ## 整站新網域 rollon.com.tw（2026-10-31）
 

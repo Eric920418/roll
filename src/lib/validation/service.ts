@@ -1,6 +1,5 @@
 import { workspaceKind, interviewTarget } from "@/lib/action-plan/workspace";
-import { readIcp } from "@/lib/icp/schema";
-import { excludeKnownCompanies, prospectCacheSchema, prospectCacheFresh, prospectKey } from "./prospect-schema";
+import { prospectCacheSchema, prospectCacheFresh, prospectKey } from "./prospect-schema";
 import { interviewSummary } from "@/lib/customer-insights/interviews";
 import { interviewRows } from "@/lib/customer-insights/service";
 import "server-only";
@@ -45,37 +44,12 @@ export async function validationDeals(tx: DB, userId: string, scope: Scope) {
 export function sourceFingerprint(rows: { id: string; updatedAt: Date | string; insight: unknown }[]) {
   return createHash("sha256").update(JSON.stringify(rows.map(r => [r.id, new Date(r.updatedAt).toISOString(), r.insight]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))))).digest("hex");
 }
-// Read legacy insight JSON too: incomplete/older notes must still exclude an existing company.
-export async function prospectContext(tx: DB, userId: string, scope: Scope) {
-  const [context, profile, notes, contacts, deals] = await Promise.all([
-    validationRows(tx, userId, scope), tx.onboardingProfile.findUnique({ where: { userId } }),
-    tx.meetingNote.findMany({ where: { userId }, select: { insight: true } }),
-    tx.contact.findMany({ where: { userId }, select: { company: true } }),
-    tx.deal.findMany({ where: { userId }, select: { title: true, validation: true } }),
-  ]);
-  let ownWebsite = ""; try { ownWebsite = new URL(profile?.website || "").origin; } catch { /* A missing website does not block discovery. */ }
-  const excluded = [...new Set([
-    profile?.companyName || "", ownWebsite, ...notes.map(n => (n.insight as { company?: unknown } | null)?.company).filter((v): v is string => typeof v === "string"),
-    ...contacts.map(c => c.company || ""), ...deals.flatMap(d => { const record = salesRecordSchema.safeParse(d.validation).data; return [d.title, record?.company || "", ...(record?.prospect ? [record.prospect.name, ...record.prospect.aliases, record.prospect.website] : [])]; }),
-  ].filter(Boolean))].sort();
-  const icp = readIcp(profile?.icpDetails);
-  const criteria = { product: profile?.oneLinePitch || "", industry: profile?.industry || "", customer: icp?.who || "", customerStage: icp?.stage || "", customerLocation: icp?.location || "", problem: icp?.problem || "", summary: icp?.summary || profile?.icp || "", market: "Taiwan" };
-  const source = sourceFingerprint([{ id: "prospects-contact-v9", updatedAt: "2026-10-24T00:00:00Z", insight: { criteria, excluded } }]);
-  return { ...context, criteria, excluded, prospectSource: source };
-}
-export async function currentProspects(tx: DB, userId: string, scope: Scope) {
-  const context = await prospectContext(tx, userId, scope), cache = prospectCacheSchema.safeParse(context.cache).data;
-  return Object.fromEntries(Object.entries(cache?.prospects || {}).map(([key, entry]) => {
-    const checked = entry.result.contactChecked && prospectCacheFresh(entry.result.generatedAt);
-    return [key, { ...entry.result, stale: entry.source !== context.prospectSource || !checked, companies: checked ? excludeKnownCompanies(entry.result.companies.filter(c => c.contact), context.excluded) : [] }];
-  }));
-}
 export async function validationSnapshot(userId: string, scope: Scope) {
   const tx = prisma as unknown as DB;
-  const [context, deals, contacts] = await Promise.all([validationRows(tx, userId, scope), validationDeals(tx, userId, scope), tx.contact.findMany({ where: { userId }, select: { id: true, name: true, company: true } })]);
+  const [context, deals, contacts] = await Promise.all([validationRows(tx, userId, scope), validationDeals(tx, userId, scope), tx.contact.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: { id: true, name: true, company: true } })]);
   const records = deals.map(d => d.record), summary = commitmentSummary(records);
   const ownJourney = scope.planId && !context.plan?.sourceJourneyId ? await tx.discoveryJourney.findUnique({ where: { userId }, select: { id: true } }) : null;
-  return { scope, rows: context.rows, source: sourceFingerprint(context.rows), analysis: context.cache, prospects: await currentProspects(tx, userId, scope), summary, priority: priorityCompanies(context.rows, contacts, records),
+  return { scope, rows: context.rows, source: sourceFingerprint(context.rows), analysis: context.cache, prospects: Object.fromEntries(Object.entries(prospectCacheSchema.safeParse(context.cache).data?.prospects || {}).map(([key, entry]) => [key, { ...entry.result, stale: true }])), summary, priority: priorityCompanies(context.rows, contacts, records),
     deals: deals.map(d => ({ id: d.id, contactId: d.contactId, ...d.record })),
     sourceJourneyId: context.plan?.sourceJourneyId ?? null, availableJourneyId: ownJourney?.id ?? null,
     revision: context.plan?.revision ?? null,
@@ -138,7 +112,16 @@ export async function saveSalesRecord(userId: string, input: SalesMutation) {
     }
     if ((input.status === "signed" || input.status === "paid") && !proofs.some(p => p.kind === input.status && !p.revokedAt)) throw new PlanWriteError("請先提供正數金額、日期與私密證明附件並確認 / Positive amount, date, private proof and confirmation required", 400);
     const candidate = Object.values(prospectCacheSchema.safeParse(context.cache).data?.prospects || {}).filter(entry => entry.result.contactChecked && prospectCacheFresh(entry.result.generatedAt)).flatMap(entry => entry.result.companies).find(c => c.contact && [c.name, ...c.aliases].some(name => prospectKey(name) === prospectKey(input.company)));
-    const prospect = previous?.prospect || (candidate ? { name: candidate.name, aliases: candidate.aliases, website: candidate.website } : undefined);
+    let selectedProspect;
+    if (input.prospectOrderId) {
+      const { eligibility: prospectEligibility, storedCompanies } = await import("@/lib/prospecting/service");
+      if (!(await prospectEligibility(userId, tx)).fullAccess) throw new PlanWriteError("需要有效公司搜尋與跟進權益 / Search and follow-up access required", 403);
+      const order = await tx.prospectingOrder.findFirst({ where: { id: input.prospectOrderId, userId, status: "completed" } });
+      const company = order && storedCompanies(order).find(c => c.id === input.prospectCompanyId && c.name === input.company);
+      if (!company || !previous?.prospect && (!order.checkedAt || Date.now() - order.checkedAt.getTime() >= 86400000)) throw new PlanWriteError("名單來源已失效，請重新核對 / Recheck the prospect source", 409);
+      selectedProspect = { name: company.name, aliases: [], website: company.website };
+    }
+    const prospect = previous?.prospect || selectedProspect || (candidate ? { name: candidate.name, aliases: candidate.aliases, website: candidate.website } : undefined);
     const record = salesRecordSchema.parse({ scope: input.scope, company: input.company, name: input.name, sourceId: input.sourceId || previous?.sourceId, version: (previous?.version || 0) + 1, status: input.status, proofs, prospect,
       events: [...(previous?.events || []), { requestId: input.requestId, payloadHash, at: new Date().toISOString(), status: input.status, quote: input.quote, reason: input.reason, amount: input.amount, currency: input.currency }], scripts: input.scripts || previous?.scripts,
 

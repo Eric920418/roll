@@ -84,23 +84,21 @@ test("New-company discovery and existing follow-up have distinct bilingual label
         if (id === "next-intl") return { useLocale: () => locale };
         if (id === "next/navigation") return { useRouter: () => ({ refresh() {} }) };
         if (id === "@vercel/blob/client") return { upload() { throw new Error("Unexpected upload"); } };
+        if (id === "./prospecting/ProspectSearch") return { default: () => require("react").createElement("section", { "aria-label": locale === "zh-tw" ? "找新公司" : "Find new companies" }, "Shared Omrade workspace") };
         if (id === "./PlanRefresh") return { notifyPlanChanged() {} };
         return require(id.startsWith("@/") ? `../src/${id.slice(2)}` : id);
       },
     });
     const html = renderToStaticMarkup(loaded.exports.default({ userId: "ui-only", journeyId: "ui-only" }));
     const zh = locale === "zh-tw";
-    const discovery = html.indexOf(zh ? 'aria-label="新公司開發"' : 'aria-label="Discover new companies"');
+    const discovery = html.indexOf(zh ? 'aria-label="找新公司"' : 'aria-label="Find new companies"');
     const followup = html.indexOf(zh ? 'aria-label="既有公司跟進"' : 'aria-label="Follow up existing companies"');
     assert(discovery >= 0 && followup > discovery);
     const newList = html.slice(discovery, followup);
-    assert(newList.includes(warning === "budget_limit" ? (zh ? "用量保護門檻" : "usage protection threshold") : (zh ? "供應商額度不足" : "provider credits ran out")));
-    assert(newList.includes(zh ? "重搜也會使用 1 次" : "a new search also uses 1"));
+    assert(newList.includes("Shared Omrade workspace"));
+    assert(newList.includes(zh ? "歷史 AI 公司名單" : "Historical AI lists"));
     assert(newList.includes("New Taiwan Buyer") && !newList.includes("CircleWe"));
-    assert(newList.includes(zh ? "新推薦 · 平台內無紀錄" : "New prospect · No saved records"));
-    assert(newList.includes(zh ? "開啟官方聯絡頁" : "Open official contact page"));
-    assert(newList.includes('href="https://new.example.com/contact"'));
-    assert(newList.includes(zh ? "平台外是否接觸過" : "outside NOVA"));
+    assert(!newList.includes(zh ? "使用 1 次 AI" : "1 AI request"));
     const existingList = html.slice(followup, html.indexOf(zh ? "訪談證據分析" : "Interview evidence analysis"));
     assert(existingList.includes("CircleWe") && existingList.includes("Saved Lead") && !existingList.includes("New Taiwan Buyer"));
     assert.equal(existingList.split(zh ? "已有訪談紀錄" : "Interview recorded").length - 1, 1);

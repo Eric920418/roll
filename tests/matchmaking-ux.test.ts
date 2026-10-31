@@ -181,3 +181,14 @@ test("UX transactions on isolated PostgreSQL: search, weekly stats, one-time ext
     });
   } finally { await db.user.deleteMany({ where: { id: { in: ids } } }); await db.$disconnect(); }
 });
+
+
+test("Queued prospect orders record starts without pretending a completed delivery", async () => {
+  const compiled = { exports: {} }, events: { name: string }[] = [];
+  const browser = { location: { href: "https://rollon.com.tw/dashboard/matchmaking" }, umami: { track: (build: (defaults: object) => { name: string }) => events.push(build({})) } };
+  runInNewContext(ts.transpileModule(readFileSync("src/lib/analytics.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { module: compiled, exports: compiled.exports, window: browser, process: { env: { NEXT_PUBLIC_UMAMI_ENABLED: "true" } }, URL, Date, Promise, Response, fetch: async () => Response.json({ data: { status: "pending" } }, { status: 202 }) });
+  const analytics = compiled.exports as typeof import("../src/lib/analytics");
+  await analytics.analyticsFetch("/api/prospects/orders", { method: "POST", body: "{}" });
+  await analytics.analyticsFetch("/api/discovery/analyse", { method: "POST", body: JSON.stringify({ prospectCount: 5 }) });
+  assert.deepEqual(events.map(e => e.name), ["prospects_start", "prospects_start"]);
+});

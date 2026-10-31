@@ -7,6 +7,7 @@ import { pathForLocale } from "@/lib/routes";
 import type { getDiscoverySnapshot } from "@/lib/discovery/service";
 import { discoveryReportSchema } from "@/lib/discovery/policy";
 import CustomerDiscovery from "../CustomerDiscovery";
+import ProspectSearch from "../prospecting/ProspectSearch";
 import ValidationWorkspace from "../ValidationWorkspace";
 import LearningResources from "../LearningResources";
 import FounderOffer from "./FounderOffer";
@@ -53,6 +54,7 @@ export default function DiscoveryJourney({ userId, planId, showCommercial = true
       {!preview && <button type="button" disabled={analysing} className={button} onClick={() => void analyse(false)}>{zh ? "產生／重試初步分析" : "Generate / retry preliminary analysis"}</button>}
     </section>}
     {data && data.total >= 3 && !data.paid && <FounderOffer />}
+    {data && !data.paid && <ProspectSearch userId={userId} />}
     {data?.paid && data.journeyId && showCommercial && <ValidationWorkspace userId={userId} planId={planId} journeyId={planId ? undefined : data.journeyId} revision={data.version} />}
     {error && <div role="alert" className="space-y-3 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p><button type="button" className={button} onClick={() => void load()}>{zh ? "重新載入，保留已輸入內容" : "Reload · keep my input"}</button></div>}
     {data?.paid && planId && !showCommercial && <a href={`#validation-${planId}`} className={button}>{zh ? "繼續聯絡與付款驗證 →" : "Continue to outreach and payment validation →"}</a>}

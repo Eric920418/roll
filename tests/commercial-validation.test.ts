@@ -40,6 +40,9 @@ test("Priority uses actual companies, newest evidence, explicit willingness befo
   const rows = Array.from({ length: 7 }, (_, i) => ({ id: String(i), updatedAt: new Date(2026, 9, i + 1), insight: { ...emptyInsight("discover"), name: `Person ${i}`, company: `Company ${i}`, notes: "Manual reporting", commercial: { willingness: i === 0 ? "willing" : "considering", heat: i === 0 ? "cold" : "hot" } } }));
   const list = priorityCompanies(rows, [], []); assert.equal(list.length, 5); assert.equal(list[0]!.company, "Company 0");
   assert.equal(priorityCompanies(rows.slice(0, 2), [], []).length, 2);
+  const added = priorityCompanies([], [{ id: "omrade_qa", name: "New Company · Company contact", company: "New Company" }], []);
+  assert.equal(added.length, 1); assert.equal(added[0]!.company, "New Company"); assert.equal(added[0]!.name, ""); assert.equal(added[0]!.sourceId, undefined);
+  assert.equal(priorityCompanies([], [{ id: "empty", name: "No company", company: null }], []).length, 0);
   assert.equal(priorityCompanies([...rows.slice(0, 1), { ...rows[0]!, id: "new", updatedAt: new Date(2027, 1), insight: { ...rows[0]!.insight, company: " Ｃｏｍｐａｎｙ 0 ", name: "Latest" } }], [], []).length, 1);
   for (const zh of [true, false]) { const scripts = standardScripts({ name: "", company: "Acme", quote: "", amount: "", currency: "" }, zh); assert.equal(scripts.length, 7); assert(scripts.every(v => !v.includes("undefined"))); assert(scripts[3]!.includes("[")); }
 });
@@ -55,17 +58,11 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
   const base = { actionPlanId: plan.id, impact: "High", urgencyType: "immediate", difficulty: 1, actionTimeMinHours: 1, actionTimeMaxHours: 1, companyStage: "MVP", bottleneckGroup: "Sales", bottleneckCode: "no_icp", stageFit: 4, stageFitReason: "QA", bottleneckFit: 4, bottleneckFitReason: "QA", outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 };
   const task = await db.actionItem.create({ data: { ...base, clientKey: "task_1", title: "Run paid pilot offer with 3 prospects" } });
   const nextTask = await db.actionItem.create({ data: { ...base, clientKey: "task_2", title: "Publish an update", dependencies: { create: { dependsOnId: task.id } } } });
-  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, noSources = false, fetchOnly = false, fetchFail = false, noContacts = false, partialInvalid = false, malformedSelection = false, wrongFit = false, correctionLimited = false, correctionCalls = 0, failSecondRound = false, secondRoundCredit = false, providerFailure: string | null = null, providerFailureStatus = 400, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
+  let uid: string | null = owner.id, failReward = false, aiFail = false, invent = false, calls = 0, reservations = 0, refunds = 0, successes = 0, hold = false, release: (() => void) | null = null;
   let mutate: (() => Promise<void>) | null = null;
-  let contactReachable = true, liveChecks = 0;
-  let researchInputTokens = 100, researchOutputTokens = 10, researchCachedTokens = 0;
-  let verificationInFlight = 0, maxVerificationInFlight = 0;
-  const researchExclusions: string[][] = [];
-  const prospectFixtures = ["CircleWe", "EV Rapid Force", "KnownContact", "Old win", "Own Company", "Foreign Company", "New Taiwan Company"].map((name, i) => ({ name, aliases: [] as string[], website: `https://prospect${i}.example.com`, reason: "Potential software buyer; confirm need", taiwan: { url: `https://prospect${i}.example.com/about`, quote: "Taipei, Taiwan" }, fit: { url: `https://prospect${i}.example.com/about`, quote: "B2B software" }, contact: { kind: "page" as const, value: `https://prospect${i}.example.com/contact`, source: { url: `https://prospect${i}.example.com/contact`, quote: "Contact our business team" } } }));
-  prospectFixtures[5]!.aliases = ["Alternate Legal Brand"];
   const require = createRequire(import.meta.url), cache = new Map<string, unknown>();
   const mocks: Record<string, unknown> = {
-    "server-only": {}, "@/lib/prisma": { prisma: db }, "./prospect-contact": { reachableProspectContact: async () => { liveChecks++; return contactReachable; } }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null },
+    "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null },
     "@/lib/auth/account": { getCurrentAccount: async () => uid ? await db.user.findUnique({ where: { id: uid } }) : null },
     "@/lib/rate-limit": { DAY_MS: 86400000, checkRateLimit: async () => ({ ok: true }) }, "@/lib/security/log": { logSecurityError() {} },
     "@/lib/getting-started/service": { completeGettingStarted: async () => {} },
@@ -73,63 +70,12 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     "@/lib/playbook/quiz": { fortnightIndex: () => 0, periodEnd: () => new Date() },
     "@vercel/blob": { get: async () => ({ statusCode: 200, blob: { contentType: "application/pdf", size: 50 }, stream: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode("%PDF-1.7\nQA")); c.close(); } }) }) },
     "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({ error: "Unauthorized" }, { status: 401 }), failFromError: () => Response.json({ error: "Safe failure" }, { status: 500 }) },
-    "@anthropic-ai/sdk": class { messages = { create: async (input: { system?: string; tools?: { name: string; type?: string; max_uses?: number; strict?: boolean; input_schema?: Record<string, unknown> }[]; messages: { role?: string; content: string | { type: string; text?: string }[] }[] }) => {
-      const execute = async () => {
-      const lastContent = input.messages.at(-1)!.content;
-      const bodyText = typeof lastContent === "string" ? lastContent : lastContent.filter(b => b.type === "text").at(-1)!.text!;
-      if (input.tools?.[0]?.name === "web_search") {
-        assert.equal(input.tools[0].type, "web_search_20260209", "Filter irrelevant search content before model ingestion");
-        const excluded = JSON.parse(bodyText).excludeNames as string[]; researchExclusions.push(excluded);
-        if (failSecondRound && excluded.includes("Foreign Company")) throw secondRoundCredit ? Object.assign(new Error("Your credit balance is too low; re_secret_fixture"), { status: 400 }) : new Error("Second research round failed");
-      }
-      calls++; if (providerFailure) throw Object.assign(new Error(providerFailure), { status: providerFailureStatus }); if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
-      if (input.tools?.[0]?.name === "web_search") return { stop_reason: fetchOnly ? "pause_turn" : "end_turn", content: [
-        { type: "web_search_tool_result", content: [...prospectFixtures.flatMap(c => [{ type: "web_search_result", url: `${c.taiwan.url}?utm_source=qa`, title: c.name }, ...(noContacts ? [] : [{ type: "web_search_result", url: c.contact.source.url, title: c.name + " Contact our business team" }])]), { type: "web_search_result", url: "https://registry.example.com/large-report.pdf", title: "Large public report" }, { type: "web_search_result", url: "https://unrelated.example.com/article", title: "Unrelated long search result" }] },
-        { type: "tool_use", id: "qa-shortlist-tool", name: "candidate_shortlist", input: { candidates: prospectFixtures.map(c => ({ name: c.name, urls: [c.taiwan.url, ...(noContacts ? [] : [c.contact.source.url])] })) } },
-        { type: "text", text: "Researched new Taiwan companies", citations: noSources || fetchOnly ? [] : [...(wrongFit ? [{ type: "web_search_result_location", url: "https://directory.example.com/unnamed", cited_text: "B2B software services" }] : []), ...prospectFixtures.flatMap(c => [{ type: "web_search_result_location", url: c.taiwan.url, cited_text: invent ? "Unrelated business" : "Taipei, Taiwan. B2B software" }, ...(noContacts ? [] : [{ type: "web_search_result_location", url: c.contact.source.url, cited_text: "Contact our business team" }])])] },
-      ] };
-      if (input.tools?.[0]?.name === "web_fetch") {
-        assert.equal(input.tools[0].type, "web_fetch_20260309");
-        assert.equal(input.tools[1]?.max_uses, 1, "One missing-fact search per company, not repeated research");
-        if (fetchFail) throw new Error("Optional page reader timeout");
-        assert.equal(input.messages.length, 1, "Do not duplicate full search history into every batch");
-        assert.equal(input.messages[0]?.role, "user");
-        assert(Array.isArray(lastContent) && lastContent.every(b => b.type === "text"), "Batch URLs are explicitly supplied by the user message, without dangling tool results");
-        const supplied = JSON.parse(bodyText) as { pages: { url: string; title: string }[]; candidates: { name: string }[]; evidence: { url: string; quote: string }[]; contactSearches: string[] };
-        assert(input.system?.includes("Do not search by default."), "Reuse sourced evidence instead of mandating another paid search");
-        assert(supplied.evidence.every(s => s.quote.length <= 1000 && supplied.pages.some(p => p.url === s.url)), "Reuse only exact supplied public source excerpts");
-        assert(supplied.pages.every(p => prospectFixtures.some(c => p.url === c.taiwan.url || p.url === `${c.taiwan.url}?utm_source=qa` || p.url === c.contact.source.url)), "Fetch receives only exact URLs returned by search");
-        assert(supplied.pages.every(p => Array.isArray(lastContent) && lastContent[0]!.text!.includes(p.url)), "Exact allowed URLs appear verbatim in user text for fetch authorization");
-        assert(supplied.pages.every(p => p.title.length > 0), "Preserve meaningful result titles in each verification batch");
-        assert(new Set(supplied.pages.map(p => new URL(p.url).hostname)).size <= 1, "Each company gets its own verification budget");
-        assert(supplied.contactSearches.length <= 2 && supplied.contactSearches.every(q => supplied.candidates.some(c => q.startsWith((c.name.replace(/\s*[（(].*$/u, "").trim() || c.name) + " "))), "Queries use public company names, not an assumed official domain from a directory result");
-        assert(!supplied.contactSearches.some(q => /CircleWe|EV Rapid Force|private-qa-test/.test(q)), "Never query excluded companies or private owner URL parameters");
-        if (fetchOnly) { const c = prospectFixtures.find(v => v.name === "Foreign Company")!; return { content: [{ type: "web_search_tool_result", content: [{ type: "web_search_result", url: c.taiwan.url, title: c.name }] }, { type: "text", text: "Targeted official result", citations: [{ type: "web_search_result_location", url: c.taiwan.url, cited_text: "Taipei, Taiwan. B2B software" }, { type: "web_search_result_location", url: c.contact.source.url, cited_text: "Contact our business team" }] }] }; }
-        return { content: noSources ? [] : prospectFixtures.filter(c => c.name === "Foreign Company").map(c => ({ type: "web_fetch_tool_result", content: { type: "web_fetch_result", url: c.taiwan.url, content: { source: { type: "text", data: invent ? "Unrelated business" : "Taipei, Taiwan.\nB2B software." } } } })) };
-      }
-      if (input.tools?.[0]?.name === "prospect_result" && malformedSelection) return { stop_reason: "max_tokens", content: [{ type: "tool_use", input: {} }] };
-      if (input.tools?.[0]?.name === "prospect_result") {
-        assert.equal(input.tools[0].strict, true, "Supplier grammar enforces an array, not encoded JSON text");
-        assert.equal(input.tools[0].input_schema?.type, "object");
-        const data = JSON.parse(input.messages[0]!.content as string) as { candidateEvidence: { candidates: { name: string }[]; sourceIndexes: number[] }[]; sources: { url: string; quote: string }[] };
-        assert(!data.sources.some(s => s.url === "https://unrelated.example.com/article"), "Uncited search hits never inflate extraction context");
-        assert(data.candidateEvidence.every(v => !("summaries" in v)), "Do not duplicate model summaries alongside exact source excerpts");
-        assert(data.candidateEvidence.every(v => v.candidates.length === 1 && v.sourceIndexes.every(i => !!data.sources[i])), "Extraction keeps candidate-to-source associations");
-        const correcting = !!JSON.parse(bodyText).correction;
-        if (correcting) { correctionCalls++; if (correctionLimited) throw Object.assign(new Error("Rate limit"), { status: 429 }); assert.equal(input.messages.length, 2); assert(JSON.parse(bodyText).companies.every((c: { name: string }) => c.name === "Foreign Company")); }
-        return { content: [{ type: "tool_use", input: { companies: prospectFixtures.flatMap(c => { const sources = data.sources; const contactSource = sources.findIndex(s => s.url === c.contact.source.url); const taiwanSource = sources.findIndex(s => s.url === c.taiwan.url), fitSource = sources.findIndex(s => s.url === c.fit.url && (s.quote.includes("B2B") || invent)); return taiwanSource >= 0 && fitSource >= 0 && contactSource >= 0 ? [{ contact: { kind: partialInvalid && c.name === "New Taiwan Company" ? "invented" : "page", value: c.contact.value + "/model-normalized", source: contactSource }, name: c.name, aliases: c.aliases, website: c.website, reason: c.reason, taiwanSource, fitSource: wrongFit && !correcting && c.name === "Foreign Company" ? sources.findIndex(s => s.url === "https://directory.example.com/unnamed") : fitSource }] : []; }) } }] };
-      }
-      const content = JSON.parse(bodyText);
+    "@anthropic-ai/sdk": class { messages = { create: async (input: { tools?: { name: string }[]; messages: { content: string }[] }) => {
+      assert.notEqual(input.tools?.[0]?.name, "web_search", "Company search must never use Anthropic");
+      calls++; if (hold) await new Promise<void>(resolve => { release = resolve; }); if (aiFail) throw new Error("Injected timeout"); if (mutate) await mutate();
+      const content = JSON.parse(input.messages.at(-1)!.content);
       const result = content.evidence ? { topics: [{ label: "Reporting pain", evidence: content.evidence.slice(0, 2).map((v: { id: string }) => ({ recordId: v.id, quote: invent ? "Invented quote" : "Manual reporting takes hours" })) }], nextMoves: ["Ask willing prospects about a paid pilot"] } : { items: [{ quote: invent ? "Invented" : content.rejection.quote, possibleReason: "Budget may be constrained; confirm", clarify: "What budget is available?", next: "Clarify budget" }], followUp: "Could we clarify your budget concern?" };
-      return { content: [{ type: "tool_use", name: "validation_result", input: result }] };
-      };
-      const verification = input.tools?.[0]?.name === "web_fetch";
-      if (verification) { verificationInFlight++; maxVerificationInFlight = Math.max(maxVerificationInFlight, verificationInFlight); }
-      try {
-        if (verification) await new Promise(resolve => setTimeout(resolve, 1));
-        const response = await execute(), research = input.tools?.[0]?.name === "web_search";
-        return { ...response, usage: { input_tokens: research ? researchInputTokens : 100, output_tokens: research ? researchOutputTokens : 10, cache_read_input_tokens: research ? researchCachedTokens : 0, cache_creation_input_tokens: 0 } };
-      } finally { if (verification) verificationInFlight--; }
+      return { content: [{ type: "tool_use", name: "validation_result", input: result }], usage: { input_tokens: 100, output_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } };
     } }; },
   };
   function load<T>(file: string): T { const absolute = resolve(file); if (cache.has(absolute)) return cache.get(absolute) as T; const loaded = { exports: {} }; cache.set(absolute, loaded.exports); runInNewContext(ts.transpileModule(readFileSync(absolute, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, { module: loaded, exports: loaded.exports, Date, Error, SyntaxError, console, process: { env: { INVESTOR_BLOB_READ_WRITE_TOKEN: "qa-private" } }, Response, Request, URL, Headers, Buffer, ReadableStream, TextDecoder, TextEncoder, setTimeout, require: (id: string) => id in mocks ? mocks[id] : id.startsWith("@/") ? load(`src/${id.slice(2)}.ts`) : id.startsWith(".") ? load(resolve(dirname(absolute), `${id}.ts`)) : require(id) }); cache.set(absolute, loaded.exports); return loaded.exports as T; }
@@ -250,159 +196,12 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
       mutate = async () => { await db.meetingNote.update({ where: { id: row.id }, data: { updatedAt: new Date(Date.now() + 3000) } }); }; await assert.rejects(analysis.analyseValidation(await account(), args)); mutate = null; assert.equal(refunds, before + 3);
       await analysis.analyseValidation(await account(), args); assert(successes > 0);
     });
-    await t.test("New Taiwan prospects exclude all owned companies, cache separately, remove newly recorded companies and refund failures", async () => {
-      const prospects = load<typeof import("../src/lib/validation/prospects")>("src/lib/validation/prospects.ts");
-      const args = { scope: { planId: plan.id }, prospectCount: 6 as const, locale: "en" as const };
-      const before = reservations;
-      await assert.rejects(prospects.generateProspects(await account(), args), /ICP/); assert.equal(reservations, before);
-      await db.onboardingProfile.create({ data: { userId: owner.id, companyName: "Own Company", website: "https://own.example.com/?token=private-qa-test", oneLinePitch: "B2B reporting software for Taiwan companies", icpDetails: { summary: "B2B software buyers", who: "Software companies", stage: "MVP", location: "Taiwan", problem: "Customer research", workaround: "Manual", channels: "Professional outreach" }, targetMarkets: [], needs: [] } });
-      await db.meetingNote.create({ data: { userId: owner.id, title: "Legacy unlinked note", insight: { company: "CircleWe" } } });
-      await db.meetingNote.create({ data: { userId: owner.id, title: "Other workspace", insight: { company: "EV Rapid Force" } } });
-      await db.contact.create({ data: { userId: owner.id, name: "Known", company: "KnownContact" } });
-      await db.contact.create({ data: { userId: other.id, name: "Other owner", company: "Foreign Company" } });
-      await assert.rejects(prospects.generateProspects(await account(), { ...args, scope: { journeyId: "foreign" } }));
-      await db.user.update({ where: { id: owner.id }, data: { trialPlan: "pro" } }); await assert.rejects(prospects.generateProspects(await account(), args));
-      await db.user.update({ where: { id: owner.id }, data: { trialPlan: "enterprise" } });
-      const context = await service.prospectContext(db as never, owner.id, args.scope); assert.equal(context.excluded.some(v => v.includes("private-qa-test")), false);
-      const first = await prospects.generateProspects(await account(), args); assert(first);
-      assert.deepEqual(Array.from(first.companies, c => c.name), ["Foreign Company", "New Taiwan Company"]); assert.equal(reservations, before + 1);
-      assert(first.companies.every(c => c.contact?.value.endsWith("/contact")));
-      assert(researchExclusions.at(-1)!.includes("Foreign Company") && researchExclusions.at(-1)!.includes("New Taiwan Company"), "The expansion round excludes first-round companies");
-      assert(researchExclusions.at(-1)!.includes("https://prospect5.example.com"), "The expansion round excludes prior domains too");
-      const after = calls, checkedBeforeCache = liveChecks; await prospects.generateProspects(await account(), args); assert.equal(calls, after); assert.equal(liveChecks, checkedBeforeCache, "A fresh cache does not repeat contact checks");
-      const oldCache = (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).validationAnalysis as { prospects: Record<string, { result: { generatedAt: string } }> };
-      oldCache.prospects["6:en"]!.result.generatedAt = new Date(Date.now() - 86400001).toISOString();
-      await db.actionPlan.update({ where: { id: plan.id }, data: { validationAnalysis: oldCache } });
-      assert((await service.currentProspects(db as never, owner.id, args.scope))["6:en"]!.stale);
-      assert.equal((await service.currentProspects(db as never, owner.id, args.scope))["6:en"]!.companies.length, 0, "Expired contact checks are hidden without deleting stored history");
-      await prospects.generateProspects(await account(), args); assert(calls > after && liveChecks > checkedBeforeCache, "Expired contacts are researched and checked again");
-      partialInvalid = true; const partial = await prospects.generateProspects(await account(), { ...args, locale: "zh-tw" }); partialInvalid = false;
-      assert.deepEqual(Array.from(partial!.companies, c => c.name), ["Foreign Company"], "One invalid model candidate does not discard a valid reachable buyer");
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { icpDetails: { summary: "B2B software buyers", who: "Software companies", stage: "Growth", location: "Taiwan", problem: "Customer research", workaround: "Manual", channels: "Professional outreach" } } });
-      assert((await service.currentProspects(db as never, owner.id, args.scope))["6:en"]!.stale, "Changing customer stage invalidates the old list");
-      const cache = (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).validationAnalysis as { reports: unknown }; assert(cache.reports, "Pain analysis cache retained");
-      await db.meetingNote.updateMany({ where: { userId: owner.id }, data: { updatedAt: new Date() } });
-      await analysis.analyseValidation(await account(), { scope: args.scope, milestone: 3, locale: "en" });
-      assert((await service.currentProspects(db as never, owner.id, args.scope))["6:en"], "Analysing interviews retains prospect cache");
-      await db.contact.create({ data: { userId: owner.id, name: "Now contacted", company: "New Taiwan Company Ltd." } });
-      const filtered = (await service.validationSnapshot(owner.id, args.scope)).prospects["6:en"]!;
-      assert(filtered.stale); assert.deepEqual(Array.from(filtered.companies, c => c.name), ["Foreign Company"]);
-      const refundsBefore = refunds; aiFail = true; await assert.rejects(prospects.generateProspects(await account(), args)); aiFail = false; assert.equal(refunds, refundsBefore + 1);
-      noSources = true; await assert.rejects(prospects.generateProspects(await account(), args)); noSources = false; assert.equal(refunds, refundsBefore + 2);
-      invent = true; await assert.rejects(prospects.generateProspects(await account(), args)); invent = false; assert.equal(refunds, refundsBefore + 3);
-      mutate = async () => { await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Source changed during provider work" } }); };
-      await assert.rejects(prospects.generateProspects(await account(), args)); mutate = null; assert.equal(refunds, refundsBefore + 4);
-      hold = true; const pending = prospects.generateProspects(await account(), args); const deadline = Date.now() + 5000;
-      while (!release && Date.now() < deadline) await new Promise(r => setTimeout(r, 5)); assert(release);
-      await assert.rejects(prospects.generateProspects(await account(), args)); hold = false; (release as () => void)(); release = null; await pending;
-      const ten = await prospects.generateProspects(await account(), { ...args, prospectCount: 10 }); assert.equal(ten!.requested, 10); assert.equal(ten!.companies.length, 1);
-      fetchOnly = true; const fetched = await prospects.generateProspects(await account(), { ...args, locale: "zh-tw" }); fetchOnly = false; assert.equal(fetched!.companies.length, 1);
-      fetchFail = true; const fallbackSearches = researchExclusions.length; const fallback = await prospects.generateProspects(await account(), { ...args, scope: { journeyId: journey.id }, locale: "zh-tw" }); fetchFail = false; assert.equal(fallback!.companies.length, 1, "Reader failure can use already verified search sources");
-      assert.equal(fallback!.warning, "budget_limit"); assert.equal(researchExclusions.length, fallbackSearches + 1, "Unknown failed-call usage never triggers another round of paid research");
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "New source for missing-contact check" } });
-      const beforeContactRefund = refunds; noContacts = true; await assert.rejects(prospects.generateProspects(await account(), args), /聯絡入口/); noContacts = false; assert.equal(refunds, beforeContactRefund + 1);
-      const beforeExpansionRefund = refunds, beforeExpansionReservation = reservations; failSecondRound = true;
-      const kept = await prospects.generateProspects(await account(), args); failSecondRound = false;
-      assert.equal(kept!.companies.length, 1, "Retain a verified first-round company if expansion fails");
-      assert.equal(kept!.warning, "search_incomplete");
-      assert.equal(refunds, beforeExpansionRefund); assert.equal(reservations, beforeExpansionReservation + 1, "Two rounds reserve only one request");
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Partial credit warning check" } });
-      failSecondRound = true; secondRoundCredit = true;
-      const beforePartialCredit = reservations, beforePartialRefund = refunds;
-      const creditPartial = await prospects.generateProspects(await account(), args);
-      failSecondRound = false; secondRoundCredit = false;
-      assert.equal(creditPartial!.companies.length, 1); assert.equal(creditPartial!.warning, "provider_credits");
-      assert.equal(reservations, beforePartialCredit + 1); assert.equal(refunds, beforePartialRefund, "Verified partial results use one request, not a false refund message");
-      const beforeCreditRetry = researchExclusions.length;
-      const retried = await prospects.generateProspects(await account(), args);
-      assert(researchExclusions.length > beforeCreditRetry, "An interrupted list does not block a post-funding retry behind a 24-hour cache");
-      assert.equal(retried!.warning, undefined); assert.equal(reservations, beforePartialCredit + 2);
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "New source for malformed extraction check" } });
-      const beforeMalformedRefunds = refunds, beforeMalformedSearches = researchExclusions.length; malformedSelection = true;
-      await assert.rejects(prospects.generateProspects(await account(), args)); malformedSelection = false;
-      assert.equal(refunds, beforeMalformedRefunds + 1);
-      assert.equal(researchExclusions.length, beforeMalformedSearches + 1, "Malformed extraction never restarts paid web research");
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Unreachable source check" } });
-      const beforeUnreachableRefunds = refunds; contactReachable = false;
-      await assert.rejects(prospects.generateProspects(await account(), args), /官方聯絡來源目前無法連線/); contactReachable = true;
-      assert.equal(refunds, beforeUnreachableRefunds + 1);
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Evidence correction check" } });
-      const beforeCorrectionReservations = reservations, beforeCorrectionSearches = researchExclusions.length;
-      wrongFit = true; const corrected = await prospects.generateProspects(await account(), args); wrongFit = false;
-      assert.equal(corrected!.companies.length, 1); assert.equal(corrected!.companies[0]!.fit.url, prospectFixtures[5]!.fit.url);
-      assert.equal(correctionCalls, 1, "One text-only correction recovers a genuine source, not another web research attempt");
-      assert.equal(reservations, beforeCorrectionReservations + 1); assert.equal(researchExclusions.length, beforeCorrectionSearches + 2);
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Correction rate limit check" } });
-      const beforeLimitSearches = researchExclusions.length, beforeLimitRefunds = refunds;
-      wrongFit = true; correctionLimited = true;
-      await assert.rejects(prospects.generateProspects(await account(), args), (error: unknown) => (error as { status: number }).status === 503);
-      wrongFit = false; correctionLimited = false;
-      assert.equal(researchExclusions.length, beforeLimitSearches + 1, "A correction rate limit never restarts paid research");
-      assert.equal(refunds, beforeLimitRefunds + 1);
-      for (const [status, message, expected] of [[400, "Your credit balance is too low; re_secret_fixture", /供應商額度不足/], [400, "model does not support web_search; re_secret_fixture", /研究工具或模型設定/], [400, "Set allowed_callers to direct; re_secret_fixture", /研究工具或模型設定/], [429, "Rate limit reached for this model; re_secret_fixture", /速率上限/]] as const) {
-        await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: `Provider configuration test ${expected.source}` } });
-        const previousRefunds = refunds, previousSearches = researchExclusions.length; providerFailure = message; providerFailureStatus = status;
-        await assert.rejects(prospects.generateProspects(await account(), args), (cause: unknown) => { const error = cause as { status: number; message: string }; assert.equal(error.status, 503); assert.match(error.message, expected); assert.doesNotMatch(error.message, /re_secret_fixture/); return true; });
-        providerFailure = null; providerFailureStatus = 400; assert.equal(refunds, previousRefunds + 1); assert.equal(researchExclusions.length, previousSearches + 1, "Do not repeat a provider billing, rate or configuration failure");
-      }
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Research usage threshold check" } });
-      const beforeBudgetCalls = calls, beforeBudgetSearches = researchExclusions.length, beforeBudgetReservations = reservations;
-      researchInputTokens = 150000;
-      const budgetPartial = await prospects.generateProspects(await account(), args);
-      assert.equal(budgetPartial!.warning, "budget_limit"); assert.equal(budgetPartial!.companies.length, 1);
-      assert.equal(calls, beforeBudgetCalls + 2, "At the research threshold, only final extraction runs; no verification or expansion calls");
-      assert.equal(researchExclusions.length, beforeBudgetSearches + 1); assert.equal(reservations, beforeBudgetReservations + 1);
-      await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: "Total usage threshold check" } });
-      const beforeTotalCalls = calls, beforeTotalRefunds = refunds;
-      researchInputTokens = 200000;
-      await assert.rejects(prospects.generateProspects(await account(), args), /用量保護門檻/);
-      assert.equal(calls, beforeTotalCalls + 1, "Once total usage is reached, no paid extraction, correction or second round starts");
-      assert.equal(refunds, beforeTotalRefunds + 1);
-      researchInputTokens = 100;
-      for (const kind of ["output", "cached input"] as const) {
-        await db.onboardingProfile.update({ where: { userId: owner.id }, data: { oneLinePitch: `${kind} usage threshold check` } });
-        const beforeCalls = calls;
-        researchOutputTokens = kind === "output" ? 24000 : 10; researchCachedTokens = kind === "cached input" ? 150000 : 0;
-        assert.equal((await prospects.generateProspects(await account(), args))!.warning, "budget_limit");
-        assert.equal(calls, beforeCalls + 2, "All billed token categories stop additional research while allowing existing-source extraction");
-        researchOutputTokens = 10; researchCachedTokens = 0;
-      }
-      await prospects.generateProspects(await account(), args);
-      const originalCache = (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).validationAnalysis as unknown as { prospects: Record<string, { source: string; result: { companies: unknown[]; requested: number; generatedAt: string; contactChecked: boolean } }> };
-      const expandedCache = structuredClone(originalCache), entry = expandedCache.prospects["6:en"]!;
-      expandedCache.prospects["10:en"] = { source: entry.source, result: { ...entry.result, requested: 10, companies: Array.from({ length: 6 }, (_, i) => {
-        const website = `https://cached-${i}.example.com`, source = { url: website + "/about", quote: "Taipei, Taiwan. B2B software" };
-        return { ...prospectFixtures[5]!, name: `Cached New Buyer ${i}`, aliases: [], website, taiwan: source, fit: source, contact: { kind: "page", value: website + "/contact", source: { url: website + "/contact", quote: "Contact our business team" } } };
-      }) } };
-      await db.actionPlan.update({ where: { id: plan.id }, data: { validationAnalysis: expandedCache as never } });
-      const beforeCacheCalls = calls, beforeCacheReservations = reservations;
-      const reused = await prospects.generateProspects(await account(), args);
-      assert.equal(reused!.requested, 6); assert.equal(reused!.companies.length, 6);
-      assert.equal((await service.currentProspects(db as never, owner.id, args.scope))["6:en"]!.companies.length, 6, "The subsequent pipeline GET displays the reused result, not an old partial list");
-      assert.equal(calls, beforeCacheCalls); assert.equal(reservations, beforeCacheReservations, "10-company fresh same-locale results satisfy a 6-company request without another charge");
-      await db.actionPlan.update({ where: { id: plan.id }, data: { validationAnalysis: originalCache as never } });
-      const fixtureCount = prospectFixtures.length;
-      for (let i = 0; i < 5; i++) {
-        const website = `https://concurrent-${i}.example.com`, source = { url: website + "/about", quote: "Taipei, Taiwan. B2B software" };
-        prospectFixtures.push({ ...prospectFixtures[5]!, name: `Concurrent New Buyer ${i}`, aliases: [], website, taiwan: source, fit: source, contact: { kind: "page", value: website + "/contact", source: { url: website + "/contact", quote: "Contact our business team" } } });
-      }
-      maxVerificationInFlight = 0;
-      try {
-        assert.equal((await prospects.generateProspects(await account(), { ...args, scope: { journeyId: journey.id } }))!.companies.length, 6);
-        assert.equal(maxVerificationInFlight, 2, "More than five new candidates still run at most two model verifications concurrently");
-        assert.equal(verificationInFlight, 0);
-      } finally { prospectFixtures.splice(fixtureCount); }
-      const cachedBuyer = prospectFixtures[5]!;
-      const saved = { scope: args.scope, requestId: randomUUID(), version: 0, company: cachedBuyer.name, name: "QA", status: "contacted" as const, quote: "", reason: "", amount: "", currency: "" };
-      const savedId = await service.saveSalesRecord(owner.id, saved);
-      const record = salesRecordSchema.parse((await db.deal.findUniqueOrThrow({ where: { id: savedId } })).validation);
-      assert.equal(record.prospect?.website, cachedBuyer.website, "Save verified identity from the owner's cache, never the client");
-      await db.actionPlan.update({ where: { id: plan.id }, data: { validationAnalysis: {} } });
-      await service.saveSalesRecord(owner.id, { ...saved, requestId: randomUUID(), version: 1, status: "quoted" });
-      const excluded = (await service.prospectContext(db as never, owner.id, { journeyId: journey.id })).excluded;
-      assert(excluded.includes(cachedBuyer.website), "Known domain remains excluded across workspaces after replacing the original cache");
-      assert(excluded.includes("Alternate Legal Brand"), "Verified legal aliases remain excluded after the original cache is replaced");
-      assert(!salesMutationSchema.safeParse({ ...saved, prospect: record.prospect }).success, "Clients cannot forge a verified company identity");
+    await t.test("Historical AI lists remain readable after expiry without researching or modifying the saved reports", async () => {
+      const prior = (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).validationAnalysis as Record<string, unknown>;
+      const historical = { name: "Historical Buyer", aliases: [], website: "https://historical.example.com", reason: "Old potential fit", taiwan: { url: "https://historical.example.com/about", quote: "Taipei" }, fit: { url: "https://historical.example.com/about", quote: "Software" } };
+      await db.actionPlan.update({ where: { id: plan.id }, data: { validationAnalysis: { ...prior, prospects: { "6:en": { source: "old-criteria", result: { requested: 6, generatedAt: "2000-01-01T00:00:00Z", companies: [historical] } } } } } });
+      const before = calls, snapshot = await service.validationSnapshot(owner.id, { planId: plan.id });
+      assert.equal(snapshot.prospects["6:en"]!.companies[0]!.name, "Historical Buyer"); assert(snapshot.prospects["6:en"]!.stale); assert.equal(calls, before);
     });
     await t.test("Rejection analysis requires exact reason and quote, refunds failures and caches unchanged reply", async () => {
       let saved = salesRecordSchema.parse((await db.deal.findUniqueOrThrow({ where: { id: dealId } })).validation);

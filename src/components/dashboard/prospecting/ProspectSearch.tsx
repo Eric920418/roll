@@ -1,4 +1,5 @@
 "use client";
+import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import CountrySelect from "@/components/ui/CountrySelect";
@@ -19,6 +20,7 @@ export default function ProspectSearch({ userId, active = true, onSelect }: { us
   const [data, setData] = useState<Snapshot | null>(null), [country, setCountry] = useState("TW"), [description, setDescription] = useState(""), [count, setCount] = useState<5 | 10>(5);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(""), [consent, setConsent] = useState(false), [conflict, setConflict] = useState(false), [adding, setAdding] = useState<Selected | null>(null), [storageReady, setStorageReady] = useState(false);
   const dirty = useRef(false), sending = useRef(false), loaded = useRef(false), attempt = useRef<{ key: string; body: ReturnType<typeof orderInputSchema.parse> } | null>(null);
+  const observedOrders = useRef(new Set<string>());
   const storageKey = `nova:prospects:${userId}`;
   const load = useCallback(async (cursor?: string) => {
     try {
@@ -42,13 +44,23 @@ export default function ProspectSearch({ userId, active = true, onSelect }: { us
   }, [storageKey, zh]);
   useEffect(() => { if (active && storageReady && !loaded.current) { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); } }, [active, storageReady, load]);
   const pending = Boolean(data?.pending);
+  const effectiveCount = data?.access.poc ? 5 : count;
+  useEffect(() => {
+    if (!data) return;
+    if (data.pending) observedOrders.current.add(data.pending.id);
+    for (const order of data.orders) if (observedOrders.current.has(order.id) && ["completed", "failed"].includes(order.status)) {
+      observedOrders.current.delete(order.id);
+      try { const key = `nova:prospect-outcome:${order.id}`; if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, "1"); track(order.status === "completed" ? "flow_success" : "flow_error", { feature: "prospects" }); } } catch { /* Analytics never blocks the workspace. */ }
+    }
+  }, [data]);
   useEffect(() => {
     if (!active || !storageReady) return;
     const refresh = () => { if (document.visibilityState === "visible" && !sending.current) void load(); };
     const interval = window.setInterval(refresh, pending ? 15000 : 60000);
-    document.addEventListener("visibilitychange", refresh); window.addEventListener("focus", refresh);
-    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", refresh); window.removeEventListener("focus", refresh); };
-  }, [active, storageReady, pending, load]);
+    document.addEventListener("visibilitychange", refresh); window.addEventListener("focus", refresh); window.addEventListener("nova-plan-changed", refresh);
+    const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(`nova-plan:${userId}`) : null; if (channel) channel.onmessage = refresh;
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", refresh); window.removeEventListener("focus", refresh); window.removeEventListener("nova-plan-changed", refresh); channel?.close(); };
+  }, [active, storageReady, pending, load, userId]);
   function store(nextCountry: string, nextDescription: string, nextCount: 5 | 10) {
     dirty.current = true; setConsent(false);
     try { localStorage.setItem(storageKey, JSON.stringify({ country: nextCountry, description: nextDescription, count: nextCount, attempt: attempt.current })); }
@@ -57,13 +69,14 @@ export default function ProspectSearch({ userId, active = true, onSelect }: { us
   async function submit() {
     if (!data || sending.current || conflict) return;
     setError(""); setNotice("");
-    const key = JSON.stringify({ country, description: description.trim(), count });
-    if (attempt.current?.key !== key) attempt.current = { key, body: { requestId: crypto.randomUUID(), revision: data.workspace.revision, country, description: description.trim(), count } };
+    const key = JSON.stringify({ country, description: description.trim(), count: effectiveCount });
+    if (attempt.current?.key !== key) attempt.current = { key, body: { requestId: crypto.randomUUID(), revision: data.workspace.revision, country, description: description.trim(), count: effectiveCount } };
     const parsed = orderInputSchema.safeParse(attempt.current.body);
     if (!parsed.success) { setError(parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("\n")); return; }
-    store(country, description, count); sending.current = true; setBusy(true);
+    store(country, description, effectiveCount); sending.current = true; setBusy(true);
     try {
-      await memberFetch("/api/prospects/orders", { method: "POST", body: JSON.stringify(parsed.data) });
+      const created = await memberFetch<{ id: string }>("/api/prospects/orders", { method: "POST", body: JSON.stringify(parsed.data) });
+      observedOrders.current.add(created.id);
       dirty.current = false; attempt.current = null; setConsent(false); try { localStorage.removeItem(storageKey); } catch { /* Server idempotency remains authoritative. */ }
       setNotice(zh ? "已排入本站背景工作，供應商接單後會更新狀態；可關頁，稍後從任一入口查看。" : "Queued locally. Status updates after provider acceptance; you may leave and return through either entry.");
       await load();
@@ -90,13 +103,13 @@ export default function ProspectSearch({ userId, active = true, onSelect }: { us
       {!data.enabled && <p role="status" className="rounded-xl bg-neutral-100 p-4 text-sm">{zh ? "公司搜尋服務尚未開放；已存名單仍可查看。" : "Company search is not enabled; saved lists remain readable."}</p>}
       {!data.access.canSearch && <p className="rounded-xl border p-4 text-sm">{data.access.activeTrial && !data.access.claimed ? (zh ? `完成三家有效訪談可領一次五家公司，目前 ${data.access.interviews}/3。` : `Complete three valid company interviews for one five-company POC: ${data.access.interviews}/3.`) : data.access.claimed ? (zh ? "已領取一次 POC；升級 NOVA 可繼續搜尋。" : "Your one-time POC was claimed. Upgrade to NOVA to continue searching.") : (zh ? "需 NOVA／ROLL ON 或有效既有搜尋權益；原始紀錄保留。" : "NOVA / ROLL ON or an eligible existing entitlement is required; your records are retained.")} <a className={`${button} ml-2`} href={pathForLocale("/dashboard/account#billing", locale)}>{zh ? "查看方案" : "View plans"}</a></p>}
       <form onSubmit={e => { e.preventDefault(); void submit(); }} className="space-y-4">
-        <fieldset disabled={busy || !storageReady} className="grid min-w-0 gap-4 sm:grid-cols-2"><CountrySelect label={zh ? "目標公司所在國家" : "Target company country"} value={country} locale={locale} onChange={v => { setCountry(v); store(v, description, count); }} /><label className="text-sm font-semibold">{zh ? "本次交付批次" : "Requested batch"}<select className={`${field} mt-2`} value={count} onChange={e => { const n = Number(e.target.value) === 10 ? 10 : 5; setCount(n); store(country, description, n); }}><option value={5}>5 {zh ? "家公司" : "companies"}</option>{data.access.fullAccess && <option value={10}>10 {zh ? "家公司" : "companies"}</option>}</select></label></fieldset>
+        <fieldset disabled={busy || !storageReady} className="grid min-w-0 gap-4 sm:grid-cols-2"><CountrySelect label={zh ? "目標公司所在國家" : "Target company country"} value={country} locale={locale} onChange={v => { setCountry(v); store(v, description, count); }} /><label className="text-sm font-semibold">{zh ? "本次交付批次" : "Requested batch"}<select className={`${field} mt-2`} value={effectiveCount} onChange={e => { const n = Number(e.target.value) === 10 ? 10 : 5; setCount(n); store(country, description, n); }}><option value={5}>5 {zh ? "家公司" : "companies"}</option>{data.access.fullAccess && <option value={10}>10 {zh ? "家公司" : "companies"}</option>}</select></label></fieldset>
         <label className="block text-sm font-semibold">{zh ? "目標買方描述" : "Target buyer description"}<textarea className={`${field} mt-2 font-normal`} rows={5} maxLength={4000} minLength={10} required value={description} disabled={busy} onChange={e => { setDescription(e.target.value); store(country, e.target.value, count); }} /></label>
         {data.workspace.suggested && <button type="button" className={button} disabled={busy} onClick={() => { setDescription(data.workspace.suggested); store(country, data.workspace.suggested, count); }}>{zh ? "以 Saved ICP 更新草稿" : "Use Saved ICP in this draft"}</button>}
         <p className="text-sm">{zh ? "只使用全站共用免費量，不扣 AI。每月按供應商交付批次計算；排除重複或缺乏聯絡依據後，實際可用公司可能較少。不會自動補單或付費。" : "Uses shared free company allowance, not AI requests. Your monthly allowance counts provider-delivered batches; duplicates or missing contact evidence may reduce usable results. No automatic replacement orders or paid usage."}</p>
         <label className="flex min-h-11 items-start gap-3 text-sm"><input type="checkbox" className="mt-1 size-5 shrink-0" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} />{zh ? "我確認這些搜尋條件會傳送至 Omrade，另附已知排除網域；不傳原始訪談、私人聯絡人或成交證明。" : "I confirm these targeting criteria and known excluded domains will be sent to Omrade, without raw interviews, private contacts or payment evidence."}</label>
         {conflict && <div className="space-y-3 rounded-xl bg-amber-50 p-4 text-sm"><p>{zh ? "伺服器最新條件：" : "Latest server criteria:"} {countryLabel(data.workspace.country, locale)}</p><p className="whitespace-pre-wrap">{data.workspace.description}</p><button type="button" className={button} onClick={() => { setCountry(data.workspace.country); setDescription(data.workspace.description); dirty.current = false; attempt.current = null; setConflict(false); setConsent(false); }}>{zh ? "採用最新條件" : "Use latest criteria"}</button><button type="button" className={`${button} ml-2`} onClick={() => { attempt.current = null; setConflict(false); setConsent(false); }}>{zh ? "保留我的輸入並重新確認" : "Keep my input and reconfirm"}</button></div>}
-        <button type="submit" className={`${button} bg-black text-white`} disabled={busy || !data.enabled || !data.access.canSearch || !consent || Boolean(data.pending) || conflict || data.quota.remaining < count}>{busy ? (zh ? "處理中…" : "Working…") : data.access.poc ? (zh ? "領取一次五家 POC" : "Claim one five-company POC") : (zh ? `搜尋 ${count} 家新公司` : `Find ${count} new companies`)}</button>
+        <button type="submit" className={`${button} bg-black text-white`} disabled={busy || !data.enabled || !data.access.canSearch || !consent || Boolean(data.pending) || conflict || data.quota.remaining < effectiveCount}>{busy ? (zh ? "處理中…" : "Working…") : data.access.poc ? (zh ? "領取一次五家 POC" : "Claim one five-company POC") : (zh ? `搜尋 ${effectiveCount} 家新公司` : `Find ${effectiveCount} new companies`)}</button>
       </form>
       {data.pending && <div role="status" className="rounded-xl bg-black p-5 text-white"><strong>{status(data.pending.status)}</strong><p className="mt-2 text-sm">{countryLabel(data.pending.country, locale)} · {data.pending.requested} {zh ? "家。處理可能需數分鐘，供應商窗口最長 40 分鐘；逾時仍保留原單對帳，可稍後回來查看。" : "companies. Processing may take several minutes within the provider's 40-minute window. Delayed orders are retained for reconciliation; you can return later."}</p>{data.pending.error && <p className="mt-2 whitespace-pre-wrap text-sm">{data.pending.error}</p>}</div>}
       <div className="space-y-5">{data.orders.map(order => <article key={order.id} className="space-y-4 rounded-xl border border-dark/15 p-4"><header><h3 className="text-lg font-bold">{countryLabel(order.country, locale)} · {status(order.status)}</h3><p className="mt-1 text-sm">{zh ? `請求 ${order.requested} · 供應商交付 ${order.delivered} · 目前合格 ${order.usable}` : `Requested ${order.requested} · Provider delivered ${order.delivered} · Currently usable ${order.usable}`}</p><p className="mt-1 text-xs">{new Date(order.createdAt).toLocaleString(locale === "zh-tw" ? "zh-TW" : "en-US", { timeZone: "Asia/Taipei" })} · Taipei</p></header>
@@ -108,7 +121,7 @@ export default function ProspectSearch({ userId, active = true, onSelect }: { us
           <a className={`${button} mt-3 max-w-full break-all`} href={company.contact.kind === "email" ? `mailto:${company.contact.value}` : company.contact.value} target={company.contact.kind === "page" ? "_blank" : undefined} rel="noopener noreferrer">{company.contact.kind === "email" ? company.contact.value : (zh ? "開啟官方聯絡頁" : "Open official contact page")}</a><a className={`${button} ml-2 mt-3`} href={company.contact.source} target="_blank" rel="noopener noreferrer">{zh ? "查看來源" : "View source"}</a><a className={`${button} mt-3`} href={company.website} target="_blank" rel="noopener noreferrer">{zh ? "公司官網" : "Company website"}</a>
           <details className="mt-3"><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">{zh ? "供應商適配依據（不是原文引用或已驗證需求）" : "Provider fit evidence (not a verbatim quote or proven demand)"}</summary>{company.evidence.map((v, i) => <p key={i} className="my-2 text-sm">{v.criterion} <a href={v.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline">{zh ? "來源" : "Source"} ↗</a></p>)}</details>
           <p className="text-xs">{zh ? "公開來源已核對，不代表信箱寄達、對方會回覆或願意付費。" : "Public source checked; inbox delivery, replies and willingness to pay remain untested."}</p>
-          {data.access.fullAccess && <button className={`${button} mt-3`} type="button" disabled={busy || order.stale} onClick={() => onSelect ? onSelect({ ...company, orderId: order.id }) : setAdding({ ...company, orderId: order.id })}>{onSelect ? (zh ? "準備聯絡" : "Prepare outreach") : (zh ? "加入既有公司跟進" : "Add to your follow-up leads")}</button>}
+          {data.access.fullAccess && <button className={`${button} mt-3`} type="button" disabled={busy || order.needsRecheck} onClick={() => onSelect ? onSelect({ ...company, orderId: order.id }) : setAdding({ ...company, orderId: order.id })}>{onSelect ? (zh ? "準備聯絡" : "Prepare outreach") : (zh ? "加入既有公司跟進" : "Add to your follow-up leads")}</button>}
         </section>)}</div>
       </article>)}</div>
       {!data.orders.length && <p className="rounded-xl bg-neutral-50 p-5 text-sm">{zh ? "尚未建立外部公司搜尋；平台會員卡片在「會員交流」。" : "No external company orders yet. Platform member cards are in Member network."}</p>}

@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { ProspectingError } from "./schema";
 const BASE = "https://omrade.app/api/v1/prospecting";
-export const configured = () => process.env.OMRADE_ENABLED === "true" && Boolean(process.env.OMRADE_API_KEY);
+export const configured = () => process.env.OMRADE_ENABLED === "true" && process.env.OMRADE_WORKER_ENABLED !== "false" && Boolean(process.env.OMRADE_API_KEY);
 export class OmradeError extends ProspectingError {
   constructor(status: number, code: string, retryAfter = 15, public requestId?: string) {
     const messages: Record<number, string> = {
