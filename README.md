@@ -1,3 +1,9 @@
+## Omrade 共用公司搜尋（2026-10-31，開發驗收中）
+
+Matchmaking「會員交流／找新公司」與 Next Steps 共用本人名單；新公司不是平台會員。公司搜尋改用 Omrade，不呼叫 Anthropic、不扣 AI、不自動回退。每筆費用上限固定 0，UTC 月每會員最多交付 10 家，預留中的訂單計入；讀取與同鍵重試不重計。一般有效三家試用可領一次最多五家，至少一筆合格結果才算領取，零合格仍消耗供應商已交付量。原 NOVA／ROLL ON／合法舊權益及其他 AI 功能維持。
+
+新增三個 Prospecting 資料表；僅新增 schema，不覆寫既有計畫／訪談／帳本。正式功能預設關閉；環境變數 OMRADE_ENABLED／OMRADE_API_KEY（read+write），API https://omrade.app/api/v1/prospecting，金鑰不進前端。預計每分鐘 cron／租約處理最長 40 分鐘訂單，異常不重建訂單；已加入純新增的三表 schema、固定 API client、請求／回應驗證及安全錯誤；每筆訂單明確鎖定零付費，寫入須先持久化 UUID 冪等鍵。已新增不使用 AI 的聯絡來源檢查：公開 IPv4 DNS 固定連線、HTTPS／同公司範圍、7 秒／256 KiB／兩次轉向限制，Email 需出現在官方 HTML；只採用實際公開的聯絡頁連結。已加入會員交易鎖、五／十家零付費建單、UTC 月預留與交付上限、POC 資格與重送防重、兩頁共用本人工作區與分頁歷史；GET 不建單、不送外部資料。已加入每會員單一未確認訂單、處理租約、組織每分鐘／每小時／並行護欄、零付費收據驗證、明確拒單釋放與未知狀態保留、24 小時來源手動核對，暫停新建單時仍可對帳已接受訂單。已加入 /api/prospects、orders、本人訂單、recheck 與每分鐘 /api/cron/prospecting；公司搜尋舊分支轉接共用服務，六家請求提示改選五／十家。保留終身 POC 帳本，即使個別訂單刪除也不會重領。沿用現有 Prisma 交易型別轉接，不更動讀寫重試邊界；頁面介面接續實作。已加入共用 ProspectSearch 介面、可搜尋國家、可編輯買方描述、明確資料傳送確認、背景／隱藏頁停止輪詢、草稿與重送 UUID 保存、條件衝突比對、交付／可用量分開呈現、來源重查與明確確認後建立 lead。CRM 擴充伺服器驗證的來源加入，使用確定性 ID 防重送，不自動寄信或標成已聯絡。既有程式與完整驗收仍在進行中。每批更新此 README，禁止 reset、accept-data-loss 或覆寫會員資料。
+
 ## 整站新網域 rollon.com.tw（2026-10-31）
 
 使用者指定整站改用 https://rollon.com.tw，舊網址導向新站。GoDaddy 保留原名稱伺服器與 Google MX／SPF／驗證紀錄，只修改網站 A／www 設定；Vercel roll 專案新增根網域與 www。正式 canonical、雙語 sitemap／robots、OG、LLMs 網址、付款 return/cancel 安全鎖、分享草稿及 Email 的 NEXT_PUBLIC_APP_URL 一致切換。Umami 保留同一網站 ID 與歷史數據，允許新網域，保留舊域名過渡來源。

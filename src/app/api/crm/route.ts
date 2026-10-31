@@ -1,3 +1,7 @@
+import { z } from "zod";
+import { addProspectContact } from "@/lib/prospecting/service";
+import { ProspectingError } from "@/lib/prospecting/schema";
+import { prospectingFailure } from "@/lib/prospecting/http";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +19,12 @@ export async function POST(req: NextRequest) {
     if (!session) return unauthorized();
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
 
-    const parsed = contactCreateSchema.safeParse(await req.json());
+    const body = await req.json();
+    if (body.prospectOrderId !== undefined) {
+      const input = z.object({ prospectOrderId: z.string().uuid(), prospectCompanyId: z.string().uuid() }).strict().parse(body);
+      return ok(await addProspectContact(session.uid, input.prospectOrderId, input.prospectCompanyId));
+    }
+    const parsed = contactCreateSchema.safeParse(body);
     if (!parsed.success) return fail(zodMessage(parsed.error), 400);
     const d = parsed.data;
 
@@ -33,6 +42,7 @@ export async function POST(req: NextRequest) {
     });
     return ok(row, 201);
   } catch (error) {
+    if (error instanceof ProspectingError || error instanceof z.ZodError) return prospectingFailure(error);
     return failFromError(error);
   }
 }

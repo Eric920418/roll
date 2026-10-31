@@ -1,3 +1,5 @@
+import { ProspectingError } from "@/lib/prospecting/schema";
+import { prospectingFailure } from "@/lib/prospecting/http";
 import { analyseValidation, analysisInputSchema } from "@/lib/validation/analysis";
 import { generateProspects, prospectInputSchema } from "@/lib/validation/prospects";
 import { type NextRequest } from "next/server";
@@ -27,5 +29,5 @@ export async function POST(req: NextRequest) {
     }
     const parsed = input.safeParse(body); if (!parsed.success) return fail("無效分析請求 / Invalid analysis request", 400);
     return ok(await analyseDiscovery(account, parsed.data.kind === "full", parsed.data.locale));
-  } catch (error) { if (error instanceof SyntaxError) return fail("無效 JSON / Invalid JSON", 400); return error instanceof PlanWriteError ? fail(error.message, error.status) : failFromError(error); }
+  } catch (error) { if (error instanceof ProspectingError) return prospectingFailure(error); if (error instanceof SyntaxError) return fail("無效 JSON / Invalid JSON", 400); return error instanceof PlanWriteError ? fail(error.message, error.status) : failFromError(error); }
 }

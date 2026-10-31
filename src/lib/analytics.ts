@@ -59,7 +59,8 @@ export function requestFeature(url: string, init?: RequestInit): AnalyticsFeatur
   try { if (typeof init?.body === "string") { const body = JSON.parse(init.body); action = typeof body?.action === "string" ? body.action : ""; prospectCount = typeof body?.prospectCount === "number" ? body.prospectCount : 0; } } catch { /* Only fixed action names are used. */ }
   if (path === "/api/customer-insights") return "interview";
   if (path === "/api/account/icp" && action === "save") return "icp";
-  if (path === "/api/discovery/analyse" && [6, 10].includes(prospectCount)) return "prospects";
+  if (path === "/api/prospects/orders") return "prospects";
+  if (path === "/api/discovery/analyse" && [5, 6, 10].includes(prospectCount)) return "prospects";
   if (path === "/api/rewards/redeem") return "rewards";
   if (path === "/api/billing/subscribe") return "upgrade";
   if (path === "/api/network/connections") return "chat_invite";

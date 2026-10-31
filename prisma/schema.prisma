@@ -142,6 +142,9 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  prospectingWorkspace ProspectingWorkspace?
+  prospectingOrders ProspectingOrder[]
+  prospectingTrialGrant ProspectingTrialGrant?
   trialFeedbackGrant TrialFeedbackGrant?
   featurePolicy Int? // 2 after a new-policy purchase; existing entitlement sources remain unchanged
   sessionVersion Int @default(0)
@@ -1379,5 +1382,71 @@ model TrialFeedbackGrant {
   grantedEndsAt DateTime
   aiCycleStart DateTime?
   aiCycleEnd DateTime?
+  createdAt DateTime @default(now())
+}
+
+
+model ProspectingWorkspace {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revision Int @default(0)
+  country String @default("TW")
+  description String @default("")
+  omradeIcpId String?
+  omradeIcpVersion Int?
+  audienceHash String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProspectingOrder {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestId String
+  payloadHash String
+  country String
+  description String
+  count Int
+  poc Boolean @default(false)
+  period String
+  reservedCount Int
+  deliveredCount Int @default(0)
+  status String @default("pending")
+  audienceRequest Json
+  audienceKey String
+  audienceParentId String?
+  omradeIcpId String?
+  omradeIcpVersion Int?
+  orderKey String
+  providerOrderId String? @unique
+  providerRequest Json?
+  providerResult Json?
+  providerRequestId String?
+  result Json?
+  rejections Json?
+  failureCode String?
+  failureMessage String?
+  submittedAt DateTime?
+  acceptedAt DateTime?
+  deliveredAt DateTime?
+  checkedAt DateTime?
+  nextAttemptAt DateTime @default(now())
+  leaseToken String?
+  leaseUntil DateTime?
+  attempts Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  trialGrant ProspectingTrialGrant?
+  @@unique([userId, requestId])
+  @@index([status, nextAttemptAt])
+  @@index([userId, period])
+}
+
+model ProspectingTrialGrant {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId String? @unique
+  order ProspectingOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 }
