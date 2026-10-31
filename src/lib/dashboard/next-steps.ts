@@ -8,7 +8,7 @@ export function actionProgress(actions: Array<{ done: boolean; metric?: { target
     const { target, current } = action.metric || {};
     return sum + (Number.isFinite(target) && target! > 0 && Number.isFinite(current) ? Math.max(0, Math.min(0.99, current! / target!)) : 0);
   }, 0);
-  return Math.floor(completed / actions.length * 1000) / 10;
+  return Math.floor(completed * 1000 / actions.length + 1e-9) / 10;
 }
 
 export function trialWindow(user: { trialPlan: string | null; trialStartsAt: Date | null; trialEndsAt: Date | null }, now = new Date()) {

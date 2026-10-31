@@ -1,4 +1,6 @@
 import "server-only";
+import { privacyState } from "./viewer-privacy";
+import { identifiedViewsEnabled } from "./identified-visitors";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { changed, MemberError } from "@/lib/member-http";
@@ -130,8 +132,16 @@ export async function recordVisit(userId: string, input: { profileId?: string; p
   }
   if (!ownerId) throw new MemberError("找不到可見頁面 / Visible page not found", 404);
   if (ownerId === userId) return { recorded: false };
+  const blocked = await prisma.networkConnection.findFirst({ where: { status: "blocked", OR: [{ senderId: userId, recipientId: ownerId }, { senderId: ownerId, recipientId: userId }] } });
+  if (blocked) throw new MemberError("找不到可見頁面 / Visible page not found", 404);
   const viewer = await networkAccount(userId);
-  await prisma.memberVisit.createMany({ data: [{ ownerId, viewerId: userId, week: weekKey(), role: viewer.verifiedInvestor ? "investor" : viewer.matchmakingProfile?.role === "founder" ? "founder" : "other" }], skipDuplicates: true });
+  await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    const privacy = privacyState((await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { viewerPrivacy: true } })).viewerPrivacy);
+    const identity = identifiedViewsEnabled() && privacy.enabled && privacy.consentAt ? { identityConsentAt: new Date(privacy.consentAt), identifiedAt: new Date(Math.max(Date.now(), Date.parse(privacy.consentAt))) } : {};
+    await tx.memberVisit.upsert({ where: { viewerId_ownerId_week: { ownerId, viewerId: userId, week: weekKey() } },
+      create: { ownerId, viewerId: userId, week: weekKey(), role: viewer.verifiedInvestor ? "investor" : viewer.matchmakingProfile?.role === "founder" ? "founder" : "other", ...identity }, update: identity });
+  });
   return { recorded: true };
 }
 export async function visitorSummary(userId: string, week = weekKey(), now = new Date()) {

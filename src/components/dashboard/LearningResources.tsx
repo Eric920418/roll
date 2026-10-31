@@ -8,9 +8,10 @@ const videos: Partial<Record<WorkspaceKind, { platform: "YouTube" | "TED"; href:
   positioning: { platform: "TED", href: "https://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action" },
 };
 
-export default function LearningResources({ question, kind }: { question: string; kind: WorkspaceKind | null }) {
+export default function LearningResources({ question, kind, collapsed = false }: { question: string; kind: WorkspaceKind | null; collapsed?: boolean }) {
   const zh = useLocale() === "zh-tw";
   const video = kind ? videos[kind] : undefined;
+  if (collapsed) return <details className="rounded-xl border border-dark/15 bg-white p-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">ⓘ {zh ? "學習資源" : "Learning resources"} · {question}</summary><LearningResources kind={kind} question={question} /></details>;
   return <section className="rounded-xl bg-dark/[0.035] p-4" aria-label={zh ? "學習資源" : "Learning resources"}>
     <p className="text-[11px] font-semibold uppercase tracking-wide text-dark/55">{zh ? "學習資源" : "Learning resources"}</p>
     <h4 className="mt-2 text-sm font-bold">{question}</h4>

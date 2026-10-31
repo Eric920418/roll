@@ -205,7 +205,7 @@ export default function InvestorPortalManager({
 
   return (
     <div className="font-[family-name:var(--font-body)]">
-      <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("title")}</h1>
+      <h2 className="text-2xl font-bold text-dark">{t("title")}</h2>
       {error && <p role="alert" className="mt-5 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
 
       <section className="mt-7 rounded-2xl border border-dark/10 bg-white p-6">

@@ -30,10 +30,7 @@ const NAV: { key: NavKey; path: string; soon?: boolean }[] = [
   { key: "overview", path: "/dashboard" },
   { key: "profile", path: "/dashboard/profile" },
   { key: "agenda", path: "/dashboard/agenda" },
-  { key: "insights", path: "/dashboard/insights" },
   { key: "matchmaking", path: "/dashboard/matchmaking" },
-  { key: "mindset", path: "/dashboard/mindset" },
-  { key: "investors", path: "/dashboard/investors" },
   { key: "rewards", path: "/dashboard/rewards" },
   { key: "account", path: "/dashboard/account" },
   { key: "feedback", path: "/dashboard/feedback" },
@@ -95,13 +92,13 @@ export default function DashboardSidebar({
         {NAV.map(({ key, path, soon }) => {
           const active = isActive(path);
           if (soon) return <span key={key} aria-disabled="true" className="flex min-h-11 shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] text-dark/40"><span>{t(`nav.${key}`)}</span><span className="shrink-0 whitespace-nowrap rounded-full border border-dark/10 px-2 py-1 text-[10px] leading-none">{t("comingSoon.badge")}</span></span>;
-          if (key === "feedback") return <button key={key} type="button" onClick={() => (document.getElementById("trial-feedback-dialog") as HTMLDialogElement | null)?.showModal()} className="flex min-h-11 shrink-0 items-center rounded-lg px-3 text-left text-[14px] font-medium text-[#55554F] transition-colors hover:bg-dark/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-10">{t("nav.feedback")}</button>;
+          if (key === "feedback") return <button key={key} type="button" onClick={() => (document.getElementById("trial-feedback-dialog") as HTMLDialogElement | null)?.showModal()} className="flex min-h-11 shrink-0 items-center rounded-lg px-3 text-left text-[14px] font-medium text-[#55554F] transition-colors hover:bg-dark/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-11">{t("nav.feedback")}</button>;
           return (
             <Link
               key={key}
               href={pathForLocale(path, locale)}
               aria-current={active ? "page" : undefined}
-              className={`relative flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-lg px-3 text-[14px] font-medium tracking-normal transition-colors md:min-h-10 ${key === "rewards" ? "md:mt-4 md:before:absolute md:before:-top-2 md:before:inset-x-0 md:before:border-t md:before:border-dark/10" : ""} ${
+              className={`relative flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-lg px-3 text-[14px] font-medium tracking-normal transition-colors md:min-h-11 ${key === "rewards" ? "md:mt-4 md:before:absolute md:before:-top-2 md:before:inset-x-0 md:before:border-t md:before:border-dark/10" : ""} ${
                 active
                   ? "text-white"
                   : "text-[#55554F] hover:bg-dark/[0.04]"

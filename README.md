@@ -1,3 +1,17 @@
+## 改版示意第三版（2026-10-31）
+
+本次發布只包含下述改版；同工作區其他尚未提交的文案精簡檔案保留，不一起提交。
+
+Matchmaking 新增會員／新公司／投資人分享三頁籤；舊 investors 管理入口保留 checkInId 並轉向分享頁籤，公開 Portal 與同意機制不改。卡片編輯獨立於 /dashboard/matchmaking/me/edit，公司欄位在同一交易檢查 sourceVersion 後更新、沿用首次完善資料積分，成功後刷新側欄餘額。推薦依需求／角色、產業、市場的固定權重 4／2／1，再按最近活動及卡片 ID 排序，公開投影後才篩選與分頁，排除本人及封鎖。新增 GET/PATCH /api/network/viewer-privacy、GET /api/network/visitors/members；具名清單只回公開卡片、公開後瀏覽時間及游標，沒有訪客 User ID／Email。GET/PATCH /api/account/next-steps-tour 保存獨立版本、步驟與略過狀態，不改任務。會員共用錯誤補齊 code，400／401／409 與未知錯誤皆不輸出憑證。
+
+Next Steps 已將優先任務提到工作區上方，既有公司跟進在新名單之前，後續任務與里程碑確認保留；所有可做任務完成後，將成果確認／產生下一階段移到目前這一步，不把尚未解鎖的任務當作優先任務；探索會員已有計畫時不再重複鋪設探索表單。沒有計畫時仍可從收合區建立下一步計畫／路線圖。學習資源收合，原連結保留。側欄移除 Insights／Mindset／獨立投資人入口，Profile 保留 Saved ICP。GET /api/notes 僅回本人完整歷史，由同頁抽屜讀取，不自動關聯或補算。新導覽四步、可略過／重開、帳號保存，真實目標與積分規則，不改既有 getting-started 狀態。
+
+正式新增五個欄位已完成：User 21 筆、OnboardingProfile 20 筆、MatchmakingProfile 21 筆、MemberVisit 1 筆，交易內比對所有原有欄位資料指紋相同；沒有覆寫會員或回填訪客身份。可見頁面停留滿兩秒才記瀏覽，背景分頁取消排程，不將預取計入。
+
+本機已建隔離 PostgreSQL roll_rewards_qa_redesign_20261031，schema 差異僅五個 nullable 欄位；未更動正式會員。具名瀏覽／匿名週去重、撤回與重新同意、封鎖／隱藏、公司版本衝突與並行儲存、獎勵防重、推薦公開投影及導覽獨立狀態已有交易測試。手機實測第三家有效訪談後，進度由 6.6% 上升至 10%，同頁跟進新增公司，五家搜尋入口解鎖但仍顯示服務停用、沒有呼叫供應商；修正既有小數浮點向下取整造成的 9.9% 顯示。手機驗收修正三頁籤最小寬度造成的橫向溢出；照片上傳後保留原公司 sourceVersion，偵測上傳期間其他分頁修改，避免靜默提高版本後覆寫舊草稿。桌面已以隔離帳號走完導覽、清單／照片切換及聊天待接受；不寄外部郵件。完整 pnpm test 397 項通過、零 skip，包含背景分頁計時回歸。pnpm lint 零錯誤、14 個既有 warnings；TypeScript 與 pnpm build 通過。已驗收 390／768／1440px 與中英文、普通三家試用及 NOVA；未新增真實 Omrade 訂單。
+
+本批新增 nullable 的 User.viewerPrivacy／nextStepsTour、MatchmakingProfile.displayName、MemberVisit.identityConsentAt／identifiedAt；純新增 SQL：prisma/matchmaking-redesign.sql。歷史訪客不回填身份。公開身份預設關閉，撤回即停止具名讀取；同週匿名後再同意須實際重訪才揭露，計數不增加。NETWORK_IDENTIFIED_VIEWS_ENABLED=false 可獨立停止記錄／顯示身份。推薦僅依公開需求、角色、產業及市場，不呼叫 AI，不顯示配對百分比。公司搜尋保持停用，不建立 Omrade 訂單。上線順序：核對五欄位純新增差異與資料指紋 → main 指定檔案提交推送 → 等待 roll 專案 Production READY → 確認新 API 匿名拒絕及舊 investors 入口轉向。具名瀏覽可獨立關閉 NETWORK_IDENTIFIED_VIEWS_ENABLED，不刪欄位或歷史回退；Omrade 與 worker 仍關閉。每批同步本文件，禁止 reset／accept-data-loss。
+
 ## 首頁主標題調整（2026-10-31）
 
 首頁唯一 H1 的 HomeV10.hero.title 改為英文「Speak their language.」、繁中「說他們的語言。」；使用自然換行適配桌面與手機。SEO title／OG 與市場進入副標保留，首頁 sitemap lastmod 同步為 2026-10-31。本次文案修改為 main 提交 4ccaf2f、日期修正 ee4702f，未建立新分支或分支工作樹。
@@ -2135,3 +2149,11 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 - 前一批只清理頁首副標；本批補清共用問答元件的每題灰色提示、固定引導及摘要說明，包含「Task and discovery progress require a company and real interview content. Answers are never copied between companies.」與對應中文。訪談、ICP 手動填寫與產品問答同步生效。
 - 刪除共用 hint 欄位及呼叫端文案，收掉題目前的多餘間距；保留題目、輸入、跳過／修改／確認按鈕、摘要欄位名稱、草稿、驗證及完整錯誤訊息。API、資料庫與首頁卡片不變。
 - 驗證：三個變更元件 ESLint 通過；既有 guided-discovery 測試 4/4 通過，涵蓋中英文單題顯示、跳過／修改、摘要確認、草稿恢復及真實訪談內容驗證。未進行登入後實際畫面驗收。
+
+## 2026-10-31：全面清理客戶端重複輔助說明
+
+- 全面檢查 NOVA 會員後台與首頁卡片，移除問答以外的固定流程說明、資料帶入規則、計數解釋及重複介紹，涵蓋訪談／統計／探索進度、ICP、任務工作區、行動計畫、路線圖、公司資料引導、日曆、週回報及獎勵。中英文同步，直接移除文字元素與多餘間距。
+- 保留實際資料與統計、欄位名稱、空白／載入狀態、必要填寫限制、前置條件、隱私與分享說明、付款／扣額及不可逆操作提示、完整錯誤訊息；AI Finding 說明縮為成功分析的扣額提示。未使用全域 CSS 隱藏灰字，未變更 API 或資料庫。
+- 保留工作區其他功能的既有修改，僅提交本批文案清理差異。
+- 同步移除清理後的空白說明摺疊區；既有 ICP 交接測試改核對中英文操作按鈕與連結，不再要求顯示已移除的流程說明。
+- 驗證：80 項相關測試通過、2 項隔離資料庫測試因未設定測試環境略過；22 個元件 ESLint 零錯誤，7 個警告與清理前相同。逐一核對按鈕、輸入欄位、連結、進度及完整錯誤／狀態節點保留。未進行登入後的實際畫面驗收。

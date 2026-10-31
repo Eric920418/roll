@@ -75,7 +75,7 @@ test("New-company discovery and existing follow-up have distinct bilingual label
   for (const [locale, warning] of [["zh-tw", "provider_credits"], ["en", "provider_credits"], ["zh-tw", "budget_limit"], ["en", "budget_limit"]]) {
     let cursor = 0;
     const existing = { company: "CircleWe", name: "Contact", sourceId: "note-1", quote: "Pain", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "" };
-    const snapshot = { source: "ui-source", rows: [], prospects: { [`6:${locale}`]: { companies: [company("New Taiwan Buyer")], stale: false, warning } }, priority: [existing, { ...existing, company: "Saved Lead", sourceId: undefined }], summary: { total: 0, paid: 0, signed: 0, amounts: {} }, deals: [], tasks: [], analysis: null };
+    const snapshot = { source: "ui-source", rows: [1, 2, 3].map(n => ({ id: `note-${n}`, insight: { stage: "discover", type: "Prospect", company: `Interview ${n}`, name: "Contact", role: "Founder", fit: "unknown", answers: ["Pain", "", "", ""], notes: "Recorded pain", region: "", industry: "", date: "" } })), prospects: { [`6:${locale}`]: { companies: [company("New Taiwan Buyer")], stale: false, warning } }, priority: [existing, { ...existing, company: "Saved Lead", sourceId: undefined }], summary: { total: 0, paid: 0, signed: 0, amounts: {} }, deals: [], tasks: [], analysis: null };
     const loaded = { exports: {} as { default: (props: object) => ReactNode } };
     runInNewContext(code, {
       module: loaded, exports: loaded.exports,
@@ -93,13 +93,13 @@ test("New-company discovery and existing follow-up have distinct bilingual label
     const zh = locale === "zh-tw";
     const discovery = html.indexOf(zh ? 'aria-label="找新公司"' : 'aria-label="Find new companies"');
     const followup = html.indexOf(zh ? 'aria-label="既有公司跟進"' : 'aria-label="Follow up existing companies"');
-    assert(discovery >= 0 && followup > discovery);
-    const newList = html.slice(discovery, followup);
+    assert(followup >= 0 && discovery > followup);
+    const newList = html.slice(discovery, html.indexOf(zh ? "訪談證據分析" : "Interview evidence analysis"));
     assert(newList.includes("Shared Omrade workspace"));
     assert(newList.includes(zh ? "歷史 AI 公司名單" : "Historical AI lists"));
     assert(newList.includes("New Taiwan Buyer") && !newList.includes("CircleWe"));
     assert(!newList.includes(zh ? "使用 1 次 AI" : "1 AI request"));
-    const existingList = html.slice(followup, html.indexOf(zh ? "訪談證據分析" : "Interview evidence analysis"));
+    const existingList = html.slice(followup, discovery);
     assert(existingList.includes("CircleWe") && existingList.includes("Saved Lead") && !existingList.includes("New Taiwan Buyer"));
     assert.equal(existingList.split(zh ? "已有訪談紀錄" : "Interview recorded").length - 1, 1);
     assert.equal(existingList.split(zh ? "已加入跟進" : "Saved for follow-up").length - 1, 1);

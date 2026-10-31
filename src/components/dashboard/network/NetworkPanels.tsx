@@ -1,4 +1,5 @@
 "use client";
+import ViewerOverview, { ViewerPrivacySettings } from "./ViewerOverview";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale } from "next-intl";
@@ -18,7 +19,7 @@ const api = <T,>(path: string, method = "GET", data?: unknown) => memberFetch<T>
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 function ErrorMessage({ error }: { error: string }) { return error ? <p role="alert" className="whitespace-pre-wrap break-words rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p> : null; }
 export function useNetwork() {
-  const [value, setValue] = useState<{ enabled: boolean; portal: boolean; invite: boolean; verifiedInvestor: boolean } | null>(null), [error, setError] = useState("");
+  const [value, setValue] = useState<{ enabled: boolean; network: boolean; portal: boolean; invite: boolean; verifiedInvestor: boolean } | null>(null), [error, setError] = useState("");
   const load = useCallback(async () => { try { setValue(await api("features")); setError(""); } catch (e) { setError(message(e)); } }, []);
   useEffect(() => { void Promise.resolve().then(load); }, [load]);
   return { value, error, load };
@@ -36,9 +37,19 @@ export function NetworkBadge() {
 export function VisitRecorder({ profileId, portalId }: { profileId?: string; portalId?: string }) {
   const { value } = useNetwork(), [error, setError] = useState("");
   useEffect(() => {
-    if (!value?.enabled || document.visibilityState !== "visible") return;
-    const timer = setTimeout(() => { void api("views", "POST", profileId ? { profileId } : { portalId }).catch(e => setError(message(e))); }, 2000);
-    return () => clearTimeout(timer);
+    if (!value?.enabled) return;
+    let timer: ReturnType<typeof setTimeout>, recorded = false, alive = true;
+    const schedule = () => {
+      clearTimeout(timer);
+      if (document.visibilityState !== "visible" || recorded) return;
+      timer = setTimeout(() => {
+        if (document.visibilityState !== "visible" || recorded) return;
+        recorded = true;
+        void api("views", "POST", profileId ? { profileId } : { portalId }).catch(e => { if (alive) setError(message(e)); });
+      }, 2000);
+    };
+    schedule(); document.addEventListener("visibilitychange", schedule);
+    return () => { alive = false; clearTimeout(timer); document.removeEventListener("visibilitychange", schedule); };
   }, [value?.enabled, profileId, portalId]);
   return <ErrorMessage error={error} />;
 }
@@ -53,25 +64,19 @@ export function CardPrivacySettings() {
     try { setOwner(await memberFetch<CardOwner>("/api/matchmaking/me", { method: "PATCH", body: JSON.stringify(hidden ? { action: "hide", revision: owner.revision, requestId: crypto.randomUUID() } : { action: "publish", revision: owner.revision, requestId: crypto.randomUUID(), confirmed: true, draft: owner.draft }) })); setError(""); }
     catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
-  return <section className={`${panel} my-8`}><h2 className="text-xl font-semibold">Matchmaking</h2><p className="my-3 text-sm">{zh ? "公司摘要對符合權限的登入會員公開；照片模糊。隱藏不會撤銷既有聊天與分享，可在聊天內個別撤銷。" : "Your company summary is visible to eligible signed-in members; photos stay blurred. Hiding preserves existing chats and sharing, which you can revoke per connection."}</p><ErrorMessage error={error} />{owner ? <><label className="flex min-h-11 items-center gap-3"><input type="checkbox" disabled={busy} checked={owner.hiddenByUser ?? !owner.visible} onChange={e => void save(e.target.checked)} />{zh ? "隱藏我的卡片" : "Hide my card"}</label><p className="my-2 text-sm">{owner.source?.companyName || (zh ? "請先補齊公司資料" : "Complete your company profile")}{!owner.visible && !owner.hiddenByUser && (zh ? " · 資料待補；補齊後自動公開，可先勾選隱藏。" : " · Pending company details; publishes when complete unless you hide it.")}</p>{owner.visible && owner.id && <Link className={button} href={pathForLocale(`/dashboard/matchmaking/${owner.id}`, locale)}>{zh ? "公開預覽" : "Public preview"}</Link>} <Link className={button} href={pathForLocale("/dashboard/matchmaking", locale)}>{zh ? "卡片與照片設定" : "Card & photo settings"}</Link></> : <button className={button} onClick={() => void load()}>{zh ? "載入／重試" : "Load / retry"}</button>}</section>;
+  return <section className={`${panel} my-8`}><h2 className="text-xl font-semibold">Matchmaking</h2><p className="my-3 text-sm">{zh ? "公司摘要對符合權限的登入會員公開；照片模糊。隱藏不會撤銷既有聊天與分享，可在聊天內個別撤銷。" : "Your company summary is visible to eligible signed-in members; photos stay blurred. Hiding preserves existing chats and sharing, which you can revoke per connection."}</p><ErrorMessage error={error} />{owner ? <><label className="flex min-h-11 items-center gap-3"><input type="checkbox" disabled={busy} checked={owner.hiddenByUser ?? !owner.visible} onChange={e => void save(e.target.checked)} />{zh ? "隱藏我的卡片" : "Hide my card"}</label><p className="my-2 text-sm">{owner.source?.companyName || (zh ? "請先補齊公司資料" : "Complete your company profile")}{!owner.visible && !owner.hiddenByUser && (zh ? " · 資料待補；補齊後自動公開，可先勾選隱藏。" : " · Pending company details; publishes when complete unless you hide it.")}</p>{owner.visible && owner.id && <Link className={button} href={pathForLocale(`/dashboard/matchmaking/${owner.id}`, locale)}>{zh ? "公開預覽" : "Public preview"}</Link>} <Link className={button} href={pathForLocale("/dashboard/matchmaking/me/edit", locale)}>{zh ? "卡片與照片設定" : "Card & photo settings"}</Link><div className="mt-5"><ViewerPrivacySettings /></div></> : <button className={button} onClick={() => void load()}>{zh ? "載入／重試" : "Load / retry"}</button>}</section>;
 }
 export function VisitorStats() {
-  const zh = useLocale() === "zh-tw", { value, error: configError } = useNetwork(), [data, setData] = useState<Awaited<ReturnType<typeof import("@/lib/network/service").visitorSummary>> | null>(null), [error, setError] = useState("");
-  const load = useCallback(async () => { try { setData(await api("visitors")); setError(""); } catch (e) { setError(message(e)); } }, []);
-  useEffect(() => { if (value?.enabled) void Promise.resolve().then(load); }, [value?.enabled, load]);
-  if (!value?.enabled) return <ErrorMessage error={configError} />;
-  if (!error && (!data || data.investors + data.founders + data.others === 0)) return null;
-  return <section className={panel}><div className="flex flex-wrap justify-between gap-2"><h2 className="font-semibold">{zh ? "有人在看你" : "People are viewing you"}</h2><span className="text-sm">{zh ? "本週 · 匿名訪客" : "This week · anonymous views"}</span></div><ErrorMessage error={error} />{data && <div className="mt-4 grid gap-3 sm:grid-cols-3">{(["investors", "founders", "others"] as const).map(key => {
-    const delta = data[key] - data.previous[key];
-    return <div key={key} className="rounded-xl border border-dark/15 p-4"><p className="text-sm">{{ investors: zh ? "投資人" : "Investors", founders: zh ? "創辦人" : "Founders", others: zh ? "其他會員" : "Other members" }[key]}</p><p className="mt-2 text-3xl font-semibold">{data[key]}</p><p className={`mt-2 text-xs ${!data.comparable || !delta ? "text-dark/65" : delta > 0 ? "text-green-700" : "text-red-700"}`}>{!data.comparable ? (zh ? "比較資料不足" : "Not enough comparison data") : data.previous[key] === 0 && delta > 0 ? (zh ? `新增 ${delta} 人 · 較上週同期` : `${delta} new · vs same time last week`) : `${delta > 0 ? "+" : ""}${delta} · ${zh ? "較上週同期" : "vs same time last week"}`}</p></div>;
-  })}</div>}{error && <button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button>}</section>;
+  const { value, error } = useNetwork();
+  return value?.enabled ? <ViewerOverview /> : <ErrorMessage error={error} />;
 }
-export function InvestorProgress() {
+export function InvestorProgress({ confirmationOnly = false }: { confirmationOnly?: boolean }) {
   const zh = useLocale() === "zh-tw", { value, error: configError } = useNetwork(), [data, setData] = useState<Awaited<ReturnType<typeof watchSummary>> | null>(null), [error, setError] = useState("");
   const load = useCallback(async () => { try { setData(await api("progress")); setError(""); } catch (e) { setError(message(e)); } }, []);
   useEffect(() => { if (!value?.enabled) return; void Promise.resolve().then(load); const changed = () => void load(); window.addEventListener("nova-plan-changed", changed); return () => window.removeEventListener("nova-plan-changed", changed); }, [value?.enabled, load]);
   if (!value?.enabled) return <ErrorMessage error={configError} />;
   async function update(body: unknown) { try { await api("progress", "PATCH", body); await load(); } catch (e) { setError(message(e)); } }
+  if (confirmationOnly) return <div><ErrorMessage error={error} />{data?.workspaces.map(p => p && "journeyId" in p.scope && p.interviews >= p.target && !p.complete ? <button key={p.key} className={button} onClick={() => void update({ confirmInterviews: p.scope })}>{zh ? "確認完整訪談階段完成" : "Confirm full interview stage completion"}</button> : null)}</div>;
   return <section className={`${panel} my-5`}><h2 className="font-semibold">{zh ? "投資人觀察進度" : "Investor interest"}</h2><ErrorMessage error={error} />{data && <><p className="my-2">{zh ? `有 ${data.investors} 位投資人關注。` : `${data.investors} investors are following.`} {data.next && (zh ? `再完成 ${data.next.remaining} 家有效訪談，將通知其中 ${data.next.investors} 位。` : `${data.next.remaining} more company interviews will notify ${data.next.investors} of them.`)}</p><p className="text-sm text-dark/65">{zh ? `待同意 ${data.pending} · 需重新確認 ${data.paused} · 通知處理中 ${data.queued} · 已通知 ${data.notified}` : `Awaiting consent ${data.pending} · Paused ${data.paused} · Queued ${data.queued} · Notified ${data.notified}`}</p>{data.next && <progress className="my-3 h-2 w-full" max={data.next.target} value={Math.max(0, data.next.target - data.next.remaining)} aria-label={zh ? "距離下一個觀察門檻" : "Progress towards next observation threshold"} />}{value.portal && <label className="my-3 flex min-h-11 items-center gap-3"><input type="checkbox" checked={data.fundraising} onChange={e => void update({ fundraising: e.target.checked })} />{zh ? "開放募資（僅向同意分享的投資人揭露）" : "Open for fundraising (only disclosed to investors you approve)"}</label>}{data.workspaces.map(p => p && "journeyId" in p.scope && p.interviews >= p.target && !p.complete ? <button key={p.key} className={button} onClick={() => void update({ confirmInterviews: p.scope })}>{zh ? "確認完整訪談階段完成" : "Confirm full interview stage completion"}</button> : null)}</>}{error && <button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button>}</section>;
 }
 export function InvitePanel({ profileId }: { profileId: string }) {

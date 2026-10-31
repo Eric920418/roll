@@ -160,6 +160,8 @@ model User {
   completed      Boolean   @default(false) // 全流程（含測驗）完成
   quizCompleted  Boolean   @default(false)
 
+  viewerPrivacy Json?
+  nextStepsTour Json?
   gettingStartedVersion     Int?
   gettingStartedDismissedAt DateTime?
   gettingStartedCompletedAt DateTime?
@@ -1127,6 +1129,7 @@ model CustomerStageOutcome {
 
 /// Anonymous discovery card. Private identity stays on User / OnboardingProfile.
 model MatchmakingProfile {
+  displayName String?
   hiddenByUserAt DateTime?
   sourcePolicy Int?
   id String @id @default(cuid())
@@ -1315,6 +1318,8 @@ model InvestorWatch {
   @@index([startupId, status])
 }
 model MemberVisit {
+  identityConsentAt DateTime?
+  identifiedAt DateTime?
   id String @id @default(cuid())
   viewerId String
   viewer User @relation("VisitViewer", fields: [viewerId], references: [id], onDelete: Cascade)

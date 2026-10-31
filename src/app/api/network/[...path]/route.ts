@@ -1,3 +1,4 @@
+import { getViewerPrivacy, writeViewerPrivacy, identifiedVisitors } from "@/lib/network/identified-visitors";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { browserMutationGuard } from "@/lib/security/http";
@@ -21,6 +22,8 @@ async function handle(req: Request, context: Context) {
       if (path[0] === "profiles" && path.length === 3 && path[2] === "connection") return privateOk(await connectionForProfile(uid, path[1]!));
       if (action === "connections") return privateOk(await listConnections(uid));
       if (path[0] === "connections" && path[2] === "messages" && path.length === 3) return privateOk(await messages(uid, path[1]!, new URL(req.url).searchParams.get("cursor") || undefined));
+      if (action === "viewer-privacy") return privateOk(await getViewerPrivacy(uid));
+      if (action === "visitors/members") return privateOk(await identifiedVisitors(uid, z.string().min(1).max(100).optional().parse(new URL(req.url).searchParams.get("cursor") || undefined)));
       if (action === "visitors") return privateOk(await visitorSummary(uid));
       if (action === "unread") return privateOk({ unread: await prisma.memberNotification.count({ where: { userId: uid, readAt: null } }) });
       if (action === "notifications") return privateOk(await notificationList(uid));
@@ -33,6 +36,7 @@ async function handle(req: Request, context: Context) {
       if (action === "views") return privateOk(await recordVisit(uid, z.object({ profileId: z.string().min(1).optional(), portalId: z.string().min(1).optional() }).strict().refine(v => Boolean(v.profileId) !== Boolean(v.portalId)).parse(body)));
     }
     if (req.method === "PATCH") {
+      if (action === "viewer-privacy") return privateOk(await writeViewerPrivacy(uid, body));
       if (path[0] === "connections" && path.length === 2) return privateOk(await changeConnection(uid, path[1]!, connectionSchema.parse(body)));
       if (path[0] === "connections" && path[2] === "sharing" && path.length === 3) return privateOk(await share(uid, path[1]!, shareSchema.parse(body)));
       if (action === "progress") return privateOk(await updateProgress(uid, z.object({ fundraising: z.boolean().optional(), confirmInterviews: scope.optional() }).strict().parse(body)));

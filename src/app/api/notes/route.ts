@@ -33,3 +33,12 @@ export async function POST(req: NextRequest) {
     return failFromError(error);
   }
 }
+
+// Reading your own history does not grant paid editing or associate old notes with a task.
+export async function GET() {
+  try {
+    const session = await getUserSession(); if (!session) return unauthorized();
+    const rows = await prisma.meetingNote.findMany({ where: { userId: session.uid }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], select: { id: true, title: true, body: true, insight: true, updatedAt: true } });
+    const response = ok(rows); response.headers.set("Cache-Control", "private, no-store"); return response;
+  } catch (error) { return failFromError(error); }
+}

@@ -1,0 +1,42 @@
+"use client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useLocale } from "next-intl";
+import { memberFetch, MemberFetchError } from "@/lib/member-fetch";
+import { pathForLocale } from "@/lib/routes";
+import { countryLabel } from "@/lib/member-options";
+import type { Locale } from "@/i18n/routing";
+import type { visitorSummary } from "@/lib/network/service";
+import type { getViewerPrivacy, identifiedVisitors } from "@/lib/network/identified-visitors";
+import { PrivatePhoto } from "../matchmaking/CardView";
+const button = "inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/20 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50";
+const msg = (e: unknown) => e instanceof Error ? e.message : String(e);
+export function ViewerPrivacySettings() {
+  const zh = useLocale() === "zh-tw";
+  const [state, setState] = useState<Awaited<ReturnType<typeof getViewerPrivacy>> | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
+  const pending = useRef({ key: "", id: "" });
+  const load = useCallback(async () => { try { setState(await memberFetch("/api/network/viewer-privacy")); setError(""); } catch (e) { setError(msg(e)); } }, []);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  async function save(enabled: boolean) {
+    if (!state || busy) return; setBusy(true); setError("");
+    const key = `${enabled}:${state.revision}`; if (pending.current.key !== key) pending.current = { key, id: crypto.randomUUID() };
+    try { setState(await memberFetch("/api/network/viewer-privacy", { method: "PATCH", body: JSON.stringify({ enabled, revision: state.revision, requestId: pending.current.id }) })); pending.current.key = ""; }
+    catch (e) { setError(msg(e)); if (e instanceof MemberFetchError && e.status === 409) { try { setState(await memberFetch("/api/network/viewer-privacy")); } catch (cause) { setError(`${msg(e)}\n${msg(cause)}`); } } }
+    finally { setBusy(false); }
+  }
+  return <section className="rounded-xl border border-dark/15 bg-white p-4"><h3 className="font-semibold">{zh ? "瀏覽身份" : "Viewer identity"}</h3>{state ? <><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={state.enabled} disabled={busy || !state.available && !state.enabled} onChange={e => void save(e.target.checked)} />{zh ? "公開我的瀏覽身份" : "Make my viewer identity visible"}</label><p className="text-sm">{zh ? "開啟後的新瀏覽，對方可看到你的公開卡片。歷史匿名瀏覽不會公開；關閉後停止顯示你的身份。" : "Future visits may show your public card to its owner. Past anonymous visits stay anonymous. Turning this off hides your identity."}</p>{!state.available && <p className="mt-2 text-sm">{zh ? "具名瀏覽目前停用。" : "Identified views are currently disabled."}</p>}</> : <p role="status">{zh ? "載入身份設定…" : "Loading privacy settings…"}</p>}{error && <div role="alert" className="mt-3 whitespace-pre-wrap break-words text-sm text-red-800">{error}<button className={`${button} mt-2`} onClick={() => void load()}>{zh ? "重新載入／重試" : "Reload / retry"}</button></div>}</section>;
+}
+export default function ViewerOverview() {
+  const locale = useLocale() as Locale, zh = locale === "zh-tw";
+  const [data, setData] = useState<Awaited<ReturnType<typeof visitorSummary>> | null>(null), [error, setError] = useState("");
+  const [opened, setOpened] = useState(false), [layout, setLayout] = useState("list"), [people, setPeople] = useState<Awaited<ReturnType<typeof identifiedVisitors>> | null>(null), [peopleError, setPeopleError] = useState(""), [upgrade, setUpgrade] = useState(false), [busy, setBusy] = useState(false);
+  const load = useCallback(async () => { try { setData(await memberFetch("/api/network/visitors")); setError(""); } catch (e) { setError(msg(e)); } }, []);
+  const loadPeople = useCallback(async (cursor?: string) => { setBusy(true); try { const result = await memberFetch<NonNullable<typeof people>>(`/api/network/visitors/members${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`); setPeople(old => cursor && old ? { ...result, members: [...old.members, ...result.members] } : result); setPeopleError(""); setUpgrade(false); } catch (e) { setPeopleError(msg(e)); setUpgrade(e instanceof MemberFetchError && e.status === 403); } finally { setBusy(false); } }, []);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  useEffect(() => { if (opened) void Promise.resolve().then(() => loadPeople()); }, [opened, loadPeople]);
+  if (!error && (!data || data.investors + data.founders === 0)) return null;
+  return <section className="space-y-5 rounded-2xl border border-dark/15 bg-white p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{zh ? "有人在看你" : "Who’s viewing you"}</h2><span className="text-sm">{zh ? "本週" : "This week"}</span></div>{error && <div role="alert" className="whitespace-pre-wrap text-sm text-red-800">{error}<button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></div>}{data && <div className="grid grid-cols-2 gap-4">{(["founders", "investors"] as const).map(key => { const delta = data[key] - data.previous[key]; return <div key={key} className="rounded-2xl border border-dark/15 p-5"><p className="text-sm font-medium">{key === "founders" ? (zh ? "創辦人" : "Founders") : (zh ? "投資人" : "Investors")}</p><p className="mt-3 text-5xl font-semibold">{data[key]}</p><p className={`mt-4 inline-block rounded-full px-3 py-2 text-xs ${!data.comparable || !delta ? "bg-neutral-100" : delta > 0 ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>{!data.comparable ? (zh ? "比較資料不足" : "Not enough comparison data") : data.previous[key] === 0 && delta > 0 ? (zh ? `新增 ${delta} 人` : `${delta} new`) : `${delta > 0 ? "+" : ""}${delta} · ${zh ? "較上週同期" : "vs last week at this time"}`}</p></div>; })}</div>}
+    <button className={button} aria-expanded={opened} onClick={() => setOpened(v => !v)}>{zh ? "查看自願公開身份的訪客" : "See who viewed you"} {opened ? "↑" : "↓"}</button>
+    {opened && <div className="space-y-4 border-t border-dark/10 pt-5"><div className="flex flex-wrap gap-2">{["list", "photos"].map(v => <button className={`${button} ${layout === v ? "bg-black! text-white!" : ""}`} aria-pressed={layout === v} key={v} onClick={() => setLayout(v)}>{v === "list" ? (zh ? "清單" : "List") : (zh ? "照片" : "Photos")}</button>)}</div>{peopleError && <div role="alert" className="whitespace-pre-wrap text-sm text-red-800">{peopleError}{upgrade ? <Link className={`${button} mt-2`} href={pathForLocale("/dashboard/account#plan", locale)}>{zh ? "查看會員網絡方案" : "View network plans"}</Link> : <button className={button} disabled={busy} onClick={() => void loadPeople()}>{zh ? "重試" : "Retry"}</button>}</div>}{people && (people.members.length ? <div className={layout === "photos" ? "grid grid-cols-2 gap-4 sm:grid-cols-3" : "space-y-3"}>{people.members.map(({ card, viewedAt }, index) => <Link className={`min-w-0 rounded-xl border border-dark/15 p-4 focus-visible:outline-2 ${layout === "photos" ? index === 0 ? "col-span-2 row-span-2" : "" : "flex min-h-20 items-center gap-4"}`} key={card.id} href={pathForLocale(`/dashboard/matchmaking/${card.id}`, locale)}>{layout === "photos" && (card.photo ? <PrivatePhoto url={card.photo} alt={zh ? "會員照片" : "Member photo"} /> : <div className="flex aspect-square items-center justify-center rounded-xl bg-neutral-100 text-4xl">{(card.displayName || card.companyName || "N").slice(0, 1)}</div>)}<div className="min-w-0"><p className="mt-2 break-words font-semibold">{card.displayName || card.companyName || (zh ? "會員" : "Member")}</p><p className="mt-1 text-sm">{({ founder: zh ? "創辦人" : "Founder", investor: zh ? "投資人" : "Investor", mentor: zh ? "導師" : "Mentor", partner: zh ? "合作夥伴" : "Partner", buyer: zh ? "買家" : "Buyer" })[card.role]}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}</p><time className="mt-2 block text-xs" dateTime={viewedAt}>{new Date(viewedAt).toLocaleString(locale)}</time></div></Link>)}</div> : <p className="text-sm">{people.available ? (zh ? "目前沒有自願公開身份的訪客；匿名瀏覽仍計入總數。" : "No visitors have shared their identity. Anonymous visits are still included in the totals.") : (zh ? "具名瀏覽目前停用。" : "Identified views are currently disabled.")}</p>)}{busy && <p role="status">{zh ? "載入訪客…" : "Loading viewers…"}</p>}{people?.next && <button className={button} disabled={busy} onClick={() => void loadPeople(people.next!)}>{zh ? "載入更多" : "Load more"}</button>}</div>}
+  </section>;
+}

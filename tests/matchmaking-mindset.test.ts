@@ -59,7 +59,7 @@ test("Bilingual keys and sidebar entries are complete without changing public we
   function keys(value: Record<string, unknown>, prefix = ""): string[] { return Object.entries(value).flatMap(([key, val]) => typeof val === "object" && val ? keys(val as Record<string, unknown>, `${prefix}${key}.`) : [`${prefix}${key}`]); }
   assert.deepEqual(keys(en.Matchmaking), keys(zh.Matchmaking)); assert.deepEqual(keys(en.Mindset), keys(zh.Mindset));
   const sidebar = readFileSync("src/components/dashboard/DashboardSidebar.tsx", "utf8");
-  assert.match(sidebar, /path: "\/dashboard\/matchmaking"/); assert.match(sidebar, /path: "\/dashboard\/mindset"/); assert.doesNotMatch(sidebar, /\/dashboard\/community/);
+  assert.match(sidebar, /path: "\/dashboard\/matchmaking"/); assert.doesNotMatch(sidebar, /path: "\/dashboard\/(mindset|insights|investors)"/); assert.doesNotMatch(sidebar, /\/dashboard\/community/);
 });
 
 const connectionString = process.env.ROLL_REWARDS_TEST_DATABASE_URL;
@@ -71,7 +71,7 @@ test("Matchmaking and Mindset integration in isolated PostgreSQL", { skip: !conn
   const api = { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), failFromError: () => Response.json({ error: "Server failure", code: "internal", requestId: "safe-trace" }, { status: 500 }), unauthorized: () => Response.json({ error: "Login required" }, { status: 401 }), rateLimited: () => Response.json({ error: "Limited" }, { status: 429 }) };
   const mocks = { "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/api": api, "@/lib/auth/guard": { getUserSession: async () => state.uid ? { uid: state.uid } : null, getAdminSession: async () => state.admin ? { role: "admin" } : null }, "@/lib/rate-limit": { MINUTE_MS: 60000, checkRateLimit: async () => ({ ok: !state.limited }) } };
   const http = load<typeof import("../src/lib/member-http")>("src/lib/member-http.ts", mocks);
-  const base = { ...mocks, "@/lib/member-http": http, "./schema": cards };
+  const base = { ...mocks, "@/lib/rewards/service": { rewardTransaction: <T>(work: (tx: unknown) => Promise<T>) => db.$transaction(tx => work(tx)), awardProfile: () => { throw new Error("Unexpected profile award for legacy card-only edits"); } }, "@/lib/member-http": http, "./schema": cards };
   const service = load<typeof import("../src/lib/matchmaking/service")>("src/lib/matchmaking/service.ts", base);
   const reflections = load<typeof import("../src/lib/mindset/service")>("src/lib/mindset/service.ts", { ...base, "./schema": mindset });
   const routes = { ...base, "@/lib/matchmaking/service": service, "@/lib/mindset/service": reflections };
@@ -184,7 +184,7 @@ test("Matchmaking and Mindset integration in isolated PostgreSQL", { skip: !conn
       assert.equal(oversized.headers.get("content-length"), null); assert.equal((await photoRoute.POST(oversized)).status, 413);
       assert.equal((await me.PATCH(new Request("https://example.test/api/matchmaking/me", { method: "PATCH", headers: { Origin: "https://example.test", "Content-Type": "application/json" }, body: "{" }))).status, 400);
     });
-    await t.test("Category pagination includes the published owner, excludes hidden cards and preserves stable activity ordering", async () => {
+    await t.test("Category pagination excludes the owner and hidden cards and preserves stable activity ordering", async () => {
       const own = await service.getMyCard(user.id);
       await service.writeMyCard(user.id, { action: "save", revision: own.revision, requestId: randomUUID(), draft: { ...own.draft, categories: ["first-customers"] } });
       const newIds: string[] = [];
@@ -193,8 +193,8 @@ test("Matchmaking and Mindset integration in isolated PostgreSQL", { skip: !conn
         await db.matchmakingProfile.create({ data: { ...draft, userId: member.id, role: "mentor", categories: ["first-customers"], visible: true, optedInAt: new Date(), lastActiveAt: i === 25 ? null : new Date(Date.UTC(2026, 9, i + 1)) } });
       }
       const first = await service.listCards(user.id, "first-customers", 1), second = await service.listCards(user.id, "first-customers", 2);
-      const expected = await db.matchmakingProfile.findMany({ where: { visible: true, categories: { has: "first-customers" } }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }] });
-      assert([...first.cards, ...second.cards].some(card => card.id === cardId));
+      const expected = await db.matchmakingProfile.findMany({ where: { userId: { not: user.id }, visible: true, categories: { has: "first-customers" } }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }] });
+      assert(![...first.cards, ...second.cards].some(card => card.id === cardId));
       assert.equal(first.cards.length, 24); assert.equal(second.cards.length, expected.length - 24); assert.equal(first.hasMore, true); assert.equal(second.hasMore, false);
       assert.equal(new Set([...first.cards, ...second.cards].map(c => c.id)).size, expected.length);
       assert.equal(expected.filter(c => newIds.includes(c.userId)).length, 26);

@@ -20,6 +20,7 @@ export async function PATCH(req: NextRequest) {
     if (!parsed.success) return fail(parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; "), 400);
     if (!Object.keys(parsed.data).length) return fail("沒有可更新的欄位 / No profile fields supplied", 400);
     await rewardTransaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${session.uid} FOR UPDATE`;
     const previous = await tx.onboardingProfile.findUnique({ where: { userId: session.uid } });
     if (parsed.data.country && !countryCode(parsed.data.country) && parsed.data.country !== previous?.country) throw new MemberError("請從選單選擇國家 / Select a country from the list", 400);
     if (parsed.data.industry && !industryCode(parsed.data.industry) && parsed.data.industry !== previous?.industry) throw new MemberError("請從選單選擇產業 / Select an industry from the list", 400);
