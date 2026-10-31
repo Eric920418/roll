@@ -35,7 +35,6 @@ export default async function UpcomingEventsRail({
         </Link>
       </div>
 
-      <p className="mt-0.5 text-xs text-dark/45">{t("subtitle")}</p>
 
       {events.length === 0 ? (
         <p className="mt-4 text-sm text-dark/55">{t("empty")}</p>

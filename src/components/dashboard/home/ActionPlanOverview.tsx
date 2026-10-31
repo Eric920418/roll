@@ -206,9 +206,6 @@ export default async function ActionPlanOverview({
                 <h3 className="mt-2 text-xl font-extrabold text-dark font-[family-name:var(--font-heading)]">
                   {t("next.emptyTitle")}
                 </h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-dark/60">
-                  {t("next.emptyBody")}
-                </p>
               </div>
               <div className="mt-5">
                 {isPaying ? (

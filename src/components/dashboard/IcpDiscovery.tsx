@@ -104,7 +104,6 @@ export default function IcpDiscovery({ userId, canUseAi, onUpdated, savedVersion
   const field = "mt-2 min-h-11 w-full rounded-lg border border-dark/15 bg-white px-3 py-3 text-sm text-dark placeholder:text-dark/40 focus-visible:outline-2 focus-visible:outline-offset-2";
   return <div id="icp-guidance" tabIndex={-1} className="scroll-mt-8">
     <h2 className="text-sm font-semibold uppercase tracking-wider">{zh ? "建立或更新 ICP" : "Create or update your ICP"}</h2>
-    <p className="mt-3 text-sm text-dark/60">{zh ? "一次回答一題；已有資料不重問，不知道可以跳過。最後確認後才更新已儲存的 ICP。" : "One question at a time. Known details are carried over; skip anything unknown. Your saved ICP changes only after you confirm."}</p>
     {!loaded && !error && <p role="status" className="mt-4 text-sm">{zh ? "載入已知資料…" : "Loading known details…"}</p>}
     <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label={zh ? "選擇 ICP 起點" : "Choose your ICP starting point"}>{(["guess", "suggest", "discovery"] as const).map((value, i) => <button key={value} type="button" aria-pressed={path === value} disabled={disabled} className={`${button} ${path === value ? "bg-black text-white" : "bg-white"}`} onClick={() => choose(value)}>{(zh ? ["引導我整理客戶方向", "請 AI 建議客戶", "從訪談證據整理"] : ["Guide my customer hypothesis", "Suggest customers with AI", "Use interview evidence"])[i]}</button>)}</div>
     {loaded && path === "guess" && <div className="mt-5"><GuidedQuestions key={guideSession} initialProgress={initialGuide} disabled={disabled} confirmDisabled={!hasIcp(preview) || stale}

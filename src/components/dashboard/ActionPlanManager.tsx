@@ -23,7 +23,6 @@ export default function ActionPlanManager({ initialPlan, guided = false }: { gui
   if (initialPlan) return <ActionDiagnosis plan={initialPlan} />;
   return <section className="rounded-2xl border border-dark/15 bg-white p-5 sm:p-7">
     <h2 className="text-xl font-bold">{t("empty.title")}</h2>
-    <p className="mt-2 max-w-2xl text-sm leading-6 text-dark/60">{t("empty.body")}</p>
     <div className="mt-4"><ActionPlanBuilder autoOpen={guided} /></div>
   </section>;
 }
@@ -149,7 +148,6 @@ export function ActionEditor({ action, plan, onClose, onSaved }: { action: Actio
             </div>
           </div>
         </div>
-        <p className="mt-5 rounded-xl bg-primary/[0.05] px-4 py-3 text-xs leading-5 text-dark/60">{t("editor.fitHint")}</p>
         {error && <div role="alert" className="mt-4 whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-dark/15 px-5 text-sm font-bold text-dark">{t("cancel")}</button><button type="submit" disabled={busy} className="min-h-11 rounded-xl bg-primary px-6 text-sm font-bold text-white disabled:opacity-50">{busy ? t("saving") : t("save")}</button></div>
       </form>

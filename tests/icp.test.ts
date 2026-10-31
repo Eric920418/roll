@@ -428,5 +428,5 @@ test("Interview handoff is explicit, localized and never offers an ICP action fo
   assert.equal(en.links[0].href, "/dashboard/profile#icp-start");
   assert.equal(zh.links[0].href, "/zh-tw/dashboard/profile#icp-start");
   assert.match(en.links[0].className, /min-h-11/);
-  assert.match(en.text, /confirm and save/); assert.match(zh.text, /確認並儲存/);
+  assert.match(en.text, /Create or update ICP/); assert.match(zh.text, /建立或更新 ICP/);
 });

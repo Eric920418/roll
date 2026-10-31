@@ -203,7 +203,6 @@ export default function ActionPlanBuilder({
                 <h2 id="action-plan-builder-title" className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
                   {t("title")}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-dark/60">{t("intro")}</p>
               </div>
               <button
                 type="button"

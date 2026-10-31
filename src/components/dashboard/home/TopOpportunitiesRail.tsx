@@ -27,7 +27,6 @@ export default async function TopOpportunitiesRail({
           {t("viewAll")}
         </Link>
       </div>
-      <p className="mt-0.5 text-xs text-dark/45">{t("subtitle")}</p>
 
       <ul className="mt-4 flex flex-col gap-1">
         {companies.map((c) => {

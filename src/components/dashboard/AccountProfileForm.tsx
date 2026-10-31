@@ -169,7 +169,7 @@ export default function AccountProfileForm({
   }
 
   if (guided) return <form ref={formRef} id="profile" onSubmit={handleSubmit} className="mt-7 space-y-5 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7">
-    <div><p className="text-xs font-bold text-sky-800">{tGuide("step", { number: 1 })}</p><h2 className="mt-2 text-2xl font-bold">{tGuide("step1Title")}</h2><p className="mt-2 text-sm text-dark/65">{tGuide("profileHintBody")}</p></div>
+    <div><p className="text-xs font-bold text-sky-800">{tGuide("step", { number: 1 })}</p><h2 className="mt-2 text-2xl font-bold">{tGuide("step1Title")}</h2></div>
     <label className="block"><span className={labelClass}>{t("companyName")}</span><input name="companyName" value={companyName} onChange={e => { setCompanyName(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`} /></label>
     <label className="block"><span className={labelClass}>{tIcp("pitch")}</span><input name="oneLinePitch" maxLength={300} value={oneLinePitch} onChange={e => { setOneLinePitch(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`} /></label>
     <div className="grid gap-5 sm:grid-cols-2">
