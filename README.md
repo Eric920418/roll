@@ -1,8 +1,8 @@
 ## 首頁主標題調整（2026-10-31）
 
-首頁唯一 H1 的 HomeV10.hero.title 改為英文「Speak their language.」、繁中「說他們的語言。」；使用自然換行適配桌面與手機，不保留原標題的三行斷行。SEO title／OG 與市場進入副標保留，首頁 sitemap lastmod 同步為 2026-10-31。此次只提交雙語文案、首頁 sitemap 更新日與本 README 記錄，不納入工作區其他未提交功能。
+首頁唯一 H1 的 HomeV10.hero.title 改為英文「Speak their language.」、繁中「說他們的語言。」；使用自然換行適配桌面與手機。SEO title／OG 與市場進入副標保留，首頁 sitemap lastmod 同步為 2026-10-31。本次文案修改為 main 提交 4ccaf2f、日期修正 ee4702f，未建立新分支或分支工作樹。
 
-驗收：既有 SEO／CMS 測試 11 項全數通過，git diff --check 通過；瀏覽器檢查中英文 390／768／1440px，各有唯一 H1 且無水平溢位，SEO title 維持 ROLL ON.。只修改文案，未重跑完整測試套件；正式建置與上線結果由 Vercel 發布紀錄驗證。
+驗收：SEO／CMS 11 項通過；瀏覽器檢查雙語 390／768／1440px，均為唯一 H1、無水平溢位，SEO title 維持 ROLL ON.。初次發布遇到 main 已有的 55 個舊公司搜尋測試型別錯誤；同期正式提交 c05137d 已修正該問題，本次保留該更新，未覆蓋會員功能或略過型別檢查。最新 main 的 tsc 與完整測試 262 項通過（247 通過、15 項隔離 DB 測試略過），Vercel roll-63bbfjfd4 正式建置 Ready。正式 HTTP 驗證兩語首頁 H1 與 lastmod 均正確。未寫入正式資料庫。截圖 rollon-headline-production-20261031.png 位於既有視覺證據目錄。
 
 ## Omrade 共用公司搜尋（2026-10-31）
 
