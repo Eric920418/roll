@@ -1,5 +1,11 @@
 ## 改版示意第三版（2026-10-31）
 
+導覽空白修復：正式 Chrome 已重現 Next Steps 第三步，底下進度區文字仍在 DOM，但原生 dialog 重複套用 .nova-theme，其未分層的 background:var(--color-light) 蓋過 Tailwind utilities 層的 bg-transparent，導致整頁遮成白底、聚光區空白。移除 dialog 重複的主題 class，沿用 Dashboard 祖先已提供的 NOVA 色票；原生模態、焦點限制、略過／重開與帳號導覽狀態均保留。不修改計畫、進度、積分、方案、資料庫或 Omrade 設定。驗收須確認實際 computed background 透明，聚光區能看見原任務／進度文字，並走完四步、鍵盤略過與手機／桌面。
+
+本機隔離帳號已驗證四步、上／下一步及 390px 手機透明度，與修正前正式站 computed rgb(250,250,250) 的失敗基準比較，修正後為 rgba(0,0,0,0)，提示框全在視窗內。並修正完成／略過時對仍 disabled 的入口立即 focus 無效：改於 dialog close 後下一影格恢復焦點，待儲存狀態解除再回到操作導覽；Escape 仍先保存獨立導覽狀態，不影響任務。
+
+導覽修復驗收：400 項 pnpm test 通過、零 skip；全量 lint 零錯誤／14 個既有 warnings，修改後元件 lint 無警告，pnpm build 通過。瀏覽器驗收包含四步切換、完成、重開、Escape 略過、重載不強迫重開及焦點回到操作導覽；1512px 桌面與 390px 手機無提示框越界。獨立本機 QA 帳號、密碼暫存與測試服務已清理。正式只發佈前端修復，不遷移資料或改會員權益；英文正式站原本第三步會於部署後原畫面重載確認。
+
 本次發布只包含下述改版；同工作區其他尚未提交的文案精簡檔案保留，不一起提交。
 
 Matchmaking 新增會員／新公司／投資人分享三頁籤；舊 investors 管理入口保留 checkInId 並轉向分享頁籤，公開 Portal 與同意機制不改。卡片編輯獨立於 /dashboard/matchmaking/me/edit，公司欄位在同一交易檢查 sourceVersion 後更新、沿用首次完善資料積分，成功後刷新側欄餘額。推薦依需求／角色、產業、市場的固定權重 4／2／1，再按最近活動及卡片 ID 排序，公開投影後才篩選與分頁，排除本人及封鎖。新增 GET/PATCH /api/network/viewer-privacy、GET /api/network/visitors/members；具名清單只回公開卡片、公開後瀏覽時間及游標，沒有訪客 User ID／Email。GET/PATCH /api/account/next-steps-tour 保存獨立版本、步驟與略過狀態，不改任務。會員共用錯誤補齊 code，400／401／409 與未知錯誤皆不輸出憑證。
