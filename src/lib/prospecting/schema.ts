@@ -15,8 +15,8 @@ export const providerCompanySchema = z.object({
   match_quality: z.enum(["strong", "possible"]), match_note: z.string().max(4000).nullable().optional(), researched_at: z.string().max(80),
   fit_evidence: z.array(evidenceSchema).min(1).max(30),
   contacts: z.object({
-    emails: z.array(z.object({ value: z.email().max(254), kind: z.string().max(80), status: z.string().max(80), source_url: httpsUrl })).max(30),
-    people: z.array(z.object({ name: z.string().min(1).max(200), role: z.string().max(300).nullable().optional(), role_status: z.string().max(80), role_source_url: httpsUrl.nullable(), email: z.email().max(254).nullable(), email_status: z.string().max(80), email_source_url: httpsUrl.nullable() })).max(30),
+    emails: z.array(z.object({ value: z.email().max(254), kind: z.string().max(80).default("company_inbox"), status: z.string().max(80), source_url: httpsUrl })).max(30),
+    people: z.array(z.object({ name: z.string().min(1).max(200), role: z.string().max(300).nullable().optional(), role_status: z.string().max(80), role_source_url: httpsUrl.nullable(), email: z.email().max(254).nullable(), email_status: z.string().max(80), email_source_url: httpsUrl.nullable() })).max(30).default([]),
   }),
 });
 export const publicProspectSchema = z.object({

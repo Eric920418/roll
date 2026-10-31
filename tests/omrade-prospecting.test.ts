@@ -54,6 +54,17 @@ test("Public email needs official HTML; shared inboxes, possible matches, privat
   assert.equal(uniqueProspects([company], [" Ｎｅｗ Ｂｕｙｅｒ 0 Co., Ltd. "]).length, 0);
   assert.equal(uniqueProspects([company], [raw.website_url]).length, 0);
 });
+test("Omrade v1.0.3 accepts an omitted people array and inbox kind without inventing a named contact", async () => {
+  const raw = providerCompany();
+  const inbox = { value: raw.contacts.emails[0].value, status: "published", source_url: raw.contacts.emails[0].source_url };
+  const result = await contactModule.verifyCompany({ ...raw, contacts: { phones: [], emails: [inbox] } }, "TW", html);
+  assert.equal(result.company?.contact.kind, "email");
+  assert.equal(result.company?.contact.value, inbox.value);
+  assert.equal(result.company?.contact.name, null);
+  assert.equal(result.company?.contact.role, null);
+  assert.equal((await contactModule.verifyCompany({ ...raw, contacts: { phones: [], emails: [inbox], people: null } }, "TW", html)).rejection, "invalid_fields");
+  assert.equal((await contactModule.verifyCompany({ ...raw, contacts: { phones: [], emails: [{ ...inbox, source_url: "https://127.0.0.1/contact" }] } }, "TW", html)).rejection, "invalid_fields");
+});
 test("HTML reader pins public DNS, rejects private/oversized/non-HTML sources and bounds redirects without credentials", async () => {
   type Reply = { status?: number; location?: string; type?: string; size?: number; html?: string };
   function checker(replies: Reply[], address = "93.184.216.34") {

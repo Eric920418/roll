@@ -35,7 +35,9 @@ API：`GET /api/prospects`（含本人歷史游標）、`POST /api/prospects/ord
 
 設定：伺服器 `OMRADE_API_KEY`、`OMRADE_ENABLED`（預設 false）、`OMRADE_WORKER_ENABLED` 與既有 CRON_SECRET。初次待驗收時兩開關皆 false，cron 直接返回、不每分鐘喚醒資料庫；上線時兩者設 true。日後暫停新建單只關 OMRADE_ENABLED，保留 worker true 對帳既有接受單；worker false 是完整停用處理的保留開關。已授權建立 NOVA Prospecting 專用金鑰，安全存入本機 .env.local 與 Vercel Production Secret；不進 Git／前端。依 PDF 的固定 API 為 https://omrade.app/api/v1/prospecting，每筆強制 max_charge_cents:0，須 prospecting:read＋prospecting:write。全組織免費量先到先用，不保證三十人都有額度。
 
-**正式啟用阻礙：** Omrade 實際設定頁現列 `/api/v1/prospect-searches/`，同一把新金鑰在該讀取介面可驗證（不存在測試 ID 回 404，未帶金鑰回 401），但 PDF 舊 usage 介面回 401；無法把新舊契約視為相容。尚需供應商確認新版的零付費上限、免費用量、分頁交付計量及冪等契約。未取得前 OMRADE_ENABLED=false，不送真實搜尋，不自行猜參數。已建立金鑰但沒有建立真實 Omrade 訂單、消耗免費公司或付費研究。
+**正式啟用核對（2026-10-31）：** Omrade 現已提供獨立「開發者 API」頁及公開規格 https://omrade.app/api/v1/prospecting/openapi.json（v1.0.3），與本專案的 ICP／訂單介面相符；既有 `/api/v1/prospect-searches/` 是另一套工作區搜尋介面。現存工作區金鑰可通過舊介面驗證，但在供應商新提供的 `GET /api/v1/prospecting/usage` 回 401 invalid_token，不能混用。開發者頁顯示未建立組織金鑰、150 家免費可用、零交付／預留、付費關閉及月支出上限 US$0。已備妥 NOVA Production Prospecting v1 讀寫金鑰表單，等待建立組織層級存取的當下確認；尚未建立金鑰或真實訂單。OMRADE_ENABLED／OMRADE_WORKER_ENABLED 皆保持 false，不消耗免費公司或付費研究。後續安全設定正確組織金鑰 → usage 驗證 → 最多一筆五家、max_charge_cents:0 的隔離驗收 → 核對來源、交付／合格數與用量後才啟用，不追加補單。
+
+規格相容修正：v1.0.3 的 contacts.people 與公司信箱 kind 可省略；省略時視為無具名聯絡人及公司共用信箱，不把公司 Email 包裝成個人聯絡人。保留來源核對、私人網址拒絕與欄位格式檢查，加入缺欄位、錯誤型別及私人來源回歸測試。Omrade／聯絡來源相關 26 項測試通過，含隔離 PostgreSQL 的冪等、交易回滾、免費上限與多入口測試；全套 pnpm test 398 項通過、零 skip，pnpm lint 零錯誤／14 個既有 warnings，pnpm build 通過。本批不變更 schema 或會員資料。
 
 驗收：最終 pnpm test 三百九十二項全過、零 skip；TypeScript／pnpm build 通過，pnpm lint 零 errors、十四個既有 warnings。已補瀏覽器驗收發現的 Contact→Next Steps 跟進顯示與既有商機後續編輯回歸。測試涵蓋公開來源安全、公司去重、200／202、429／410、四十分鐘待對帳、原單同鍵重試、ICP 版本、額度並行、POC 零合格重試／終身一次、重疊 worker 及最後儲存失敗回滾。桌面以隔離帳號確認兩入口共用交付及加入後排除；390px 手機中英文無橫向溢出，鍵盤方向鍵可切換頁籤；已實測會員卡片在切回頁籤時不重新覆蓋草稿或悄悄更新其版本；隔離瀏覽器帳號與臨時明文金鑰檔已清理。正式真實五家公司驗收待契約確認，最多只允許一筆免費五家，不追加。
 
