@@ -4,7 +4,7 @@
 
 舊 rollgrp.com／www.rollgrp.com 與 www.rollon.com.tw 的頁面以永久 308 保留路徑及 query 導向新根網域；API 不套用整站轉向，以保留既有 PayPal webhook、郵件退訂 POST 與正在處理的回呼。既有 PayPal 訂閱、webhook ID、金鑰、寄件者與資料庫不變；未執行扣款或寄送。行事曆既有 UID 的 rollgrp.com 命名不改，避免重複行程。換主網域後 Cookie 無法跨網域沿用，會員需在新網址重新登入，帳號與權益保留。
 
-上線順序：先新網域 DNS／HTTPS；Google OAuth 在既有 ROLL ON Web 用戶端增加新 callback、保留原值；正式 NEXT_PUBLIC_APP_URL／GOOGLE_REDIRECT_URI 改新網址；測試、建置與部署；最後移除舊裸網域在 Vercel 的前置轉向，交由程式保留 API 的轉向規則接手。Umami 更新網站網域但保留 ID。377 項測試全過、0 skip；TypeScript、Lint（0 errors／14 既有 warnings）與 build 通過。DNS／HTTPS 與 Google callback 已設定；正式部署／切換驗收進行中。新增實際 Next 路由測試覆蓋三個舊／別名網域、語系／query／靜態檔案、API 例外及未知主機不誤轉向；追蹤隱私測試涵蓋新網域；sitemap 主機斷言同步更新為新 canonical。
+上線順序：先新網域 DNS／HTTPS；Google OAuth 在既有 ROLL ON Web 用戶端增加新 callback、保留原值；正式 NEXT_PUBLIC_APP_URL／GOOGLE_REDIRECT_URI 改新網址；測試、建置與部署；最後移除舊裸網域在 Vercel 的前置轉向，交由程式保留 API 的轉向規則接手。Umami 更新網站網域但保留 ID。377 項測試全過、0 skip；TypeScript、Lint（0 errors／14 既有 warnings）與 build 通過。功能版本 4222c25 的 Production 已 READY，新舊網域皆綁同一專案。根網域與 www 的 Vercel DNS 檢查均 misconfigured=false，Google callback 已重新開啟確認保存，授權頁正常顯示 rollon.com.tw 帳號選擇；未選用真實會員登入。32 項正式 HTTP 檢查全過：雙語頁面／canonical、三種舊／別名網址保留路徑與 query 的 308、50 個新 sitemap URL、robots／llms、舊新 webhook 拒絕無簽章且不轉向、退訂拒絕無 token 且不轉向、Google 新 callback 與匿名會員 API 拒絕。Umami 即時頁已實際收到新網域的 upgrade_start 與 feature_time，保留原 ID 及三個漏斗。只修改兩筆 GoDaddy 網站 DNS、兩個指定 Production URL 變數及舊裸網域 redirect=null；Google 郵件 DNS、寄件者、其餘環境變數及資料庫未改動。新增實際 Next 路由測試覆蓋三個舊／別名網域、語系／query／靜態檔案、API 例外及未知主機不誤轉向；追蹤隱私測試涵蓋新網域；sitemap 主機斷言同步更新為新 canonical。
 
 ## Matchmaking、Feedback 與 Profile UX（2026-10-29）
 
