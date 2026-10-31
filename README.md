@@ -4,7 +4,7 @@
 
 Matchmaking 新增會員／新公司／投資人分享三頁籤；舊 investors 管理入口保留 checkInId 並轉向分享頁籤，公開 Portal 與同意機制不改。卡片編輯獨立於 /dashboard/matchmaking/me/edit，公司欄位在同一交易檢查 sourceVersion 後更新、沿用首次完善資料積分，成功後刷新側欄餘額。推薦依需求／角色、產業、市場的固定權重 4／2／1，再按最近活動及卡片 ID 排序，公開投影後才篩選與分頁，排除本人及封鎖。新增 GET/PATCH /api/network/viewer-privacy、GET /api/network/visitors/members；具名清單只回公開卡片、公開後瀏覽時間及游標，沒有訪客 User ID／Email。GET/PATCH /api/account/next-steps-tour 保存獨立版本、步驟與略過狀態，不改任務。會員共用錯誤補齊 code，400／401／409 與未知錯誤皆不輸出憑證。
 
-Next Steps 已將優先任務提到工作區上方，既有公司跟進在新名單之前，後續任務與里程碑確認保留；所有可做任務完成後，將成果確認／產生下一階段移到目前這一步，不把尚未解鎖的任務當作優先任務；探索會員已有計畫時不再重複鋪設探索表單。沒有計畫時仍可從收合區建立下一步計畫／路線圖。學習資源收合，原連結保留。側欄移除 Insights／Mindset／獨立投資人入口，Profile 保留 Saved ICP。GET /api/notes 僅回本人完整歷史，由同頁抽屜讀取，不自動關聯或補算。新導覽四步、可略過／重開、帳號保存，真實目標與積分規則，不改既有 getting-started 狀態。
+Next Steps 已將優先任務提到工作區上方，既有公司跟進在新名單之前，後續任務與里程碑確認保留；所有可做任務完成後，將成果確認／產生下一階段移到目前這一步，不把尚未解鎖的任務當作優先任務；探索會員已有計畫時不再重複鋪設探索表單。沒有計畫時仍可從收合區建立下一步計畫／路線圖。學習資源收合，原連結保留。側欄移除 Insights／Mindset／獨立投資人入口，Profile 保留 Saved ICP。GET /api/notes 沿用會員讀取限流與安全錯誤碼，僅回本人完整歷史，由同頁抽屜讀取，不自動關聯或補算。新導覽四步、可略過／重開、帳號保存，真實目標與積分規則，不改既有 getting-started 狀態。
 
 正式新增五個欄位已完成：User 21 筆、OnboardingProfile 20 筆、MatchmakingProfile 21 筆、MemberVisit 1 筆，交易內比對所有原有欄位資料指紋相同；沒有覆寫會員或回填訪客身份。可見頁面停留滿兩秒才記瀏覽，背景分頁取消排程，不將預取計入。
 

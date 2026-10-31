@@ -1,3 +1,4 @@
+import { memberAccess, memberError, privateOk } from "@/lib/member-http";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -37,8 +38,8 @@ export async function POST(req: NextRequest) {
 // Reading your own history does not grant paid editing or associate old notes with a task.
 export async function GET() {
   try {
-    const session = await getUserSession(); if (!session) return unauthorized();
-    const rows = await prisma.meetingNote.findMany({ where: { userId: session.uid }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], select: { id: true, title: true, body: true, insight: true, updatedAt: true } });
-    const response = ok(rows); response.headers.set("Cache-Control", "private, no-store"); return response;
-  } catch (error) { return failFromError(error); }
+    const uid = await memberAccess(); if (uid instanceof Response) return uid;
+    const rows = await prisma.meetingNote.findMany({ where: { userId: uid }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], select: { id: true, title: true, body: true, insight: true, updatedAt: true } });
+    return privateOk(rows);
+  } catch (error) { return memberError(error); }
 }
