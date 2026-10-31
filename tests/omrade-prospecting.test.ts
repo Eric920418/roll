@@ -105,6 +105,13 @@ test("Client enforces fixed HTTPS origin, stable POST key, Retry-After and safe 
   await assert.rejects(client.omradeRequest("/orders", {}, "stable-key"), (e: unknown) => { const x = e as { retryAfter: number; message: string }; assert.equal(x.retryAfter, 120); assert(!x.message.includes("private-test-key")); return true; });
   status = 402; await assert.rejects(client.omradeRequest("/orders", {}, "stable-key"), /免費|free/);
 });
+test("Provider timestamps accept RFC3339 offsets and fractional seconds, but reject timezone-free dates", () => {
+  const { orderResponse } = loader({})("src/lib/prospecting/client.ts") as typeof import("../src/lib/prospecting/client");
+  const body = { order_id: randomUUID(), icp_id: randomUUID(), icp_version: 1, status: "queued", requested_count: 5, delivered_count: 0, created_at: "2026-10-31T05:15:04.045332+00:00", delivered_at: null, companies: [], billing: { period: "2026-10", currency: "USD", max_charge_cents: 0, amount_cents: 0, free_companies: 0, paid_companies: 0 } };
+  assert(orderResponse.safeParse(body).success);
+  assert(orderResponse.safeParse({ ...body, delivered_at: "2026-11-01T00:15:04.045332+08:00" }).success);
+  assert(!orderResponse.safeParse({ ...body, created_at: "2026-10-31T05:15:04" }).success);
+});
 
 test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_REWARDS_TEST_DATABASE_URL }, async t => {
   const connectionString = process.env.ROLL_REWARDS_TEST_DATABASE_URL!, url = new URL(connectionString);
@@ -129,7 +136,10 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       let result = vendor.get(key!);
       if (!result) { const companies = Array.from({ length: body.count }, () => providerCompany(++sequence)); result = { order_id: randomUUID(), icp_id: body.icp_id, icp_version: body.icp_version, requested_count: body.count, delivered_count: body.count, companies, status: "completed", created_at: new Date().toISOString(), delivered_at: new Date().toISOString(), billing: { period: utcPeriod(), currency: "USD", max_charge_cents: 0, amount_cents: 0, free_companies: body.count, paid_companies: 0 } }; vendor.set(key!, result); }
       if (mode === "uncertain") { mode = "complete"; throw new Error("Connection closed after vendor acceptance"); }
-      if (mode === "queued") return Response.json({ ...result, status: "queued", delivered_count: 0, companies: [], delivered_at: null, billing: { ...(result.billing as object), free_companies: 0 } }, { status: 202, headers: { "Retry-After": "30" } });
+      if (mode === "queued") return Response.json({ ...result, created_at: String(result.created_at).replace("Z", "+00:00"), status: "queued", delivered_count: 0, companies: [], delivered_at: null, billing: { ...(result.billing as object), free_companies: 0 } }, { status: 202, headers: { "Retry-After": "30" } });
+      if (mode === "insufficient") return Response.json({ ...result, status: "failed", delivered_count: 0, companies: [], delivered_at: null, failure: { code: "insufficient_matches", message: "secret private-test-key" }, billing: { ...(result.billing as object), free_companies: 0 } });
+      if (mode === "bad-release") return Response.json({ ...result, status: "failed", delivered_count: 0, companies: [], delivered_at: null });
+      if (mode === "offset") { const created_at = `${String(result.created_at).slice(0, 7)}-01T00:30:00+08:00`; return Response.json({ ...result, created_at, billing: { ...(result.billing as object), period: utcPeriod(new Date(created_at)) } }); }
       return Response.json(result);
     }
     const result = [...vendor.values()].find(v => path === `/orders/${v.order_id}`);
@@ -144,13 +154,35 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
   const due = (id: string) => db.prospectingOrder.update({ where: { id }, data: { nextAttemptAt: new Date(0) } });
   const clean = async (id: string) => { await db.user.delete({ where: { id } }); };
   try {
+    await t.test("Failed full-count research releases all quota with a safe specific reason; UTC admission month accepts offsets", async () => {
+      const user = await member(); mode = "insufficient";
+      const failed = await service.createProspectOrder(user.id, input()); await worker.runProspecting();
+      const result = await service.getProspectOrder(user.id, failed.id);
+      assert.equal(result.status, "failed"); assert.equal(result.delivered, 0); assert.equal(result.usable, 0);
+      assert.equal(result.code, "provider_insufficient_matches"); assert.match(result.error!, /足額|enough/); assert(!result.error!.includes("private-test-key"));
+      assert.equal((await service.prospectSnapshot(user.id)).quota.reserved, 0);
+      await clean(user.id);
+      const inconsistentUser = await member(); mode = "bad-release";
+      const inconsistentOrder = await service.createProspectOrder(inconsistentUser.id, input()); await worker.runProspecting();
+      const inconsistentResult = await service.getProspectOrder(inconsistentUser.id, inconsistentOrder.id);
+      assert.equal(inconsistentResult.code, "provider_contract");
+      assert.equal((await service.prospectSnapshot(inconsistentUser.id)).quota.reserved, 5, "An inconsistent failure receipt cannot silently release the reservation");
+      await clean(inconsistentUser.id);
+      const offsetUser = await member(); mode = "offset";
+      const offsetOrder = await service.createProspectOrder(offsetUser.id, input()); await worker.runProspecting();
+      const offsetResult = await service.getProspectOrder(offsetUser.id, offsetOrder.id);
+      assert.equal(offsetResult.status, "completed"); assert.equal(offsetResult.usable, 5);
+      const row = await db.prospectingOrder.findUniqueOrThrow({ where: { id: offsetOrder.id } });
+      assert.equal(offsetResult.period, utcPeriod(row.acceptedAt!)); assert.notEqual(offsetResult.period, utcPeriod());
+      await clean(offsetUser.id); mode = "complete";
+    });
     await t.test("Two entrances and retries share a single frozen order; changed payload and cross-owner access fail", async () => {
-      const user = await member(), body = input(); uid = user.id;
+      const user = await member(), body = input(), beforeCalls = calls.length; uid = user.id;
       const route = load<{ POST: (req: Request) => Promise<Response> }>("src/app/api/prospects/orders/route.ts");
       const request = () => new Request("https://rollon.com.tw/api/prospects/orders", { method: "POST", body: JSON.stringify(body) });
       const results = await Promise.all([route.POST(request()), route.POST(request())]); assert(results.every(r => r.status === 202));
       const orders = await db.prospectingOrder.findMany({ where: { userId: user.id } }); assert.equal(orders.length, 1); const order = orders[0];
-      assert.equal(calls.length, 0, "Client POST only persists; no foreground provider network");
+      assert.equal(calls.length, beforeCalls, "Client POST only persists; no foreground provider network");
       await assert.rejects(service.createProspectOrder(user.id, { ...body, description: "Different targeting" }), /不同內容|different/);
       await assert.rejects(service.getProspectOrder("other", order.id), /找不到|not found/);
       const snap = await service.prospectSnapshot(user.id); assert.equal(snap.quota.reserved, 5);

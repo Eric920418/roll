@@ -9,6 +9,16 @@ import { activeOrderStatuses, ProspectingError, uniqueProspects, type PublicPros
 import { eligibility, exclusions, getProspectOrder, hash, json, lockMember } from "./service";
 import { verifyCompany } from "./contact";
 const leaseMs = 300000;
+const failureMessages: Record<string, string> = {
+  insufficient_matches: "供應商無法找到足額且符合條件的新公司 / Provider could not find enough qualifying new companies",
+  no_matches: "供應商找不到符合條件的新公司 / Provider found no qualifying new companies",
+  research_timeout: "供應商搜尋逾時 / Provider research timed out",
+  research_unavailable: "供應商搜尋服務暫時不可用 / Provider research is unavailable",
+  research_failed: "供應商搜尋失敗 / Provider research failed",
+  provider_outcome_unknown: "供應商無法確認搜尋結果 / Provider could not confirm research results",
+  org_suspended: "供應商組織已暫停，請聯絡管理員 / Provider organization is suspended; contact administrator",
+  admin_cancelled: "訂單已由供應商管理員取消 / Order was cancelled by the provider administrator",
+};
 async function limitedRequest(path: string, body?: unknown, key?: string) {
   const limit = await checkRateLimit("omrade:http", 60, MINUTE_MS);
   if (!limit.ok) throw new OmradeError(429, "provider_limit", Math.ceil(limit.retryAfterMs / 1000));
@@ -43,9 +53,10 @@ async function acceptResponse(order: ProspectingOrder, token: string, payload: u
   const parsed = orderResponse.safeParse(payload);
   if (!parsed.success) throw new OmradeError(503, "provider_invalid_response", 60, requestId);
   const data = parsed.data;
-  if (data.requested_count !== order.count || data.icp_id !== order.omradeIcpId || data.icp_version !== order.omradeIcpVersion || (order.providerOrderId && data.order_id !== order.providerOrderId) || data.billing.period !== data.created_at.slice(0, 7) ||
-    (data.status === "completed" && (data.delivered_count !== order.count || data.companies.length !== order.count || data.billing.free_companies !== order.count)) ||
-    (data.status !== "completed" && data.delivered_count !== 0)) throw new OmradeError(503, "provider_contract", 60, requestId);
+  const failure = data.failure?.code && Object.hasOwn(failureMessages, data.failure.code) ? data.failure.code : null;
+  if (data.requested_count !== order.count || data.icp_id !== order.omradeIcpId || data.icp_version !== order.omradeIcpVersion || (order.providerOrderId && data.order_id !== order.providerOrderId) || data.billing.period !== new Date(data.created_at).toISOString().slice(0, 7) ||
+    (data.status === "completed" && (data.delivered_count !== order.count || data.companies.length !== order.count || data.billing.free_companies !== order.count || !data.delivered_at)) ||
+    (data.status !== "completed" && (data.delivered_count !== 0 || data.companies.length !== 0 || data.billing.free_companies !== 0 || data.delivered_at !== null))) throw new OmradeError(503, "provider_contract", 60, requestId);
   await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
     await lockMember(tx, order.userId);
@@ -54,8 +65,8 @@ async function acceptResponse(order: ProspectingOrder, token: string, payload: u
       deliveredAt: data.delivered_at ? new Date(data.delivered_at) : null, deliveredCount: data.delivered_count,
       reservedCount: data.status === "completed" || data.status === "failed" ? 0 : order.count,
       status: data.status === "completed" ? "checking" : data.status,
-      failureCode: data.status === "failed" ? "provider_failed" : null,
-      failureMessage: data.status === "failed" ? "供應商未交付公司，預留額度已釋放；可手動重新搜尋 / Provider delivered no companies; reservation released. You may start a new search" : null,
+      failureCode: data.status === "failed" ? failure ? `provider_${failure}` : "provider_failed" : null,
+      failureMessage: data.status === "failed" ? `${failure ? failureMessages[failure] : "供應商未交付公司 / Provider delivered no companies"}。未扣公司額度或收費，預留量已釋放 / No companies charged; reservation released` : null,
       nextAttemptAt: new Date(Date.now() + Math.max(15, retryAfter) * 1000),
     } });
     if (!saved.count) throw new ProspectingError("處理權已變更 / Processing lease changed", 409, "lease_changed");

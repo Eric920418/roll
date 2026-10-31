@@ -35,9 +35,19 @@ API：`GET /api/prospects`（含本人歷史游標）、`POST /api/prospects/ord
 
 設定：伺服器 `OMRADE_API_KEY`、`OMRADE_ENABLED`（預設 false）、`OMRADE_WORKER_ENABLED` 與既有 CRON_SECRET。初次待驗收時兩開關皆 false，cron 直接返回、不每分鐘喚醒資料庫；上線時兩者設 true。日後暫停新建單只關 OMRADE_ENABLED，保留 worker true 對帳既有接受單；worker false 是完整停用處理的保留開關。已授權建立 NOVA Prospecting 專用金鑰，安全存入本機 .env.local 與 Vercel Production Secret；不進 Git／前端。依 PDF 的固定 API 為 https://omrade.app/api/v1/prospecting，每筆強制 max_charge_cents:0，須 prospecting:read＋prospecting:write。全組織免費量先到先用，不保證三十人都有額度。
 
-**正式啟用核對（2026-10-31）：** Omrade 現已提供獨立「開發者 API」頁及公開規格 https://omrade.app/api/v1/prospecting/openapi.json（v1.0.3），與本專案的 ICP／訂單介面相符；既有 `/api/v1/prospect-searches/` 是另一套工作區搜尋介面。現存工作區金鑰可通過舊介面驗證，但在供應商新提供的 `GET /api/v1/prospecting/usage` 回 401 invalid_token，不能混用。開發者頁顯示未建立組織金鑰、150 家免費可用、零交付／預留、付費關閉及月支出上限 US$0。已備妥 NOVA Production Prospecting v1 讀寫金鑰表單，等待建立組織層級存取的當下確認；尚未建立金鑰或真實訂單。OMRADE_ENABLED／OMRADE_WORKER_ENABLED 皆保持 false，不消耗免費公司或付費研究。後續安全設定正確組織金鑰 → usage 驗證 → 最多一筆五家、max_charge_cents:0 的隔離驗收 → 核對來源、交付／合格數與用量後才啟用，不追加補單。
+**正式啟用核對（2026-10-31）：** Omrade 已提供獨立「開發者 API」頁及公開規格 https://omrade.app/api/v1/prospecting/openapi.json（v1.0.3），與本專案的 ICP／訂單介面相符；既有 `/api/v1/prospect-searches/` 是另一套工作區搜尋介面，舊金鑰不能混用。經使用者當下確認，已建立 NOVA Production Prospecting v1 組織讀寫金鑰，安全存入本機並設定 Vercel Production Secret，不進 Git／前端。新金鑰 `GET /api/v1/prospecting/usage` 已回 200：免費可用 150、已交付／預留均零、付費關閉、月支出上限 US$0。正式開關暫保持 false；接著使用隔離帳號驗收最多一筆五家、max_charge_cents:0 訂單，核對來源、交付／合格數及用量後才啟用，不追加補單、不呼叫 AI 搜尋。
 
 規格相容修正：v1.0.3 的 contacts.people 與公司信箱 kind 可省略；省略時視為無具名聯絡人及公司共用信箱，不把公司 Email 包裝成個人聯絡人。保留來源核對、私人網址拒絕與欄位格式檢查，加入缺欄位、錯誤型別及私人來源回歸測試。Omrade／聯絡來源相關 26 項測試通過，含隔離 PostgreSQL 的冪等、交易回滾、免費上限與多入口測試；全套 pnpm test 398 項通過、零 skip，pnpm lint 零錯誤／14 個既有 warnings，pnpm build 通過。本批不變更 schema 或會員資料。
+
+免費實測已由隔離本機 PostgreSQL 的獨立 QA 帳號建立唯一一筆五家公司訂單（費用上限 US$0），供應商回 202 queued。實際回傳 RFC3339 日期含六位小數及 +00:00，修正解析器接受時區偏移；用 UTC 正規化核對接單月份，避免跨月偏移誤判。原訂單與 UUID 均保留，僅用原鍵接續，不另建單。正式啟用仍待交付與來源核對；本機金鑰與 Vercel Production Secret 已完成安全替換。
+
+該唯一實測單終態 failed／insufficient_matches，供應商無法交付足額五家，交付 0／合格 0、費用 US$0；再次 usage 200 確認免費仍可用 150、已交付／預留均零、無進行中訂單、付費關閉。未追加第二單，不能宣稱已驗收五家聯絡資料品質，正式搜尋與 worker 保持關閉。前端錯誤新增固定白名單失敗原因（不足額、無結果、逾時、服務不可用等），不直接回傳供應商原始訊息；保留訂單與零交付紀錄。供應商對帳：order c092c0c1-ebb6-4425-b42a-f85bca774740，終態回應 X-Request-ID 9c9bd492-4b46-493a-b424-883b62ed2347。
+
+本批回歸涵蓋微秒／時區偏移解析、UTC 跨月接單、供應商不足額失敗後全數釋放預留，以及原始錯誤含敏感文字時不回傳。雙入口測試以提交前後的網路次數差比較，避免新增其他供應商情境後共享 mock 計數造成假失敗。
+
+失敗／等待中的回應必須同時為零公司、零交付、零已扣免費公司及無交付時間，才能採信；不一致收據保留原預留量並轉待確認，不誤顯示免費量已釋放。完成則要求足額公司、免費收據與交付時間一致。隔離免費 QA 帳號已清理，供應商零交付收據留在本機測試結果及上述識別碼，正式會員與資料庫均未改動。
+
+本輪最終驗收：pnpm test 400 項通過、零失敗／skip；pnpm lint 零錯誤、14 個既有 warnings；pnpm build 通過。程式與安全設定可部署，但功能維持關閉；需 Omrade 先釐清上述唯一訂單的 insufficient_matches，重新取得後續免費驗收授權後才可另建單，不能把 HTTP 接單成功當作已取得可聯絡名單。一次性明文金鑰暫存已清除，本機 .env.local 與 Vercel Production Secret 保留正確金鑰。
 
 驗收：最終 pnpm test 三百九十二項全過、零 skip；TypeScript／pnpm build 通過，pnpm lint 零 errors、十四個既有 warnings。已補瀏覽器驗收發現的 Contact→Next Steps 跟進顯示與既有商機後續編輯回歸。測試涵蓋公開來源安全、公司去重、200／202、429／410、四十分鐘待對帳、原單同鍵重試、ICP 版本、額度並行、POC 零合格重試／終身一次、重疊 worker 及最後儲存失敗回滾。桌面以隔離帳號確認兩入口共用交付及加入後排除；390px 手機中英文無橫向溢出，鍵盤方向鍵可切換頁籤；已實測會員卡片在切回頁籤時不重新覆蓋草稿或悄悄更新其版本；隔離瀏覽器帳號與臨時明文金鑰檔已清理。正式真實五家公司驗收待契約確認，最多只允許一筆免費五家，不追加。
 
