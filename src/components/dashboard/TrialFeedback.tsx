@@ -58,7 +58,7 @@ export default function TrialFeedback({ userId, discovery = false }: { userId: s
   }
   const trial = status?.trial;
   function show() { dialog.current?.showModal(); focus.current?.focus(); }
-  const defaultDraft = zh ? "我正在試用 @Nova AI。\n\n[請填入自己的使用心得]\n\nhttps://www.rollgrp.com/product" : "I've been trying @Nova AI.\n\n[Add your own experience here]\n\nhttps://www.rollgrp.com/product";
+  const defaultDraft = zh ? "我正在試用 @Nova AI。\n\n[請填入自己的使用心得]\n\nhttps://rollon.com.tw/product" : "I've been trying @Nova AI.\n\n[Add your own experience here]\n\nhttps://rollon.com.tw/product";
   const incentive = zh ? "完成回饋，延長原試用 3 天（每帳號一次）" : "Complete feedback for 3 extra days of your original trial (once per account)";
   return <>
     {inNextSteps && !status?.paid && trial?.available && <section className={`mb-5 rounded-2xl border ${discovery ? "border-dark/15 p-5" : "border-2 border-black p-6"}`}>

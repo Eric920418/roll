@@ -39,7 +39,7 @@ export type CaseSlug = (typeof CASE_SLUGS)[number];
 export type ServiceSlug = (typeof SERVICE_SLUGS)[number];
 export type CountrySlug = (typeof COUNTRY_SLUGS)[number];
 
-export const SITE_URL = "https://www.rollgrp.com";
+export const SITE_URL = "https://rollon.com.tw";
 export const DEFAULT_LOCALE: Locale = "en";
 
 export function pathForLocale(path: string, locale: Locale): string {

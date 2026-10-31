@@ -1,4 +1,6 @@
 import test from "node:test";
+import { AsyncLocalStorage } from "node:async_hooks";
+import nextConfig from "../next.config";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -33,7 +35,7 @@ test("sitemap 包含 50 個雙語 canonical URL、對等 hreflang 與實際 MDX 
     for (const path of ["", "/services", "/insights", "/product", "/esg"]) {
       const entry = first.find(item => item.url === routes.absoluteUrl(path, locale));
       assert.ok(entry, `${locale} ${path}`);
-      assert.equal(new URL(entry.url).host, "www.rollgrp.com");
+      assert.equal(new URL(entry.url).host, "rollon.com.tw");
       assert.deepEqual(entry.alternates?.languages, { en: routes.absoluteUrl(path, "en"), "zh-TW": routes.absoluteUrl(path, "zh-tw") });
     }
     assert.equal(first.find(item => item.url === routes.absoluteUrl("/product", locale))?.lastModified, undefined);
@@ -78,5 +80,26 @@ test("雙語列表渲染全部既有 MDX，服務與指南連結保留語系及�
     assert.ok(html.includes(`path="/${kind}"`));
     const metadata = await (component.indexMetadata as (kind: string, locale: string) => Promise<import("next").Metadata>)(kind, locale);
     assert.equal(metadata.alternates?.canonical, routes.absoluteUrl(`/${kind}`, locale));
+  }
+});
+
+
+test("新主網域轉向保留語系、路徑與 query，舊付款和退訂 API 不被轉向", async () => {
+  Object.assign(globalThis, { AsyncLocalStorage });
+  const { unstable_getResponseFromNextConfig } = await import("next/experimental/testing/server");
+  const config = nextConfig("phase-test");
+  for (const host of ["rollgrp.com", "www.rollgrp.com", "www.rollon.com.tw"]) {
+    for (const path of ["/", "/zh-tw/product?ref=old", "/robots.txt", "/sitemap.xml", "/dashboard/agenda"]) {
+      const response = await unstable_getResponseFromNextConfig({ url: `https://${host}${path}`, nextConfig: config });
+      assert.equal(response.status, 308); assert.equal(response.headers.get("location"), `https://rollon.com.tw${path}`);
+    }
+    for (const path of ["/api/billing/webhook", "/api/rewards/unsubscribe?token=old", "/api/auth/google/callback"]) {
+      const response = await unstable_getResponseFromNextConfig({ url: `https://${host}${path}`, nextConfig: config });
+      assert.equal(response.headers.get("location"), null);
+    }
+  }
+  for (const host of ["rollon.com.tw", "localhost:3000", "preview.vercel.app", "wwwXrollgrpYcom"]) {
+    const response = await unstable_getResponseFromNextConfig({ url: `https://${host}/product`, nextConfig: config });
+    assert.equal(response.headers.get("location"), null);
   }
 });

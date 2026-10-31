@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
             opacity: 0.7,
           }}
         >
-          <div>rollgrp.com</div>
+          <div>rollon.com.tw</div>
           <div style={{ color: accent }}>
             {isNova
               ? "Clean / Intelligent / Future-oriented"

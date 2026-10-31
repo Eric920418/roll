@@ -49,8 +49,8 @@ export const trialSubmissionSchema = z.object({ startsAt: z.iso.datetime(), loca
 export function trialLinkedInDraft(answers: { reason: string; usage: string }, locale: string) {
   const excerpt = (value: string) => value.trim().length > 1200 ? `${value.trim().slice(0, 1199)}…` : value.trim();
   return locale === "zh-tw"
-    ? `我正在試用 @Nova AI。\n\n我想繼續使用的原因：\n${excerpt(answers.reason)}\n\n接下來我打算這樣用：\n${excerpt(answers.usage)}\n\nhttps://www.rollgrp.com/product`
-    : `I've been trying @Nova AI.\n\nWhy I want to keep using it:\n${excerpt(answers.reason)}\n\nHow I plan to use it:\n${excerpt(answers.usage)}\n\nhttps://www.rollgrp.com/product`;
+    ? `我正在試用 @Nova AI。\n\n我想繼續使用的原因：\n${excerpt(answers.reason)}\n\n接下來我打算這樣用：\n${excerpt(answers.usage)}\n\nhttps://rollon.com.tw/product`
+    : `I've been trying @Nova AI.\n\nWhy I want to keep using it:\n${excerpt(answers.reason)}\n\nHow I plan to use it:\n${excerpt(answers.usage)}\n\nhttps://rollon.com.tw/product`;
 }
 
 export type TrialFeedbackCsvRow = { email: string; createdAt: string; answers: TrialAnswers | SimpleTrialAnswers; version?: number; grantedEndsAt?: string };

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { analyticsPath, flushAnalytics, engagementInterval, safeAnalyticsPayload, track, type AnalyticsFeature } from "@/lib/analytics";
 
-const hosts = ["www.rollgrp.com", "rollgrp.com"];
+const hosts = ["rollon.com.tw", "www.rollon.com.tw", "www.rollgrp.com", "rollgrp.com"];
 export default function Analytics() {
   const pathname = usePathname();
   const enabled = process.env.NEXT_PUBLIC_UMAMI_ENABLED === "true";

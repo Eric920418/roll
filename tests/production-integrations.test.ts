@@ -32,23 +32,23 @@ test("Vercel Production 禁止靜默使用 PayPal sandbox", () => {
   assert.equal(getPaypalEnvironment("sandbox", "preview"), "sandbox");
 });
 
-test("Production PayPal return/cancel URL 只接受 canonical www origin", () => {
+test("Production PayPal return/cancel URL 只接受 canonical 新網域 origin", () => {
   assert.equal(
     resolveBillingAppOrigin(
-      "https://www.rollgrp.com/api/billing/subscribe",
-      "https://www.rollgrp.com/",
+      "https://rollon.com.tw/api/billing/subscribe",
+      "https://rollon.com.tw/",
       "production",
     ),
-    "https://www.rollgrp.com",
+    "https://rollon.com.tw",
   );
   assert.throws(
     () =>
       resolveBillingAppOrigin(
-        "https://www.rollgrp.com/api/billing/subscribe",
+        "https://rollon.com.tw/api/billing/subscribe",
         "http://localhost:3000",
         "production",
       ),
-    /https:\/\/www\.rollgrp\.com/,
+    /https:\/\/rollon\.com\.tw/,
   );
   assert.throws(
     () =>
@@ -57,7 +57,7 @@ test("Production PayPal return/cancel URL 只接受 canonical www origin", () =>
         "",
         "production",
       ),
-    /https:\/\/www\.rollgrp\.com/,
+    /https:\/\/rollon\.com\.tw/,
   );
 });
 

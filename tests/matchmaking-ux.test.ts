@@ -49,6 +49,7 @@ test("Simple survey has fixed reasons, safe CSV, and exactly 72-hour extension",
   assert(csv.includes('"3","no","price","2026-11-05T01:00:00.000Z"'));
 });
 test("Analytics strips private paths, text, query strings, referrers and arbitrary event data", () => {
+  assert.equal(analyticsPath("https://rollon.com.tw/zh-tw/dashboard/profile?q=secret"), "/dashboard/profile");
   assert.equal(analyticsPath("https://www.rollgrp.com/zh-tw/dashboard/matchmaking/private-id?q=Secret"), "/dashboard/matchmaking/:member");
   assert.equal(analyticsPath("https://example.com/product"), null);
   assert.equal(analyticsPath("/zh-tw/dashboard/matchmaking/private-id?q=Secret"), "/dashboard/matchmaking/:member");

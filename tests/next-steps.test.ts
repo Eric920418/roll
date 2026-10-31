@@ -78,7 +78,7 @@ test("LinkedIn draft quotes only reason and usage, preserves edits and fits the 
   for (const locale of ["en", "zh-tw"]) {
     const draft = policy.trialLinkedInDraft(answers, locale);
     assert(draft.includes(answers.reason)); assert(draft.includes(answers.usage)); assert(draft.includes("@Nova AI"));
-    assert(!draft.includes(answers.painPoint)); assert(!draft.includes(answers.goal)); assert(draft.endsWith("https://www.rollgrp.com/product"));
+    assert(!draft.includes(answers.painPoint)); assert(!draft.includes(answers.goal)); assert(draft.endsWith("https://rollon.com.tw/product"));
     const long = policy.trialLinkedInDraft({ reason: "a".repeat(2000), usage: "b".repeat(2000) }, locale);
     assert(long.length <= 3000); assert(long.includes("…")); assert(long.includes("b".repeat(1199)));
   }

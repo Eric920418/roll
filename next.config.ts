@@ -10,6 +10,15 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    // Keep legacy API endpoints live for PayPal webhooks and existing unsubscribe links.
+    return ["rollgrp.com", "www.rollgrp.com", "www.rollon.com.tw"].map(host => ({
+      source: "/:path((?!api(?:/|$)).*)",
+      has: [{ type: "host" as const, value: host.replaceAll(".", "\\.") }],
+      destination: "https://rollon.com.tw/:path",
+      permanent: true,
+    }));
+  },
   async headers() {
     return [{ source: "/:path*", headers: [
       { key: "X-Frame-Options", value: "DENY" },

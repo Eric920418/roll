@@ -4,7 +4,7 @@ type AnalyticsData = { feature: AnalyticsFeature; outcome?: "empty" | "validatio
 export function analyticsPath(path: string): string | null {
   if (!path) return null;
   if (/^https?:\/\//.test(path)) {
-    try { const url = new URL(path); if (!["www.rollgrp.com", "rollgrp.com"].includes(url.hostname)) return null; path = url.pathname; }
+    try { const url = new URL(path); if (!["rollon.com.tw", "www.rollon.com.tw", "www.rollgrp.com", "rollgrp.com"].includes(url.hostname)) return null; path = url.pathname; }
     catch { return null; }
   }
   const clean = path.split(/[?#]/)[0]!.replace(/^\/zh-tw(?=\/|$)/, "") || "/";

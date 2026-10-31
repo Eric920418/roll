@@ -1,7 +1,7 @@
 // 建立 PayPal webhook（指向 production 的 /api/billing/webhook）。
 // 執行：
 //   node --env-file=.env.local scripts/paypal-create-webhook.mjs [webhookUrl]
-//   webhookUrl 預設 https://www.rollgrp.com/api/billing/webhook
+//   webhookUrl 預設 https://rollon.com.tw/api/billing/webhook
 //
 // 冪等：若該 URL 已註冊，自動查回 id，保留額外事件並 PATCH 補齊必要事件。
 // 印出 PAYPAL_WEBHOOK_ID=...，填進 Vercel env 與 .env.local。
@@ -27,7 +27,7 @@ const BASE =
 const clientId = process.env.PAYPAL_CLIENT_ID;
 const secret = process.env.PAYPAL_CLIENT_SECRET;
 const WEBHOOK_URL =
-  process.argv[2] || "https://www.rollgrp.com/api/billing/webhook";
+  process.argv[2] || "https://rollon.com.tw/api/billing/webhook";
 
 const EVENT_TYPES = [
   "BILLING.SUBSCRIPTION.CREATED",

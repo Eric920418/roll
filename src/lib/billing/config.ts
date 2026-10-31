@@ -1,6 +1,6 @@
 export type PaypalEnvironment = "sandbox" | "live";
 
-export const PRODUCTION_APP_ORIGIN = "https://www.rollgrp.com";
+export const PRODUCTION_APP_ORIGIN = "https://rollon.com.tw";
 
 /**
  * PayPal sandbox 與 live 的憑證、方案、webhook 彼此不相容，因此環境值不能猜測。

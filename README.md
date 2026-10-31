@@ -1,3 +1,11 @@
+## 整站新網域 rollon.com.tw（2026-10-31）
+
+使用者指定整站改用 https://rollon.com.tw，舊網址導向新站。GoDaddy 保留原名稱伺服器與 Google MX／SPF／驗證紀錄，只修改網站 A／www 設定；Vercel roll 專案新增根網域與 www。正式 canonical、雙語 sitemap／robots、OG、LLMs 網址、付款 return/cancel 安全鎖、分享草稿及 Email 的 NEXT_PUBLIC_APP_URL 一致切換。Umami 保留同一網站 ID 與歷史數據，允許新網域，保留舊域名過渡來源。
+
+舊 rollgrp.com／www.rollgrp.com 與 www.rollon.com.tw 的頁面以永久 308 保留路徑及 query 導向新根網域；API 不套用整站轉向，以保留既有 PayPal webhook、郵件退訂 POST 與正在處理的回呼。既有 PayPal 訂閱、webhook ID、金鑰、寄件者與資料庫不變；未執行扣款或寄送。行事曆既有 UID 的 rollgrp.com 命名不改，避免重複行程。換主網域後 Cookie 無法跨網域沿用，會員需在新網址重新登入，帳號與權益保留。
+
+上線順序：先新網域 DNS／HTTPS；Google OAuth 在既有 ROLL ON Web 用戶端增加新 callback、保留原值；正式 NEXT_PUBLIC_APP_URL／GOOGLE_REDIRECT_URI 改新網址；測試、建置與部署；最後移除舊裸網域在 Vercel 的前置轉向，交由程式保留 API 的轉向規則接手。Umami 更新網站網域但保留 ID。377 項測試全過、0 skip；TypeScript、Lint（0 errors／14 既有 warnings）與 build 通過。DNS／HTTPS 與 Google callback 已設定；正式部署／切換驗收進行中。新增實際 Next 路由測試覆蓋三個舊／別名網域、語系／query／靜態檔案、API 例外及未知主機不誤轉向；追蹤隱私測試涵蓋新網域；sitemap 主機斷言同步更新為新 canonical。
+
 ## Matchmaking、Feedback 與 Profile UX（2026-10-29）
 
 - Matchmaking 新增公開欄位關鍵字搜尋與身份／國家／產業／需求組合篩選，先篩選再分頁；隱藏欄位不參與搜尋。身份分類為卡片，移除 Your card 與冗餘介紹。公開投影以 100 筆批次掃描，會員規模成長後改為索引化公開搜尋投影，不查私人原文。
