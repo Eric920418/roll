@@ -6,6 +6,12 @@
 
 ## 11 月首期優惠碼（2026-11-01）
 
+付款驗收補充：四種優惠各走回站 confirm 及重複 webhook 的隔離 DB／供應商 mock 回歸，驗證未登入、跨會員、跨來源及偽造簽章拒絕；只有 ACTIVE 領用優惠，保留首期價格與原價續期金額。完整 pnpm test 414 項、優惠及既有權益專項十九項（含子測試）通過，TypeScript、pnpm build 通過，pnpm lint 零錯誤／十四個既有 warnings。正式伺服器已重新向 live PayPal 核對四組首期／原價週期，全數一致，不建立正式訂閱。
+
+實際 Sandbox：由真正會員登入及 subscribe API 建立四種未核准訂閱，回站網址鎖定 localhost 隔離環境。使用只開放簽章 webhook 路徑的臨時入口，四筆真實 BILLING.SUBSCRIPTION.CREATED 通知皆通過 PayPal 驗章並回 200；原簽章通知重送回 200，竄改內容回 401，四筆優惠領取仍為零。臨時 Sandbox webhook 與通道在驗收暫停後移除，既有 webhook 不修改；四個本機測試帳號及未核准訂閱識別保留供繼續，不涉及正式會員。
+
+尚未通過的付款項目：PayPal 開發者後台未登入，無法取得 Sandbox 買方完成核准；未核對實際首期交易收款、付款後的真實啟用／回站，以及未來月／年續扣。不得把 mock ACTIVE、已建單、價格設定或 CREATED 通知稱為付款成功；需登入後繼續買方核准及查 PayPal 交易紀錄。
+
 正式已啟用 NOVA60：2026/11/1 00:00 至 2026/12/1 00:00（台北時間，結束不含）有效；SPARK／NOVA 月繳與年繳首期 60% OFF，之後原價自動續訂。每帳號限一次已啟用的新購優惠訂閱，不套用既有續扣、換方案、創始年費或 AI 加購。月繳首月 USD19.60／59.60，後續 USD49／149；年繳首年一次 USD187.20／667.20，後續每年 USD468／1668。權益／AI 配額維持原方案，不把 PayPal 付費 TRIAL 當平台試用。
 
 Account and plan／Billing 共用折扣碼套用、移除及報價；切換週期或修改碼需重新驗證。未驗證或無效碼阻擋付款，不會靜默按原價建立訂閱。年繳明示首年總額及次年原價。中英文正式隔離帳號已核對月繳／年繳價格、原價續訂、移除恢復原價與 390px 無水平溢位；正式沒有建立訂閱或扣款。驗收帳號僅有待補卡片，沒有公開公司或寄信，驗收後清除本人測試資料。
@@ -18,7 +24,7 @@ BILLING_NOVA60_ENABLED 預設關閉，正式已設定 true；四個正式優惠�
 
 全站設定新增固定 NOVA60 區塊；GET／POST /api/admin/billing/coupon 在正式伺服器內使用 live 金鑰建立／核對四個獨立方案，不取回敏感金鑰、不建立會員訂閱或扣款。四種實際價格／週期已逐一通過 PayPal GET 核對。非敏感 plan ID 按 live／sandbox 分開保存在 Setting，並行準備不覆寫其他方案；Production 環境只設定 live ID。本機 scripts/paypal-coupon-setup.ts 預設 dry-run，pnpm exec tsx scripts/paypal-coupon-setup.ts --apply 才建立／核對並逐筆保存 .env.local，不能混用 sandbox ID。
 
-schema 差異只新增帳本、索引與新表外鍵，已套用兩個 loopback QA DB 及正式；正式交易內鎖定並比對原 User 21 筆、Subscription 3 筆全部欄位指紋相同。禁止 reset／accept-data-loss。完整 pnpm test 413 項通過、零 skip，優惠專項涵蓋十八項（含子測試）、並行、原請求重試、失敗回滾、舊請求停止重送、價格／週期／幣別／稅／設定費不符、權限與來源防護、用過取消不重領。TypeScript、pnpm build 通過，pnpm lint 零錯誤／十四個既有 warnings。既有 Billing 測試補 useRef fixture，推薦獎勵測試固定十月二十日時鐘，正式推薦規則不改。
+schema 差異只新增帳本、索引與新表外鍵，已套用兩個 loopback QA DB 及正式；正式交易內鎖定並比對原 User 21 筆、Subscription 3 筆全部欄位指紋相同。禁止 reset／accept-data-loss。完整 pnpm test 413 項通過、零 skip，原版優惠及既有權益專項涵蓋十八項（含子測試）、並行、原請求重試、失敗回滾、舊請求停止重送、價格／週期／幣別／稅／設定費不符、權限與來源防護、用過取消不重領。TypeScript、pnpm build 通過，pnpm lint 零錯誤／十四個既有 warnings。既有 Billing 測試補 useRef fixture，推薦獎勵測試固定十月二十日時鐘，正式推薦規則不改。
 
 Sandbox 已實際從 UI 建立一筆未核准訂閱，GET 確認 APPROVAL_PENDING、未領用，首月 19.60、後續 49 USD；未登入買方或批准付款。未驗證真實首期扣款及未來續扣，無實際收款。一般本機 next start 的預設英文語系有既有重新導向循環，正式英文與繁中正常，本輪未修改該本機路由問題。
 

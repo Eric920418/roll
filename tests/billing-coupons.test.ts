@@ -54,12 +54,22 @@ test("Coupon checkout transactions preserve receipts, idempotency, eligibility a
   const receipts = new Map<string, { id: string; status: string; plan_id: string; links: { rel: string; href: string; method: string }[]; billing_info: { next_billing_time: string } }>(), bodies: unknown[] = [], ids: string[] = [];
   const wrapped = db.$extends({ query: { billingCouponCheckout: { update({ args, query }) { if (breakSave && args.data.status === "ready") throw new Error("Injected persistence failure"); return query(args); } } } });
   class ProviderError extends Error { constructor(public status: number) { super("private-provider-secret"); } }
-  const load = loader({ "@/lib/prisma": { prisma: wrapped }, "@/lib/rate-limit": { MINUTE_MS: 60000, checkRateLimit: async () => ({ ok: true }) }, "./paypal": {
+  const session = { uid: null as string | null, validSignature: true };
+  const provider = {
     PaypalSubscriptionError: ProviderError,
     getBillingPlan: async (id: string) => { if (id.startsWith("BASE")) return { product_id: "PRODUCT" }; const plan = id.includes("BUSINESS") ? "business" : "pro", interval = id.includes("YEARLY") ? "year" : "month"; const body = coupon.couponPlanBody("PRODUCT", coupon.couponQuote("NOVA60", plan, interval)); if (mode === "mismatch") body.billing_cycles[0].pricing_scheme.fixed_price.value = "100"; return body; },
     createSubscription: async (body: { planId: string; requestId: string }) => { posts++; bodies.push(structuredClone(body)); if (mode === "rejected") throw new ProviderError(422); let receipt = receipts.get(body.requestId); if (!receipt) { receipt = { id: `I-${randomUUID()}`, status: "APPROVAL_PENDING", plan_id: body.planId, links: [{ rel: "approve", method: "GET", href: `https://www.paypal.com/webapps/billing/subscriptions?ba_token=${randomUUID()}` }], billing_info: { next_billing_time: "2026-12-15T00:00:00Z" } }; receipts.set(body.requestId, receipt); } if (mode === "timeout") { mode = "normal"; throw new Error("Unknown acceptance private-provider-secret"); } return { id: receipt.id, status: receipt.status, approveUrl: receipt.links[0].href }; },
     getSubscription: async (id: string) => { const found = [...receipts.values()].find(r => r.id === id); assert(found); return found; },
-  } }, env);
+    verifyWebhookSignature: async () => session.validSignature,
+  };
+  const load = loader({
+    "@/lib/prisma": { prisma: wrapped }, "@/lib/rate-limit": { MINUTE_MS: 60000, checkRateLimit: async () => ({ ok: true }) },
+    "./paypal": provider, "@/lib/billing/paypal": provider,
+    "@/lib/auth/guard": { getUserSession: async () => session.uid ? { uid: session.uid } : null },
+    "@/lib/referrals/service": { trySyncUserReferral: async () => {}, syncUserReferral: async () => {}, recordReferralRefund: async () => {} },
+    "@/lib/billing/credits": {}, "@/lib/security/log": { logSecurityError: () => "coupon-qa", publicErrorMessage: () => "Retry (coupon-qa)" },
+    "next/server": { after: () => {}, NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+  }, env);
   const service = load<typeof import("../src/lib/billing/coupon-checkout")>("src/lib/billing/coupon-checkout.ts"), reconcile = load<typeof import("../src/lib/billing/reconcile")>("src/lib/billing/reconcile.ts");
   async function user() { const u = await db.user.create({ data: { email: `coupon-${randomUUID()}@example.invalid` } }); ids.push(u.id); return u; }
   const input = (u: { id: string; email: string }) => ({ userId: u.id, email: u.email, requestId: randomUUID(), code: "NOVA60", plan: "pro" as const, interval: "month" as const, returnUrl: "https://rollon.com.tw/dashboard/billing/return", cancelUrl: "https://rollon.com.tw/dashboard/billing?cancelled=1" });
@@ -101,6 +111,41 @@ test("Coupon checkout transactions preserve receipts, idempotency, eligibility a
       const paid = await db.user.findUniqueOrThrow({ where: { id: u.id } }); assert.equal(paid.plan, "pro"); assert.equal(paid.trialEndsAt, null); assert.equal(await db.aiAllowance.count({ where: { userId: u.id } }), 0);
       assert((await db.billingCouponCheckout.findUniqueOrThrow({ where: { id: checkout.id } })).consumedAt);
       receipt.status = "CANCELLED"; await reconcile.reconcileFromPaypal(receipt); await assert.rejects(service.checkoutWithCoupon(input(u)), /already used|已使用/); assert.equal(posts - before, 1); await clean(u.id);
+    });
+    await t.test("Four discount variants complete return and repeated webhook reconciliation; forged and cross-account requests are refused", async () => {
+      const confirm = load<typeof import("../src/app/api/billing/confirm/route")>("src/app/api/billing/confirm/route.ts");
+      const webhook = load<typeof import("../src/app/api/billing/webhook/route")>("src/app/api/billing/webhook/route.ts");
+      const request = (path: string, body: unknown, origin = "https://rollon.com.tw") => new Request(`https://rollon.com.tw${path}`, { method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(body) }) as never;
+      for (const [plan, interval, first, regular] of [["pro", "month", 1960, 4900], ["pro", "year", 18720, 46800], ["business", "month", 5960, 14900], ["business", "year", 66720, 166800]] as const) {
+        const u = await user(); await service.checkoutWithCoupon({ ...input(u), plan, interval });
+        const checkout = await db.billingCouponCheckout.findFirstOrThrow({ where: { userId: u.id } });
+        const remote = [...receipts.values()].find(r => r.id === checkout.paypalSubscriptionId)!;
+        const body = { subscriptionId: remote.id }; session.uid = null;
+        assert.equal((await confirm.POST(request("/api/billing/confirm", body))).status, 401);
+        const other = await user(); session.uid = other.id;
+        assert.equal((await confirm.POST(request("/api/billing/confirm", body))).status, 404); await clean(other.id);
+        session.uid = u.id;
+        assert.equal((await confirm.POST(request("/api/billing/confirm", body, "https://wrong.example"))).status, 403);
+        assert.equal((await (await confirm.POST(request("/api/billing/confirm", body))).json()).data.status, "APPROVAL_PENDING");
+        assert.equal((await db.billingCouponCheckout.findUniqueOrThrow({ where: { id: checkout.id } })).consumedAt, null);
+        remote.status = "ACTIVE";
+        assert.equal((await (await confirm.POST(request("/api/billing/confirm", body))).json()).data.status, "ACTIVE");
+        const activated = await db.billingCouponCheckout.findUniqueOrThrow({ where: { id: checkout.id } });
+        assert(activated.consumedAt); assert.equal(activated.firstAmountMinor, first); assert.equal(activated.regularAmountMinor, regular);
+        const eventId = `coupon-qa-${randomUUID()}`, event = { id: eventId, event_type: "PAYMENT.SALE.COMPLETED", resource: { id: `sale-${randomUUID()}`, billing_agreement_id: remote.id } };
+        try {
+          session.validSignature = false;
+          assert.equal((await webhook.POST(request("/api/billing/webhook", event))).status, 401);
+          assert.equal(await db.webhookEvent.count({ where: { id: eventId } }), 0);
+          session.validSignature = true;
+          for (let i = 0; i < 2; i++) assert.equal((await webhook.POST(request("/api/billing/webhook", event))).status, 200);
+          assert.equal(await db.webhookEvent.count({ where: { id: eventId } }), 1);
+          const paid = await db.user.findUniqueOrThrow({ where: { id: u.id } }); assert.equal(paid.plan, plan); assert.equal(paid.subscriptionStatus, "ACTIVE");
+          const sub = await db.subscription.findUniqueOrThrow({ where: { paypalSubscriptionId: remote.id } }); assert.equal(sub.amountMinor, regular); assert.equal(sub.billingInterval, interval);
+          assert.equal((await db.billingCouponCheckout.findUniqueOrThrow({ where: { id: checkout.id } })).consumedAt!.getTime(), activated.consumedAt.getTime());
+        } finally { await db.webhookEvent.deleteMany({ where: { id: eventId } }); await clean(u.id); }
+      }
+      session.uid = null;
     });
     await t.test("Unpaid expired attempts retain history and permit a fresh request, active subscribers are ineligible", async () => {
       const u = await user(); const body = input(u); await service.checkoutWithCoupon(body); const checkout = await db.billingCouponCheckout.findFirstOrThrow({ where: { userId: u.id } });
