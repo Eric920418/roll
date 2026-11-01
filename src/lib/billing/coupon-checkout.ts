@@ -59,12 +59,14 @@ export async function checkoutWithCoupon(input: Input) {
     if (pending) {
       if (pending.plan !== input.plan || pending.billingInterval !== input.interval || pending.code !== normalized.code) throw new CouponError(`已有 ${pending.plan === "pro" ? "SPARK" : "NOVA"} ${pending.billingInterval === "month" ? "月繳 / monthly" : "年繳 / yearly"} 優惠付款待核准；請選回原方案繼續 / A discount checkout is pending; select the original plan and billing interval to continue`, "coupon_checkout_pending", 409);
       if (pending.status === "ready") return pending;
+      // Stop uncertain creates before the provider can forget its idempotency receipt.
+      if (Date.now() - pending.createdAt.getTime() >= 24 * 60 * 60 * 1000) throw new CouponError("原付款超過安全重試時間，請聯絡客服對帳；不會另建付款 / Original checkout needs support reconciliation; no new checkout will be created", "coupon_reconciliation_required", 409);
       if (pending.leaseUntil && pending.leaseUntil > new Date()) throw new CouponError("付款請求處理中，請稍後重試 / Checkout is processing; retry shortly", "coupon_pending", 409);
       return tx.billingCouponCheckout.update({ where: { id: pending.id }, data: { leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });
     }
     const quote = couponQuote(normalized.code, input.plan, input.interval), paypalPlanId = couponPaypalPlanId(input.plan, input.interval);
     const request = { planId: paypalPlanId, email: input.email, requestId: randomUUID(), returnUrl: input.returnUrl, cancelUrl: input.cancelUrl };
-    return tx.billingCouponCheckout.create({ data: { userId: input.userId, requestId: input.requestId, payloadHash, campaign: quote.campaign, code: quote.code, plan: input.plan, billingInterval: input.interval, regularAmountMinor: quote.regularAmountMinor, firstAmountMinor: quote.firstAmountMinor, paypalPlanId, request, leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });
+    return tx.billingCouponCheckout.create({ data: { userId: input.userId, requestId: input.requestId, payloadHash, campaign: quote.campaign, code: quote.code, plan: input.plan, billingInterval: input.interval, regularAmountMinor: quote.regularAmountMinor, firstAmountMinor: quote.firstAmountMinor, paypalPlanId, request, createdAt: new Date(), leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });
   }, { timeout: 15000 });
   if (row.status === "ready") return resume(row);
   let submitted = false;

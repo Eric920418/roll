@@ -81,6 +81,13 @@ test("Coupon checkout transactions preserve receipts, idempotency, eligibility a
       await assert.rejects(service.checkoutWithCoupon(request), /unconfirmed|尚未確認/); assert.equal(await db.subscription.count({ where: { userId: rollback.id } }), 0);
       breakSave = false; await service.checkoutWithCoupon(request); assert.equal(await db.subscription.count({ where: { userId: rollback.id } }), 1); await clean(rollback.id);
     });
+    await t.test("Unconfirmed requests older than one day stop for reconciliation without another provider POST", async () => {
+      const u = await user(), body = input(u); mode = "timeout";
+      await assert.rejects(service.checkoutWithCoupon(body), /unconfirmed|尚未確認/); const before = posts;
+      await db.billingCouponCheckout.updateMany({ where: { userId: u.id }, data: { createdAt: new Date("2026-11-13T00:00:00Z") } });
+      await assert.rejects(service.checkoutWithCoupon(body), (error: unknown) => (error as { code: string }).code === "coupon_reconciliation_required");
+      assert.equal(posts, before); assert.equal(await db.billingCouponCheckout.count({ where: { userId: u.id } }), 1); await clean(u.id);
+    });
     await t.test("Plan mismatch stops before provider POST and rejected requests do not leak credentials", async () => {
       const u = await user(), before = posts; mode = "mismatch";
       await assert.rejects(service.checkoutWithCoupon(input(u)), /does not match|不一致/); assert.equal(posts, before);

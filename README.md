@@ -6,27 +6,21 @@
 
 ## 11 月首期優惠碼（2026-11-01）
 
-測試相容性：Billing 元件既有測試補齊 useRef fixture；推薦獎勵整合測試固定十月二十日時鐘，避免實際進入十一月後把十月交易與本月摘要混比，正式推薦獎勵邏輯不變。
+正式已啟用 NOVA60：2026/11/1 00:00 至 2026/12/1 00:00（台北時間，結束不含）有效；SPARK／NOVA 月繳與年繳首期 60% OFF，之後原價自動續訂。每帳號限一次已啟用的新購優惠訂閱，不套用既有續扣、換方案、創始年費或 AI 加購。月繳首月 USD19.60／59.60，後續 USD49／149；年繳首年一次 USD187.20／667.20，後續每年 USD468／1668。權益／AI 配額維持原方案，不把 PayPal 付費 TRIAL 當平台試用。
 
-本輪新增 NOVA60，2026/11/1 00:00 至 2026/12/1 00:00（台北時間，結束不含）有效；SPARK／NOVA 月繳與年繳首期 60% OFF，之後恢復原價。每帳號限一次已啟用的優惠訂閱，僅新購，不套用既有續扣、換方案、創始年費或 AI 加購。月繳首期 USD19.60／59.60，年繳首年一次收 USD187.20／667.20；後續月費 USD49／149、年費 USD468／1668。伺服器以整數分計價，PayPal 使用獨立的一期付費 TRIAL 加原價 REGULAR 週期，不修改既有四個方案。權益／AI 配額與原方案相同，不把金流優惠期當平台試用權限。
+Account and plan／Billing 共用折扣碼套用、移除及報價；切換週期或修改碼需重新驗證。未驗證或無效碼阻擋付款，不會靜默按原價建立訂閱。年繳明示首年總額及次年原價。中英文正式隔離帳號已核對月繳／年繳價格、原價續訂、移除恢復原價與 390px 無水平溢位；正式沒有建立訂閱或扣款。驗收帳號僅有待補卡片，沒有公開公司或寄信，驗收後清除本人測試資料。
 
-伺服器開關 BILLING_NOVA60_ENABLED 預設關閉；另配置 PAYPAL_PLAN_ID_NOVA60_PRO_MONTHLY_USD／PRO_YEARLY_USD／BUSINESS_MONTHLY_USD／BUSINESS_YEARLY_USD。活動過期仍辨識優惠 PayPal plan ID，保留對帳及原價續費。新增 BillingCouponCheckout 帳本，凍結請求、首期／續期價格、處理租約、遠端訂閱與一次領取狀態；既有資料表不覆寫。不 reset，不使用 accept-data-loss。尚在實作，未啟用活動或向任何人扣款。
+POST /api/billing/coupon 只接受 code／interval，POST /api/billing/subscribe 擴充 couponCode；不接受客戶端指定價格。保留會員權限、來源防護、限流與安全錯誤，專屬 rollon／創始／不適用的 beta 權益避免重複購買。付款前實際 GET PayPal 計畫，核對同 Product、首期／原價週期、幣別、零設定費及稅；任何不符停止付款。APPROVAL_PENDING 不消耗優惠，ACTIVE 首次確認後記錄已用；之後取消不恢復資格。
 
-新增 POST /api/billing/coupon 驗證及報價，訂閱 POST 接受 couponCode；金額不接受客戶端指定。PayPal 優惠方案在付款前核對兩段週期、同 Product、金額／幣別、零額外設定費／稅；不一致就停止付款。APPROVAL_PENDING 不視為已領優惠，ACTIVE 後才保留一次領用；已付款後取消不恢復資格。付款逾時保留原 PayPal 冪等鍵及請求，租約與會員鎖防止多分頁建立多筆優惠；未完成的不同方案須先選回原方案繼續，或等供應商確認原單已取消／到期後再建立。
+新增 BillingCouponCheckout 帳本及 prisma/november-coupon.sql：唯一 requestId／遠端訂閱、凍結請求與報價、處理租約及領用時間。會員交易鎖確保多分頁只建立一筆優惠；外部請求不放在長交易。未知結果使用原 PayPal 冪等鍵與完整內容重試，資料庫存檔失敗一併回滾；超過二十四小時仍無法確認時停止重送、保留帳本並要求客服對帳，避免供應商忘記冪等收據後重複建單。不同方案的待核准付款須選回原方案繼續，或等 PayPal 明確取消／到期後另建；不自行取消會員付款。優惠期限以初次保存付款請求時間判斷，已保存的請求可安全接續。
 
-Billing 的兩個入口共用折扣碼欄位、套用／移除與折後金額；年繳顯示首年一次收款及次年原價，不混成月費。切換週期或編輯折扣碼後必須重新驗證，不能靜默按原價建立付款；失敗保留輸入，未知網路結果使用原 requestId 重試。沒有折扣碼時沿用原訂閱流程。PayPal 的付費 TRIAL 僅作扣款週期，不增加平台試用或 AI 次數。優惠期限以伺服器建立優惠付款請求的時間為準，原已建立請求可用原識別碼接續。
+BILLING_NOVA60_ENABLED 預設關閉，正式已設定 true；四個正式優惠計畫以 PAYPAL_PLAN_ID_NOVA60_PRO_MONTHLY_USD、PAYPAL_PLAN_ID_NOVA60_PRO_YEARLY_USD、PAYPAL_PLAN_ID_NOVA60_BUSINESS_MONTHLY_USD、PAYPAL_PLAN_ID_NOVA60_BUSINESS_YEARLY_USD 配置。活動截止後仍須保留這些 ID 供續費對帳；關閉開關停止新的優惠付款，不刪帳本或既有方案。原價四個 PayPal plan 及既有訂閱不修改。
 
-新增純新增 SQL prisma/november-coupon.sql，差異已核對只建立 BillingCouponCheckout、唯一／查詢索引及到 User 的外鍵，已套用兩個 loopback 隔離 QA DB 及正式；正式同交易鎖定並比對 User 21 筆、Subscription 3 筆所有原欄位資料指紋相同。scripts/paypal-coupon-setup.ts 預設 dry-run；pnpm exec tsx scripts/paypal-coupon-setup.ts --apply 才建立／驗證獨立優惠 plan，逐筆保存 plan ID 到 .env.local，不建立訂閱或扣款。新增回歸測試涵蓋四種精確價格、台北跨月、金額／週期／幣別／設定費／稅不符阻擋、並行、原請求重試、資料庫失敗回滾、領用一次及取消不恢復。
+全站設定新增固定 NOVA60 區塊；GET／POST /api/admin/billing/coupon 在正式伺服器內使用 live 金鑰建立／核對四個獨立方案，不取回敏感金鑰、不建立會員訂閱或扣款。四種實際價格／週期已逐一通過 PayPal GET 核對。非敏感 plan ID 按 live／sandbox 分開保存在 Setting，並行準備不覆寫其他方案；Production 環境只設定 live ID。本機 scripts/paypal-coupon-setup.ts 預設 dry-run，pnpm exec tsx scripts/paypal-coupon-setup.ts --apply 才建立／核對並逐筆保存 .env.local，不能混用 sandbox ID。
 
-本機 PayPal 為 sandbox，正式為獨立 live 環境；兩套優惠 plan ID 不得共用。優惠專項 17 項及完整 412 項測試通過（零 skip），TypeScript、pnpm build 通過，pnpm lint 零錯誤及 14 個既有 warnings；正式商戶方案核對後才開啟活動。未建立正式訂閱或實際扣款。
+schema 差異只新增帳本、索引與新表外鍵，已套用兩個 loopback QA DB 及正式；正式交易內鎖定並比對原 User 21 筆、Subscription 3 筆全部欄位指紋相同。禁止 reset／accept-data-loss。完整 pnpm test 413 項通過、零 skip，優惠專項涵蓋十八項（含子測試）、並行、原請求重試、失敗回滾、舊請求停止重送、價格／週期／幣別／稅／設定費不符、權限與來源防護、用過取消不重領。TypeScript、pnpm build 通過，pnpm lint 零錯誤／十四個既有 warnings。既有 Billing 測試補 useRef fixture，推薦獎勵測試固定十月二十日時鐘，正式推薦規則不改。
 
-正式 PayPal 敏感金鑰不由 CLI 取回，管理員於全站設定使用固定 NOVA60 設定區，透過 GET／POST /api/admin/billing/coupon 在伺服器內建立及核對四個獨立優惠 plan。認證、來源檢查、限流與固定方案輸入均在伺服器驗證；不開放任意價格或扣款。設定結果依 sandbox／live 分開保存在新 Setting key，回傳的只有非敏感 plan ID 與價格，再設定到對應 Production 變數。建立／讀取優惠方案不會建立會員訂閱、修改原價方案或啟用活動；需要另外完成正式環境開關。
-
-sandbox 專用優惠 plan 已建立與實際規格核對；正式不使用本機 sandbox ID。準備方案服務使用同一份固定價格條款，但不需開啟折扣活動，避免設定期間臨時修改全域活動開關。正式 admin 已登入，伺服器設定入口隨本批部署。
-
-sandbox 四個獨立優惠 plan 已建立並由 PayPal 實際 GET 核對首期／原價週期：19.60→49、187.20→468、59.60→149、667.20→1668 USD；尚未實際扣款。原價 plan 不改動。前端折扣驗證沿用 memberFetch 完整錯誤處理，付款 API 非 JSON 回應也顯示 HTTP 狀態及安全錯誤文字，保留原請求以便重試。正式管理員已登入，待部署後在正式伺服器準備 live 方案。
-
-一般會員與管理員 API 回歸另涵蓋未登入／非管理員拒絕、跨來源寫入拒絕、額外金額欄位拒絕、伺服器凍結的 PayPal plan 與請求重試，以及多方案並行準備不覆寫已保存 ID。rollon 專屬權益帳號在驗證與直接付款兩個入口均拒絕優惠，避免繞過前端限制。
+Sandbox 已實際從 UI 建立一筆未核准訂閱，GET 確認 APPROVAL_PENDING、未領用，首月 19.60、後續 49 USD；未登入買方或批准付款。未驗證真實首期扣款及未來續扣，無實際收款。一般本機 next start 的預設英文語系有既有重新導向循環，正式英文與繁中正常，本輪未修改該本機路由問題。
 
 ## 改版示意第三版（2026-10-31）
 
