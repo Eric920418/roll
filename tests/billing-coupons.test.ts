@@ -16,7 +16,7 @@ function loader(mocks: Record<string, unknown>, env: Record<string, string> = {}
   function load<T>(file: string): T {
     const path = resolve(file); if (cache.has(path)) return cache.get(path)!.exports as T;
     const loaded = { exports: {} }; cache.set(path, loaded);
-    runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, { module: loaded, exports: loaded.exports, process: { env }, Date: Clock, Error, URL, Buffer, Headers, Request, Response, AbortSignal, console, fetch: fetcher, require: (name: string) => name === "server-only" ? {} : name in mocks ? mocks[name] : name.startsWith("@/") ? load(`src/${name.slice(2)}.ts`) : name.startsWith(".") ? load(resolve(dirname(path), `${name}.ts`)) : native(name) });
+    runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText, { module: loaded, exports: loaded.exports, process: { env }, Date: Clock, Error, URL, Buffer, Headers, Request, Response, AbortSignal, console, fetch: fetcher, require: (name: string) => name === "server-only" ? {} : name in mocks ? mocks[name] : name.startsWith("@/") ? load(`src/${name.slice(2)}.ts`) : name.startsWith(".") ? load(resolve(dirname(path), `${name}.ts`)) : native(name) });
     return loaded.exports as T;
   }
   return load;
@@ -210,4 +210,24 @@ test("Admin plan preparation preserves parallel plan IDs and does not enable che
     await setup.prepareCouponPlan("pro", "month"); assert.equal(creates, 2); status = await setup.couponSetupStatus(); assert.equal(status.enabled, false);
     assert.equal(await db.subscription.count({ where: { paypalPlanId: { in: [...remote.keys()] } } }), 0);
   } finally { await db.setting.deleteMany({ where: { key } }); await db.$disconnect(); }
+});
+
+
+test("Payment return refreshes server-rendered access only after confirmed activation", async () => {
+  for (const scenario of ["active", "pending", "error", "unmounted", "missing"] as const) {
+    let effect: (() => (() => void) | void) | undefined, refreshed = 0, calls = 0; const states: unknown[] = [];
+    const router = { refresh: () => { refreshed++; } };
+    const load = loader({
+      react: { useState: (value: unknown) => [value, (next: unknown) => states.push(next)], useEffect: (callback: typeof effect) => { effect = callback; } },
+      "next/navigation": { useRouter: () => router }, "next-intl": { useTranslations: () => (key: string) => key }, "next/link": { default: () => null },
+    }, env, async () => { calls++; return scenario === "error" ? Response.json({ error: "Safe billing error" }, { status: 503 }) : Response.json({ data: { status: scenario === "pending" ? "APPROVAL_PENDING" : "ACTIVE" } }); });
+    const component = load<typeof import("../src/components/dashboard/BillingReturn")>("src/components/dashboard/BillingReturn.tsx");
+    component.default({ locale: "en", subscriptionId: scenario === "missing" ? null : "I-SANDBOX" });
+    assert(effect); const cleanup = effect(); if (scenario === "unmounted") cleanup?.();
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(refreshed, scenario === "active" ? 1 : 0); assert.equal(calls, scenario === "missing" ? 0 : 1);
+    if (scenario === "active") assert(states.includes("success"));
+    if (scenario === "error") assert(states.includes("Safe billing error"));
+    if (scenario === "pending" || scenario === "missing") assert(states.includes("pending"));
+  }
 });

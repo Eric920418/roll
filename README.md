@@ -6,11 +6,15 @@
 
 ## 11 月首期優惠碼（2026-11-01）
 
-付款驗收補充：四種優惠各走回站 confirm 及重複 webhook 的隔離 DB／供應商 mock 回歸，驗證未登入、跨會員、跨來源及偽造簽章拒絕；只有 ACTIVE 領用優惠，保留首期價格與原價續期金額。完整 pnpm test 414 項、優惠及既有權益專項十九項（含子測試）通過，TypeScript、pnpm build 通過，pnpm lint 零錯誤／十四個既有 warnings。正式伺服器已重新向 live PayPal 核對四組首期／原價週期，全數一致，不建立正式訂閱。
+付款實測已完成：使用既有 Sandbox 虛擬買方，從會員登入、原 subscribe 入口、PayPal 核准到返回頁，四筆首期均在真正的 Sandbox transactions API 查到唯一 COMPLETED 交易，分別為 SPARK 月繳 USD19.60、SPARK 年繳 USD187.20、NOVA 月繳 USD59.60、NOVA 年繳 USD667.20。PayPal 買方展開明細均明列只一期優惠、之後 USD49／468／149／1668；實際 subscription 的優惠週期 cycles_completed=1，下一個為 REGULAR，月繳下次日期為 2026/12/1、年繳為 2027/11/1。這些是 Sandbox 虛擬收款，沒有正式扣款；原價續期已核對授權條款及排程，未等待實際一個月／一年續扣。
 
-實際 Sandbox：由真正會員登入及 subscribe API 建立四種未核准訂閱，回站網址鎖定 localhost 隔離環境。使用只開放簽章 webhook 路徑的臨時入口，四筆真實 BILLING.SUBSCRIPTION.CREATED 通知皆通過 PayPal 驗章並回 200；原簽章通知重送回 200，竄改內容回 401，四筆優惠領取仍為零。臨時 Sandbox webhook 與通道在驗收暫停後移除，既有 webhook 不修改；四個本機測試帳號及未核准訂閱識別保留供繼續，不涉及正式會員。
+完整回站、開通及對帳：四種付款各自顯示正確 SPARK／NOVA，實際 GET /api/ai-usage 各有原方案 150 次額度（不呼叫 AI）；重複 confirm 保持 ACTIVE，同一訂閱只有一份已領優惠，付款重送回 coupon_used／409。真實 ACTIVATED 與 PAYMENT.SALE.COMPLETED 通知均由隔離的公開 webhook 路徑接收、經 PayPal 驗章後回 200；原簽章付款通知重送仍回 200，竄改內容回 401。沒有使用示意事件冒充收款或把 APPROVED 當成收款成功。
 
-尚未通過的付款項目：PayPal 開發者後台未登入，無法取得 Sandbox 買方完成核准；未核對實際首期交易收款、付款後的真實啟用／回站，以及未來月／年續扣。不得把 mock ACTIVE、已建單、價格設定或 CREATED 通知稱為付款成功；需登入後繼續買方核准及查 PayPal 交易紀錄。
+付款驗收修復兩項問題：BillingReturn 在 confirm 確認 ACTIVE 後呼叫 router.refresh，刷新 Dashboard layout 的原 Free 標籤及權限，pending／錯誤／缺 ID／已卸載不刷新。collectPayments 依本人已領用且同 PayPal 訂閱及 plan 的凍結優惠帳本，僅第一筆已收款／退款紀錄採首期金額，後續嚴格採原價；交易依時間及 ID 排序，不相信陣列順序。重複折扣續扣、錯幣別或不符 plan 仍需核對，退款保留原首筆、不讓後續付款重領推薦獎勵。四筆真正 Sandbox 折扣款也各通過 collectPayments 的 completed 核對。
+
+清理已完成：四筆 Sandbox 測試訂閱取消並 GET 確認 CANCELLED，取消後仍回 coupon_used／409、不恢復優惠資格；只刪本輪四個 loopback QA 帳號及對應測試事件，沒有移除既有 Sandbox 買方或商戶。臨時 webhook、只接簽章通知的 Cloudflare 通道及本機伺服器已停止；既有 webhook、正式會員、試用、方案、AI 用量及付款不改。只保留無憑證的測試摘要及畫面至既有視覺證據目錄 nova60-sandbox-payment-proof.json／nova60-sandbox-*-terms.png；帳密、session 與簽章原文暫存已清除。
+
+回歸驗收：串行執行完整 pnpm test 416 項通過、零 skip；優惠與既有權益專項二十項（含子測試），含 ACTIVE 才刷新及四種折扣／續期／退款核對。TypeScript、pnpm build 通過，pnpm lint 零錯誤／十四個既有 warnings。同一 QA DB 不同時執行第二份整合套件，避免全表計數及交易重試互相干擾；測試維持既有固定十月時鐘與跨 VM 資料比對。正式伺服器亦已重新向 live PayPal 核對四組首期／原價週期，全數一致。
 
 正式已啟用 NOVA60：2026/11/1 00:00 至 2026/12/1 00:00（台北時間，結束不含）有效；SPARK／NOVA 月繳與年繳首期 60% OFF，之後原價自動續訂。每帳號限一次已啟用的新購優惠訂閱，不套用既有續扣、換方案、創始年費或 AI 加購。月繳首月 USD19.60／59.60，後續 USD49／149；年繳首年一次 USD187.20／667.20，後續每年 USD468／1668。權益／AI 配額維持原方案，不把 PayPal 付費 TRIAL 當平台試用。
 
@@ -26,7 +30,7 @@ BILLING_NOVA60_ENABLED 預設關閉，正式已設定 true；四個正式優惠�
 
 schema 差異只新增帳本、索引與新表外鍵，已套用兩個 loopback QA DB 及正式；正式交易內鎖定並比對原 User 21 筆、Subscription 3 筆全部欄位指紋相同。禁止 reset／accept-data-loss。完整 pnpm test 413 項通過、零 skip，原版優惠及既有權益專項涵蓋十八項（含子測試）、並行、原請求重試、失敗回滾、舊請求停止重送、價格／週期／幣別／稅／設定費不符、權限與來源防護、用過取消不重領。TypeScript、pnpm build 通過，pnpm lint 零錯誤／十四個既有 warnings。既有 Billing 測試補 useRef fixture，推薦獎勵測試固定十月二十日時鐘，正式推薦規則不改。
 
-Sandbox 已實際從 UI 建立一筆未核准訂閱，GET 確認 APPROVAL_PENDING、未領用，首月 19.60、後續 49 USD；未登入買方或批准付款。未驗證真實首期扣款及未來續扣，無實際收款。一般本機 next start 的預設英文語系有既有重新導向循環，正式英文與繁中正常，本輪未修改該本機路由問題。
+本機驗收使用繁中路由；一般本機 next start 的預設英文語系有既有重新導向循環，正式英文與繁中正常，本輪未修改該本機路由問題。正式首期實際收款及未來自然續扣未使用真實金額驗收。
 
 ## 改版示意第三版（2026-10-31）
 

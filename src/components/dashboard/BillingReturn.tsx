@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
@@ -16,6 +17,7 @@ export default function BillingReturn({
   subscriptionId: string | null;
 }) {
   const t = useTranslations("Billing");
+  const router = useRouter();
   const [state, setState] = useState<State>("loading");
   const [message, setMessage] = useState("");
 
@@ -37,6 +39,7 @@ export default function BillingReturn({
         if (!res.ok) throw new Error(json.error || "Error");
         if (cancelled) return;
         setState(json.data.status === "ACTIVE" ? "success" : "pending");
+        if (json.data.status === "ACTIVE") router.refresh();
       } catch (err) {
         if (cancelled) return;
         setState("error");
@@ -46,7 +49,7 @@ export default function BillingReturn({
     return () => {
       cancelled = true;
     };
-  }, [subscriptionId]);
+  }, [subscriptionId, router]);
 
   return (
     <div className="font-[family-name:var(--font-body)]">

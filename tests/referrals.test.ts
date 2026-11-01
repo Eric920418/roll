@@ -184,6 +184,22 @@ test("Referral integration uses only its own fixtures in loopback PostgreSQL", {
       captures.get(credit.captureId)!.amount.value = "0.01"; assert.equal((await paymentService.collectPayments(guest.id)).find(p => p.orderId === credit.id)!.status, "review");
       remote.get(credit.id)!.purchase_units![0].custom_id = "wrong"; await assert.rejects(paymentService.collectPayments(guest.id), /ownership/);
     });
+    await t.test("Discounted first subscription receipts qualify; renewals require full price and refunds retain the first receipt", async () => {
+      for (const [plan, interval, first, regular] of [["pro", "month", 1960, 4900], ["pro", "year", 18720, 46800], ["business", "month", 5960, 14900], ["business", "year", 66720, 166800]] as const) {
+        const guest = await user(), id = `I-${randomUUID()}`, planId = `P-${randomUUID()}`;
+        await db.subscription.create({ data: { userId: guest.id, paypalSubscriptionId: id, paypalPlanId: planId, plan, billingInterval: interval, status: "ACTIVE", currency: "USD", amountMinor: regular } });
+        await db.billingCouponCheckout.create({ data: { userId: guest.id, requestId: randomUUID(), payloadHash: "qa", campaign: "november-2026", code: "NOVA60", plan, billingInterval: interval, firstAmountMinor: first, regularAmountMinor: regular, paypalPlanId: planId, paypalSubscriptionId: id, request: {}, status: "used", consumedAt: new Date("2026-10-01T00:00:00Z") } });
+        subs.set(id, { id, plan_id: planId, status: "ACTIVE", subscriber: { payer_id: randomUUID() } });
+        const sale = (key: string, value: number, time: string) => ({ id: key, status: "COMPLETED", time, amount_with_breakdown: { gross_amount: { currency_code: "USD", value: (value / 100).toFixed(2) } } });
+        const firstSale = sale(`QA-${prefix}-${randomUUID()}`, first, "2026-10-01T00:00:00Z"), renewal = sale(`QA-${prefix}-${randomUUID()}`, regular, "2026-10-02T00:00:00Z"), repeatedDiscount = sale(`QA-${prefix}-${randomUUID()}`, first, "2026-10-03T00:00:00Z");
+        transactions.set(id, [repeatedDiscount, renewal, firstSale]);
+        let proofs = await paymentService.collectPayments(guest.id); assert.deepEqual(Array.from(proofs, p => p.status), ["completed", "completed", "review"]); assert.equal(proofs[0].amountMinor, first);
+        firstSale.status = "REFUNDED"; proofs = await paymentService.collectPayments(guest.id); assert.equal(proofs[0].status, "refunded"); assert.equal(proofs[1].status, "completed"); assert.equal(proofs[2].status, "review");
+        firstSale.amount_with_breakdown.gross_amount.currency_code = "TWD"; assert.equal((await paymentService.collectPayments(guest.id))[0].status, "review");
+        firstSale.amount_with_breakdown.gross_amount.currency_code = "USD";
+        await db.billingCouponCheckout.updateMany({ where: { userId: guest.id }, data: { paypalPlanId: "P-MISMATCH" } }); assert.equal((await paymentService.collectPayments(guest.id))[0].status, "review");
+      }
+    });
     await t.test("Manual review rechecks proof, requires identity/note and cannot bypass payer deduplication", async () => {
       const f = await invite(), orderId = `QA-${prefix}-${randomUUID()}`, captureId = `QA-${prefix}-${randomUUID()}`;
       await db.aiCreditPurchase.create({ data: { userId: f.guest.id, paypalOrderId: orderId, requestId: randomUUID() } });

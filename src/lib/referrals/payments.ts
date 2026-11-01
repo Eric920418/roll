@@ -18,10 +18,11 @@ function money(value: { currency_code?: string; value?: string } | undefined) {
   return { amountMinor: amountMinor(value.value), currency: value.currency_code };
 }
 export async function collectPayments(userId: string, now = new Date()): Promise<PaymentProof[]> {
-  const [credits, founders, subscriptions] = await Promise.all([
+  const [credits, founders, subscriptions, coupons] = await Promise.all([
     prisma.aiCreditPurchase.findMany({ where: { userId }, orderBy: { createdAt: "asc" } }),
     prisma.founderOrder.findMany({ where: { userId, paypalOrderId: { not: null } }, orderBy: { createdAt: "asc" } }),
     prisma.subscription.findMany({ where: { userId }, orderBy: { createdAt: "asc" } }),
+    prisma.billingCouponCheckout.findMany({ where: { userId, consumedAt: { not: null } }, select: { paypalSubscriptionId: true, paypalPlanId: true, firstAmountMinor: true } }),
   ]);
   const proofs: PaymentProof[] = [];
   for (const local of [...credits.map(row => ({ orderId: row.paypalOrderId, customId: userId, amount: row.amountMinor, currency: row.currency, kind: "credits" })), ...founders.map(row => ({ orderId: row.paypalOrderId!, customId: row.id, amount: 34800, currency: "USD", kind: "founder" }))]) {
@@ -41,10 +42,12 @@ export async function collectPayments(userId: string, now = new Date()): Promise
     const remote = await getSubscription(local.paypalSubscriptionId);
     if (remote.id !== local.paypalSubscriptionId || remote.plan_id !== local.paypalPlanId) throw new Error("PayPal subscription ownership/plan mismatch");
     const transactions = await getSubscriptionTransactions(remote.id, new Date(local.createdAt.getTime() - 60_000), now);
-    for (const transaction of transactions) {
-      if (!['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'REVERSED'].includes(transaction.status)) continue;
+    const coupon = coupons.find(row => row.paypalSubscriptionId === remote.id && row.paypalPlanId === remote.plan_id);
+    const charges = transactions.filter(row => ['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'REVERSED'].includes(row.status)).sort((a, b) => paidDate(a.time).getTime() - paidDate(b.time).getTime() || a.id.localeCompare(b.id));
+    for (const [index, transaction] of charges.entries()) {
       const amount = money(transaction.amount_with_breakdown?.gross_amount);
-      const verified = local.amountMinor !== null && amount.amountMinor === local.amountMinor && amount.currency === local.currency;
+      const expected = coupon && index === 0 ? coupon.firstAmountMinor : local.amountMinor;
+      const verified = expected !== null && amount.amountMinor === expected && amount.currency === local.currency;
       proofs.push({ key: `sale:${transaction.id}`, kind: "subscription", orderId: null, subscriptionId: remote.id, payerHash: remote.subscriber?.payer_id ? payerFingerprint(remote.subscriber.payer_id) : null, ...amount, paidAt: paidDate(transaction.time), status: !verified ? "review" : transaction.status === "COMPLETED" ? "completed" : "refunded" });
     }
   }
