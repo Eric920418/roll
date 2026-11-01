@@ -126,12 +126,17 @@ export function paypalPlanEnvFor(
   return billingVariantFor(plan, interval)?.paypalPlanIdEnv ?? null;
 }
 
+export function novemberPaypalPlanEnvFor(plan: PlanKey, interval: BillingInterval): string | null {
+  return plan === "pro" || plan === "business" ? `PAYPAL_PLAN_ID_NOVA60_${plan.toUpperCase()}_${interval === "month" ? "MONTHLY" : "YEARLY"}_USD` : null;
+}
+
 export type PaypalPlanMatch = {
   plan: PlanKey;
   interval: BillingInterval | null;
   currency: "USD" | "TWD";
   amountMinor: number | null;
   legacy: boolean;
+  promotion?: "NOVA60";
 };
 
 export function billingFromPaypalPlanId(paypalPlanId: string): PaypalPlanMatch | null {
@@ -147,6 +152,11 @@ export function billingFromPaypalPlanId(paypalPlanId: string): PaypalPlanMatch |
           amountMinor: variant.amountMinor,
           legacy: false,
         };
+      }
+      const promoEnv = novemberPaypalPlanEnvFor(plan, interval);
+      if (variant && promoEnv && process.env[promoEnv] === paypalPlanId) {
+        // Keep renewal pricing and plan access identifiable after the November promotion ends.
+        return { plan, interval, currency: variant.currency, amountMinor: variant.amountMinor, legacy: false, promotion: "NOVA60" };
       }
     }
     if (

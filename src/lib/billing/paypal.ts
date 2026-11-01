@@ -94,6 +94,22 @@ export interface PaypalSubscription {
   links?: { href: string; rel: string; method: string }[];
 }
 
+export class PaypalSubscriptionError extends Error {
+  constructor(public status: number, detail: string) { super(`PayPal subscription request failed (${status}): ${detail}`); }
+}
+
+export async function getBillingPlan(id: string): Promise<unknown> {
+  const res = await paypalFetch(`/v1/billing/plans/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new PaypalSubscriptionError(res.status, await res.text());
+  return res.json();
+}
+
+export async function createBillingPlan(body: unknown, requestId: string): Promise<{ id: string }> {
+  const res = await paypalFetch("/v1/billing/plans", { method: "POST", headers: { "PayPal-Request-Id": requestId }, jsonBody: body, signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new PaypalSubscriptionError(res.status, await res.text());
+  return res.json();
+}
+
 export interface PaypalOrder {
   payer?: { payer_id?: string };
   id: string;
@@ -123,6 +139,7 @@ export async function createSubscription(params: {
 }): Promise<{ id: string; status: string; approveUrl: string }> {
   const res = await paypalFetch("/v1/billing/subscriptions", {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { "PayPal-Request-Id": params.requestId },
     jsonBody: {
       plan_id: params.planId,
@@ -139,7 +156,7 @@ export async function createSubscription(params: {
     },
   });
   if (!res.ok) {
-    throw new Error(`PayPal 建立訂閱失敗（${res.status}）：${await res.text()}`);
+    throw new PaypalSubscriptionError(res.status, await res.text());
   }
   const sub = (await res.json()) as PaypalSubscription;
   const approveUrl = sub.links?.find((l) => l.rel === "approve")?.href;

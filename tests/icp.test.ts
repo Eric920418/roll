@@ -292,7 +292,7 @@ test("Lost response clears only a server-acknowledged input, never unsent edits 
 test("Billing reset date renders identically on UTC server and Taipei browser", () => {
   const render = (fallback: string) => {
     const panel = load<{ default(props: object): unknown }>("src/components/dashboard/BillingPanel.tsx", {
-      react: { useState: (value: unknown) => [value, () => {}] },
+      react: { useState: (value: unknown) => [value, () => {}], useRef: (value: unknown) => ({ current: value }) },
       "next/navigation": { useRouter: () => ({ refresh() {} }) },
       "next-intl": { useTranslations: () => (key: string, values?: { date?: string }) => key === "aiUsageDetail" ? values?.date : key },
       "./rewards/RewardsProvider": { useRewards: () => ({ data: null }) },
@@ -306,7 +306,7 @@ test("Billing reset date renders identically on UTC server and Taipei browser", 
 test("Billing answers include redeemed rewards for Free and paid members, including live balance updates", () => {
   let rewards: { rewardRemaining: number } | null = null;
   const panel = load<{ default(props: object): unknown }>("src/components/dashboard/BillingPanel.tsx", {
-    react: { useState: (value: unknown) => [value, () => {}] },
+    react: { useState: (value: unknown) => [value, () => {}], useRef: (value: unknown) => ({ current: value }) },
     "next/navigation": { useRouter: () => ({ refresh() {} }) },
     "next-intl": { useTranslations: () => (key: string, values?: object) => `${key}:${JSON.stringify(values ?? {})}` },
     "./rewards/RewardsProvider": { useRewards: () => ({ data: rewards }) },

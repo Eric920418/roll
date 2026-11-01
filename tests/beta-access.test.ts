@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 import test from "node:test";
 import ts from "typescript";
 import * as plans from "../src/lib/billing/plans";
+import * as coupons from "../src/lib/billing/coupons";
 import type { BillingAccount } from "../src/lib/billing/gate";
 import type { Account } from "../src/lib/auth/account";
 import * as discoveryPolicy from "../src/lib/discovery/policy";
@@ -22,6 +23,7 @@ function load<T>(file: string, dependencies: Record<string, unknown>): T {
     require: (name: string) => {
       if (name === "server-only") return {};
       if (name === "@/lib/security/http") return securityHttp;
+      if (name === "@/lib/billing/coupons") return coupons;
       if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);
       return dependencies[name];
     },

@@ -50,6 +50,11 @@ export async function reconcileFromPaypal(
     });
   }
 
+  if (local && match?.promotion) {
+    if (status === "ACTIVE") await prisma.billingCouponCheckout.updateMany({ where: { paypalSubscriptionId: paypalSub.id, userId: local.userId, consumedAt: null }, data: { consumedAt: new Date(), status: "used" } });
+    else if (isTerminal) await prisma.billingCouponCheckout.updateMany({ where: { paypalSubscriptionId: paypalSub.id, userId: local.userId, consumedAt: null }, data: { status: "closed" } });
+  }
+
   // 只有在能對應到 userId 時才更新 User
   const userId = local?.userId;
   if (!userId || !plan) return;

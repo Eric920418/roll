@@ -142,6 +142,7 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  billingCouponCheckouts BillingCouponCheckout[]
   prospectingWorkspace ProspectingWorkspace?
   prospectingOrders ProspectingOrder[]
   prospectingTrialGrant ProspectingTrialGrant?
@@ -432,6 +433,31 @@ model Subscription {
   @@index([userId])
   @@index([status])
   @@index([replacesSubscriptionId])
+}
+
+model BillingCouponCheckout {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestId String @unique
+  payloadHash String
+  campaign String
+  code String
+  plan String
+  billingInterval String
+  regularAmountMinor Int
+  firstAmountMinor Int
+  paypalPlanId String
+  request Json
+  paypalSubscriptionId String? @unique
+  approveUrl String?
+  status String @default("creating")
+  consumedAt DateTime?
+  leaseToken String?
+  leaseUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, campaign, status])
 }
 
 /// 目前 NOVA 月額度與永久加購餘額。週期按有效訂閱／trial 的開始日計算。

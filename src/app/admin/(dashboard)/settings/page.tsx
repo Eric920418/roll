@@ -1,14 +1,17 @@
 import { requireAdminPage } from "@/lib/auth/guard";
 import { getSetting } from "@/lib/cms/content";
 import SettingsForm from "@/components/admin/SettingsForm";
+import CouponSetup from "@/components/admin/CouponSetup";
+import { couponSetupStatus } from "@/lib/billing/coupon-setup";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   await requireAdminPage();
-  const [contactInfo, goldenTicket] = await Promise.all([
+  const [contactInfo, goldenTicket, coupon] = await Promise.all([
     getSetting("contactInfo"),
     getSetting("goldenTicket"),
+    couponSetupStatus(),
   ]);
 
   return (
@@ -17,6 +20,7 @@ export default async function SettingsPage() {
       <p className="text-neutral-500 text-sm mb-6">頁尾聯絡資訊、社群連結與 Golden Ticket 頻道</p>
 
       <div className="flex flex-col gap-6">
+        <CouponSetup initial={coupon} />
         <SettingsForm
           settingKey="contactInfo"
           title="聯絡資訊（頁尾）"

@@ -23,6 +23,7 @@ import {
 import { resolveBillingAppOrigin } from "@/lib/billing/config";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
+import { CouponError } from "@/lib/billing/coupons";
 
 // proxy 對 /api/* 放行，故自行守衛。
 function bad(code: string, error: string, status: number) {
@@ -73,6 +74,13 @@ export async function POST(req: NextRequest) {
         "PayPal 金流尚未設定（缺少 PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET）。",
         503,
       );
+    }
+    if (body?.couponCode !== undefined) {
+      if (account.rollonMember) return bad("coupon_existing_access", "目前帳號已有專屬權益，請聯絡客服確認升級 / This account already has special access; contact support before upgrading", 409);
+      if (typeof body.couponCode !== "string" || !/^[A-Za-z0-9-]{3,32}$/.test(body.couponCode.trim())) return bad("coupon_invalid", "折扣碼格式無效 / Invalid discount code format", 400);
+      const origin = resolveBillingAppOrigin(req.url);
+      const result = await (await import("@/lib/billing/coupon-checkout")).checkoutWithCoupon({ userId: session.uid, email: session.email, requestId, code: body.couponCode, plan, interval, returnUrl: `${origin}${pathForLocale("/dashboard/billing/return", locale)}`, cancelUrl: `${origin}${pathForLocale("/dashboard/billing", locale)}?cancelled=1` });
+      return ok(result);
     }
     const variant = billingVariantFor(plan, interval);
     const paypalPlanId = paypalPlanIdFor(plan, interval);
@@ -195,6 +203,7 @@ export async function POST(req: NextRequest) {
 
     return ok({ approveUrl: sub.approveUrl, flow: "new" });
   } catch (error) {
+    if (error instanceof CouponError) return bad(error.code, error.message, error.status);
     return failFromError(error);
   }
 }

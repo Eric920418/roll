@@ -67,12 +67,16 @@ test("Referral integration uses only its own fixtures in loopback PostgreSQL", {
     "@/lib/rate-limit": { checkRateLimit: async () => ({ ok: !state.limited }), MINUTE_MS: 60000, clientIp: () => "127.0.0.1" },
     "@/lib/billing/reconcile": {}, "@/lib/billing/credits": {},
   };
+  class FixtureDate extends Date {
+    constructor(value: string | number = "2026-10-20T00:00:00Z") { super(value); }
+    static now() { return new Date("2026-10-20T00:00:00Z").getTime(); }
+  }
   const require = createRequire(import.meta.url), cache = new Map<string, unknown>();
   function load<T>(file: string): T {
     const path = resolve(file); if (cache.has(path)) return cache.get(path) as T;
     const loaded = { exports: {} }; cache.set(path, loaded.exports);
     const source = ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-    runInNewContext(source, { module: loaded, exports: loaded.exports, process, console, Date, Error, SyntaxError, Buffer, URL, Request, Response, crypto: { randomUUID }, require: (id: string) => id in mocks ? mocks[id] : id.startsWith("@/") ? load(`src/${id.slice(2)}.ts`) : id.startsWith(".") ? load(resolve(dirname(path), `${id}.ts`)) : require(id) }); return loaded.exports as T;
+    runInNewContext(source, { module: loaded, exports: loaded.exports, process, console, Date: FixtureDate, Error, SyntaxError, Buffer, URL, Request, Response, crypto: { randomUUID }, require: (id: string) => id in mocks ? mocks[id] : id.startsWith("@/") ? load(`src/${id.slice(2)}.ts`) : id.startsWith(".") ? load(resolve(dirname(path), `${id}.ts`)) : require(id) }); return loaded.exports as T;
   }
   const registration = load<typeof import("../src/lib/referrals/registration")>("src/lib/referrals/registration.ts");
   const service = load<typeof import("../src/lib/referrals/service")>("src/lib/referrals/service.ts");

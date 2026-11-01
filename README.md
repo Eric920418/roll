@@ -4,6 +4,30 @@
 
 驗收：`tests/rollon-cms.test.ts` 8 項通過，包含雙語整卡連結、Logo 與標題、沒有巢狀連結及 NOVA 語系；修改檔案 ESLint、`git diff --check`、完整 `pnpm build` 通過。瀏覽器檢查雙語 390／768／1440px 無水平溢位、各有一個 Project Ark 外連，target／rel 正確；Shift+Tab 可聚焦整卡，實際為 3px 酒紅色外框、4px offset。未重跑完整測試套件，未提交第三方表單。依既有正式發布授權推送 main 並驗證正式頁面。
 
+## 11 月首期優惠碼（2026-11-01）
+
+測試相容性：Billing 元件既有測試補齊 useRef fixture；推薦獎勵整合測試固定十月二十日時鐘，避免實際進入十一月後把十月交易與本月摘要混比，正式推薦獎勵邏輯不變。
+
+本輪新增 NOVA60，2026/11/1 00:00 至 2026/12/1 00:00（台北時間，結束不含）有效；SPARK／NOVA 月繳與年繳首期 60% OFF，之後恢復原價。每帳號限一次已啟用的優惠訂閱，僅新購，不套用既有續扣、換方案、創始年費或 AI 加購。月繳首期 USD19.60／59.60，年繳首年一次收 USD187.20／667.20；後續月費 USD49／149、年費 USD468／1668。伺服器以整數分計價，PayPal 使用獨立的一期付費 TRIAL 加原價 REGULAR 週期，不修改既有四個方案。權益／AI 配額與原方案相同，不把金流優惠期當平台試用權限。
+
+伺服器開關 BILLING_NOVA60_ENABLED 預設關閉；另配置 PAYPAL_PLAN_ID_NOVA60_PRO_MONTHLY_USD／PRO_YEARLY_USD／BUSINESS_MONTHLY_USD／BUSINESS_YEARLY_USD。活動過期仍辨識優惠 PayPal plan ID，保留對帳及原價續費。新增 BillingCouponCheckout 帳本，凍結請求、首期／續期價格、處理租約、遠端訂閱與一次領取狀態；既有資料表不覆寫。不 reset，不使用 accept-data-loss。尚在實作，未啟用活動或向任何人扣款。
+
+新增 POST /api/billing/coupon 驗證及報價，訂閱 POST 接受 couponCode；金額不接受客戶端指定。PayPal 優惠方案在付款前核對兩段週期、同 Product、金額／幣別、零額外設定費／稅；不一致就停止付款。APPROVAL_PENDING 不視為已領優惠，ACTIVE 後才保留一次領用；已付款後取消不恢復資格。付款逾時保留原 PayPal 冪等鍵及請求，租約與會員鎖防止多分頁建立多筆優惠；未完成的不同方案須先選回原方案繼續，或等供應商確認原單已取消／到期後再建立。
+
+Billing 的兩個入口共用折扣碼欄位、套用／移除與折後金額；年繳顯示首年一次收款及次年原價，不混成月費。切換週期或編輯折扣碼後必須重新驗證，不能靜默按原價建立付款；失敗保留輸入，未知網路結果使用原 requestId 重試。沒有折扣碼時沿用原訂閱流程。PayPal 的付費 TRIAL 僅作扣款週期，不增加平台試用或 AI 次數。優惠期限以伺服器建立優惠付款請求的時間為準，原已建立請求可用原識別碼接續。
+
+新增純新增 SQL prisma/november-coupon.sql，差異已核對只建立 BillingCouponCheckout、唯一／查詢索引及到 User 的外鍵，已套用兩個 loopback 隔離 QA DB 及正式；正式同交易鎖定並比對 User 21 筆、Subscription 3 筆所有原欄位資料指紋相同。scripts/paypal-coupon-setup.ts 預設 dry-run；pnpm exec tsx scripts/paypal-coupon-setup.ts --apply 才建立／驗證獨立優惠 plan，逐筆保存 plan ID 到 .env.local，不建立訂閱或扣款。新增回歸測試涵蓋四種精確價格、台北跨月、金額／週期／幣別／設定費／稅不符阻擋、並行、原請求重試、資料庫失敗回滾、領用一次及取消不恢復。
+
+本機 PayPal 為 sandbox，正式為獨立 live 環境；兩套優惠 plan ID 不得共用。優惠專項 17 項及完整 412 項測試通過（零 skip），TypeScript、pnpm build 通過，pnpm lint 零錯誤及 14 個既有 warnings；正式商戶方案核對後才開啟活動。未建立正式訂閱或實際扣款。
+
+正式 PayPal 敏感金鑰不由 CLI 取回，管理員於全站設定使用固定 NOVA60 設定區，透過 GET／POST /api/admin/billing/coupon 在伺服器內建立及核對四個獨立優惠 plan。認證、來源檢查、限流與固定方案輸入均在伺服器驗證；不開放任意價格或扣款。設定結果依 sandbox／live 分開保存在新 Setting key，回傳的只有非敏感 plan ID 與價格，再設定到對應 Production 變數。建立／讀取優惠方案不會建立會員訂閱、修改原價方案或啟用活動；需要另外完成正式環境開關。
+
+sandbox 專用優惠 plan 已建立與實際規格核對；正式不使用本機 sandbox ID。準備方案服務使用同一份固定價格條款，但不需開啟折扣活動，避免設定期間臨時修改全域活動開關。正式 admin 已登入，伺服器設定入口隨本批部署。
+
+sandbox 四個獨立優惠 plan 已建立並由 PayPal 實際 GET 核對首期／原價週期：19.60→49、187.20→468、59.60→149、667.20→1668 USD；尚未實際扣款。原價 plan 不改動。前端折扣驗證沿用 memberFetch 完整錯誤處理，付款 API 非 JSON 回應也顯示 HTTP 狀態及安全錯誤文字，保留原請求以便重試。正式管理員已登入，待部署後在正式伺服器準備 live 方案。
+
+一般會員與管理員 API 回歸另涵蓋未登入／非管理員拒絕、跨來源寫入拒絕、額外金額欄位拒絕、伺服器凍結的 PayPal plan 與請求重試，以及多方案並行準備不覆寫已保存 ID。rollon 專屬權益帳號在驗證與直接付款兩個入口均拒絕優惠，避免繞過前端限制。
+
 ## 改版示意第三版（2026-10-31）
 
 導覽空白修復：正式 Chrome 已重現 Next Steps 第三步，底下進度區文字仍在 DOM，但原生 dialog 重複套用 .nova-theme，其未分層的 background:var(--color-light) 蓋過 Tailwind utilities 層的 bg-transparent，導致整頁遮成白底、聚光區空白。移除 dialog 重複的主題 class，沿用 Dashboard 祖先已提供的 NOVA 色票；原生模態、焦點限制、略過／重開與帳號導覽狀態均保留。不修改計畫、進度、積分、方案、資料庫或 Omrade 設定。驗收須確認實際 computed background 透明，聚光區能看見原任務／進度文字，並走完四步、鍵盤略過與手機／桌面。
@@ -2181,3 +2205,5 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 - 保留工作區其他功能的既有修改，僅提交本批文案清理差異。
 - 同步移除清理後的空白說明摺疊區；既有 ICP 交接測試改核對中英文操作按鈕與連結，不再要求顯示已移除的流程說明。
 - 驗證：80 項相關測試通過、2 項隔離資料庫測試因未設定測試環境略過；22 個元件 ESLint 零錯誤，7 個警告與清理前相同。逐一核對按鈕、輸入欄位、連結、進度及完整錯誤／狀態節點保留。未進行登入後的實際畫面驗收。
+
+折扣 UI 本機隔離帳號驗收：無效碼顯示安全錯誤並禁用訂閱、套用月繳 19.60／59.60、切換年繳必須重套且顯示首年總額 187.20／667.20、續年原價及移除入口，390px 無水平溢位。一般本機 next start 的英文預設語系有既有重新導向循環，雙語正式畫面需於部署後確認，不修改來源防護。
