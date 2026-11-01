@@ -37,6 +37,8 @@
 .beyondCard h4 { font-size: calc(26 * var(--home-unit)); line-height: calc(31 * var(--home-unit)); font-weight: 800; letter-spacing: calc(-0.5 * var(--home-unit)); }
 .beyondCard p { font-size: calc(16 * var(--home-unit)); line-height: calc(24 * var(--home-unit)); color: #e3c8ce; margin-top: calc(8 * var(--home-unit)); }
 .beyondCard a:hover { text-decoration: underline; }
+.beyondCard[href]:hover h4 { text-decoration: underline; text-underline-offset: 4px; }
+.beyondCard[href]:focus-visible { outline: 3px solid var(--home-red); outline-offset: 4px; }
 .phases { min-height: calc(974 * var(--home-unit)); }
 .phaseGrid { margin-top: calc(49 * var(--home-unit)); }
 .phaseCard { padding: calc(32 * var(--home-unit)); min-height: calc(551 * var(--home-unit)); border-radius: calc(16 * var(--home-unit)); background: var(--home-paper); display: flex; flex-direction: column; }

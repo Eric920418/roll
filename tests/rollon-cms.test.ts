@@ -8,6 +8,39 @@ import { readAdminResponse } from "../src/lib/cms/admin-response";
 import * as assets from "../src/lib/cms/rollon-v10";
 import * as routes from "../src/lib/routes";
 
+test("Project Ark 整張卡片使用安全外部連結，雙語 Logo／標題可點且 NOVA 保留語系", async () => {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const require = createRequire(import.meta.url);
+  const loaded = { exports: {} as { default: (props: { locale: "en" | "zh-tw" }) => Promise<import("react").ReactNode> } };
+  runInNewContext(ts.transpileModule(readFileSync("src/components/home/ApproachV10.tsx", "utf8"), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText, {
+    module: loaded, exports: loaded.exports,
+    require: (id: string) => {
+      if (id === "next/link") return { default: "a" };
+      if (id === "next/image") return { default: "img" };
+      if (id === "./RollonPage") return { default: "main", SectionHeading: () => null };
+      if (id.endsWith(".module.css")) return { default: {} };
+      if (id === "@/lib/routes") return routes;
+      if (id === "@/lib/cms/rollon-content") return { getRollonAssets: async () => ({ image: (src: string) => src }) };
+      if (id === "next-intl/server") return { getTranslations: async ({ locale }: { locale: string }) => {
+        const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).ApproachV10;
+        return (key: string) => key.split(".").reduce((value, part) => value[part], messages);
+      } };
+      return require(id);
+    },
+  });
+  for (const locale of ["en", "zh-tw"] as const) {
+    const html = renderToStaticMarkup(await loaded.exports.default({ locale }));
+    const links = [...html.matchAll(/<a\b[^>]*href="https:\/\/projectark\.tw\/"[^>]*>[\s\S]*?<\/a>/g)];
+    assert.equal(links.length, 1);
+    const card = links[0][0];
+    assert.ok(card.includes('target="_blank" rel="noopener noreferrer"'));
+    assert.ok(card.includes('alt="Project Ark"'));
+    assert.ok(card.includes(locale === "en" ? "Partner workshops" : "夥伴工作坊"));
+    assert.ok(!card.includes('<a ', 1), "External card must not contain nested links");
+    assert.ok(html.includes(`href="${routes.pathForLocale("/product", locale)}"`));
+  }
+});
+
 test("共用頁尾保留雙語指南與 NOVA，社群使用 CMS、清空隱藏並拒絕危險協定", async () => {
   const { renderToStaticMarkup } = await import("react-dom/server");
   const require = createRequire(import.meta.url);

@@ -1,3 +1,9 @@
+## Project Ark 外部連結（2026-11-01）
+
+合作方式 Approach 頁「BEYOND ADVICE / A place to land.」的 Project Ark／Partner workshops 卡片整張連到 https://projectark.tw/，中英文共用，Logo、標題與說明皆可點擊。以新分頁開啟並設定 noopener noreferrer，標題加外部連結箭頭、鍵盤焦點採酒紅色外框。沿用現有 Logo、CMS 圖片與文案；NOVA 仍連目前語系的 /product，day1 維持原狀。不使用 iframe、不載入第三方腳本、不寫入資料庫。
+
+驗收：`tests/rollon-cms.test.ts` 8 項通過，包含雙語整卡連結、Logo 與標題、沒有巢狀連結及 NOVA 語系；修改檔案 ESLint、`git diff --check`、完整 `pnpm build` 通過。瀏覽器檢查雙語 390／768／1440px 無水平溢位、各有一個 Project Ark 外連，target／rel 正確；Shift+Tab 可聚焦整卡，實際為 3px 酒紅色外框、4px offset。未重跑完整測試套件，未提交第三方表單。依既有正式發布授權推送 main 並驗證正式頁面。
+
 ## 改版示意第三版（2026-10-31）
 
 導覽空白修復：正式 Chrome 已重現 Next Steps 第三步，底下進度區文字仍在 DOM，但原生 dialog 重複套用 .nova-theme，其未分層的 background:var(--color-light) 蓋過 Tailwind utilities 層的 bg-transparent，導致整頁遮成白底、聚光區空白。移除 dialog 重複的主題 class，沿用 Dashboard 祖先已提供的 NOVA 色票；原生模態、焦點限制、略過／重開與帳號導覽狀態均保留。不修改計畫、進度、積分、方案、資料庫或 Omrade 設定。驗收須確認實際 computed background 透明，聚光區能看見原任務／進度文字，並走完四步、鍵盤略過與手機／桌面。

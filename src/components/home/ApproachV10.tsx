@@ -34,10 +34,15 @@ export default async function ApproachV10({ locale }: { locale: Locale }) {
         </div>)}
         <div className={s.serviceGroup}>
           <div className={s.groupHeading}><p className={`${base.eyebrow} ${s.sectionEyebrow}`}>{t("services.beyond")}</p><h3>{t("services.beyondTitle")}</h3></div>
-          <div className={s.threeGrid}>{beyondLogos.map((logo,index) => <article key={logo.alt} className={s.beyondCard}>
-            <div className={s.beyondLogo}><Image src={image(logo.src)} alt={logo.alt} width={logo.width} height={logo.height} style={{width:`calc(${logo.width} * var(--home-unit))`}} /></div>
-            <div><h4>{index === 2 ? <Link href={pathForLocale("/product",locale)}>{t(`beyond.${index+1}.title`)}</Link> : t(`beyond.${index+1}.title`)}</h4><p>{t(`beyond.${index+1}.description`)}</p></div>
-          </article>)}</div>
+          <div className={s.threeGrid}>{beyondLogos.map((logo,index) => {
+            const content = <>
+              <div className={s.beyondLogo}><Image src={image(logo.src)} alt={logo.alt} width={logo.width} height={logo.height} style={{width:`calc(${logo.width} * var(--home-unit))`}} /></div>
+              <div><h4>{index === 2 ? <Link href={pathForLocale("/product",locale)}>{t(`beyond.${index+1}.title`)}</Link> : t(`beyond.${index+1}.title`)}{index === 1 && <span aria-hidden="true"> ↗</span>}</h4><p>{t(`beyond.${index+1}.description`)}</p></div>
+            </>;
+            return index === 1
+              ? <a key={logo.alt} className={s.beyondCard} href="https://projectark.tw/" target="_blank" rel="noopener noreferrer">{content}</a>
+              : <article key={logo.alt} className={s.beyondCard}>{content}</article>;
+          })}</div>
         </div>
       </div>
     </section>
