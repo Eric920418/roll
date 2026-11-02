@@ -110,6 +110,8 @@ test("Trial setup is private, bounded, cached, explicitly confirmed and cannot g
       try {
         for (let i = 0; i < 3; i++) await setup.prepareDiscoverySetup(await account() as never, input());
         await assert.rejects(setup.prepareDiscoverySetup(await account() as never, input()), /limit|上限/);
+        process.env.ANTHROPIC_WORKSPACE_ID = " \nwrkspc_fundedQA\n ";
+        await assert.rejects(setup.prepareDiscoverySetup(await account() as never, input()), /limit|上限/);
         assert.equal((await db.rateCounter.findUniqueOrThrow({ where: { key: oldKey } })).count, 3);
         const counters = await db.rateCounter.findMany({ where: { key: { contains: other.id } } });
         assert.equal(counters.length, 2); assert(counters.every(row => row.count === 3));

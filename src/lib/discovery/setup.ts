@@ -33,7 +33,7 @@ export async function prepareDiscoverySetup(account: Account, input: Input) {
     if (same && setup.diagnosis) return { id: journey.id, cached: setup.diagnosis };
     if (setup?.confirmed) throw new PlanWriteError("起步計畫已確認，請繼續已儲存的計畫 / Your starter plan is confirmed; continue your saved plan", 409);
     if (journey.analysisToken && journey.analysisExpiresAt && journey.analysisExpiresAt > new Date()) throw new PlanWriteError("個人化分析仍在處理，回答已保存；請稍後重新載入 / Analysis is processing; your answers are saved. Reload shortly", 409);
-    const rate = await checkRateLimit(`discovery:setup:${process.env.ANTHROPIC_WORKSPACE_ID || "default"}:${account.id}`, 3, DAY_MS, false, tx);
+    const rate = await checkRateLimit(`discovery:setup:${process.env.ANTHROPIC_WORKSPACE_ID?.trim() || "default"}:${account.id}`, 3, DAY_MS, false, tx);
     if (!rate.ok) throw new PlanWriteError("今日起步分析重試已達上限，回答已保留 / Daily starter analysis retry limit reached; answers are retained", 429);
     await tx.discoveryJourney.update({ where: { id: journey.id }, data: { setup: json({ ...input, answers, diagnosis: null, confirmed: false }), analysisToken: token, analysisExpiresAt: new Date(Date.now() + 180000) } });
     return { id: journey.id, cached: null };
