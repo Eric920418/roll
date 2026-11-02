@@ -8,7 +8,7 @@ import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { conditionMet, pairKey, weekDueAt, weekKey, shareSchema, messageSchema } from "../src/lib/network/policy";
+import { conditionMet, pairKey, visitorCountLabel, weekDueAt, weekKey, shareSchema, messageSchema } from "../src/lib/network/policy";
 import { emptyInsight } from "../src/lib/customer-insights/schema";
 import { publicCard } from "../src/lib/matchmaking/schema";
 
@@ -27,6 +27,18 @@ test("Taipei weeks, conditions and trust boundaries are deterministic", () => {
   assert(conditionMet("fundraising_open", { ...p, fundraising: true }));
   const result = publicCard({ id: "card", sourcePolicy: 2, role: "founder", country: "", industry: "", slogan: "", offers: "", looksFor: "", categories: ["collaboration"], visibleFields: ["country", "industry", "companyPitch", "icp", "stats"], lastActiveAt: null, verified: false, recommended: false }, { companyName: "Public Startup", country: "Taiwan", industry: "SaaS", oneLinePitch: "Public pitch", icp: "Public ICP", targetMarkets: [] }, { interviews: 9, milestones: 2, payingCustomers: 1 }, null, new Date(), true);
   assert.equal(result.companyName, "Public Startup"); assert(!("stats" in result));
+});
+
+test("Visitor summaries omit zero categories and use the correct English singular or plural", () => {
+  assert.equal(visitorCountLabel({ investors: 0, founders: 1, others: 0 }, false), "1 founder");
+  assert.equal(visitorCountLabel({ investors: 1, founders: 0, others: 0 }, false), "1 investor");
+  assert.equal(visitorCountLabel({ investors: 0, founders: 0, others: 1 }, false), "1 other member");
+  assert.equal(visitorCountLabel({ investors: 2, founders: 3, others: 0 }, false), "2 investors and 3 founders");
+  assert.equal(visitorCountLabel({ investors: 2, founders: 1, others: 4 }, false), "2 investors, 1 founder and 4 other members");
+  assert.equal(visitorCountLabel({ investors: 0, founders: 1, others: 0 }, true), "1 位創辦人");
+  assert.equal(visitorCountLabel({ investors: 2, founders: 0, others: 1 }, true), "2 位投資人、1 位其他會員");
+  assert.equal(visitorCountLabel({ investors: 0, founders: 0, others: 0 }, false), "");
+  assert.equal(visitorCountLabel({ investors: -1, founders: "1", others: NaN }, true), "");
 });
 
 test("Member network transactions, privacy, evidence, weekly deduplication and notification delivery", async t => {
@@ -207,6 +219,25 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
       await assert.rejects(service.sendMessage(investor.id, linkId, { requestId: randomUUID(), body: "blocked" }));
       assert.equal((await service.messages(owner.id, linkId)).messages.length, 1);
       assert.equal((await notifications.notificationList(investor.id)).notifications.find(n => n.kind === "unavailable")?.payload && true, true);
+    });
+    await t.test("Weekly email subject, text and HTML omit zero roles; an all-zero delivery is cancelled", async () => {
+      const recipient = await user();
+      env.MEMBER_NETWORK_EMAIL_ENABLED = "test";
+      env.MEMBER_NETWORK_EMAIL_TEST_USER_ID = recipient.id;
+      env.MEMBER_NETWORK_EMAIL_TEST_TO = "qa-recipient@example.invalid";
+      const payload = { investors: 0, founders: 1, others: 0 };
+      await db.$transaction(tx => notifications.queueNotification(tx, recipient.id, `qa-positive-summary:${suffix}`, "weekly", payload, true));
+      const zero = await db.$transaction(tx => notifications.queueNotification(tx, recipient.id, `qa-zero-summary:${suffix}`, "weekly", { investors: 0, founders: 0, others: 0 }, true));
+      const before = sends;
+      await notifications.runNotifications();
+      assert.equal(sends, before + 1);
+      const email = JSON.parse(sentBody);
+      assert.equal(email.subject, "[NOVA TEST] NOVA: 1 founder viewed your page this week");
+      for (const content of [email.text, email.html]) { assert.match(content, /1 founder viewed your page this week/); assert.doesNotMatch(content, /0 investors|0 other members|1 founders/); }
+      const cancelled = await db.memberNotificationDelivery.findUniqueOrThrow({ where: { notificationId: zero.id } });
+      assert.equal(cancelled.status, "cancelled"); assert.equal(cancelled.attempts, 0);
+      assert.deepEqual((await notifications.notificationList(recipient.id)).notifications.find(n => n.payload.founders === 1)?.payload, payload);
+      env.MEMBER_NETWORK_EMAIL_ENABLED = "false";
     });
     await t.test("Weekly nonzero summaries are unique; zero viewers do not get a digest", async () => {
       const week = "2031-12-29";

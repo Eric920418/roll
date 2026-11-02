@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { canonicalEmailPayload, safeEmailError } from "@/lib/rewards/reminders";
 import { MemberError } from "@/lib/member-http";
-import { conditionLabel, networkEnabled, weekDueAt, weekKey } from "./policy";
+import { conditionLabel, networkEnabled, visitorCountLabel, weekDueAt, weekKey } from "./policy";
 import { watchStillValid } from "./watches";
 type DB = Prisma.TransactionClient;
 export async function queueNotification(tx: DB, userId: string, eventKey: string, kind: string, payload: Prisma.InputJsonObject, email = false) {
@@ -75,10 +75,12 @@ export async function runNotifications(now = new Date()) {
       };
       if (!await eligible()) { await finish({ status: "cancelled" }); continue; }
       const zh = preferences.locale === "zh-tw", origin = process.env.NEXT_PUBLIC_APP_URL;
+      const viewers = visitorCountLabel(payload, zh);
+      if (!watch && !viewers) { await finish({ status: "cancelled" }); continue; }
       if (!origin || new URL(origin).protocol !== "https:") throw new Error("通知需要正式 HTTPS 網址 / HTTPS app origin required");
       const token = notificationToken(row.notification.userId, preferences.version, watch ? "watch" : "weekly");
       const optout = new URL(`${zh ? "/zh-tw" : ""}/network/unsubscribe?token=${encodeURIComponent(token)}`, origin).href, oneClick = new URL(`/api/notifications/unsubscribe?token=${encodeURIComponent(token)}`, origin).href;
-      const title = watch ? `${payload.company}: ${conditionLabel(String(payload.condition), zh)}` : zh ? `本週有 ${payload.investors} 位投資人、${payload.founders} 位創辦人、${payload.others} 位其他會員看了你的頁面` : `${payload.investors} investors, ${payload.founders} founders and ${payload.others} other members viewed your page this week`;
+      const title = watch ? `${payload.company}: ${conditionLabel(String(payload.condition), zh)}` : zh ? `本週有 ${viewers}看了你的頁面` : `${viewers} viewed your page this week`;
       const href = new URL(`${zh ? "/zh-tw" : ""}/dashboard/notifications`, origin).href;
       const draftEmail = { from: process.env.RESEND_FROM_EMAIL, to: [row.notification.user.email], subject: `NOVA: ${title}`, text: `${title}\n${href}\nUnsubscribe: ${optout}`, html: `<div style="font-family:sans-serif;max-width:560px;margin:auto"><img alt="NOVA" width="240" src="${escape(new URL("/nova/logo-metal.png", origin).href)}"/><h1>${escape(title)}</h1><p><a href="${escape(href)}">${zh ? "查看 NOVA" : "Open NOVA"}</a></p><a href="${escape(optout)}">${zh ? "退訂此類通知" : "Unsubscribe"}</a></div>`, headers: { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } };
       const email = row.payload || (testMode ? { ...draftEmail, to: [testTo!], subject: `[NOVA TEST] ${draftEmail.subject}` } : draftEmail);

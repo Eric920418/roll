@@ -20,6 +20,16 @@ export function conditionMet(condition: string, progress: { interviews: number; 
 }
 export const conditionLabel = (key: string, zh: boolean) => ({ interviews_5: zh ? "完成 5 家有效訪談" : "5 valid company interviews", interviews_10: zh ? "完成 10 家有效訪談" : "10 valid company interviews", interviews_complete: zh ? "訪談階段完成" : "Interview stage completed", first_paid_customer: zh ? "第一位實際付費客戶" : "First paying customer", fundraising_open: zh ? "開放募資" : "Open for fundraising" })[key] || key;
 
+export function visitorCountLabel(counts: { investors?: unknown; founders?: unknown; others?: unknown }, zh: boolean) {
+  const labels: string[] = [];
+  for (const [key, english, chinese] of [["investors", "investor", "投資人"], ["founders", "founder", "創辦人"], ["others", "other member", "其他會員"]] as const) {
+    const count = counts[key];
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count <= 0) continue;
+    labels.push(zh ? `${count} 位${chinese}` : `${count} ${english}${count === 1 ? "" : "s"}`);
+  }
+  return zh ? labels.join("、") : labels.length > 1 ? `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}` : labels[0] || "";
+}
+
 export const autoCardData = { role: "founder", categories: ["collaboration"], country: "", industry: "", slogan: "", offers: "", looksFor: "", visibleFields: ["country", "industry", "companyPitch", "icp", "photo"], visible: false, sourcePolicy: 2 };
 
 export function visitorPeriods(now = new Date()) {

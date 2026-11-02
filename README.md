@@ -58,6 +58,12 @@ Next Steps 已將優先任務提到工作區上方，既有公司跟進在新名
 
 驗收：SEO／CMS 11 項通過；瀏覽器檢查雙語 390／768／1440px，均為唯一 H1、無水平溢位，SEO title 維持 ROLL ON.。初次發布遇到 main 已有的 55 個舊公司搜尋測試型別錯誤；同期正式提交 c05137d 已修正該問題，本次保留該更新，未覆蓋會員功能或略過型別檢查。最新 main 的 tsc 與完整測試 262 項通過（247 通過、15 項隔離 DB 測試略過），Vercel roll-63bbfjfd4 正式建置 Ready。正式 HTTP 驗證兩語首頁 H1 與 lastmod 均正確。未寫入正式資料庫。截圖 rollon-headline-production-20261031.png 位於既有視覺證據目錄。
 
+## 每週訪客通知精簡（2026-11-02）
+
+Email 主旨、純文字、HTML 標題與站內通知共用正數訪客身份文案，零人身份省略；英文依數量使用單複數，例如只有一位創辦人時顯示「1 founder viewed your page this week」，不再出現 0 investors／0 other members。全零不建立週報；寄送前亦取消無正數身份的週報。中英文、匿名統計、週去重、Email 偏好、退訂、處理租約及 Resend 冪等流程不變。已寄出郵件不修改；已凍結的重試寄送內容維持原樣，避免相同冪等鍵變更請求。只改顯示文案，不改原始訪客紀錄或會員資料。
+
+驗收：pnpm test 419 項通過、零失敗／skip，pnpm lint 零 errors／14 個既有 warnings，pnpm build 通過。包含單一身份、兩種／三種身份、中文、英文單複數、全零，以及隔離 PostgreSQL 透過 mock Resend 核對實際主旨／純文字／HTML、全零取消與重試固定內容。此次未寄真實測試信、不更改寄送偏好或正式會員資料。
+
 ## Omrade 共用公司搜尋（2026-10-31）
 
 **目前上線設定（2026-11-02）：** 經使用者確認開放正式搜尋，Vercel Production 的 `OMRADE_ENABLED` 與 `OMRADE_WORKER_ENABLED` 已設為 true，透過新部署生效；以下「關閉」敘述為先前驗收歷程。Matchmaking「找新公司」與 Next Steps 共用本人條件、訂單和結果；仍依 NOVA／ROLL ON、合法既有授權及三家訪談後一次五家試用 POC 資格判定，每會員 UTC 月最多交付十家。供應商組織再次只讀核對：免費剩餘 145、交付 5、預留 0、進行中 0，paid_enabled=false、monthly_spend_limit_cents=0、paid_accrued_cents=0。每筆請求仍強制 max_charge_cents:0，回應也必須為零付費；額度不足回 free_exhausted，不自動付費、不回退 Anthropic、不自動補單、不扣 AI 次數。每分鐘既有排程只處理使用者確認建立的持久訂單，不主動替會員搜尋。本次只修改兩個正式開關與本文件，不改會員、方案、積分、資料庫 schema 或本機／Preview 開關，不建立額外驗收搜尋單。Omrade 18 項含隔離交易、免費額度用盡、防重送與不呼叫 AI 的回歸通過。需暫停新單時關 OMRADE_ENABLED，保留 worker true 對帳已接單；完整停機才將兩者皆關閉並重新部署。
