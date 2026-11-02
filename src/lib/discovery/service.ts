@@ -26,6 +26,7 @@ export async function lockDiscoveryWrite(tx: Prisma.TransactionClient, userId: s
   if (!account || account.trialPolicy !== DISCOVERY_POLICY) throw new PlanWriteError("無法存取此訪談工作區 / Workspace access denied", 403);
   const paid = discoveryPaid(account);
   if (!paid && !discoveryTrialActive(account)) throw new PlanWriteError("14 天試用已結束；已儲存內容保留，升級後可繼續 / Trial ended; saved records are retained. Upgrade to continue", 402);
+  if (!paid && journey.setup === null && !(await discoveryRows(userId, journeyId, tx)).length) throw new PlanWriteError("請先回答三題並確認個人化起步計畫 / Answer three questions and confirm your starter plan first", 409);
   if (creating) {
     const total = discoveryEvidence(journeyId, await discoveryRows(userId, journeyId, tx)).length;
     if (total >= (paid ? FULL_INTERVIEWS : TRIAL_INTERVIEWS)) throw new PlanWriteError(paid ? "十次訪談已達標，請查看完整報告或建立下一步計畫 / Interview target reached; view the report or build your next plan" : "三次試用訪談已完成，升級後可繼續七次訪談 / Trial milestone reached. Upgrade to continue with seven more interviews", paid ? 409 : 402);
@@ -50,13 +51,15 @@ export async function getDiscoverySnapshot(userId: string) {
   const evidence = journey ? discoveryEvidence(journey.id, rows) : [];
   const paid = discoveryPaid(account), active = discoveryTrialActive(account);
   const setup = readDiscoverySetup(journey?.setup);
+  const needsSetup = !journey || (journey.setup !== null && !setup?.confirmed) || (!paid && journey.setup === null && rows.length === 0);
   const starterPlan = paid && !journey ? await prisma.actionPlan.findFirst({ where: { userId, activeKey: userId }, select: { diagnosticAnswers: true } }) : null;
   return { journeyId: journey?.id ?? null, version: journey?.version ?? 0, paid, active, endsAt: account.trialEndsAt?.toISOString() ?? null,
     setup,
+    needsSetup,
     canStart: Array.isArray(starterPlan?.diagnosticAnswers) && starterPlan.diagnosticAnswers.length === 3,
     daysRemaining: account.trialEndsAt ? Math.max(0, Math.ceil((account.trialEndsAt.getTime() - Date.now()) / 86_400_000)) : 0,
     target: paid ? FULL_INTERVIEWS : TRIAL_INTERVIEWS, total: evidence.length,
-    canCreate: (paid || active) && evidence.length < (paid ? FULL_INTERVIEWS : TRIAL_INTERVIEWS) && (!journey || journey.setup === null || Boolean(setup?.confirmed)),
+    canCreate: !needsSetup && (paid || active) && evidence.length < (paid ? FULL_INTERVIEWS : TRIAL_INTERVIEWS),
     rows: rows.map(row => ({ ...row, updatedAt: row.updatedAt.toISOString() })),
     preview: journey?.previewVersion === journey?.version ? journey?.preview ?? null : null,
     report: paid && evidence.length >= FULL_INTERVIEWS && journey?.reportVersion === journey?.version ? journey?.report ?? null : null,

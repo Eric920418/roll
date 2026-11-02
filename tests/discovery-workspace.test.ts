@@ -10,6 +10,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { discoveryEvidence } from "../src/lib/discovery/policy";
 import { emptyInsight } from "../src/lib/customer-insights/schema";
+import { DIAGNOSTIC_QUESTIONS } from "../src/lib/action-plan/builder-draft";
 
 const connectionString = process.env.ROLL_REWARDS_TEST_DATABASE_URL;
 test("Discovery records, analysis and entitlements in isolated PostgreSQL", { skip: !connectionString }, async t => {
@@ -17,7 +18,7 @@ test("Discovery records, analysis and entitlements in isolated PostgreSQL", { sk
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString, max: 12 }) });
   const owner = await db.user.create({ data: { email: `journey-${randomUUID()}@example.invalid`, trialPolicy: "interviews-3-v1", trialPlan: "pro", trialStartsAt: new Date(Date.now() - 1000), trialEndsAt: new Date(Date.now() + 14 * 86400000) } });
   const stranger = await db.user.create({ data: { email: `journey-${randomUUID()}@example.invalid` } });
-  const journey = await db.discoveryJourney.create({ data: { userId: owner.id } });
+  const journey = await db.discoveryJourney.create({ data: { userId: owner.id, setup: { requestId: randomUUID(), locale: "en", confirmed: true, answers: DIAGNOSTIC_QUESTIONS.en.map(question => ({ question, answer: "An MVP needs paying customers" })), diagnosis: { companyStage: "MVP", stageReason: "Working MVP", stageConfidence: 80, bottleneckGroup: "Sales", bottleneckCode: "no_icp", bottleneckReason: "Buyers are unknown", bottleneckConfidence: 70 } } } });
   let uid: string | null = owner.id, admin = false, fullReservation = 0, aiCalls = 0, failure = false, mutateDuringAnalysis = false, refunded = 0;
   let inference: (() => Promise<void>) | null = null;
   class WriteError extends Error { constructor(message: string, public status = 409) { super(message); } }

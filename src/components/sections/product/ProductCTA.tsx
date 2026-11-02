@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { pathForLocale } from "@/lib/routes";
+import type { Locale } from "@/i18n/routing";
 import {
   motion,
   useReducedMotion,
@@ -12,6 +14,7 @@ import NovaLogo from "@/components/brand/NovaLogo";
 
 export default function ProductCTA() {
   const t = useTranslations("Product.cta");
+  const locale = useLocale() as Locale;
   const sectionRef = useRef<HTMLElement>(null);
   const reduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
@@ -57,10 +60,10 @@ export default function ProductCTA() {
         </div>
 
         <a
-          href="#contact"
+          href={pathForLocale("/signup", locale)}
           className="group mt-2 inline-flex items-center gap-2 rounded-full bg-white text-primary px-9 md:px-10 py-3.5 md:py-4 text-sm md:text-base font-semibold font-[family-name:var(--font-heading)] hover:bg-cream transition-colors duration-300"
         >
-          {t("button")}
+          {t("freeButton")}
           <span
             aria-hidden="true"
             className="text-base leading-none transition-transform duration-300 group-hover:translate-x-0.5 group-hover:translate-y-0.5"

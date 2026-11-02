@@ -84,6 +84,9 @@ test("Trial setup is private, bounded, cached, explicitly confirmed and cannot g
       const first = await diagnose.POST(req({ ...body, answers: body.answers.slice(0, 1) })); assert.equal(first.status, 200); assert.equal((await first.json()).data.question, DIAGNOSTIC_QUESTIONS.en[1]); assert.equal(calls, 0);
     });
     await t.test("Three answers produce one cached diagnosis; altered diagnosis and unconfirmed interviews fail", async () => {
+      const empty = await db.discoveryJourney.create({ data: { userId: owner.id } });
+      assert.equal((await service.getDiscoverySnapshot(owner.id)).needsSetup, true);
+      await assert.rejects(db.$transaction(tx => service.lockDiscoveryWrite(tx, owner.id, empty.id, true)), /confirm|確認/);
       assert.equal((await diagnose.POST(req(body))).status, 200); assert.equal(calls, 1);
       assert.equal((await diagnose.POST(req(body))).status, 200); assert.equal(calls, 1);
       const snapshot = await service.getDiscoverySnapshot(owner.id); assert.equal(snapshot.canCreate, false); assert.equal(snapshot.target, 3);
@@ -107,6 +110,14 @@ test("Trial setup is private, bounded, cached, explicitly confirmed and cannot g
       assert.equal((await discovery.POST(req({}))).status, 200);
       assert.equal((await service.getDiscoverySnapshot(uid)).canCreate, true);
       paid = false;
+    });
+    await t.test("Existing legacy interviews remain available without fabricated setup answers", async () => {
+      const other = await member(); uid = other.id;
+      const old = await db.discoveryJourney.create({ data: { userId: uid } });
+      await db.meetingNote.create({ data: { userId: uid, title: "Existing interview", insight: { company: "Legacy buyer", notes: "A saved actual interview", journeyId: old.id } } });
+      const snapshot = await service.getDiscoverySnapshot(uid);
+      assert.equal(snapshot.setup, null); assert.equal(snapshot.needsSetup, false); assert.equal(snapshot.canCreate, true);
+      await db.$transaction(tx => service.lockDiscoveryWrite(tx, other.id, old.id, true));
     });
     await t.test("Parallel analysis holds one lease, failures keep answers, and expiry cannot be confirmed", async () => {
       const other = await member(); uid = other.id; const next = input(); fail = true;
