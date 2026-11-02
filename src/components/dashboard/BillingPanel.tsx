@@ -283,7 +283,12 @@ export default function BillingPanel({
           <div className="mt-2 flex flex-wrap gap-2"><input id="billing-coupon-code" value={couponText} maxLength={32} autoComplete="off" spellCheck={false} disabled={busy !== null} onChange={event => { setCouponText(event.target.value); setCoupon(null); checkoutAttempt.current = null; }} className="min-h-11 min-w-0 flex-1 rounded-xl border border-dark/20 px-3 py-2 text-sm uppercase focus-visible:outline-2" /><button type="submit" disabled={busy !== null || !couponText.trim()} className="min-h-11 rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy === "coupon" ? (zh ? "驗證中…" : "Checking…") : (zh ? "套用" : "Apply")}</button>{couponText && <button type="button" disabled={busy !== null} className="min-h-11 rounded-xl border px-4 py-2 text-sm" onClick={() => { setCouponText(""); setCoupon(null); setError(""); checkoutAttempt.current = null; }}>{zh ? "移除" : "Remove"}</button>}</div>
           {coupon && <p role="status" className="mt-3 text-sm font-semibold">{coupon.code} · 60% OFF · {zh ? "僅首期，之後原價自動續訂。優惠至 2026/11/30（台北時間），每帳號限一次。" : "First billing period only, then automatic renewal at the regular price. Ends Nov 30, 2026 (Taipei); once per account."}</p>}
         </form>}
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={`flex flex-col rounded-2xl border p-5 ${currentPlan === "free" ? "border-primary bg-primary/[0.04]" : "border-dark/10 bg-white"}`}>
+            <p className="text-lg font-extrabold">{catalog.free.name}</p><p className="mt-1 text-xl font-bold">US$0</p><p className="mt-3 text-sm">{catalog.free.audience}</p>
+            <ul className="my-3 space-y-2 text-sm">{catalog.free.features.map(feature => <li key={feature}>✓ {feature}</li>)}</ul>
+            <p className="mt-auto pt-5 text-sm font-semibold">{currentPlan === "free" ? (zh ? "目前方案" : "Current plan") : (zh ? "所有帳號均保留免費基本功能" : "Free basics remain available to every account")}</p>
+          </div>
           {PAID_PLANS.map((plan) => {
             const isCurrent =
               hasActiveSub && plan === currentPlan && interval === currentInterval;

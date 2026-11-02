@@ -260,6 +260,7 @@ model User {
 
 /// 新試用的三次初步訪談與付費後十次完整分析；不覆寫舊計畫或訪談。
 model DiscoveryJourney {
+  setup Json?
   interviewsConfirmedAt DateTime?
   validationAnalysis Json?
   id String @id @default(cuid())

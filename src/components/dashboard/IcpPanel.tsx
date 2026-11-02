@@ -6,6 +6,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import { EMPTY_ICP, ICP_FIELDS, hasIcp, nextIcpQuestion, readIcp, persistedIcpAnswer, type IcpDraft, type IcpWorkspaceView } from "@/lib/icp/schema";
 
@@ -145,6 +147,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
     <section id="icp-saved" aria-labelledby="saved-icp-title" className="min-w-0 scroll-mt-8 rounded-2xl border border-dark/15 bg-white p-5 sm:p-6">
       <header className="flex items-center justify-between gap-4"><h2 id="saved-icp-title" className="text-lg font-bold">Saved ICP</h2><button id="icp-start" className={button} onClick={() => void show(false)}>{hasSaved ? (locale === "zh-tw" ? "編輯" : "Edit") : "+ Add"}</button></header>
       {hasSaved ? <><p className="mt-4 whitespace-pre-wrap break-words text-lg font-semibold">{current?.summary || currentLegacy || current?.who}</p>{current && <details className="mt-3"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{locale === "zh-tw" ? "查看完整 ICP" : "View full ICP"}</summary>{rows(current)}</details>}</> : <p className="mt-5 text-sm">{locale === "zh-tw" ? "尚未儲存 ICP" : "No saved ICP yet"}</p>}
+      {hasSaved && <div className="mt-5 rounded-xl border border-dark/15 p-4"><p className="text-sm font-semibold">{locale === "zh-tw" ? "第一步已完成：ICP 已儲存" : "Step 1 complete: your ICP is saved"}</p><p className="mt-2 text-sm">{locale === "zh-tw" ? "第二步：回答三個問題，建立符合目前狀況的個人化計畫。" : "Step 2: answer three questions to build a plan for your current situation."}</p><Link href={pathForLocale("/dashboard/agenda?guide=build", locale)} className={`${button} mt-3 inline-flex min-h-11 items-center bg-black! text-white!`}>{locale === "zh-tw" ? "第二步：建立我的下一步" : "Step 2: build my next steps"} →</Link></div>}
     </section>
     {mounted && createPortal(<dialog ref={dialog} aria-labelledby="icp-panel-title" onClose={() => { setOpen(false); trigger.current?.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[900px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-dark/10 bg-white px-5 py-4 sm:px-8">
@@ -152,7 +155,7 @@ export default function IcpPanel({ userId, saved, legacy, version, canUseAi }: {
         <button type="button" aria-label={t("close")} className={button} onClick={() => dialog.current?.close()}>{t("close")}</button>
       </div>
       <div className="space-y-5 p-5 sm:p-8">
-        <IcpDiscovery key={userId} userId={userId} savedVersion={Math.max(version, workspace.currentProfileVersion)} canUseAi={canUseAi} onUpdated={setWorkspace} />
+        <IcpDiscovery key={userId} userId={userId} savedVersion={Math.max(version, workspace.currentProfileVersion)} canUseAi={canUseAi} onUpdated={setWorkspace} onSaved={() => dialog.current?.close()} />
         <details><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "手動編輯與草稿工具" : "Manual editing & draft tools"}</summary>
         <button className={`${button} my-3`} onClick={beginEdit}>{t("edit")}</button>
 

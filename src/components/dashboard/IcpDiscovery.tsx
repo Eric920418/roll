@@ -17,7 +17,7 @@ const examples = {
   "zh-tw": ["1–10 人 AI 或 SaaS 新創的創辦人", "不知道該賣給誰、下一步該做什麼", "已有 MVP，但還沒有付費客戶", "使用 ChatGPT、試算表與陌生開發郵件"],
 };
 const guessKeys = ["customer", "struggle", "situation", "workaround"] as const;
-export default function IcpDiscovery({ userId, canUseAi, onUpdated, savedVersion }: { userId: string; canUseAi: boolean; onUpdated: (view: IcpWorkspaceView) => void; savedVersion?: number }) {
+export default function IcpDiscovery({ userId, canUseAi, onUpdated, savedVersion, onSaved }: { userId: string; canUseAi: boolean; onUpdated: (view: IcpWorkspaceView) => void; savedVersion?: number; onSaved?: () => void }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw", router = useRouter();
   const [workspace, setWorkspace] = useState<IcpWorkspaceView | null>(null), [path, setPath] = useState<DiscoveryState["path"] | null>(null), [guess, setGuess] = useState<IcpGuess>({ ...EMPTY_GUESS }), [product, setProduct] = useState("");
   const [busy, setBusy] = useState(false), [loaded, setLoaded] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
@@ -90,7 +90,7 @@ export default function IcpDiscovery({ userId, canUseAi, onUpdated, savedVersion
         setBaseVersion(next.profileVersion);
         setNotice(zh ? "ICP 已確認儲存。" : "ICP confirmed and saved.");
         guide.current = { questionId: null, skipped: [] }; remember("guess", guess, product, next.profileVersion);
-        notifyPlanChanged(userId); router.refresh();
+        notifyPlanChanged(userId); onSaved?.(); router.refresh();
       } else remember(selectedPath);
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); await reload(); }
     finally { sending.current = false; setBusy(false); }

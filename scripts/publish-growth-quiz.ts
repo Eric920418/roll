@@ -22,7 +22,7 @@ const questions = [
     id: "growth-2026-style", order: 1, dimension: GROWTH_DIMENSIONS[1],
     prompt: dual("What is your preferred growth & market entry style?", "你偏好的成長與市場進入方式是什麼？"),
     subtitle: dual("Help NOVA AI tailor your next actions.", "讓 NOVA AI 依你的偏好調整下一步行動建議。"),
-    optionA: option("Replicate ROLL ON's Proven Founder Playbooks", "套用 ROLL ON 的創辦人實戰方法", "Apply business strategies that ROLL ON has used successfully.", "套用 ROLL ON 已驗證的商業策略。"),
+    optionA: option("Steady Customers", "穩定客戶", "Build a steady customer base and repeatable customer relationships.", "建立穩定的客戶來源與可持續的客戶關係。"),
     optionB: option("Fast Experimentation & Rapid Iteration", "快速實驗與迭代", "Reach customers and investors quickly, then adjust based on real results.", "快速聯繫客戶與投資人，用實測數據修正方向。"),
     optionC: option("Partnership & Distributor Network First", "夥伴與經銷通路優先", "Work with local distributors, partners, and cross-border resources to drive sales.", "結合在地經銷商、合作夥伴與跨境資源，以通路推動銷售。"),
     optionD: option("Data-Driven & ROI-Controlled Risk", "數據驅動與 ROI 風險控管", "Use CRM progress and milestone results to guide investment decisions.", "依據 CRM 進度與里程碑達成情況，改善投資回報。"),

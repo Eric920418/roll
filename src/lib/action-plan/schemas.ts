@@ -78,6 +78,7 @@ export const diagnosisSchema = z
   });
 
 export const diagnoseBodySchema = z.object({
+  requestId: z.uuid().optional(),
   locale: z.enum(["en", "zh-tw"]).default("en"),
   messages: z.array(conversationMessageSchema).max(30).default([]),
   answers: z

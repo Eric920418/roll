@@ -10,6 +10,7 @@ import { notifyPlanChanged } from "./PlanRefresh";
 import { builderStorageKey, readBuilderDraft, newBuilderDraft, draftChanged, DIAGNOSTIC_QUESTIONS, type BuilderDraft } from "@/lib/action-plan/builder-draft";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
+import type { DiscoverySetup } from "@/lib/discovery/policy";
 
 type Message = { role: "user" | "assistant"; content: string };
 type Answer = { question: string; answer: string };
@@ -33,12 +34,15 @@ export default function ActionPlanBuilder({
   variant = "build",
   onGenerated,
   triggerClassName, autoOpen = false,
+  discoveryTrial = false, discoverySetup,
 }: {
   messages?: Message[];
   variant?: "build" | "regenerate";
   onGenerated?: () => void;
   triggerClassName?: string;
   autoOpen?: boolean;
+  discoveryTrial?: boolean;
+  discoverySetup?: DiscoverySetup | null;
 }) {
   const t = useTranslations("Dashboard.actionPlan.builder");
   const locale = useLocale() === "zh-tw" ? "zh-tw" : "en";
@@ -98,10 +102,10 @@ export default function ActionPlanBuilder({
     if (busyRef.current || conflict || !draftRef.current) return;
     busyRef.current = true; setBusy(true); setError("");
     // Save submitted answers before any network or AI call; a failure never loses them.
-    if (!writeChange({ answers: nextAnswers, answer: "", question: DIAGNOSTIC_QUESTIONS[locale][nextAnswers.length] || "", diagnosis: null })) { busyRef.current = false; setBusy(false); return; }
+    if (!writeChange({ answers: nextAnswers, answer: "", question: DIAGNOSTIC_QUESTIONS[draftRef.current.locale][nextAnswers.length] || "", diagnosis: null })) { busyRef.current = false; setBusy(false); return; }
     try {
       const response = await fetch("/api/action-plans/diagnose", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, messages: draftRef.current!.messages, answers: nextAnswers }) });
+        body: JSON.stringify({ locale: draftRef.current!.locale, messages: draftRef.current!.messages, answers: nextAnswers, requestId: draftRef.current!.requestId }) });
       const json = await readApiResponse<DiagnoseData>(response, t("genericError"));
       if (!response.ok) throw new Error(json.error || t("genericError"));
       if (!json.data || json.data.status === "ready" && nextAnswers.length !== 3 || json.data.status === "needs_input" && nextAnswers.length >= 3) throw new Error(t("answerAllThree"));
@@ -116,7 +120,9 @@ export default function ActionPlanBuilder({
     setOpen(true); opened.current = true; setError(""); setNotice(""); setConflict(false); setCorrecting(false);
     let restored: BuilderDraft | null = null;
     try { restored = readBuilderDraft(localStorage.getItem(storageKey)); } catch { setNotice(tGuide("storageWarning")); }
-    const next = restored || newBuilderDraft(locale, crypto.randomUUID(), messages);
+    const recovered = discoverySetup ? { ...newBuilderDraft(discoverySetup.locale, discoverySetup.requestId), answers: discoverySetup.answers, diagnosis: discoverySetup.diagnosis, question: "" } : null;
+    const next = restored || recovered || newBuilderDraft(locale, crypto.randomUUID(), messages);
+    if (discoverySetup?.requestId === next.requestId && discoverySetup.diagnosis && JSON.stringify(discoverySetup.answers) === JSON.stringify(next.answers)) next.diagnosis = discoverySetup.diagnosis;
     if (next.generatingAt && Date.now() - next.generatingAt >= 300000) next.generatingAt = null;
     draftRef.current = next; setDraft(next);
     setCorrecting(next.answers.length === 3 && !next.diagnosis);
@@ -165,7 +171,7 @@ export default function ActionPlanBuilder({
       if (await resultFor(requestId)) { finish(requestId); return; }
       if (!writeChange({ generatingAt: Date.now() })) return;
       const response = await fetch("/api/action-plans/generate", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, messages: draftRef.current.messages, answers, diagnosis, requestId, candidateCount: 5 }) });
+        body: JSON.stringify({ locale: draftRef.current.locale, messages: draftRef.current.messages, answers, diagnosis, requestId, candidateCount: 5 }) });
       received = true; const json = await readApiResponse<unknown>(response, t("genericError"));
       if (!response.ok) throw new Error(json.error || t("genericError"));
       finish(requestId);
@@ -215,6 +221,7 @@ export default function ActionPlanBuilder({
               </button>
             </div>
 
+            {discoveryTrial && <p className="mt-4 text-sm">{locale === "zh-tw" ? "先回答三題、檢視個人化診斷並確認，再開始三家訪談體驗。完整行動計畫仍依原方案開放。" : "Answer three questions, review your personalised diagnosis and confirm before starting your three-company trial. Full action plans remain subject to your plan."}</p>}
             {notice && <p role="status" className="mt-4 text-sm text-sky-800">{notice}</p>}
             {draft?.generatingAt && <p role="status" className="mt-4 text-sm text-sky-800">{tGuide("pendingRequest")}</p>}
             {busy && !diagnosis && !question && (
@@ -265,7 +272,7 @@ export default function ActionPlanBuilder({
                   {answers.map((row, index) => <label key={index} className="block text-sm font-semibold">{row.question}<textarea maxLength={4000} rows={4} disabled={blocked} value={row.answer} onChange={event => writeChange({ answers: answers.map((answer, i) => i === index ? { ...answer, answer: event.target.value } : answer), diagnosis: null })} className="mt-2 min-h-11 w-full rounded-xl border border-dark/15 p-3 font-normal" /></label>)}
                   <button type="button" disabled={blocked || answers.some(row => !row.answer.trim())} onClick={() => void callDiagnose(answers)} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 font-bold text-white">{busy ? t("diagnosing") : t("continue")}</button>
                 </div> : <div className="mt-5 flex flex-wrap gap-3">
-                  <button type="button" disabled={blocked} onClick={() => void generate()} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">{busy ? t("generating") : t("confirmDiagnosis")}</button>
+                  <button type="button" disabled={blocked} onClick={() => void generate()} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">{busy ? t("generating") : discoveryTrial ? (locale === "zh-tw" ? "確認起步計畫並開始訪談" : "Confirm starter plan and begin interviews") : t("confirmDiagnosis")}</button>
                   <button type="button" disabled={blocked} onClick={() => { setCorrecting(true); writeChange({ diagnosis: null }); }} className="min-h-11 rounded-xl border border-dark/15 px-5 py-2.5 text-sm font-bold text-dark">{t("correctDiagnosis")}</button>
                 </div>}
               </div>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { interviewSummary, companyKey, type InterviewRow } from "@/lib/customer-insights/interviews";
 import { insightSchema } from "@/lib/customer-insights/schema";
+import { diagnosisSchema, diagnoseBodySchema } from "@/lib/action-plan/schemas";
 
 export const DISCOVERY_POLICY = "interviews-3-v1";
 export const TRIAL_INTERVIEWS = 3;
@@ -8,6 +9,10 @@ export const FULL_INTERVIEWS = 10;
 export const TRIAL_DAYS = 14;
 export const FOUNDER_SEATS = 10;
 export const FOUNDER_AMOUNT = "348.00";
+
+export const discoverySetupSchema = z.object({ requestId: z.uuid(), locale: z.enum(["en", "zh-tw"]), answers: diagnoseBodySchema.shape.answers.unwrap().length(3), diagnosis: diagnosisSchema.nullable(), confirmed: z.boolean() });
+export type DiscoverySetup = z.infer<typeof discoverySetupSchema>;
+export const readDiscoverySetup = (value: unknown) => discoverySetupSchema.safeParse(value).data ?? null;
 
 export function newDiscoveryTrial(now = new Date()) {
   if (process.env.DISCOVERY_TRIAL_ENABLED !== "true") return {};

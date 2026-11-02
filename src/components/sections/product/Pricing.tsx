@@ -27,9 +27,10 @@ const card: Variants = {
   },
 };
 
-type Plan = { key: "pro" | "business" | "enterprise"; featured?: boolean };
+type Plan = { key: "free" | "pro" | "business" | "enterprise"; featured?: boolean };
 
 const PLANS: Plan[] = [
+  { key: "free" },
   { key: "pro" },
   { key: "business", featured: true },
   { key: "enterprise" },
@@ -104,7 +105,7 @@ export default function Pricing() {
           whileInView="visible"
           viewport={{ once: true, margin: "-10%" }}
           variants={container}
-          className="mt-10 md:mt-16 grid md:grid-cols-3 gap-5 md:gap-6 items-stretch"
+          className="mt-10 md:mt-16 grid md:grid-cols-2 xl:grid-cols-4 gap-5 md:gap-6 items-stretch"
         >
           {PLANS.map(({ key, featured }, index) => (
             <motion.div
@@ -153,13 +154,13 @@ export default function Pricing() {
               <p className="mt-2 text-sm">{catalog[key].audience}</p>
               <div className="mt-4 flex items-end gap-2">
                 <span className="text-4xl lg:text-5xl font-extrabold tracking-[-0.04em] leading-none whitespace-nowrap font-[family-name:var(--font-heading)]">
-                  {key === "enterprise"
+                  {key === "free" ? "US$0" : key === "enterprise"
                     ? t(`${key}.price`)
                     : interval === "month"
                       ? priceLabel(key, "month")
                       : monthlyEquivalentLabel(key)}
                 </span>
-                {key !== "enterprise" && (
+                {key !== "enterprise" && key !== "free" && (
                   <span
                     className={`pb-1 text-sm font-[family-name:var(--font-body)] ${
                       featured ? "text-white/70" : "text-dark/50"
@@ -169,7 +170,7 @@ export default function Pricing() {
                   </span>
                 )}
               </div>
-              {key !== "enterprise" && interval === "year" && (
+              {key !== "enterprise" && key !== "free" && interval === "year" && (
                 <p className={`mt-3 text-xs ${featured ? "text-white/70" : "text-dark/50"}`}>
                   {t("annualCharge", {
                     total: priceLabel(key, "year")!,
@@ -202,7 +203,7 @@ export default function Pricing() {
                       : "bg-primary text-white hover:bg-primary-dark"
                   }`}
                 >
-                  {t(`${key}.cta`)}
+                  {key === "free" ? (locale === "zh-tw" ? "免費開始" : "Start for free") : t(`${key}.cta`)}
                 </a>
               </div>
             </motion.div>

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { toPlanKey } from "@/lib/billing/plans";
 import { PlanWriteError } from "@/lib/action-plan/service";
-import { DISCOVERY_POLICY, TRIAL_INTERVIEWS, FULL_INTERVIEWS, discoveryTrialActive, discoveryEvidence } from "./policy";
+import { DISCOVERY_POLICY, TRIAL_INTERVIEWS, FULL_INTERVIEWS, discoveryTrialActive, discoveryEvidence, readDiscoverySetup } from "./policy";
 
 export const discoveryAccountSelect = { id: true, plan: true, rollonMember: true, subscriptionStatus: true, paypalSubscriptionId: true, currentPeriodEnd: true, planUpdatedAt: true, trialPlan: true, trialStartsAt: true, trialEndsAt: true, trialPolicy: true, founderStartedAt: true, founderEndsAt: true } as const;
 export type DiscoveryAccount = NonNullable<Awaited<ReturnType<typeof discoveryAccount>>>;
@@ -20,6 +20,8 @@ export async function lockDiscoveryWrite(tx: Prisma.TransactionClient, userId: s
   if (linked) await lockActivePlan(tx, userId, linked.id);
   const owned = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "DiscoveryJourney" WHERE "id" = ${journeyId} AND "userId" = ${userId} FOR UPDATE`;
   if (!owned.length) throw new PlanWriteError("找不到訪談工作區 / Interview workspace not found", 404);
+  const journey = await tx.discoveryJourney.findUniqueOrThrow({ where: { id: journeyId } });
+  if (journey.setup !== null && !readDiscoverySetup(journey.setup)?.confirmed) throw new PlanWriteError("請先回答三題並確認個人化起步計畫 / Answer three questions and confirm your starter plan first", 409);
   const account = await discoveryAccount(userId, tx);
   if (!account || account.trialPolicy !== DISCOVERY_POLICY) throw new PlanWriteError("無法存取此訪談工作區 / Workspace access denied", 403);
   const paid = discoveryPaid(account);
@@ -47,10 +49,14 @@ export async function getDiscoverySnapshot(userId: string) {
   const rows = journey ? await discoveryRows(userId, journey.id) : [];
   const evidence = journey ? discoveryEvidence(journey.id, rows) : [];
   const paid = discoveryPaid(account), active = discoveryTrialActive(account);
+  const setup = readDiscoverySetup(journey?.setup);
+  const starterPlan = paid && !journey ? await prisma.actionPlan.findFirst({ where: { userId, activeKey: userId }, select: { diagnosticAnswers: true } }) : null;
   return { journeyId: journey?.id ?? null, version: journey?.version ?? 0, paid, active, endsAt: account.trialEndsAt?.toISOString() ?? null,
+    setup,
+    canStart: Array.isArray(starterPlan?.diagnosticAnswers) && starterPlan.diagnosticAnswers.length === 3,
     daysRemaining: account.trialEndsAt ? Math.max(0, Math.ceil((account.trialEndsAt.getTime() - Date.now()) / 86_400_000)) : 0,
     target: paid ? FULL_INTERVIEWS : TRIAL_INTERVIEWS, total: evidence.length,
-    canCreate: (paid || active) && evidence.length < (paid ? FULL_INTERVIEWS : TRIAL_INTERVIEWS),
+    canCreate: (paid || active) && evidence.length < (paid ? FULL_INTERVIEWS : TRIAL_INTERVIEWS) && (!journey || journey.setup === null || Boolean(setup?.confirmed)),
     rows: rows.map(row => ({ ...row, updatedAt: row.updatedAt.toISOString() })),
     preview: journey?.previewVersion === journey?.version ? journey?.preview ?? null : null,
     report: paid && evidence.length >= FULL_INTERVIEWS && journey?.reportVersion === journey?.version ? journey?.report ?? null : null,

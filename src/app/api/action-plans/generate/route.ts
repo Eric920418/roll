@@ -4,6 +4,9 @@ import { type NextRequest } from "next/server";
 import { fail, failFromError, ok, unauthorized } from "@/lib/api";
 import { getUserSession } from "@/lib/auth/guard";
 import { requirePlan } from "@/lib/billing/gate";
+import { getCurrentAccount } from "@/lib/auth/account";
+import { DISCOVERY_POLICY, discoveryTrialActive } from "@/lib/discovery/policy";
+import { confirmDiscoverySetup, discoverySetupResult } from "@/lib/discovery/setup";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { getLatestQuizResult } from "@/lib/quiz/result";
 import { generateActionCandidates } from "@/lib/action-plan/ai";
@@ -21,11 +24,13 @@ export async function POST(req: NextRequest) {
     const session = await getUserSession();
     if (!session) return unauthorized();
     const account = await requirePlan("pro");
-    if (!account) return fail("此功能需 Pro 以上方案", 403);
+    const trial = account ? null : await getCurrentAccount();
+    if (!account && (trial?.trialPolicy !== DISCOVERY_POLICY || !discoveryTrialActive(trial))) return fail("此功能需有效方案或訪談試用 / An active plan or interview trial is required", 403);
     const parsed = generateBodySchema.safeParse(await req.json());
     if (!parsed.success) {
       return fail(parsed.error.issues.map((issue) => `${issue.path.join(".") || "欄位"}：${issue.message}`).join("；"), 400);
     }
+    if (!account) return ok(await confirmDiscoverySetup(session.uid, parsed.data), 201);
 
     const existing = await getPlanByRequestId(session.uid, parsed.data.requestId);
     if (existing) return ok(existing);
@@ -74,9 +79,13 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const session = await getUserSession(); if (!session) return unauthorized();
-    if (!await requirePlan("pro")) return fail("此功能需 Pro 以上方案 / Active Pro plan required", 403);
     const parsed = z.string().uuid().safeParse(req.nextUrl.searchParams.get("requestId"));
     if (!parsed.success) return fail("請求 ID 無效 / Invalid request ID", 400);
+    if (!await requirePlan("pro")) {
+      const trial = await getCurrentAccount();
+      if (trial?.trialPolicy !== DISCOVERY_POLICY) return fail("此功能需有效方案或訪談試用 / An active plan or interview trial is required", 403);
+      return ok({ planId: await discoverySetupResult(session.uid, parsed.data) });
+    }
     const result = await getPlanByRequestId(session.uid, parsed.data);
     return ok({ planId: result?.id || null });
   } catch (error) { return failFromError(error); }

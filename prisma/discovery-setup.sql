@@ -1,0 +1,1 @@
+ALTER TABLE "DiscoveryJourney" ADD COLUMN IF NOT EXISTS "setup" JSONB;

@@ -345,7 +345,7 @@
       "email": "Email",
       "emailPlaceholder": "you@startup.com",
       "password": "Password",
-      "rollonCode": "rollon membership code (optional)",
+      "rollonCode": "ROLL ON member code (optional)",
       "rollonCodePlaceholder": "Enter your membership code",
       "rollonCodeHint": "A valid code grants permanent Pro access as a rollon會員, with no membership payment required.",
       "passwordPlaceholder": "At least 8 characters",
@@ -385,7 +385,7 @@
       "industryPlaceholder": "Select industry",
       "companySize": "Company size",
       "companySizePlaceholder": "Select size",
-      "website": "Website",
+      "website": "Company website (optional)",
       "websitePlaceholder": "https://",
       "country": "Home market / country",
       "countryPlaceholder": "e.g. United States",
@@ -494,7 +494,7 @@
       "bottleneck": "Biggest bottleneck",
       "style": "Growth style",
       "milestone": "12-month milestone",
-      "finish": "Go to dashboard"
+      "finish": "Start your entrepreneurial journey"
     }
   },
   "Dashboard": {

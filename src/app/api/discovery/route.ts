@@ -21,7 +21,13 @@ export async function POST(req: NextRequest) {
     const account = await discoveryAccount(session.uid);
     if (!account || account.trialPolicy !== DISCOVERY_POLICY) return fail("此帳號沿用原有流程 / This account retains its existing workflow", 403);
     if (!discoveryPaid(account) && !discoveryTrialActive(account)) return fail("試用已結束，升級後可開始 / Trial ended; upgrade to begin", 402);
-    await prisma.discoveryJourney.upsert({ where: { userId: session.uid }, create: { userId: session.uid }, update: {} });
+    await prisma.$transaction(async tx => {
+      if (await tx.discoveryJourney.findUnique({ where: { userId: session.uid }, select: { id: true } })) return;
+      const current = await discoveryAccount(session.uid, tx as unknown as import("@prisma/client").Prisma.TransactionClient);
+      const plan = await tx.actionPlan.findFirst({ where: { userId: session.uid, activeKey: session.uid }, select: { diagnosticAnswers: true } });
+      if (!current || !discoveryPaid(current) || !Array.isArray(plan?.diagnosticAnswers) || plan.diagnosticAnswers.length !== 3) throw new PlanWriteError("請先回答三題並確認個人化起步計畫 / Answer three questions and confirm your starter plan first", 409);
+      await tx.discoveryJourney.upsert({ where: { userId: session.uid }, create: { userId: session.uid }, update: {} });
+    });
     return ok(await getDiscoverySnapshot(session.uid));
   } catch (error) { return error instanceof PlanWriteError ? fail(error.message, error.status) : failFromError(error); }
 }

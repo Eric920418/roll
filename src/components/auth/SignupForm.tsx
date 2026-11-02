@@ -138,17 +138,7 @@ export default function SignupForm() {
         />
       </div>
 
-      <div className="mt-6">
-        <AuthInput
-          label={t("rollonCode")}
-          name="rollonCode"
-          value={rollonCode}
-          onChange={setRollonCode}
-          placeholder={t("rollonCodePlaceholder")}
-          autoComplete="off"
-        />
-        <p className="mt-2 text-xs text-dark/60">{t("rollonCodeHint")}</p>
-      </div>
+
 
       <div className="mt-5">
         <AuthInput label={t("referralCode")} name="referralCode" value={referralCode} onChange={value => { referralTouched.current = true; setReferralCode(value); }} autoComplete="off" />
@@ -226,6 +216,17 @@ export default function SignupForm() {
           {termsNode}
         </div>
       )}
+      <div className="mt-6">
+        <AuthInput
+          label={t("rollonCode")}
+          name="rollonCode"
+          value={rollonCode}
+          onChange={setRollonCode}
+          placeholder={t("rollonCodePlaceholder")}
+          autoComplete="off"
+        />
+        <p className="mt-2 text-xs text-dark/60">{t("rollonCodeHint")}</p>
+      </div>
     </div>
   );
 }
