@@ -64,6 +64,8 @@ Email 主旨、純文字、HTML 標題與站內通知共用正數訪客身份文
 
 驗收：pnpm test 419 項通過、零失敗／skip，pnpm lint 零 errors／14 個既有 warnings，pnpm build 通過。包含單一身份、兩種／三種身份、中文、英文單複數、全零，以及隔離 PostgreSQL 透過 mock Resend 核對實際主旨／純文字／HTML、全零取消與重試固定內容。此次未寄真實測試信、不更改寄送偏好或正式會員資料。
 
+後續依使用者明確要求，2026-11-02 台北 14:34 以正式通知程式實寄一封至 Vivian.lee@roll-grp.com：獨立隱藏 QA 帳號、測試人數為創辦人 1／其他身份 0，使用既有 test 模式限制單一帳號與指定收件人，沒有寫入真實會員的訪客紀錄或偏好。主旨「[NOVA TEST] NOVA: 1 founder viewed your page this week」，純文字首行與 HTML H1 均為「1 founder viewed your page this week」；實際保存的寄送 payload 已斷言不含零人身份或錯誤單複數。單次 attempts=1，Resend ID 01a19af7-8a0f-7645-8cb8-d06913d6e87c，Dashboard 已確認 Sent／Delivered（收件伺服器接受，不代表本人已閱讀），[寄送紀錄](https://resend.com/emails/01a19af7-8a0f-7645-8cb8-d06913d6e87c)。一般通知寄送與測試限定變數已恢復原值，QA 帳號及所屬測試通知清理，Omrade 正式免費搜尋開關保留 true；正常模式隨本次文件提交的新部署生效。畫面證據 nova-positive-viewer-email-delivered.png 保存於既有視覺證據目錄。未額外寄送第二封、未變更真實會員的通知偏好。
+
 ## Omrade 共用公司搜尋（2026-10-31）
 
 **目前上線設定（2026-11-02）：** 經使用者確認開放正式搜尋，Vercel Production 的 `OMRADE_ENABLED` 與 `OMRADE_WORKER_ENABLED` 已設為 true，透過新部署生效；以下「關閉」敘述為先前驗收歷程。Matchmaking「找新公司」與 Next Steps 共用本人條件、訂單和結果；仍依 NOVA／ROLL ON、合法既有授權及三家訪談後一次五家試用 POC 資格判定，每會員 UTC 月最多交付十家。供應商組織再次只讀核對：免費剩餘 145、交付 5、預留 0、進行中 0，paid_enabled=false、monthly_spend_limit_cents=0、paid_accrued_cents=0。每筆請求仍強制 max_charge_cents:0，回應也必須為零付費；額度不足回 free_exhausted，不自動付費、不回退 Anthropic、不自動補單、不扣 AI 次數。每分鐘既有排程只處理使用者確認建立的持久訂單，不主動替會員搜尋。本次只修改兩個正式開關與本文件，不改會員、方案、積分、資料庫 schema 或本機／Preview 開關，不建立額外驗收搜尋單。Omrade 18 項含隔離交易、免費額度用盡、防重送與不呼叫 AI 的回歸通過。需暫停新單時關 OMRADE_ENABLED，保留 worker true 對帳已接單；完整停機才將兩者皆關閉並重新部署。
