@@ -84,11 +84,11 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     if ((workspace?.revision || 0) !== input.revision) throw new ProspectingError("另一頁已更新搜尋條件，輸入保留；請載入並比對 / Search criteria changed in another tab; reload and compare", 409, "version_conflict");
     const period = utcPeriod(), monthly = await tx.prospectingOrder.aggregate({ where: { userId, period }, _sum: { reservedCount: true, deliveredCount: true } });
     if ((monthly._sum.reservedCount || 0) + (monthly._sum.deliveredCount || 0) + input.count > 10) throw new ProspectingError("本月交付與預留量已達上限，請選較小批次或下個 UTC 月再試 / Monthly delivered and reserved limit reached; choose a smaller batch or retry next UTC month", 429, "member_quota");
-    const context = await exclusions(userId, tx), definition = { description: input.description, countries: [input.country], industries: [], exclude_domains: context.domains };
+    const context = await exclusions(userId, tx), definition = { description: input.description, countries: [input.country], industries: [], exclude_domains: context.domains, contact_requirement: "email_or_contact_page" };
     const audienceHash = hash(definition), sameAudience = workspace?.audienceHash === audienceHash && workspace.omradeIcpId && workspace.omradeIcpVersion;
     await tx.prospectingWorkspace.upsert({ where: { userId }, create: { userId, country: input.country, description: input.description, revision: 1 }, update: { country: input.country, description: input.description, revision: { increment: 1 } } });
     const order = await tx.prospectingOrder.create({ data: { userId, requestId: input.requestId, payloadHash, country: input.country, description: input.description, count: input.count, poc: rights.poc, period, reservedCount: input.count,
-      audienceRequest: json(workspace?.omradeIcpId ? { definition } : { name: "NOVA confirmed buyer criteria", definition }), audienceKey: randomUUID(), audienceParentId: workspace?.omradeIcpId || null,
+      audienceRequest: json({ name: "NOVA confirmed buyer criteria", definition }), audienceKey: randomUUID(), audienceParentId: workspace?.omradeIcpId || null,
       omradeIcpId: sameAudience ? workspace!.omradeIcpId : null, omradeIcpVersion: sameAudience ? workspace!.omradeIcpVersion : null, orderKey: randomUUID() } });
     return { id: order.id, status: order.status };
   }, { timeout: 15000 });

@@ -65,6 +65,18 @@ test("Omrade v1.0.3 accepts an omitted people array and inbox kind without inven
   assert.equal((await contactModule.verifyCompany({ ...raw, contacts: { phones: [], emails: [inbox], people: null } }, "TW", html)).rejection, "invalid_fields");
   assert.equal((await contactModule.verifyCompany({ ...raw, contacts: { phones: [], emails: [{ ...inbox, source_url: "https://127.0.0.1/contact" }] } }, "TW", html)).rejection, "invalid_fields");
 });
+test("Omrade v1.1 official contact pages require public access and independently checked inquiry content", async () => {
+  const raw = providerCompany(), url = `${raw.website_url}/talk-to-us`;
+  const page = { url, kind: "inquiry_form", access: "public", status: "published", observed_at: new Date().toISOString() };
+  const company = (changes = {}) => ({ ...raw, contacts: { emails: [], contact_pages: [{ ...page, ...changes }] } });
+  const read = async (target: string) => ({ url: target, html: target === url ? '<form><textarea name="message"></textarea></form>' : "Public B2B services" });
+  const valid = await contactModule.verifyCompany(company(), "TW", read);
+  assert.equal(valid.company?.contact.kind, "page"); assert.equal(valid.company?.contact.value, url);
+  for (const access of ["login_required", "unknown"]) assert.equal((await contactModule.verifyCompany(company({ access }), "TW", read)).rejection, "no_verified_contact");
+  assert.equal((await contactModule.verifyCompany(company({ url: "https://127.0.0.1/contact" }), "TW", read)).rejection, "invalid_fields");
+  assert.equal((await contactModule.verifyCompany(company({ url: "https://other.example.com/contact" }), "TW", read)).rejection, "no_verified_contact");
+  assert.equal((await contactModule.verifyCompany(company(), "TW", async target => ({ url: target, html: '<form><input type="email">Newsletter only</form>' }))).rejection, "no_verified_contact");
+});
 test("HTML reader pins public DNS, rejects private/oversized/non-HTML sources and bounds redirects without credentials", async () => {
   type Reply = { status?: number; location?: string; type?: string; size?: number; html?: string };
   function checker(replies: Reply[], address = "93.184.216.34") {
@@ -129,7 +141,7 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
     const key = new Headers(init?.headers).get("Idempotency-Key"), body = init?.body ? JSON.parse(String(init.body)) : null;
     calls.push({ path, key, body });
     assert(String(target).startsWith("https://omrade.app/api/v1/prospecting"));
-    if (path.startsWith("/icps")) { assert(key); assert(!JSON.stringify(body).includes("PRIVATE_INTERVIEW")); return Response.json({ icp_id: icpId, version: path.endsWith("versions") ? 2 : 1 }); }
+    if (path.startsWith("/icps")) { assert(key); assert.equal(body.name, "NOVA confirmed buyer criteria"); assert.equal(body.definition.contact_requirement, "email_or_contact_page"); assert(!JSON.stringify(body).includes("PRIVATE_INTERVIEW")); return Response.json({ icp_id: icpId, version: path.endsWith("versions") ? 2 : 1 }); }
     if (path === "/orders") {
       assert.equal(body.max_charge_cents, 0); assert(key);
       if (mode === "exhausted") return Response.json({ error: { code: "free_allowance_exhausted" } }, { status: 402 });

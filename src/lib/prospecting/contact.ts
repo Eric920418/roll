@@ -50,7 +50,8 @@ export async function verifyCompany(raw: unknown, country: string, read = readPu
     ...c.contacts.people.filter(p => p.email && p.email_status === "published" && p.email_source_url).map(p => ({ email: p.email!, url: p.email_source_url!, name: p.role_status === "published" ? p.name : null, role: p.role_status === "published" ? p.role || null : null })),
     ...c.contacts.emails.filter(e => e.status === "published").map(e => ({ email: e.value, url: e.source_url, name: null, role: null })),
   ].filter(r => official(r.url, c.website_url));
-  const urls = [...new Set([...routes.map(r => r.url), ...c.fit_evidence.filter(e => official(e.source_url, c.website_url) && contactPath(e.source_url)).map(e => e.source_url), c.website_url])].slice(0, 2);
+  const contactPages = new Set(c.contacts.contact_pages.filter(p => p.access === "public" && official(p.url, c.website_url)).map(p => p.url));
+  const urls = [...new Set([...routes.map(r => r.url), ...contactPages, ...c.fit_evidence.filter(e => official(e.source_url, c.website_url) && contactPath(e.source_url)).map(e => e.source_url), c.website_url])].slice(0, 2);
   const pages = new Map<string, { url: string; html: string }>();
   for (const url of urls) { const page = url === fit.source_url ? fitPage : await read(url, c.website_url); if (page) pages.set(url, page); }
   let contact: PublicProspect["contact"] | undefined;
@@ -59,7 +60,7 @@ export async function verifyCompany(raw: unknown, country: string, read = readPu
     const published = text(page.html).match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
     if (published.some(v => v.toLowerCase() === route.email.toLowerCase())) { contact = { kind: "email", value: route.email, source: page.url, name: !sharedInbox(route.email) && route.name && text(page.html).includes(route.name) ? route.name : null, role: !sharedInbox(route.email) && route.name && route.role && text(page.html).includes(route.name) && text(page.html).includes(route.role) ? route.role : null }; break; }
   }
-  const qualifies = (page: { url: string; html: string }) => contactPath(page.url) && (
+  const qualifies = (page: { url: string; html: string }) => (contactPath(page.url) || contactPages.has(page.url)) && (
     /href\s*=\s*["']mailto:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text(page.html)) ||
     /<form\b[^>]*>[\s\S]*?(?:<textarea\b|name\s*=\s*["'](?:message|subject|enquiry|inquiry)["'])[\s\S]*?<\/form>/i.test(text(page.html))
   );
