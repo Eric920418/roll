@@ -60,6 +60,8 @@ Next Steps 已將優先任務提到工作區上方，既有公司跟進在新名
 
 ## Omrade 共用公司搜尋（2026-10-31）
 
+**目前上線設定（2026-11-02）：** 經使用者確認開放正式搜尋，Vercel Production 的 `OMRADE_ENABLED` 與 `OMRADE_WORKER_ENABLED` 已設為 true，透過新部署生效；以下「關閉」敘述為先前驗收歷程。Matchmaking「找新公司」與 Next Steps 共用本人條件、訂單和結果；仍依 NOVA／ROLL ON、合法既有授權及三家訪談後一次五家試用 POC 資格判定，每會員 UTC 月最多交付十家。供應商組織再次只讀核對：免費剩餘 145、交付 5、預留 0、進行中 0，paid_enabled=false、monthly_spend_limit_cents=0、paid_accrued_cents=0。每筆請求仍強制 max_charge_cents:0，回應也必須為零付費；額度不足回 free_exhausted，不自動付費、不回退 Anthropic、不自動補單、不扣 AI 次數。每分鐘既有排程只處理使用者確認建立的持久訂單，不主動替會員搜尋。本次只修改兩個正式開關與本文件，不改會員、方案、積分、資料庫 schema 或本機／Preview 開關，不建立額外驗收搜尋單。Omrade 18 項含隔離交易、免費額度用盡、防重送與不呼叫 AI 的回歸通過。需暫停新單時關 OMRADE_ENABLED，保留 worker true 對帳已接單；完整停機才將兩者皆關閉並重新部署。
+
 2026-11-02 供應商修復後重新驗收：公開 OpenAPI 已為 v1.1.0，新增 ICP `contact_requirement: email_or_contact_page` 與 `contacts.contact_pages`。後續新搜尋條件固定加入最低聯絡要求；雜湊變更會建立新 ICP 版本，既有訂單／原始請求不改寫。新規格的 ICP 建立與版本更新均要求 name，實測僅送 definition 會回 400，因此新版兩者一律包含固定名稱。官方聯絡頁僅接受 public，仍須由本站安全讀取並核對詢問表單或公開 Email；不採信登入頁、未知存取、單純 HTTP 200、電子報表單或私人網址。舊回應未提供 contact_pages 仍相容。此次只重試一筆五家、費用上限 US$0 的隔離測試，正式搜尋開關保持關閉，待交付與來源驗收結果補記。
 
 新版條件版本更新真實 API 已回 201（ICP 334fef5c-da10-4b88-8ecd-fc52acecf071 v2；request ce83c572-7569-415d-b69d-c61c8f42eafc）。五家實測單 ef492be5-f269-4134-ac5e-5c9bc3027635 於台北 14:02 接受，沿用原條件 v1 進行公平重測，不改寫進行中請求、不追加訂單；尚未有完成收據不得宣稱交付成功。測試與資料只在 loopback 隔離帳號；正式會員、既有計畫、積分、AI 配額及金鑰不改動。完整 pnpm test 417 項全過、零 skip，pnpm lint 零錯誤／14 個既有 warnings、pnpm build 與 TypeScript 通過；最後 name 相容調整的 Omrade 18 項含隔離交易回歸通過。
