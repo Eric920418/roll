@@ -64,6 +64,8 @@ Next Steps 已將優先任務提到工作區上方，既有公司跟進在新名
 
 新版條件版本更新真實 API 已回 201（ICP 334fef5c-da10-4b88-8ecd-fc52acecf071 v2；request ce83c572-7569-415d-b69d-c61c8f42eafc）。五家實測單 ef492be5-f269-4134-ac5e-5c9bc3027635 於台北 14:02 接受，沿用原條件 v1 進行公平重測，不改寫進行中請求、不追加訂單；尚未有完成收據不得宣稱交付成功。測試與資料只在 loopback 隔離帳號；正式會員、既有計畫、積分、AI 配額及金鑰不改動。完整 pnpm test 417 項全過、零 skip，pnpm lint 零錯誤／14 個既有 warnings、pnpm build 與 TypeScript 通過；最後 name 相容調整的 Omrade 18 項含隔離交易回歸通過。
 
+上述單已於 2026-11-02 完成，終態 request 75220d0b-b9b0-4ee9-bf90-21cc2a17144d：供應商交付五家、本站可用五家、過濾零家；Ken's Lab、ingsist creative、Geekers Technology Inc.、NEXTERDAY、OFFX Studio。兩家公開公司信箱、三家官方詢問表單，均經安全 HTML 檢查及 Chrome 官方頁面人工核對，沒有送出表單或郵件、不宣稱已驗證寄達、已回覆或有購買意願。收據 settled／free_companies 5／paid_companies 0／amount_cents 0；usage 再核對剩餘免費 145、已交付 5、預留 0、進行中 0、付費關閉，未追加第二筆。五家公司原始交付與核對結果保存於既有視覺證據目錄的 omrade-free-five-proof-20261102.json，隔離 QA 帳號於保存證據後清理；正式會員不變。嚴格 contact_requirement 已獨立驗證 ICP v2 接受，但未再以該 v2 下單消耗額度。相容修正 16c23d3 已正式部署 Ready，OMRADE_ENABLED／OMRADE_WORKER_ENABLED 仍為 false；此次驗收沒有自行向正式會員開放搜尋，PayPal live 與 NOVA60 開關未變更。
+
 Matchmaking 分為「會員交流」與「找新公司」；外部公司不建立會員卡片或聊天邀請。Next Steps 與 Matchmaking 共用本人搜尋工作區、五／十家訂單及歷史結果，舊 Anthropic 名單即使超過二十四小時仍保留為唯讀歷史並標示未重新核對；POLARIS、ICP、訪談及拒絕分析維持原服務。公司搜尋不扣 AI、不回退 Anthropic、不自動補單或付費。
 
 - 每會員 UTC 月最多交付十家，未確認訂單先預留；以供應商接單月份及原始交付數結算，不能以過濾結果退回用量。有效一般訪談試用完成同工作區三家不同公司後，可領終身一次五家 POC；零合格可在剩餘月額度手動重試，至少一家合格才寫入不可重領帳本。完整試用與既有搜尋授權沿用，不擴張其他付費權限。
