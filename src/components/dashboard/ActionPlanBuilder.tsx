@@ -112,7 +112,7 @@ export default function ActionPlanBuilder({
       if (!alive.current) return;
       if (json.data.status === "needs_input") writeChange({ question: json.data.question });
       else { const checked = diagnosisSchema.safeParse(json.data.diagnosis); if (!checked.success) throw new Error(t("genericError")); writeChange({ question: "", diagnosis: checked.data }); setCorrecting(false); }
-    } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : t("genericError")); }
+    } catch (cause) { if (alive.current) { if (nextAnswers.length === 3) setCorrecting(true); setError(cause instanceof Error ? cause.message : t("genericError")); } }
     finally { busyRef.current = false; if (alive.current) setBusy(false); }
   }
   async function begin() {
@@ -263,7 +263,7 @@ export default function ActionPlanBuilder({
 
             {(diagnosis || correcting) && (
               <div className="mt-7">
-                <h3 className="text-lg font-bold text-dark">{t("yourDiagnosis")}</h3>
+                <h3 className="text-lg font-bold text-dark">{correcting ? (locale === "zh-tw" ? "你的三題回答" : "Your three answers") : t("yourDiagnosis")}</h3>
                 {diagnosis && !correcting && <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <Evidence title={t("stageEvidence")} reason={diagnosis.stageReason} />
                   <Evidence title={t("bottleneckEvidence")} reason={diagnosis.bottleneckReason} />

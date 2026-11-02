@@ -26,6 +26,10 @@ export function unauthorized() {
 export function failFromError(error: unknown, status = 500) {
   if (status >= 500) {
     const requestId = logSecurityError("api.unexpected", error);
+    const provider = error as { status?: unknown; error?: { error?: { type?: unknown; message?: unknown } } } | null;
+    if (provider?.status === 400 && provider.error?.error?.type === "invalid_request_error" && typeof provider.error.error.message === "string" && /credit balance is too low/i.test(provider.error.error.message)) {
+      return NextResponse.json({ error: `AI 供應商回報服務額度不足，平台需核對帳務設定；請聯絡支援。 / The AI provider reports unavailable credit. Platform billing needs review; contact support. 追蹤碼 / Reference: ${requestId}`, code: "ai_provider_credit_exhausted", requestId }, { status: 503, headers: { "Cache-Control": "private, no-store" } });
+    }
     const unavailable = error instanceof SecurityUnavailableError;
     return NextResponse.json(
       { error: publicErrorMessage(requestId), code: unavailable ? "security_unavailable" : "internal", requestId },

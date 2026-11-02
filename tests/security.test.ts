@@ -9,6 +9,7 @@ import test from "node:test";
 import ts from "typescript";
 import { NextRequest } from "next/server";
 import { SignJWT } from "jose";
+import { APIError } from "@anthropic-ai/sdk";
 import * as sessions from "../src/lib/auth/session";
 import * as api from "../src/lib/api";
 import { browserMutationGuard, SecurityUnavailableError } from "../src/lib/security/http";
@@ -27,6 +28,21 @@ function request(body?: unknown, origin: string | null = "https://example.test",
 }
 const limiter = { MINUTE_MS: 60000, clientIp: () => "127.0.0.1", checkRateLimit: async () => ({ ok: true, retryAfterMs: 0 }) };
 const authMocks = { "@/lib/api": api, "@/lib/auth/password": { DUMMY_PASSWORD_HASH: "hash", hashPassword: async (p: string) => `hash:${p}` }, "@/lib/rate-limit": limiter };
+
+test("Provider credit exhaustion has an actionable safe 503 and cannot expose SDK payloads", async () => {
+  const original = console.error; console.error = () => {};
+  try {
+    const body = { type: "error", error: { type: "invalid_request_error", message: "Your credit balance is too low to access the Anthropic API. secret-test-credential" } };
+    const response = api.failFromError(APIError.generate(400, body, undefined, new Headers()));
+    const result = await response.json();
+    assert.equal(response.status, 503); assert.equal(result.code, "ai_provider_credit_exhausted");
+    assert.match(result.error, /供應商回報服務額度不足/); assert.match(result.error, new RegExp(result.requestId));
+    assert.doesNotMatch(JSON.stringify(result), /secret-test-credential|Your credit balance/);
+    for (const error of [null, new Error("secret-test-credential"), APIError.generate(400, { error: { type: "invalid_request_error", message: "Another invalid request secret-test-credential" } }, undefined, new Headers())]) {
+      const failed = api.failFromError(error); assert.equal(failed.status, 500); assert.equal((await failed.json()).code, "internal");
+    }
+  } finally { console.error = original; }
+});
 
 test("Browser mutation boundary rejects absent/foreign/null/subdomain origins and simple form content types", async () => {
   for (const origin of [null, "null", "https://evil.test", "https://sub.example.test"]) assert.equal(browserMutationGuard(request({}, origin))?.status, 403);
