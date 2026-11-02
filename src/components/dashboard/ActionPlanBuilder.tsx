@@ -284,7 +284,7 @@ export default function ActionPlanBuilder({
                 {error}
               </div>
             )}
-            {!question && !diagnosis && !busy && !conflict && answers.length === 3 && (
+            {!question && !diagnosis && !correcting && !busy && !conflict && answers.length === 3 && (
               <button type="button" disabled={blocked} onClick={() => void callDiagnose(answers)} className="mt-3 min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">
                 {t("continue")}
               </button>
