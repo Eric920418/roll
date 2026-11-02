@@ -71,7 +71,8 @@ test("Trial setup is private, bounded, cached, explicitly confirmed and cannot g
   class WriteError extends Error { constructor(message: string, public status = 409) { super(message); } }
   const member = async () => { const row = await db.user.create({ data: { email: `setup-${randomUUID()}@example.invalid`, trialPolicy: "interviews-3-v1", trialPlan: "pro", trialStartsAt: new Date(Date.now() - 1000), trialEndsAt: new Date(Date.now() + 14 * 86400000) } }); ids.push(row.id); return row; };
   const account = async () => uid ? { ...await db.user.findUniqueOrThrow({ where: { id: uid } }), profile: null } : null;
-  const load = loader({ "@/lib/prisma": { prisma: db }, "@/lib/auth/account": { getCurrentAccount: account }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null }, "@/lib/billing/gate": { requirePlan: async () => null, getEffectivePlan: () => paid ? "pro" : "free" }, "@/lib/action-plan/service": { PlanWriteError: WriteError }, "@/lib/customer-insights/service": {}, "@/lib/validation/service": {}, "@/lib/quiz/result": { getLatestQuizResult: async () => null }, "@/lib/security/http": { browserMutationGuard: () => null }, "@/lib/rate-limit": { DAY_MS: 86400000, checkRateLimit: async () => ({ ok: allowed }) }, "@/lib/action-plan/ai": { diagnoseActionPlan: async (request: { answers: unknown[]; messages: unknown[] }) => { calls++; assert.equal(request.answers.length, 3); assert.equal(request.messages.length, 0); if (pending) await pending; if (fail) throw Error("Injected analysis failure"); return { status: "ready", diagnosis }; } }, "@/lib/ai/allowance": { reserveAiUsage: () => { throw Error("Must not grant or consume monthly AI credit"); } }, "@anthropic-ai/sdk": class { constructor() { throw Error("Unexpected direct paid AI call"); } }, "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({}, { status: 401 }), failFromError: () => Response.json({ error: "Safe error" }, { status: 500 }) } });
+  const load = loader({ "@/lib/prisma": { prisma: db }, "@/lib/auth/account": { getCurrentAccount: account }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null }, "@/lib/billing/gate": { requirePlan: async () => null, getEffectivePlan: () => paid ? "pro" : "free" }, "@/lib/action-plan/service": { PlanWriteError: WriteError }, "@/lib/customer-insights/service": {}, "@/lib/validation/service": {}, "@/lib/quiz/result": { getLatestQuizResult: async () => null }, "@/lib/security/http": { browserMutationGuard: () => null }, "@/lib/rate-limit": { DAY_MS: 86400000, checkRateLimit: async (...args: Parameters<typeof import("../src/lib/rate-limit").checkRateLimit>) => allowed ? limiter.checkRateLimit(...args) : { ok: false } }, "@/lib/action-plan/ai": { diagnoseActionPlan: async (request: { answers: unknown[]; messages: unknown[] }) => { calls++; assert.equal(request.answers.length, 3); assert.equal(request.messages.length, 0); if (pending) await pending; if (fail) throw Error("Injected analysis failure"); return { status: "ready", diagnosis }; } }, "@/lib/ai/allowance": { reserveAiUsage: () => { throw Error("Must not grant or consume monthly AI credit"); } }, "@anthropic-ai/sdk": class { constructor() { throw Error("Unexpected direct paid AI call"); } }, "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({}, { status: 401 }), failFromError: () => Response.json({ error: "Safe error" }, { status: 500 }) } });
+  const limiter: typeof import("../src/lib/rate-limit") = load("src/lib/rate-limit.ts");
   const setup = load<typeof import("../src/lib/discovery/setup")>("src/lib/discovery/setup.ts"), service = load<typeof import("../src/lib/discovery/service")>("src/lib/discovery/service.ts");
   const diagnose = load<typeof import("../src/app/api/action-plans/diagnose/route")>("src/app/api/action-plans/diagnose/route.ts"), generate = load<typeof import("../src/app/api/action-plans/generate/route")>("src/app/api/action-plans/generate/route.ts"), discovery = load<typeof import("../src/app/api/discovery/route")>("src/app/api/discovery/route.ts");
   const req = (body: unknown) => ({ json: async () => body }) as never;
@@ -100,6 +101,19 @@ test("Trial setup is private, bounded, cached, explicitly confirmed and cannot g
       assert.equal(await setup.discoverySetupResult(owner.id, body.requestId), snapshot.journeyId);
       const stranger = await member(); assert.equal(await setup.discoverySetupResult(stranger.id, body.requestId), null);
       assert.equal(await db.actionPlan.count({ where: { userId: owner.id } }), 0); assert.equal(await db.aiAllowance.count({ where: { userId: owner.id } }), 0);
+    });
+    await t.test("Correcting the provider workspace keeps old failed counters and enforces the new daily cap", async () => {
+      const other = await member(); uid = other.id;
+      const oldKey = `discovery:setup:${other.id}`;
+      await db.rateCounter.create({ data: { key: oldKey, count: 3, windowStart: new Date() } });
+      const previous = process.env.ANTHROPIC_WORKSPACE_ID; process.env.ANTHROPIC_WORKSPACE_ID = "wrkspc_fundedQA";
+      try {
+        for (let i = 0; i < 3; i++) await setup.prepareDiscoverySetup(await account() as never, input());
+        await assert.rejects(setup.prepareDiscoverySetup(await account() as never, input()), /limit|上限/);
+        assert.equal((await db.rateCounter.findUniqueOrThrow({ where: { key: oldKey } })).count, 3);
+        const counters = await db.rateCounter.findMany({ where: { key: { contains: other.id } } });
+        assert.equal(counters.length, 2); assert(counters.every(row => row.count === 3));
+      } finally { if (previous === undefined) delete process.env.ANTHROPIC_WORKSPACE_ID; else process.env.ANTHROPIC_WORKSPACE_ID = previous; }
     });
     await t.test("Paid legacy entry needs a confirmed three-answer plan before creating a workspace", async () => {
       const other = await member(); uid = other.id; paid = true;
@@ -134,5 +148,5 @@ test("Trial setup is private, bounded, cached, explicitly confirmed and cannot g
       await assert.rejects(setup.prepareDiscoverySetup(await account() as never, input()), /limit|上限/); allowed = true;
       assert.equal(await db.discoveryJourney.count({ where: { userId: uid } }), 0);
     });
-  } finally { await db.user.deleteMany({ where: { id: { in: ids } } }); await db.$disconnect(); }
+  } finally { await db.rateCounter.deleteMany({ where: { OR: ids.map(id => ({ key: { contains: id } })) } }); await db.user.deleteMany({ where: { id: { in: ids } } }); await db.$disconnect(); }
 });
