@@ -1,3 +1,13 @@
+## Matchmaking 權益與手機錯誤畫面（2026-11-03）
+
+會員交流先確認既有 `/api/network/features`，再載入會員清單；沒有瀏覽權益時直接顯示方案與試用狀態入口、重新確認權益及既有聊天入口，不再先顯示搜尋／分頁後回 HTTP 403。卡片編輯、接受邀請、既有聊天與「找新公司」的獨立資格保留。權益查詢或實際清單失敗仍完整顯示安全錯誤並可重試，失敗時清除舊清單，不顯示失效分頁。
+
+回歸覆蓋權益確認前不請求清單、一般試用不發生失敗搜尋、完整試用／NOVA 可瀏覽、到期及三家訪談試用仍維持原限制、雙語入口及安全錯誤保留。
+
+本輪不放寬伺服器授權、不修改會員方案或試用日期。正式環境已核對 MEMBER_NETWORK_ENABLED=true，未設 BILLING_REQUIRE_EXPLICIT_ENTITLEMENT。全站 22 個帳號唯讀核對：16 個可瀏覽、6 個依三家訪談試用政策受限；沒有有效完整試用、有效 NOVA 或有效既有授權被誤擋。Vivian 與超級客戶端帳號仍具會員瀏覽權；Jamie 原完整試用已於台北 11/1 23:29 到期，歷史授權不會繞過期限。截圖未包含登入帳號，不能單憑 403 判定為誤擋。
+
+驗收：完整 pnpm test 431 項通過、零 skip；pnpm lint 零錯誤／14 個既有 warnings，pnpm build 與 TypeScript 通過。獨立 loopback PostgreSQL 帳號於 390px 實際登入驗收，受限時無搜尋、無紅色錯誤、無分頁及水平溢位；同帳號在 QA 庫改為有效完整試用後，按「重新確認權益」立即可搜尋，1440px 亦無溢位。雙語及權益查詢失敗由回歸測試覆蓋。只清理本輪 QA 帳號，未呼叫 AI、Omrade 或寄信。
+
 ## Project Ark 外部連結（2026-11-01）
 
 合作方式 Approach 頁「BEYOND ADVICE / A place to land.」的 Project Ark／Partner workshops 卡片整張連到 https://projectark.tw/，中英文共用，Logo、標題與說明皆可點擊。以新分頁開啟並設定 noopener noreferrer，標題加外部連結箭頭、鍵盤焦點採酒紅色外框。沿用現有 Logo、CMS 圖片與文案；NOVA 仍連目前語系的 /product，day1 維持原狀。不使用 iframe、不載入第三方腳本、不寫入資料庫。

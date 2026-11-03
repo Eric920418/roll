@@ -90,6 +90,19 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
       assert.equal((await access.features(stranger.id)).invite, false);
       assert.equal((await access.features(investor.id)).invite, true);
     });
+    await t.test("Valid full trials and NOVA browse; three-interview and expired trials keep own-card access only", async () => {
+      const trial = await user();
+      await db.user.update({ where: { id: trial.id }, data: { trialPlan: "enterprise", trialPolicy: "interviews-3-v1", trialStartsAt: new Date(Date.now() - 1000), trialEndsAt: new Date(Date.now() + 86400000) } });
+      assert.equal((await access.features(trial.id)).network, true);
+      assert.equal((await access.features(trial.id)).invite, true);
+      assert.equal((await access.features(owner.id)).network, true);
+      await db.user.update({ where: { id: trial.id }, data: { trialPlan: "pro" } });
+      await assert.rejects(access.requireNetwork(trial.id), (e: unknown) => e instanceof WriteError && e.status === 403);
+      const own = load<typeof import("../src/lib/matchmaking/service")>("src/lib/matchmaking/service.ts");
+      assert.equal((await own.getMyCard(trial.id)).id, trial.matchmakingProfile!.id);
+      await db.user.update({ where: { id: trial.id }, data: { trialPlan: "enterprise", trialEndsAt: new Date(Date.now() - 1) } });
+      assert.equal((await access.features(trial.id)).network, false);
+    });
     await t.test("Automatic cards follow company completeness without overriding explicit hiding or manual cards", async () => {
       const cards = load<typeof import("../src/lib/network/cards")>("src/lib/network/cards.ts"), own = load<typeof import("../src/lib/matchmaking/service")>("src/lib/matchmaking/service.ts");
       await db.onboardingProfile.update({ where: { userId: stranger.id }, data: { country: null } });

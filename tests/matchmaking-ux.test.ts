@@ -192,3 +192,49 @@ test("Queued prospect orders record starts without pretending a completed delive
   await analytics.analyticsFetch("/api/discovery/analyse", { method: "POST", body: JSON.stringify({ prospectCount: 5 }) });
   assert.deepEqual(events.map(e => e.name), ["prospects_start", "prospects_start"]);
 });
+
+test("Member browsing waits for entitlement; restricted accounts retain own-card and chat access without a failing search", async () => {
+  const native = createRequire(import.meta.url);
+  const { renderToStaticMarkup } = native("react-dom/server") as typeof import("react-dom/server");
+  const { createElement } = native("react") as typeof import("react");
+  async function render(network: { enabled: boolean; network: boolean } | null, locale = "en", featureError = "") {
+    const effects: Array<() => void> = [], requests: string[] = [];
+    const loaded = { exports: {} as { default: typeof import("../src/components/dashboard/matchmaking/MatchmakingPage").default } };
+    runInNewContext(ts.transpileModule(readFileSync("src/components/dashboard/matchmaking/MatchmakingPage.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText, {
+      module: loaded, exports: loaded.exports, AbortController, URLSearchParams,
+      require: (id: string) => {
+        if (id === "react") return { useState: (initial: unknown) => [typeof initial === "function" ? initial() : initial, () => {}], useRef: (current: unknown) => ({ current }), useCallback: (fn: unknown) => fn, useEffect: (fn: () => void) => effects.push(fn) };
+        if (id === "next/navigation") return { useRouter: () => ({}) };
+        if (id === "next-intl") return { useLocale: () => locale, useTranslations: () => (key: string) => key };
+        if (id === "next/link") return { __esModule: true, default: ({ children, ...props }: Record<string, unknown>) => createElement("a", props, children as never) };
+        if (id === "../network/NetworkPanels") return { useNetwork: () => ({ value: network, error: featureError, load() {} }), VisitorStats: () => null };
+        if (id === "../network/ViewerOverview") return { ViewerPrivacySettings: () => null };
+        if (id === "../rewards/RewardsProvider") return { useRewards: () => null };
+        if (id === "./CardView") return { __esModule: true, default: () => null };
+        if (id === "@/components/ui/CountrySelect") return { __esModule: true, default: () => null };
+        if (id === "@/lib/member-fetch") return { memberFetch: async (url: string) => { requests.push(url); return url.startsWith("/api/matchmaking?") ? { cards: [], hasMore: false } : { draft: {} }; } };
+        if (id === "@/lib/analytics") return { track() {} };
+        return native(id.startsWith("@/") ? `../src/${id.slice(2)}` : id);
+      },
+    });
+    const html = renderToStaticMarkup(loaded.exports.default({}));
+    effects.forEach(effect => effect()); await Promise.resolve(); await Promise.resolve();
+    return { html, requests };
+  }
+  for (const state of [null, { enabled: true, network: false }]) {
+    const { html, requests } = await render(state);
+    assert(!requests.some(url => url.startsWith("/api/matchmaking?")));
+    assert(requests.includes("/api/matchmaking/me"));
+    assert.doesNotMatch(html, /role="search"|HTTP 403|>previous<|>next</);
+  }
+  const restricted = await render({ enabled: true, network: false });
+  assert.match(restricted.html, /Invitations &amp; chats/); assert.match(restricted.html, /View plans &amp; trial status/);
+  assert.match((await render({ enabled: true, network: false }, "zh-tw")).html, /查看方案與試用狀態/);
+  const failed = await render(null, "en", "HTTP 503: membership unavailable");
+  assert.match(failed.html, /HTTP 503: membership unavailable/); assert.match(failed.html, /role="alert"/);
+  for (const state of [{ enabled: true, network: true }, { enabled: false, network: false }]) {
+    const { html, requests } = await render(state);
+    assert(requests.some(url => url.startsWith("/api/matchmaking?")));
+    assert.match(html, /role="search"/); assert.doesNotMatch(html, /Your current access does not include/);
+  }
+});
