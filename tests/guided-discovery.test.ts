@@ -99,8 +99,58 @@ test("Both languages show one question, allow skip/edit, and confirm only from t
     submit(render({ disabled: true })); assert.equal(confirmations, 0);
     submit(render({ confirmDisabled: true })); assert.equal(confirmations, 0);
     submit(render()); assert.equal(confirmations, 1);
+    const review = render({ reviewTitle: "Custom insight confirmation" });
+    assert.equal(elements(review).find(el => el.type === "h3")?.props.children, "Custom insight confirmation");
+    assert.equal(elements(render()).find(el => el.type === "h3")?.props.children, locale === "zh-tw" ? "確認內容後再儲存" : "Review before saving");
     const restored = changes.at(-1)!; state = undefined;
     view = render({ initialProgress: restored });
     assert.equal(elements(view).filter(el => el.type === "textarea" || el.type === "input").length, 0, "Reload stays on the review screen");
+  }
+});
+
+test("Customer insight guidance maps eight prompts to existing data and preserves legacy stages", () => {
+  const require = createRequire(import.meta.url);
+  for (const locale of ["zh-tw", "en"]) {
+    let index = 0;
+    const initial = { ...emptyInsight("discover"), journeyId: "journey", company: "Acme", role: "CTO", notes: "Historical raw notes", answers: ["Spreadsheet", "3 hours", "Founder", "Friday"] };
+    const states: unknown[] = [initial, "", "", false, true, false, null, undefined, 0];
+    const loaded = { exports: {} as { default: (props: Record<string, unknown>) => Element } };
+    runInNewContext(ts.transpileModule(readFileSync("src/components/dashboard/CustomerDiscovery.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText, {
+      module: loaded, exports: loaded.exports, localStorage: { setItem() {} },
+      require: (id: string) => {
+        if (id === "react") return { useEffect() {}, useRef: (current: unknown) => ({ current }), useState: () => { const slot = index++; return [states[slot], (next: unknown) => { states[slot] = next; }]; } };
+        if (id === "next-intl") return { useLocale: () => locale };
+        if (id === "next/navigation") return { useRouter: () => ({ refresh() {} }) };
+        if (id === "@/lib/customer-insights/schema") return require("../src/lib/customer-insights/schema");
+        if (id === "@/lib/guided-questions") return guide;
+        if (id === "@/lib/routes") return { pathForLocale: (path: string) => path };
+        if (id === "@/lib/action-plan/workspace") return { workspaceKind: () => "interview" };
+        if (id === "./GuidedQuestions") return { default: "GuidedQuestions" };
+        if (id.startsWith("@/") || id.startsWith("./")) return {};
+        return require(id);
+      },
+    });
+    const render = () => { index = 0; return elements(loaded.exports.default({ userId: "qa", journeyId: "journey", rows: [], outcomes: [] })).find(el => el.type === "GuidedQuestions")!; };
+    type Question = { id: string; label: string; value: string; ask?: boolean; input: Element };
+    let view = render(), questions = view.props.questions as Question[];
+    assert.deepEqual(Array.from(questions, q => q.id), ["company", "name", "notes", "answer-0", "answer-1", "price", "answer-2", "answer-3"]);
+    assert.equal(view.props.reviewTitle, locale === "zh-tw" ? "確認本次客戶洞察" : "Confirm this customer insight");
+    assert.equal(view.props.confirmLabel, locale === "zh-tw" ? "儲存洞察" : "Save insight");
+    assert(questions.filter(q => q.id.startsWith("answer-")).every(q => q.ask), "Writing the problem must not skip the other requested prompts");
+    assert.equal(questions[0].value, "Acme · CTO");
+    assert.equal(questions[2].value, initial.notes);
+    const priceInputs = elements(questions[5].input).filter(el => el.type === "input");
+    (priceInputs[0].props.onChange as (e: unknown) => void)({ target: { value: "125.50" } });
+    view = render(); questions = view.props.questions as Question[];
+    assert.equal(questions[5].value, "125.50");
+    const saved = insightSchema.parse(states[0]);
+    assert.equal(saved.commercial?.amount, "125.50");
+    assert.equal(saved.commercial?.willingness, undefined, "A price is not consent to pay");
+    assert.deepEqual(saved.answers, initial.answers); assert.equal(saved.notes, initial.notes); assert.equal(saved.role, initial.role);
+    states[0] = { ...emptyInsight("mvp"), company: "Legacy MVP", notes: "Old MVP notes" };
+    questions = render().props.questions as Question[];
+    assert(!questions.some(q => q.id === "price"));
+    assert.equal(questions[3].label, locale === "zh-tw" ? "試用了什麼" : "What they tried");
+    assert.equal(questions[3].ask, false, "Other stages retain their original note-based guidance");
   }
 });

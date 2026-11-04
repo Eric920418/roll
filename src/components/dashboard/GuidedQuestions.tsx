@@ -7,9 +7,9 @@ import { nextGuidedQuestion, type GuidedProgress, type GuidedQuestionValue } fro
 type Question = GuidedQuestionValue & { label: string; input: ReactNode };
 const button = "min-h-11 rounded-lg border border-dark/20 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50";
 
-export default function GuidedQuestions({ questions, initialProgress, onProgress, onConfirm, confirmLabel, disabled = false, confirmDisabled = false, children }: {
+export default function GuidedQuestions({ questions, initialProgress, onProgress, onConfirm, confirmLabel, reviewTitle, disabled = false, confirmDisabled = false, children }: {
   questions: Question[]; initialProgress?: GuidedProgress; onProgress: (progress: GuidedProgress) => void;
-  onConfirm: () => void; confirmLabel: string; disabled?: boolean; confirmDisabled?: boolean; children?: ReactNode;
+  onConfirm: () => void; confirmLabel: string; reviewTitle?: string; disabled?: boolean; confirmDisabled?: boolean; children?: ReactNode;
 }) {
   const zh = useLocale() === "zh-tw", titleId = useId(), content = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState<GuidedProgress>(() => initialProgress && (initialProgress.questionId === null || questions.some(q => q.id === initialProgress.questionId))
@@ -29,7 +29,7 @@ export default function GuidedQuestions({ questions, initialProgress, onProgress
         <h3 id={titleId} className="text-lg font-semibold">{question.label}</h3>
         <fieldset disabled={disabled} className="mt-4 min-w-0">{question.input}</fieldset>
       </> : <>
-        <h3 id={titleId} className="text-lg font-semibold">{zh ? "確認內容後再儲存" : "Review before saving"}</h3>
+        <h3 id={titleId} className="text-lg font-semibold">{reviewTitle ?? (zh ? "確認內容後再儲存" : "Review before saving")}</h3>
         <dl className="mt-4 divide-y divide-dark/10">{questions.map(q => <div key={q.id} className="flex min-w-0 items-start gap-3 py-3">
           <div className="min-w-0 flex-1"><dt className="text-sm text-dark/60">{q.label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{q.value || (zh ? "尚未提供／已跳過" : "Not provided / skipped")}</dd></div>
           <button type="button" disabled={disabled} className={`${button} shrink-0`} aria-label={`${zh ? "修改" : "Edit"}: ${q.label}`} onClick={() => move({ ...progress, questionId: q.id })}>{zh ? "修改" : "Edit"}</button>

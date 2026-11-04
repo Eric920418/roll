@@ -248,7 +248,7 @@ export default function PipelineBoard({
                       {d.notes && (
                         <p className="mt-1 text-xs text-dark/60">{d.notes}</p>
                       )}
-                      {d.validation ? <a href={zh ? "/zh-tw/dashboard/agenda" : "/dashboard/agenda"} className="mt-2 inline-flex min-h-11 items-center text-xs underline">{zh ? "在 Next Steps 查看證據與歷史" : "View evidence and history in Next Steps"}</a> : <div className="mt-2 flex gap-1.5">
+                      {d.validation ? <a href={zh ? "/zh-tw/dashboard/agenda" : "/dashboard/agenda"} className="mt-2 inline-flex min-h-11 items-center text-xs underline">{zh ? "在今日任務查看證據與歷史" : "View evidence and history in today's tasks"}</a> : <div className="mt-2 flex gap-1.5">
                         <button
                           type="button"
                           onClick={() => startEdit(d)}

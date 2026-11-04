@@ -203,7 +203,7 @@
     }
   },
   "Product": {
-    "metaTitle": "NOVA AI: Startup Operating Partner",
+    "metaTitle": "NOVA AI | Be the bold ones",
     "metaDescription": "NOVA combines software, strategic guidance, go-to-market execution, market access, and a real founder ecosystem to turn Taiwan and Asia expansion into clear action.",
     "nav": {
       "byline": "by ROLL ON",
@@ -213,7 +213,7 @@
     "hero": {
       "brand": "NOVA",
       "byline": "by ROLL ON",
-      "tagline": "Thinking about expanding in Taiwan?",
+      "tagline": "Be the bold ones",
       "ctaPrimary": "Get Started",
       "ctaNote": "A shared goal: your first Asia order within six months*"
     },
@@ -508,7 +508,7 @@
       "done": "Done",
       "step1Title": "Tell NOVA about your company",
       "step1Body": "Add your company name, one-line pitch, stage, and what you need most. We’ll keep what you already provided.",
-      "step2Title": "Build your Next steps",
+      "step2Title": "Set up today's tasks",
       "step2Body": "Answer three questions, review your diagnosis, then generate five tasks. Analysis takes about one minute.",
       "step3Title": "Start one real task",
       "step3Body": "Open a Ready task, read the details, and mark it complete only after doing the work.",
@@ -539,7 +539,7 @@
       "nextHintTitle": "From three answers to five next steps",
       "nextHintBody": "Review your diagnosis before generating. Start with a Ready task; locked tasks need their prerequisites completed first. Goal roadmap is an optional next step.",
       "missing": "Details to add",
-      "profileSaved": "Your details are saved. You can now continue to Next steps.",
+      "profileSaved": "Your details are saved. You can now continue to today's tasks.",
       "otherDetails": "Edit other company details",
       "draftChanged": "Your answers changed in another tab. Reload the saved draft before continuing; newer answers have not been overwritten.",
       "reloadDraft": "Reload saved answers",
@@ -591,7 +591,7 @@
       "actualResult": "Actual result",
       "confirmOutcome": "Confirm outcome achieved",
       "undoOutcome": "Undo outcome confirmation",
-      "notAchievedHint": "Tasks completed does not mean the outcome is achieved. If you have not met the criteria, add more tasks in Next steps.",
+      "notAchievedHint": "Tasks completed does not mean the outcome is achieved. If you have not met the criteria, add more tasks in today's tasks.",
       "taskProgress": "Tasks: {done} of {total} completed",
       "history": "Previous plans",
       "oldPlan": "Previous action plan",
@@ -634,14 +634,14 @@
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
       "insights": "Customer insights",
-      "agenda": "Next steps",
+      "agenda": "Today's tasks",
       "tools": "Milestones",
       "account": "Account and plan",
       "billing": "Billing",
       "investors": "Share with investors",
       "feedback": "Feedback",
       "community": "Community",
-      "matchmaking": "Matchmaking",
+      "matchmaking": "Business matching",
       "mindset": "Mindset",
       "rewards": "Rewards"
     },
@@ -653,7 +653,7 @@
     },
     "overview": {
       "title": "Welcome back",
-      "subtitle": "Your NOVA member dashboard.",
+      "subtitle": "NOVA AI | Be the bold ones",
       "planCard": "Current plan",
       "statusCard": "Subscription",
       "onboardingCard": "Onboarding",
@@ -1104,7 +1104,7 @@
       "bodyPlaceholder": "Write your conversation notes…"
     },
     "agenda": {
-      "title": "Next steps",
+      "title": "Today's tasks",
       "subtitle": "Your ranked next moves, evidence, dependencies, and measurable outcomes.",
       "milestoneSection": "Weekly / Monthly",
       "milestoneSectionBody": "Mark a milestone done to update its progress automatically.",
@@ -1380,7 +1380,7 @@
       "scheduled": "Scheduled · {date}",
       "allDone": "All current tasks are complete. Add a personal item to plan what comes next.",
       "noPlan": "You can add personal items now. Your Action Plan tasks appear here when available.",
-      "pointsHint": "Scheduling earns no points. Complete Action Plan tasks in Next steps to earn rewards.",
+      "pointsHint": "Scheduling earns no points. Complete Action Plan tasks in today's tasks to earn rewards.",
       "saved": "Saved to your calendar.",
       "reload": "Reload and review",
       "review": "Latest version loaded. Your input is preserved; review it before saving again.",
@@ -2359,7 +2359,7 @@
       "stats": "Recorded progress",
       "photo": "Blurred photo"
     },
-    "categoriesLabel": "Matchmaking categories",
+    "categoriesLabel": "Business matching categories",
     "categories": {
       "all": "For you",
       "mentorship": "Mentorship",
@@ -2391,7 +2391,7 @@
     "saveDraft": "Save private draft",
     "saveVisible": "Confirm changes to visible card",
     "consent": "I agree to make these selected fields visible to signed-in members.",
-    "publish": "Turn on Matchmaking",
+    "publish": "Turn on Business matching",
     "published": "Your card is now visible.",
     "hidden": "Your card is hidden. Other members can no longer open it.",
     "saved": "Your card has been saved.",
@@ -2403,14 +2403,14 @@
     "reviewAgain": "Latest version loaded. Your answers are retained. Preview and confirm again before saving.",
     "viewCard": "View company card",
     "memberTitle": "Company card",
-    "back": "Back to Matchmaking",
+    "back": "Back to Business matching",
     "empty": "No visible cards in this category yet. Members appear after they complete their profiles and choose to publish.",
     "previous": "Previous",
     "next": "Next",
     "activity": {
-      "week": "Active in Matchmaking this week",
-      "month": "Active in Matchmaking this month",
-      "inactive": "Inactive in Matchmaking for 30+ days"
+      "week": "Active in Business matching this week",
+      "month": "Active in Business matching this month",
+      "inactive": "Inactive in Business matching for 30+ days"
     },
     "verifiedInvestor": "Verified Investor",
     "verifiedBuyer": "Verified Buyer",

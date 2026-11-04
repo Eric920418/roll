@@ -19,6 +19,7 @@ import RewardsCard from "@/components/dashboard/rewards/RewardsCard";
 import CopilotPanel from "@/components/dashboard/home/CopilotPanel";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
 import Link from "next/link";
+import { getDiscoverySnapshot } from "@/lib/discovery/service";
 import { isDiscoveryMember } from "@/lib/discovery/policy";
 import type { Locale } from "@/i18n/routing";
 
@@ -72,6 +73,8 @@ export default async function DashboardOverview({ params }: Props) {
   }));
 
   const guide = await getGettingStarted(account.id);
+  const discovery = isDiscoveryMember(account) ? await getDiscoverySnapshot(account.id) : null;
+  const remaining = Math.max(0, 3 - (discovery?.total ?? 0));
   const firstName = account.firstName?.trim();
 
   return (
@@ -82,7 +85,7 @@ export default async function DashboardOverview({ params }: Props) {
         <HomeLogButton canRecord={isPaying} discovery={isDiscoveryMember(account)} />
       </div>
 
-      {isDiscoveryMember(account) && <Link href={`${agendaHref}#discovery`} className="mt-6 block rounded-2xl border-2 border-dark bg-white p-5 font-semibold">{l === "zh-tw" ? "你的訪談里程碑 → 前往 Next Steps，記錄訪談與查看分析" : "Your interview milestone → open Next Steps to log interviews and review evidence"}</Link>}
+      {discovery && <Link href={`${agendaHref}#discovery`} className="mt-6 block rounded-2xl border-2 border-dark bg-white p-5 focus-visible:outline-2 focus-visible:outline-offset-2"><h2 className="text-xl font-bold">{l === "zh-tw" ? "完成 3 個訪談，解鎖 5 間新客戶" : "Complete 3 interviews to unlock 5 new prospects"}</h2><p className="mt-2 text-sm">{remaining > 0 ? (l === "zh-tw" ? `再完成 ${remaining} 個有效訪談，NOVA 就會幫你找出 5 間還沒接觸過、最值得聯絡的公司` : `Complete ${remaining} more valid ${remaining === 1 ? "interview" : "interviews"} and NOVA will help you find 5 new companies worth contacting.`) : (l === "zh-tw" ? "已累積 3 份客戶洞察，前往今日任務查看新公司搜尋入口。" : "You have 3 customer insights. Open today's tasks to find new companies.")}</p><p className="mt-3 font-semibold">{l === "zh-tw" ? "3 份洞察 → 5 間優先目標" : "3 insights → 5 priority prospects"} →</p></Link>}
       <GettingStartedHome initial={guide}
         weekly={visibleActionPlan ? <HomeWeeklyCheckIn key={visibleActionPlan.id} initial={visibleActionPlan} userId={account.id} canShare={effectivePlan === "business" || effectivePlan === "enterprise"} /> : null}
         calendar={<ThisWeekCalendar />}

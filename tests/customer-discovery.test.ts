@@ -15,7 +15,7 @@ test("Stage types, calendar dates and field lengths validate independently of co
   assert.equal(insightSchema.safeParse(data).success, true);
   assert.equal(insightSchema.safeParse({ ...data, date: "2026-02-30" }).success, false);
   assert.equal(insightSchema.safeParse({ ...data, type: "Angel" }).success, false);
-  assert.match(insightBody(data), /How they solve it today: Actual answer/);
+  assert.match(insightBody(data), /How are they handling it today\?: Actual answer/);
   assert.equal(insightSchema.safeParse({ ...data, companyStage: "MVP" }).success, false);
 });
 test("Suggestions accept Chinese names and reject duplicates or fewer than two candidates", () => {

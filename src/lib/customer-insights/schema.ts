@@ -8,10 +8,10 @@ export const CHALLENGES = {
   other: ["Other", "其他"],
 } as const;
 export const STAGE_CONFIG = {
-  discover: { title: ["Discover", "客戶探索"], goal: ["Interview 10 people", "訪談 10 位潛在客戶"], target: 10, unit: ["conversations", "次對話"], types: ["Prospect", "Industry expert", "Mentor", "Internal"], fields: [["How they solve it today", "目前如何解決"], ["What it costs them", "付出的成本"], ["Who decides", "誰做決定"], ["Next step and date", "下一步與日期"]] },
+  discover: { title: ["Discover", "客戶探索"], goal: ["Interview 10 people", "訪談 10 位潛在客戶"], target: 10, unit: ["conversations", "次對話"], types: ["Prospect", "Industry expert", "Mentor", "Internal"], fields: [["How are they handling it today?", "他目前如何處理？"], ["How much time or money does this problem cost them?", "這個問題造成多少時間或金錢損失？"], ["Who makes the buying decision?", "誰負責購買決定？"], ["Next step and timing", "下一步與時間點"]] },
   mvp: { title: ["MVP", "MVP"], goal: ["5 weekly users, 3 ready to pre-pay", "5 位週活躍使用者，3 位願意預付"], target: 5, unit: ["conversations", "次對話"], types: ["User", "Prospect", "Mentor", "Internal"], fields: [["What they tried", "試用了什麼"], ["Most useful feature", "最有用的功能"], ["Price reaction", "對價格的反應"], ["What blocks them", "使用障礙"]] },
-  first_sales: { title: ["First sales", "首次銷售"], goal: ["Close 3 paying customers", "取得 3 位付費客戶"], target: 3, unit: ["conversations", "次對話"], types: ["Buyer", "Decision maker", "Partner", "Mentor"], fields: [["Their role and need", "角色與需求"], ["Price reaction", "對價格的反應"], ["Main objection", "主要疑慮"], ["Next step and date", "下一步與日期"]] },
-  angel_round: { title: ["Angel round", "天使輪"], goal: ["Hold 20 investor conversations", "進行 20 次投資人對話"], target: 20, unit: ["conversations", "次對話"], types: ["Angel", "VC scout", "Advisor", "Customer reference"], fields: [["Investor type and focus", "投資人類型與關注"], ["What they liked", "認同的部分"], ["Main concern", "主要顧慮"], ["Next step and date", "下一步與日期"]] },
+  first_sales: { title: ["First sales", "首次銷售"], goal: ["Close 3 paying customers", "取得 3 位付費客戶"], target: 3, unit: ["conversations", "次對話"], types: ["Buyer", "Decision maker", "Partner", "Mentor"], fields: [["Their role and need", "角色與需求"], ["Price reaction", "對價格的反應"], ["Main objection", "主要疑慮"], ["Next step and timing", "下一步與時間點"]] },
+  angel_round: { title: ["Angel round", "天使輪"], goal: ["Hold 20 investor conversations", "進行 20 次投資人對話"], target: 20, unit: ["conversations", "次對話"], types: ["Angel", "VC scout", "Advisor", "Customer reference"], fields: [["Investor type and focus", "投資人類型與關注"], ["What they liked", "認同的部分"], ["Main concern", "主要顧慮"], ["Next step and timing", "下一步與時間點"]] },
 } as const;
 const insightFieldsSchema = z.object({
   actionId: z.string().trim().min(1).max(200).optional(),

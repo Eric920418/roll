@@ -95,7 +95,7 @@ export default function ProspectSearch({ userId, active = true, onSelect }: { us
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } finally { sending.current = false; setBusy(false); }
   }
   return <section aria-label={zh ? "找新公司" : "Find new companies"} className="min-w-0 space-y-5 rounded-2xl border border-dark/15 bg-white p-5 sm:p-6">
-    <header><p className="text-xs font-semibold uppercase tracking-widest">{zh ? "外部潛在客戶 · Omrade" : "External prospects · Omrade"}</p><h2 className="mt-2 text-2xl font-bold">{zh ? "找新公司" : "Find new companies"}</h2><p className="mt-2 text-sm">{zh ? "這些公司不是 NOVA 會員。Matchmaking 與 Next Steps 共用這裡的條件和名單。" : "These companies are not NOVA members. Matchmaking and Next Steps share these criteria and lists."}</p></header>
+    <header><p className="text-xs font-semibold uppercase tracking-widest">{zh ? "外部潛在客戶 · Omrade" : "External prospects · Omrade"}</p><h2 className="mt-2 text-2xl font-bold">{zh ? "找新公司" : "Find new companies"}</h2><p className="mt-2 text-sm">{zh ? "這些公司不是 NOVA 會員。商機媒合與今日任務 共用這裡的條件和名單。" : "These companies are not NOVA members. Business matching and today's tasks share these criteria and lists."}</p></header>
     {notice && <p role="status" className="whitespace-pre-wrap rounded-xl bg-neutral-100 p-4 text-sm">{notice}</p>}
     {error && <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800"><p className="whitespace-pre-wrap break-words">{error}</p><button className={`${button} mt-3`} onClick={() => { setError(""); void load(); }}>{zh ? "重載資料，保留輸入" : "Reload data · keep input"}</button></div>}
     {!data ? !error && <p role="status">{zh ? "載入名單…" : "Loading lists…"}</p> : <>

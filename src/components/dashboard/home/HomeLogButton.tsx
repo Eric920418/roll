@@ -33,7 +33,7 @@ export default function HomeLogButton({ canRecord, discovery = false }: { canRec
       if (!selected) { setPlan(null); setActionId(null); return; }
       const result = await read<{ plan: ActionPlanDto | null }>(`/api/customer-insights?actionId=${encodeURIComponent(selected)}`);
       const task = result.plan?.actions.find(a => a.id === selected);
-      if (!task || workspaceKind(task) !== "interview") throw new Error(zh ? "訪談任務已變更，請重新查看 Next Steps。" : "The interview task changed. Review Next Steps.");
+      if (!task || workspaceKind(task) !== "interview") throw new Error(zh ? "訪談任務已變更，請重新查看今日任務。" : "The interview task changed. Review today's tasks.");
       setPlan(result.plan); setActionId(selected); setTarget(String(interviewTarget(task) ?? ""));
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { pending.current = false; setBusy(false); }
@@ -61,8 +61,8 @@ export default function HomeLogButton({ canRecord, discovery = false }: { canRec
       {busy && <p role="status" className="mt-4">{zh ? "載入中…" : "Loading…"}</p>}
       {error && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p><button type="button" className={`${button} mt-2`} disabled={busy} onClick={() => void open(actionId ?? undefined)}>{zh ? "重試" : "Retry"}</button></div>}
       {action && plan ? <><h3 className="mt-5 font-bold">{action.title}</h3>{!interviewTarget(action) ? <form onSubmit={event => { event.preventDefault(); void confirmTarget(); }} className="mt-4 space-y-3"><label className="block text-sm font-semibold">{zh ? "目標訪談公司數" : "Target number of companies"}<input type="number" required min={1} max={1000000000} step={1} value={target} onChange={event => setTarget(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-dark/20 px-3" /></label><button className={button} disabled={busy}>{zh ? "確認目標" : "Confirm target"}</button></form> : <InterviewWorkspace revision={plan.revision} userId={userId!} action={action} busy={busy} onChanged={changed} onInsights={() => setInsights(true)} />}
-        <Link href={`${pathForLocale("/dashboard/agenda", locale)}#action-${action.id}`} className={`${button} mt-5`}>{zh ? "到 Next Steps 確認任務完成" : "Review and complete in Next Steps"}</Link></>
-        : !busy && !error && <div className="mt-5 space-y-3"><p>{canRecord ? (zh ? "目前沒有訪談任務。先在 Next Steps 建立或選擇訪談任務。" : "No interview task yet. Create or choose one in Next Steps.") : (zh ? "訪談工作區需有效 Pro 以上方案。" : "The interview workspace requires an active Pro plan.")}</p><Link className={button} href={pathForLocale(canRecord ? "/dashboard/agenda" : "/dashboard/account#plan", locale)}>{canRecord ? "Next Steps" : zh ? "查看方案" : "View plans"}</Link></div>}
+        <Link href={`${pathForLocale("/dashboard/agenda", locale)}#action-${action.id}`} className={`${button} mt-5`}>{zh ? "到今日任務確認任務完成" : "Review and complete in today's tasks"}</Link></>
+        : !busy && !error && <div className="mt-5 space-y-3"><p>{canRecord ? (zh ? "目前沒有訪談任務。先在今日任務建立或選擇訪談任務。" : "No interview task yet. Create or choose one in today's tasks.") : (zh ? "訪談工作區需有效 Pro 以上方案。" : "The interview workspace requires an active Pro plan.")}</p><Link className={button} href={pathForLocale(canRecord ? "/dashboard/agenda" : "/dashboard/account#plan", locale)}>{canRecord ? "今日任務" : zh ? "查看方案" : "View plans"}</Link></div>}
     </dialog>
     {insights && action && <InterviewInsights actionId={action.id} title={action.title} onClose={() => setInsights(false)} />}
   </>;

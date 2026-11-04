@@ -17,6 +17,7 @@ import { RewardsProvider } from "@/components/dashboard/rewards/RewardsProvider"
 type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
 
 export const metadata: Metadata = {
+  title: { absolute: "NOVA AI | Be the bold ones" },
   robots: { index: false, follow: false },
 };
 
