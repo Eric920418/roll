@@ -247,3 +247,31 @@ test("新版官網管理依頁面顯示對應圖片與雙語文案，權限檢�
     assert.ok(nodes.some(n => n.props.href === "/admin/translations?namespace=Product"));
   }
 });
+
+test("Language switch uses canonical locale paths and retains the current query and anchor", () => {
+  const require = createRequire(import.meta.url);
+  const code = ts.transpileModule(readFileSync("src/components/ui/LanguageSwitch.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+  const cases = [
+    { locale: "en", path: "/product", target: "/zh-tw/product" },
+    { locale: "zh-tw", path: "/zh-tw/product", target: "/product" },
+    { locale: "en", path: "/en/product", target: "/zh-tw/product" },
+    { locale: "en", path: "/", target: "/zh-tw/" },
+    { locale: "zh-tw", path: "/zh-tw", target: "/" },
+    { locale: "zh-tw", path: "/zh-tw/cases/medix", target: "/cases/medix" },
+  ];
+  for (const { locale, path, target } of cases) {
+    let pushed = "";
+    const loaded = { exports: {} as { default(props: object): { props: { children: string; onClick(): void; type: string } } } };
+    runInNewContext(code, { module: loaded, exports: loaded.exports, window: { location: { search: "?source=event", hash: "#pricing" } }, require: (id: string) => {
+      if (id === "next-intl") return { useLocale: () => locale };
+      if (id === "next/navigation") return { usePathname: () => path, useRouter: () => ({ push: (href: string) => { pushed = href; } }) };
+      if (id === "@/lib/routes") return routes;
+      return require(id);
+    } });
+    const button = loaded.exports.default({});
+    assert.equal(button.props.children, locale === "en" ? "中文" : "ENGLISH");
+    button.props.onClick();
+    assert.equal(pushed, `${target}?source=event#pricing`);
+    assert.equal(button.props.type, "button");
+  }
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { pathForLocale } from "@/lib/routes";
 import { useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -24,18 +25,15 @@ export default function LanguageSwitch({
       segments.splice(1, 1);
     }
 
-    const newPath =
-      nextLocale === "zh-tw"
-        ? segments.join("/") || "/"
-        : `/${nextLocale}${segments.join("/") || "/"}`;
-
-    router.push(newPath);
+    const newPath = pathForLocale(segments.join("/") || "/", nextLocale);
+    router.push(`${newPath}${window.location.search}${window.location.hash}`);
   };
 
   return (
     <button
+      type="button"
       onClick={switchLocale}
-      className={`text-sm font-medium tracking-wider transition-colors duration-300 cursor-pointer font-[family-name:var(--font-heading)] ${
+      className={`min-h-11 text-sm font-medium tracking-wider transition-colors duration-300 cursor-pointer font-[family-name:var(--font-heading)] ${
         variant === "dark"
           ? brand === "nova"
             ? "text-dark/55 hover:text-dark"
