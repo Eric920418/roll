@@ -1,5 +1,7 @@
 "use client";
 
+import { PersonalizationSummary } from "./PersonalizationQuestions";
+import { useLocale } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BOTTLENECKS, COMPANY_STAGES, type BottleneckGroup } from "@/lib/action-plan/constants";
@@ -8,10 +10,12 @@ import type { ActionPlanDto } from "@/lib/action-plan/service";
 import ActionPlanBuilder from "./ActionPlanBuilder";
 
 export function ActionDiagnosis({ plan }: { plan: ActionPlanDto }) {
+  const locale = useLocale() === "zh-tw" ? "zh-tw" : "en";
   const t = useTranslations("Dashboard.actionPlan");
   return <details className="rounded-2xl border border-dark/10 bg-white p-5">
     <summary className="min-h-11 cursor-pointer text-lg font-bold">{t("diagnosis.eyebrow")}</summary>
     <div className="mt-3 space-y-4">
+      {plan.personalization && <PersonalizationSummary value={plan.personalization} locale={locale} />}
       {plan.diagnosticAnswers?.length === 3 ? <dl className="space-y-4 text-sm">{plan.diagnosticAnswers.map((row, i) => <div key={i}><dt className="font-semibold">{row.question}</dt><dd className="mt-2 whitespace-pre-wrap text-dark/65">{row.answer}</dd></div>)}</dl> : <p className="text-sm text-dark/60">{t("diagnosis.missingAnswers")}</p>}
       <ActionPlanBuilder variant="regenerate" />
     </div>

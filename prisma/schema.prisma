@@ -593,6 +593,7 @@ model LandingTask {
 /// NOVA Action Plan 的版本容器。
 /// activeKey 啟用時固定等於 userId，nullable unique 保證每位使用者至多一份 active plan。
 model ActionPlan {
+  personalization Json?
   sourceJourneyId String?
   validationAnalysis Json?
   diagnosticAnswers Json?

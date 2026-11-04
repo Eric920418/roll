@@ -1,4 +1,5 @@
 "use client";
+import { personalizationResponses } from "@/lib/action-plan/personalization";
 import ValidationWorkspace from "./ValidationWorkspace";
 import { commercialTask } from "@/lib/validation/schema";
 import { useEffect, useRef, useState } from "react";
@@ -191,7 +192,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   const disabled = busy || Boolean(view?.pending) || !view;
   return <section id="goal-roadmap" className="min-w-0 rounded-2xl border border-dark/15 bg-white p-4 sm:p-7">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">{t("title")}</h2><button ref={planTrigger} type="button" className={button} onClick={() => void open()}>+ {t("title")}</button></div>
-    {initialPlan && <section data-next-step="goal" className="mt-5 rounded-xl border border-dark/10 bg-dark/[0.02] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-dark/55">{locale === "zh-tw" ? "我的目標" : "My goal"}</p><p className="mt-2 whitespace-pre-wrap text-lg font-bold">{initialPlan.roadmap?.goal || (locale === "zh-tw" ? "尚未設定目標" : "No goal set yet")}</p><p className="mt-2 text-sm">{initialPlan.roadmap?.deadline || ""}</p></section>}
+    {initialPlan && <section data-next-step="goal" className="mt-5 rounded-xl border border-dark/10 bg-dark/[0.02] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-dark/55">{locale === "zh-tw" ? "我的目標" : "My goal"}</p><p className="mt-2 whitespace-pre-wrap text-lg font-bold">{initialPlan.roadmap?.goal || (initialPlan.personalization ? personalizationResponses(initialPlan.personalization, locale)[4].answer : (locale === "zh-tw" ? "尚未設定目標" : "No goal set yet"))}</p><p className="mt-2 text-sm">{initialPlan.roadmap?.deadline || ""}</p></section>}
     {initialPlan?.actions.find(a => a.id === featuredId && matches(a)) && <section className="mt-6 space-y-3"><h3 className="text-xl font-bold">{locale === "zh-tw" ? "目前這一步" : "Your current step"}</h3>{taskRow(initialPlan.actions.find(a => a.id === featuredId)!)}</section>}
     {stageAction && current && <section data-next-step="record" className="mt-6 space-y-3"><h3 className="text-xl font-bold">{locale === "zh-tw" ? "確認成果，繼續下一步" : "Confirm outcomes, then continue"}</h3>{milestoneCard(current)}</section>}
     {initialPlan && <ValidationWorkspace userId={userId} planId={initialPlan.id} revision={initialPlan.revision} />}

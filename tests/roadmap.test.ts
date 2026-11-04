@@ -95,3 +95,38 @@ test("Invalid AI milestone output gets one repair and never reaches task generat
  const ai=load<{generateRoadmap(input:object):Promise<unknown>}>("src/lib/roadmap/ai.ts",{"@anthropic-ai/sdk":{default:Client},"@/lib/action-plan/ai":{generateActionCandidates:async()=>{taskCalls++;return[];}},"@/lib/action-plan/constants":require("../src/lib/action-plan/constants"),"@/lib/action-plan/schemas":require("../src/lib/action-plan/schemas"),"./schema":require("../src/lib/roadmap/schema")});
  await assert.rejects(ai.generateRoadmap({goal:"Expand abroad",startsAt:"2026-10-02",deadline:"2027-04-02",locale:"en",account:{profile:{}},current:null}),/Invalid AI roadmap/);assert.equal(calls,2);assert.equal(taskCalls,0);
 });
+
+test("Later milestone generation reuses opening answers and five-choice context without asking again", async () => {
+  const opening = [{ question: "Saved opening", answer: "Original progress" }];
+  const personalization = { payingCustomers: "6-20", interviews: "6-15", channel: "events", weeklyTime: "under3", goal: "fundraising" } as const;
+  const current = { ...plan(milestoneViews(stages(), [])), diagnosticAnswers: opening, personalization };
+  let received: Record<string, unknown> | null = null;
+  const ai = load<{ generateRoadmap(input: object): Promise<unknown> }>("src/lib/roadmap/ai.ts", {
+    "@anthropic-ai/sdk": { default: class { constructor() { throw Error("Existing milestone must not regenerate metadata"); } } },
+    "@/lib/action-plan/ai": { generateActionCandidates: async (input: Record<string, unknown>) => { received = input; return draft.actions; } },
+    "@/lib/action-plan/constants": require("../src/lib/action-plan/constants"), "@/lib/action-plan/schemas": require("../src/lib/action-plan/schemas"), "./schema": require("../src/lib/roadmap/schema"),
+  });
+  await ai.generateRoadmap({ goal: draft.goal, startsAt: draft.startsAt, deadline: draft.deadline, locale: "en", account: { profile: {} }, current, milestoneId: "m0" });
+  assert.deepEqual(received!.answers, opening);
+  const context = JSON.parse((received!.messages as Array<{ content: string }>)[0].content);
+  assert.deepEqual(context.personalization, personalization);
+});
+
+test("Activating a new roadmap preserves saved questionnaires and leaves completed historical tasks intact", async () => {
+  const opening = [{ question: "Opening", answer: "Saved answer" }];
+  const personalization = { payingCustomers: "6-20", interviews: "6-15", channel: "events", weeklyTime: "under3", goal: "fundraising" };
+  const active = { id: "previous", revision: 3, diagnosticAnswers: opening, personalization, actions: [{ id: "completed", done: true }], milestones: [] };
+  const workspace = { userId: "a", draft, revision: 0, basePlanId: active.id, basePlanRevision: 3, pendingRequestId: null, lastRequestId: null };
+  let saved: Record<string, unknown> | null = null, archived = false;
+  const db = { roadmapWorkspace: { upsert: async () => workspace, findUniqueOrThrow: async () => workspace, findUnique: async () => workspace, updateMany: async () => ({ count: 1 }), update: async () => workspace },
+    actionPlan: { findFirst: async () => active, findMany: async () => [], update: async () => { archived = true; }, create: async ({ data }: { data: Record<string, unknown> }) => { saved = data; return { id: "new", milestones: [{ id: "first" }] }; } },
+    actionItem: { createMany: async () => {} }, actionDependency: { createMany: async () => {} }, $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(db),
+  };
+  const service = load<typeof Service>("src/lib/roadmap/service.ts", {
+    "@/lib/prisma": { prisma: db }, "@/lib/action-plan/service": { PlanWriteError: WriteError, lockActivePlan: async () => {}, getActiveActionPlan: async () => null, actionRecord: () => ({}) },
+    "@/lib/ai/allowance": {}, "@/lib/rate-limit": {}, "@/lib/check-ins/ai": {}, "./ai": {}, "./schema": require("../src/lib/roadmap/schema"), "./corrections": require("../src/lib/roadmap/corrections"),
+  });
+  await service.patchRoadmap("a", { action: "activate", locale: "en", revision: 0, requestId: "new-roadmap", draft });
+  assert(archived); assert.deepEqual(saved!.diagnosticAnswers, opening); assert.deepEqual(saved!.personalization, personalization);
+  assert.deepEqual(active.actions, [{ id: "completed", done: true }]);
+});

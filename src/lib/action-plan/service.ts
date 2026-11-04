@@ -1,3 +1,4 @@
+import { personalizationSchema, personalizationRoute, type Personalization } from "@/lib/action-plan/personalization";
 import { commercialTask } from "@/lib/validation/schema";
 import "server-only";
 import { randomUUID } from "node:crypto";
@@ -15,6 +16,7 @@ const actionInclude = {
 } as const;
 
 export type ActionPlanDto = {
+  personalization?: Personalization | null;
   sourceJourneyId?: string | null;
   diagnosticAnswers?: Array<{ question: string; answer: string }> | null;
   id: string;
@@ -43,6 +45,7 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
   const actions = rankActions(plan.actions, blocks, new Map(milestones.map(m => [m.id, m.position])));
   return {
     sourceJourneyId: plan.sourceJourneyId,
+    personalization: personalizationSchema.safeParse(plan.personalization).data ?? null,
     diagnosticAnswers: generateBodySchema.shape.answers.safeParse(plan.diagnosticAnswers).data ?? null,
     id: plan.id,
     revision: plan.revision,
@@ -91,6 +94,7 @@ export async function persistGeneratedPlan(input: {
   diagnosis: Diagnosis;
   actions: GeneratedAction[];
   answers: Array<{ question: string; answer: string }>;
+  personalization?: Personalization;
   basePlan: { id: string; revision: number } | null;
 }): Promise<ActionPlanDto> {
   const existing = await getPlanByRequestId(input.userId, input.requestId);
@@ -124,11 +128,12 @@ export async function persistGeneratedPlan(input: {
           userId: input.userId,
           locale: input.locale,
           ...input.diagnosis,
-          diagnosticAnswers: generateBodySchema.shape.answers.parse(input.answers),
+          diagnosticAnswers: input.answers.length ? generateBodySchema.shape.answers.parse(input.answers) : Prisma.DbNull,
+          ...(input.personalization ? { personalization: personalizationSchema.parse(input.personalization) } : {}),
           requestId: input.requestId,
           activeKey: input.userId,
           actions: {
-            create: input.actions.map(action => actionRecord(action, actionIds.get(action.clientKey)!)),
+            create: input.actions.map((action, index) => ({ ...actionRecord(action, actionIds.get(action.clientKey)!), ...(input.personalization && personalizationRoute(input.personalization) === "interviews" && index === 0 ? { recordingMode: "interview", metricTarget: 3, metricUnit: input.locale === "zh-tw" ? "間公司" : "companies", metricCurrent: 0 } : {}) })),
           },
         },
         select: { id: true },

@@ -1,3 +1,4 @@
+import { personalizationSchema } from "./personalization";
 import { z } from "zod";
 import { diagnosisSchema, conversationMessageSchema } from "./schemas";
 export const DIAGNOSTIC_QUESTIONS = {
@@ -16,9 +17,10 @@ export const builderDraftSchema = z.object({
   version: z.literal(1), revision: z.number().int().nonnegative(), requestId: z.string().uuid(),
   locale: z.enum(["en", "zh-tw"]), question: z.string().max(4000), answer: z.string().max(4000),
   answers: z.array(z.object({ question: z.string().min(1).max(4000), answer: z.string().max(4000) })).max(3),
+  personalization: personalizationSchema.partial().default({}),
   diagnosis: diagnosisSchema.nullable(), messages: z.array(conversationMessageSchema).max(30),
   generatingAt: z.number().nonnegative().nullable(),
-}).refine(d => !d.diagnosis || d.answers.length === 3 && d.answers.every(row => row.answer.trim()), "Diagnosis requires three complete answers");
+}).refine(d => !d.diagnosis || personalizationSchema.safeParse(d.personalization).success || d.answers.length === 3 && d.answers.every(row => row.answer.trim()), "Diagnosis requires three complete answers");
 export type BuilderDraft = z.infer<typeof builderDraftSchema>;
 export const builderStorageKey = (userId: string) => `nova:action-builder:${userId}`;
 export function readBuilderDraft(raw: string | null): BuilderDraft | null {
@@ -27,7 +29,7 @@ export function readBuilderDraft(raw: string | null): BuilderDraft | null {
   } catch { return null; }
 }
 export function newBuilderDraft(locale: "en" | "zh-tw", requestId: string, messages: BuilderDraft["messages"] = []): BuilderDraft {
-  return { version: 1, revision: 0, requestId, locale, question: DIAGNOSTIC_QUESTIONS[locale][0], answer: "", answers: [], diagnosis: null,
+  return { version: 1, revision: 0, requestId, locale, question: DIAGNOSTIC_QUESTIONS[locale][0], answer: "", answers: [], personalization: {}, diagnosis: null,
     messages: messages.slice(-30).filter(m => conversationMessageSchema.safeParse(m).success), generatingAt: null };
 }
 export function draftChanged(local: BuilderDraft, stored: BuilderDraft | null) {

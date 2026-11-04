@@ -1,3 +1,4 @@
+import { personalizationSchema } from "@/lib/action-plan/personalization";
 import { z } from "zod";
 import { interviewSummary, companyKey, type InterviewRow } from "@/lib/customer-insights/interviews";
 import { insightSchema } from "@/lib/customer-insights/schema";
@@ -10,7 +11,7 @@ export const TRIAL_DAYS = 14;
 export const FOUNDER_SEATS = 10;
 export const FOUNDER_AMOUNT = "348.00";
 
-export const discoverySetupSchema = z.object({ requestId: z.uuid(), locale: z.enum(["en", "zh-tw"]), answers: diagnoseBodySchema.shape.answers.unwrap().length(3), diagnosis: diagnosisSchema.nullable(), confirmed: z.boolean() });
+export const discoverySetupSchema = z.object({ requestId: z.uuid(), locale: z.enum(["en", "zh-tw"]), answers: diagnoseBodySchema.shape.answers, personalization: personalizationSchema.optional(), diagnosis: diagnosisSchema.nullable(), confirmed: z.boolean() }).refine(v => v.personalization || v.answers.length === 3);
 export type DiscoverySetup = z.infer<typeof discoverySetupSchema>;
 export const readDiscoverySetup = (value: unknown) => discoverySetupSchema.safeParse(value).data ?? null;
 

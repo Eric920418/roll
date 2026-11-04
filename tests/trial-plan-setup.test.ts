@@ -1,3 +1,4 @@
+import { personalizationSchema, type Personalization } from "../src/lib/action-plan/personalization";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -45,7 +46,7 @@ test("New trial workspace presents questions before interview tasks; paid users 
   const mocks: Record<string, unknown> = {
     react: { ...native("react"), useState: (value: unknown) => [stateCalls++ === 0 ? snapshot : value, () => {}], useEffect() {}, useCallback: (fn: unknown) => fn, useRef: (value: unknown) => ({ current: value }) },
     "next-intl": { useLocale: () => "en" }, "next/link": "Link", "@/lib/discovery/policy": { discoveryReportSchema: { safeParse: () => ({}) } },
-    "../ActionPlanBuilder": "ActionPlanBuilder", "../NextStepsTour": "NextStepsTour", "../CustomerDiscovery": "CustomerDiscovery", "../prospecting/ProspectSearch": "ProspectSearch", "../ValidationWorkspace": "ValidationWorkspace", "../LearningResources": "LearningResources", "./FounderOffer": "FounderOffer",
+    "../PersonalizationQuestions": { PersonalizationSummary: "PersonalizationSummary" }, "../ActionPlanBuilder": "ActionPlanBuilder", "../NextStepsTour": "NextStepsTour", "../CustomerDiscovery": "CustomerDiscovery", "../prospecting/ProspectSearch": "ProspectSearch", "../ValidationWorkspace": "ValidationWorkspace", "../LearningResources": "LearningResources", "./FounderOffer": "FounderOffer",
   };
   const walk = (node: unknown, parents: unknown[] = []): { type: unknown; props: Record<string, unknown>; parents: unknown[] }[] => {
     if (!node || typeof node !== "object") return [];
@@ -71,7 +72,7 @@ test("Trial setup is private, bounded, cached, explicitly confirmed and cannot g
   class WriteError extends Error { constructor(message: string, public status = 409) { super(message); } }
   const member = async () => { const row = await db.user.create({ data: { email: `setup-${randomUUID()}@example.invalid`, trialPolicy: "interviews-3-v1", trialPlan: "pro", trialStartsAt: new Date(Date.now() - 1000), trialEndsAt: new Date(Date.now() + 14 * 86400000) } }); ids.push(row.id); return row; };
   const account = async () => uid ? { ...await db.user.findUniqueOrThrow({ where: { id: uid } }), profile: null } : null;
-  const load = loader({ "@/lib/prisma": { prisma: db }, "@/lib/auth/account": { getCurrentAccount: account }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null }, "@/lib/billing/gate": { requirePlan: async () => null, getEffectivePlan: () => paid ? "pro" : "free" }, "@/lib/action-plan/service": { PlanWriteError: WriteError }, "@/lib/customer-insights/service": {}, "@/lib/validation/service": {}, "@/lib/quiz/result": { getLatestQuizResult: async () => null }, "@/lib/security/http": { browserMutationGuard: () => null }, "@/lib/rate-limit": { DAY_MS: 86400000, checkRateLimit: async (...args: Parameters<typeof import("../src/lib/rate-limit").checkRateLimit>) => allowed ? limiter.checkRateLimit(...args) : { ok: false } }, "@/lib/action-plan/ai": { diagnoseActionPlan: async (request: { answers: unknown[]; messages: unknown[] }) => { calls++; assert.equal(request.answers.length, 3); assert.equal(request.messages.length, 0); if (pending) await pending; if (fail) throw Error("Injected analysis failure"); return { status: "ready", diagnosis }; } }, "@/lib/ai/allowance": { reserveAiUsage: () => { throw Error("Must not grant or consume monthly AI credit"); } }, "@anthropic-ai/sdk": class { constructor() { throw Error("Unexpected direct paid AI call"); } }, "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({}, { status: 401 }), failFromError: () => Response.json({ error: "Safe error" }, { status: 500 }) } });
+  const load = loader({ "@/lib/prisma": { prisma: db }, "@/lib/auth/account": { getCurrentAccount: account }, "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null }, "@/lib/billing/gate": { requirePlan: async () => null, getEffectivePlan: () => paid ? "pro" : "free" }, "@/lib/action-plan/service": { PlanWriteError: WriteError }, "@/lib/customer-insights/service": {}, "@/lib/validation/service": {}, "@/lib/quiz/result": { getLatestQuizResult: async () => null }, "@/lib/security/http": { browserMutationGuard: () => null }, "@/lib/rate-limit": { DAY_MS: 86400000, checkRateLimit: async (...args: Parameters<typeof import("../src/lib/rate-limit").checkRateLimit>) => allowed ? limiter.checkRateLimit(...args) : { ok: false } }, "@/lib/action-plan/ai": { diagnoseActionPlan: async (request: { answers: unknown[]; messages: unknown[]; personalization?: Personalization }) => { calls++; if (request.personalization) assert(personalizationSchema.safeParse(request.personalization).success); else assert.equal(request.answers.length, 3); assert.equal(request.messages.length, 0); if (pending) await pending; if (fail) throw Error("Injected analysis failure"); return { status: "ready", diagnosis }; } }, "@/lib/ai/allowance": { reserveAiUsage: () => { throw Error("Must not grant or consume monthly AI credit"); } }, "@anthropic-ai/sdk": class { constructor() { throw Error("Unexpected direct paid AI call"); } }, "@/lib/api": { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), unauthorized: () => Response.json({}, { status: 401 }), failFromError: () => Response.json({ error: "Safe error" }, { status: 500 }) } });
   const limiter: typeof import("../src/lib/rate-limit") = load("src/lib/rate-limit.ts");
   const setup = load<typeof import("../src/lib/discovery/setup")>("src/lib/discovery/setup.ts"), service = load<typeof import("../src/lib/discovery/service")>("src/lib/discovery/service.ts");
   const diagnose = load<typeof import("../src/app/api/action-plans/diagnose/route")>("src/app/api/action-plans/diagnose/route.ts"), generate = load<typeof import("../src/app/api/action-plans/generate/route")>("src/app/api/action-plans/generate/route.ts"), discovery = load<typeof import("../src/app/api/discovery/route")>("src/app/api/discovery/route.ts");
@@ -149,6 +150,34 @@ test("Trial setup is private, bounded, cached, explicitly confirmed and cannot g
       const limited = await member(); uid = limited.id; allowed = false;
       await assert.rejects(setup.prepareDiscoverySetup(await account() as never, input()), /limit|上限/); allowed = true;
       assert.equal(await db.discoveryJourney.count({ where: { userId: uid } }), 0);
+    });
+    await t.test("Five choices reuse saved opening answers, cache by all choices, retain progress and never grant paid plans", async () => {
+      const other = await member(); uid = other.id;
+      const opening = input().answers;
+      await db.actionPlan.create({ data: { userId: uid, locale: "en", requestId: randomUUID(), ...diagnosis, diagnosticAnswers: opening } });
+      const context = await diagnose.GET();
+      assert.equal(context.status, 200); assert.deepEqual((await context.json()).data.openingAnswers, opening);
+      const personalization = { payingCustomers: "6-20", interviews: "6-15", channel: "outreach", weeklyTime: "under3", goal: "fundraising" } as const;
+      const next = { requestId: randomUUID(), locale: "en" as const, answers: opening, personalization };
+      const baseline = calls;
+      assert.equal((await diagnose.POST(req(next))).status, 200);
+      assert.equal((await diagnose.POST(req(next))).status, 200); assert.equal(calls, baseline + 1);
+      const changed = { ...next, personalization: { ...personalization, channel: "events" as const } };
+      assert.equal((await diagnose.POST(req(changed))).status, 200); assert.equal(calls, baseline + 2);
+      assert.equal((await generate.POST(req({ ...next, diagnosis }))).status, 409);
+      const saved = await generate.POST(req({ ...changed, diagnosis })); assert.equal(saved.status, 201);
+      const snapshot = (await saved.json()).data;
+      assert.equal(snapshot.total, 0); assert.equal(snapshot.target, 3); assert.equal(snapshot.setup.personalization.channel, "events");
+      assert.deepEqual(snapshot.setup.answers, opening);
+      const version = snapshot.version;
+      await generate.POST(req({ ...changed, diagnosis })); assert.equal((await service.getDiscoverySnapshot(uid)).version, version);
+      assert.equal(await db.actionPlan.count({ where: { userId: uid } }), 1);
+      assert.equal(await db.aiAllowance.count({ where: { userId: uid } }), 0);
+      const foreign = await member(); uid = foreign.id;
+      assert.deepEqual((await (await diagnose.GET()).json()).data.openingAnswers, []);
+      uid = other.id;
+      await assert.rejects(setup.prepareDiscoverySetup(await account() as never, { ...changed, requestId: randomUUID() }), /confirmed|確認/);
+      assert.deepEqual((await service.getDiscoverySnapshot(uid)).setup?.answers, opening);
     });
   } finally { await db.rateCounter.deleteMany({ where: { OR: ids.map(id => ({ key: { contains: id } })) } }); await db.user.deleteMany({ where: { id: { in: ids } } }); await db.$disconnect(); }
 });

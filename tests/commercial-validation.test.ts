@@ -214,3 +214,27 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     });
   } finally { await db.user.deleteMany({ where: { id: { in: [owner.id, other.id] } } }); await db.$disconnect(); }
 });
+
+
+test("Zero interviews do not hide the paid prospect eligibility check behind a second frontend gate", async () => {
+  const native = createRequire(import.meta.url), loaded = { exports: {} as { default(props: object): import("react").ReactNode } };
+  let calls = 0;
+  const data = { rows: [], priority: [], prospects: {}, deals: [], tasks: [], source: "qa-source", analysis: null, summary: { total: 0, paid: 0, signed: 0, amounts: {} } };
+  runInNewContext(ts.transpileModule(readFileSync("src/components/dashboard/ValidationWorkspace.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText, {
+    module: loaded, exports: loaded.exports,
+    require: (id: string) => {
+      if (id === "react") return { useState: (v: unknown) => [calls++ === 0 ? data : v, () => {}], useCallback: (fn: unknown) => fn, useEffect() {}, useRef: (current: unknown) => ({ current }) };
+      if (id === "next-intl") return { useLocale: () => "en" };
+      if (id === "next/navigation") return { useRouter: () => ({}) };
+      if (id === "./prospecting/ProspectSearch") return { default: "ProspectSearch" };
+      if (id === "./PlanRefresh") return { notifyPlanChanged() {} };
+      return native(id);
+    },
+  });
+  const { Children, isValidElement } = native("react") as typeof import("react");
+  const nodes: Array<{ type: unknown; props: Record<string, unknown> }> = [];
+  function walk(node: import("react").ReactNode) { Children.forEach(node, child => { if (isValidElement<Record<string, unknown>>(child)) { nodes.push({ type: child.type, props: child.props }); walk(child.props.children as import("react").ReactNode); } }); }
+  walk(loaded.exports.default({ userId: "qa", planId: "owned-plan" }));
+  assert(nodes.some(n => n.type === "ProspectSearch" && n.props.userId === "qa"));
+  assert(!nodes.some(n => typeof n.props.children === "string" && n.props.children.includes("more valid company interviews to unlock")));
+});

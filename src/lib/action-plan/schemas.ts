@@ -1,3 +1,4 @@
+import { personalizationSchema } from "./personalization";
 import { z } from "zod";
 import { workspaceSchema, findingSchema } from "./workspace";
 import {
@@ -78,6 +79,7 @@ export const diagnosisSchema = z
   });
 
 export const diagnoseBodySchema = z.object({
+  personalization: personalizationSchema.optional(),
   requestId: z.uuid().optional(),
   locale: z.enum(["en", "zh-tw"]).default("en"),
   messages: z.array(conversationMessageSchema).max(30).default([]),
@@ -217,13 +219,14 @@ export function appendGeneratedActions(
 }
 
 export const generateBodySchema = z.object({
+  personalization: personalizationSchema.optional(),
   locale: z.enum(["en", "zh-tw"]).default("en"),
   messages: z.array(conversationMessageSchema).max(30).default([]),
-  answers: diagnoseBodySchema.shape.answers.unwrap().length(3, "請完成三題診斷後再生成任務 / Answer all three diagnostic questions before generating actions"),
+  answers: diagnoseBodySchema.shape.answers,
   diagnosis: diagnosisSchema,
   requestId: z.string().uuid(),
   candidateCount: z.literal(5).default(5),
-});
+}).refine(v => v.personalization || v.answers.length === 3, "請完成五題個人化問題 / Complete all five personalization questions");
 
 const generatedShape = generatedActionSchema.shape;
 export const actionInputSchema = z

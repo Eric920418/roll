@@ -1,3 +1,4 @@
+import { personalizedActions } from "../src/lib/action-plan/personalization";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -107,4 +108,21 @@ test("Generation recovery reads only the signed-in owner and never invokes AI, a
   assert.deepEqual(state.reads, [["other-account", body.requestId]]);
   state.replay = { id: "owned-result" }; assert.equal((await (await get()).json()).data.planId, "owned-result");
   assert.equal(state.aiCalls, 0); assert.equal(state.attempts, 0); assert.equal(state.successes, 0); assert.equal(state.saved.length, 0);
+});
+
+test("Five-choice generation builds tasks without another AI call, retains opening answers, and leaves plan checks in place", async () => {
+  const { state, post } = routeHarness();
+  const personalization = { payingCustomers: "6-20", interviews: "6-15", channel: "events", weeklyTime: "under3", goal: "fundraising" } as const;
+  const response = await post({ ...body, personalization }); assert.equal(response.status, 201);
+  assert.equal(state.aiCalls, 0);
+  const saved = state.saved[0] as { personalization: unknown; answers: unknown; actions: unknown[] };
+  assert.deepEqual(saved.personalization, personalization); assert.deepEqual(saved.answers, body.answers);
+  assert.equal(saved.actions.length, 5);
+  state.allowed = false; assert.equal((await post({ ...body, personalization })).status, 403);
+  const store = serviceHarness();
+  await store.service.persistGeneratedPlan({ ...store.input, personalization: { ...personalization, payingCustomers: "none", interviews: "none" }, actions: personalizedActions({ ...personalization, payingCustomers: "none", interviews: "none" }, "en", body.diagnosis as never) });
+  const record = store.writes[0] as { personalization: unknown; diagnosticAnswers: unknown; actions: { create: Array<{ recordingMode?: string; metricTarget?: number; metricCurrent?: number }> } };
+  assert.deepEqual(record.diagnosticAnswers, body.answers);
+  assert.equal(record.actions.create[0]?.recordingMode, "interview"); assert.equal(record.actions.create[0]?.metricTarget, 3); assert.equal(record.actions.create[0]?.metricCurrent, 0);
+  assert(record.actions.create.slice(1).every(a => a.recordingMode === undefined));
 });

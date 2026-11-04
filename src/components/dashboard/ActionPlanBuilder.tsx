@@ -1,5 +1,7 @@
 "use client";
 
+import PersonalizationQuestions, { PersonalizationSummary } from "./PersonalizationQuestions";
+import { personalizationSchema, type Personalization } from "@/lib/action-plan/personalization";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
@@ -7,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { diagnosisSchema, type Diagnosis } from "@/lib/action-plan/schemas";
 import { useDashboardUser } from "./DashboardUserProvider";
 import { notifyPlanChanged } from "./PlanRefresh";
-import { builderStorageKey, readBuilderDraft, newBuilderDraft, draftChanged, DIAGNOSTIC_QUESTIONS, type BuilderDraft } from "@/lib/action-plan/builder-draft";
+import { builderStorageKey, readBuilderDraft, newBuilderDraft, draftChanged, type BuilderDraft } from "@/lib/action-plan/builder-draft";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import type { DiscoverySetup } from "@/lib/discovery/policy";
@@ -55,7 +57,7 @@ export default function ActionPlanBuilder({
   const userId = useDashboardUser(), storageKey = userId ? builderStorageKey(userId) : null;
   const [correcting, setCorrecting] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [conflict, setConflict] = useState(false);
-  const { question = "", answer = "", answers = [], diagnosis = null } = draft || {};
+  const { answers = [], diagnosis = null, personalization = {} } = draft || {};
   const blocked = busy || conflict || Boolean(draft?.generatingAt);
   const tGuide = useTranslations("Dashboard.gettingStarted");
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -69,7 +71,6 @@ export default function ActionPlanBuilder({
     } catch { const next = { ...local, ...change, revision: local.revision + 1 }; draftRef.current = next; setDraft(next); setNotice(tGuide("storageWarning")); }
     return true;
   }
-  function setAnswer(value: string) { writeChange({ answer: value }); }
   async function resultFor(requestId: string) {
     const res = await fetch(`/api/action-plans/generate?requestId=${encodeURIComponent(requestId)}`, { cache: "no-store" });
     const json = await readApiResponse<{ planId: string | null }>(res, t("genericError"));
@@ -90,8 +91,8 @@ export default function ActionPlanBuilder({
     return () => { dialog.close(); trigger?.focus(); };
   }, [open]);
   useEffect(() => {
-    if (open && question && !busy) dialogRef.current?.querySelector<HTMLTextAreaElement>("textarea")?.focus();
-  }, [open, question, busy]);
+    if (open && !diagnosis && !busy) dialogRef.current?.querySelector<HTMLInputElement>("input[type=radio]")?.focus();
+  }, [open, diagnosis, busy]);
   useEffect(() => {
     if (!storageKey) return;
     const changed = (event: StorageEvent) => { if (opened.current && event.key === storageKey && draftRef.current && draftChanged(draftRef.current, readBuilderDraft(event.newValue))) { setConflict(true); setError(tGuide("draftChanged")); } };
@@ -100,19 +101,20 @@ export default function ActionPlanBuilder({
 
   async function callDiagnose(nextAnswers: Answer[]) {
     if (busyRef.current || conflict || !draftRef.current) return;
+    const selected = personalizationSchema.safeParse(draftRef.current.personalization);
+    if (!selected.success) { setError(locale === "zh-tw" ? "請完成五題單選。" : "Answer all five questions."); return; }
     busyRef.current = true; setBusy(true); setError("");
     // Save submitted answers before any network or AI call; a failure never loses them.
-    if (!writeChange({ answers: nextAnswers, answer: "", question: DIAGNOSTIC_QUESTIONS[draftRef.current.locale][nextAnswers.length] || "", diagnosis: null })) { busyRef.current = false; setBusy(false); return; }
+    if (!writeChange({ answers: nextAnswers, answer: "", question: "", diagnosis: null })) { busyRef.current = false; setBusy(false); return; }
     try {
       const response = await fetch("/api/action-plans/diagnose", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: draftRef.current!.locale, messages: draftRef.current!.messages, answers: nextAnswers, requestId: draftRef.current!.requestId }) });
+        body: JSON.stringify({ locale: draftRef.current!.locale, messages: draftRef.current!.messages, answers: nextAnswers, personalization: selected.data, requestId: draftRef.current!.requestId }) });
       const json = await readApiResponse<DiagnoseData>(response, t("genericError"));
       if (!response.ok) throw new Error(json.error || t("genericError"));
-      if (!json.data || json.data.status === "ready" && nextAnswers.length !== 3 || json.data.status === "needs_input" && nextAnswers.length >= 3) throw new Error(t("answerAllThree"));
+      if (!json.data || json.data.status !== "ready") throw new Error(t("genericError"));
       if (!alive.current) return;
-      if (json.data.status === "needs_input") writeChange({ question: json.data.question });
-      else { const checked = diagnosisSchema.safeParse(json.data.diagnosis); if (!checked.success) throw new Error(t("genericError")); writeChange({ question: "", diagnosis: checked.data }); setCorrecting(false); }
-    } catch (cause) { if (alive.current) { if (nextAnswers.length === 3) setCorrecting(true); setError(cause instanceof Error ? cause.message : t("genericError")); } }
+      { const checked = diagnosisSchema.safeParse(json.data.diagnosis); if (!checked.success) throw new Error(t("genericError")); writeChange({ question: "", diagnosis: checked.data }); setCorrecting(false); }
+    } catch (cause) { if (alive.current) { setCorrecting(true); setError(cause instanceof Error ? cause.message : t("genericError")); } }
     finally { busyRef.current = false; if (alive.current) setBusy(false); }
   }
   async function begin() {
@@ -120,12 +122,23 @@ export default function ActionPlanBuilder({
     setOpen(true); opened.current = true; setError(""); setNotice(""); setConflict(false); setCorrecting(false);
     let restored: BuilderDraft | null = null;
     try { restored = readBuilderDraft(localStorage.getItem(storageKey)); } catch { setNotice(tGuide("storageWarning")); }
-    const recovered = discoverySetup ? { ...newBuilderDraft(discoverySetup.locale, discoverySetup.requestId), answers: discoverySetup.answers, diagnosis: discoverySetup.diagnosis, question: "" } : null;
+    const recovered = discoverySetup ? { ...newBuilderDraft(discoverySetup.locale, discoverySetup.requestId), answers: discoverySetup.answers, personalization: discoverySetup.personalization || {}, diagnosis: discoverySetup.diagnosis, question: "" } : null;
     const next = restored || recovered || newBuilderDraft(locale, crypto.randomUUID(), messages);
-    if (discoverySetup?.requestId === next.requestId && discoverySetup.diagnosis && JSON.stringify(discoverySetup.answers) === JSON.stringify(next.answers)) next.diagnosis = discoverySetup.diagnosis;
+    const hadPersonalization = personalizationSchema.safeParse(next.personalization).success;
+    busyRef.current = true; setBusy(true);
+    try {
+      const response = await fetch("/api/action-plans/diagnose", { cache: "no-store" });
+      const saved = await readApiResponse<{ openingAnswers: Answer[]; personalization: Personalization | null }>(response, t("genericError"));
+      if (!response.ok || !saved.data) throw new Error(saved.error || t("genericError"));
+      if (!next.answers.length) next.answers = saved.data.openingAnswers;
+      if (!Object.keys(next.personalization).length && saved.data.personalization) next.personalization = saved.data.personalization;
+    } catch (cause) { setError(cause instanceof Error ? cause.message : t("genericError")); }
+    finally { busyRef.current = false; setBusy(false); }
+    if (!hadPersonalization || !personalizationSchema.safeParse(next.personalization).success) next.diagnosis = null;
+    next.question = "";
     if (next.generatingAt && Date.now() - next.generatingAt >= 300000) next.generatingAt = null;
     draftRef.current = next; setDraft(next);
-    setCorrecting(next.answers.length === 3 && !next.diagnosis);
+    setCorrecting(false);
     try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { setNotice(tGuide("storageWarning")); }
     if (restored) {
       setNotice(tGuide(restored.diagnosis ? "diagnosisRestored" : "answersRestored"));
@@ -157,21 +170,18 @@ export default function ActionPlanBuilder({
     // Polling only checks an owned request. It never resubmits AI work.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, draft?.generatingAt]);
-  async function submitAnswer(event: React.FormEvent) {
-    event.preventDefault(); const text = answer.trim(); if (!text || !question || blocked) return;
-    await callDiagnose([...answers, { question, answer: text }]);
-  }
 
   async function generate() {
     if (busyRef.current || blocked || !diagnosis || correcting || !draftRef.current) return;
-    if (answers.length !== 3) { setError(t("answerAllThree")); return; }
+    const selected = personalizationSchema.safeParse(draftRef.current.personalization);
+    if (!selected.success) { setCorrecting(true); return; }
     busyRef.current = true; setBusy(true); setError("");
     const requestId = draftRef.current.requestId; let received = false;
     try {
       if (await resultFor(requestId)) { finish(requestId); return; }
       if (!writeChange({ generatingAt: Date.now() })) return;
       const response = await fetch("/api/action-plans/generate", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: draftRef.current.locale, messages: draftRef.current.messages, answers, diagnosis, requestId, candidateCount: 5 }) });
+        body: JSON.stringify({ locale: draftRef.current.locale, messages: draftRef.current.messages, answers, personalization: selected.data, diagnosis, requestId, candidateCount: 5 }) });
       received = true; const json = await readApiResponse<unknown>(response, t("genericError"));
       if (!response.ok) throw new Error(json.error || t("genericError"));
       finish(requestId);
@@ -221,62 +231,22 @@ export default function ActionPlanBuilder({
               </button>
             </div>
 
-            {discoveryTrial && <p className="mt-4 text-sm">{locale === "zh-tw" ? "先回答三題、檢視個人化診斷並確認，再開始三家訪談體驗。完整行動計畫仍依原方案開放。" : "Answer three questions, review your personalised diagnosis and confirm before starting your three-company trial. Full action plans remain subject to your plan."}</p>}
+            {discoveryTrial && <p className="mt-4 text-sm">{locale === "zh-tw" ? "完成五題單選，確認適合你的起步任務。訪談、銷售與募資方向依答案安排；完整功能仍依原方案開放。" : "Answer five multiple-choice questions and confirm your starter steps. Interview, sales and fundraising priorities follow your answers; full features remain subject to your plan."}</p>}
             {notice && <p role="status" className="mt-4 text-sm text-sky-800">{notice}</p>}
             {draft?.generatingAt && <p role="status" className="mt-4 text-sm text-sky-800">{tGuide("pendingRequest")}</p>}
-            {busy && !diagnosis && !question && (
-              <div className="mt-8 rounded-2xl border border-primary/15 bg-primary/[0.04] p-6 text-sm font-semibold text-primary">
-                {t("diagnosing")}
-              </div>
-            )}
-
-            {question && (
-              <form onSubmit={submitAnswer} className="mt-7">
-                <div className="rounded-2xl border border-primary/20 bg-white p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                    {t("questionCount", { count: answers.length + 1 })}
-                  </p>
-                  <p className="mt-2 text-base font-semibold leading-7 text-dark">{question}</p>
-                </div>
-                <label className="mt-5 block text-sm font-bold text-dark" htmlFor="nova-diagnostic-answer">
-                  {t("answerLabel")}
-                </label>
-                <textarea
-                  id="nova-diagnostic-answer"
-                  value={answer}
-                  disabled={blocked}
-                  onChange={(event) => setAnswer(event.target.value)}
-                  maxLength={4000}
-                  required
-                  rows={4}
-                  className="mt-2 w-full rounded-2xl border border-dark/15 bg-white px-4 py-3 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                />
-                <button
-                  type="submit"
-                  disabled={blocked || !answer.trim()}
-                  className="mt-4 min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  {busy ? t("diagnosing") : t("continue")}
-                </button>
-              </form>
-            )}
-
-            {(diagnosis || correcting) && (
-              <div className="mt-7">
-                <h3 className="text-lg font-bold text-dark">{correcting ? (locale === "zh-tw" ? "你的三題回答" : "Your three answers") : t("yourDiagnosis")}</h3>
-                {diagnosis && !correcting && <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Evidence title={t("stageEvidence")} reason={diagnosis.stageReason} />
-                  <Evidence title={t("bottleneckEvidence")} reason={diagnosis.bottleneckReason} />
-                </div>}
-                {correcting ? <div className="mt-5 space-y-4">
-                  {answers.map((row, index) => <label key={index} className="block text-sm font-semibold">{row.question}<textarea maxLength={4000} rows={4} disabled={blocked} value={row.answer} onChange={event => writeChange({ answers: answers.map((answer, i) => i === index ? { ...answer, answer: event.target.value } : answer), diagnosis: null })} className="mt-2 min-h-11 w-full rounded-xl border border-dark/15 p-3 font-normal" /></label>)}
-                  <button type="button" disabled={blocked || answers.some(row => !row.answer.trim())} onClick={() => void callDiagnose(answers)} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 font-bold text-white">{busy ? t("diagnosing") : t("continue")}</button>
-                </div> : <div className="mt-5 flex flex-wrap gap-3">
-                  <button type="button" disabled={blocked} onClick={() => void generate()} className="min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">{busy ? (discoveryTrial ? (locale === "zh-tw" ? "正在確認起步計畫…" : "Confirming starter plan…") : t("generating")) : discoveryTrial ? (locale === "zh-tw" ? "確認起步計畫並開始訪談" : "Confirm starter plan and begin interviews") : t("confirmDiagnosis")}</button>
-                  <button type="button" disabled={blocked} onClick={() => { setCorrecting(true); writeChange({ diagnosis: null }); }} className="min-h-11 rounded-xl border border-dark/15 px-5 py-2.5 text-sm font-bold text-dark">{t("correctDiagnosis")}</button>
-                </div>}
-              </div>
-            )}
+            {busy && <p role="status" className="mt-4 text-sm">{t("diagnosing")}</p>}
+            {draft && (!diagnosis || correcting) && <form className="mt-6 space-y-5" onSubmit={event => { event.preventDefault(); void callDiagnose(answers); }}>
+              <p className="text-sm">{locale === "zh-tw" ? "五題單選，約一分鐘。已保存的開場三題會一起使用，不必重填。" : "Five questions, about one minute. Your saved opening answers are reused."}</p>
+              <PersonalizationQuestions value={personalization} locale={locale} disabled={blocked} onChange={value => writeChange({ personalization: value, diagnosis: null })} />
+              <button type="submit" disabled={blocked || !personalizationSchema.safeParse(personalization).success} className="min-h-11 rounded-xl bg-dark px-5 py-3 font-bold text-white disabled:opacity-50">{busy ? t("diagnosing") : (locale === "zh-tw" ? "檢視我的個人化方向" : "Review my personalized direction")}</button>
+            </form>}
+            {diagnosis && !correcting && <div className="mt-7 space-y-4">
+              <h3 className="text-lg font-bold">{t("yourDiagnosis")}</h3>
+              <div className="grid gap-3 sm:grid-cols-2"><Evidence title={t("stageEvidence")} reason={diagnosis.stageReason} /><Evidence title={t("bottleneckEvidence")} reason={diagnosis.bottleneckReason} /></div>
+              {personalizationSchema.safeParse(personalization).success && <PersonalizationSummary value={personalization as Personalization} locale={locale} showSteps />}
+              <div className="flex flex-wrap gap-3"><button type="button" disabled={blocked} onClick={() => void generate()} className="min-h-11 rounded-xl bg-dark px-5 py-3 font-bold text-white">{busy ? (locale === "zh-tw" ? "正在確認計畫…" : "Confirming plan…") : t("confirmDiagnosis")}</button><button type="button" disabled={blocked} onClick={() => { setCorrecting(true); writeChange({ diagnosis: null }); }} className="min-h-11 rounded-xl border px-5 py-3 text-sm font-bold">{t("correctDiagnosis")}</button></div>
+            </div>}
+            {draft && <details className="mt-5"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{locale === "zh-tw" ? "沿用的開場回答" : "Saved opening answers"}</summary>{answers.length ? answers.map((row, i) => <div key={i} className="mt-3 text-sm"><p className="font-semibold">{row.question}</p><p className="mt-1 whitespace-pre-wrap">{row.answer}</p></div>) : <p className="text-sm">{locale === "zh-tw" ? "未保存原始回答；本次將使用公司資料與五題選項規劃。" : "Original answers were not saved. This plan uses your company profile and five choices."}</p>}</details>}
 
             {conflict && <button type="button" onClick={() => void begin()} className="mt-4 min-h-11 rounded-xl border px-4">{tGuide("reloadDraft")}</button>}
             {error && (
@@ -284,11 +254,7 @@ export default function ActionPlanBuilder({
                 {error}
               </div>
             )}
-            {!question && !diagnosis && !correcting && !busy && !conflict && answers.length === 3 && (
-              <button type="button" disabled={blocked} onClick={() => void callDiagnose(answers)} className="mt-3 min-h-11 rounded-xl bg-dark px-5 py-2.5 text-sm font-bold text-white">
-                {t("continue")}
-              </button>
-            )}
+
           </div>
         </dialog>,
         document.body,

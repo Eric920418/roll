@@ -1,3 +1,4 @@
+import { personalizedActions } from "@/lib/action-plan/personalization";
 import { browserMutationGuard } from "@/lib/security/http";
 import { z } from "zod";
 import { type NextRequest } from "next/server";
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     const interviewEvidence = account.trialPolicy === "interviews-3-v1"
       ? await (await import("@/lib/discovery/service")).getDiscoverySnapshot(session.uid).then(snapshot => ({ companies: snapshot.total, report: snapshot.report, preview: snapshot.preview }))
       : undefined;
-    const actions = await generateActionCandidates({
+    const actions = parsed.data.personalization ? personalizedActions(parsed.data.personalization, parsed.data.locale, parsed.data.diagnosis) : await generateActionCandidates({
       locale: parsed.data.locale,
       interviewEvidence,
       profile: account.profile,
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       diagnosis: parsed.data.diagnosis,
       actions,
       answers: parsed.data.answers,
+      personalization: parsed.data.personalization,
       basePlan: basePlan ? { id: basePlan.id, revision: basePlan.revision! } : null,
     });
     return ok(plan, 201);

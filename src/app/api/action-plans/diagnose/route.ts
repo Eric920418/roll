@@ -11,6 +11,9 @@ import { DIAGNOSTIC_QUESTIONS } from "@/lib/action-plan/builder-draft";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { getLatestQuizResult } from "@/lib/quiz/result";
 import { diagnoseActionPlan } from "@/lib/action-plan/ai";
+import { prisma } from "@/lib/prisma";
+import { readDiscoverySetup } from "@/lib/discovery/policy";
+import { personalizationSchema } from "@/lib/action-plan/personalization";
 import { diagnoseBodySchema } from "@/lib/action-plan/schemas";
 
 export const maxDuration = 120;
@@ -33,7 +36,7 @@ export async function POST(req: NextRequest) {
     const rate = await checkRateLimit(`action-plan:diagnose:${session.uid}`, DAILY_LIMIT, DAY_MS);
     if (!rate.ok) return fail(`已達本日 Action Plan 診斷請求上限（每日 ${DAILY_LIMIT} 次請求）。`, 429);
     if (!account && trial) {
-      if (parsed.data.answers.length < 3) return ok({ status: "needs_input", question: DIAGNOSTIC_QUESTIONS[parsed.data.locale][parsed.data.answers.length] });
+      if (!parsed.data.personalization && parsed.data.answers.length < 3) return ok({ status: "needs_input", question: DIAGNOSTIC_QUESTIONS[parsed.data.locale][parsed.data.answers.length] });
       if (!parsed.data.requestId) return fail("缺少請求識別碼 / Request ID required", 400);
       return ok(await prepareDiscoverySetup(trial, { ...parsed.data, requestId: parsed.data.requestId }));
     }
@@ -49,4 +52,20 @@ export async function POST(req: NextRequest) {
     }
     return failFromError(error);
   }
+}
+
+// Read saved answers without generating AI or changing the current plan.
+export async function GET() {
+  try {
+    const session = await getUserSession(); if (!session) return unauthorized();
+    const [plans, journey] = await Promise.all([
+      prisma.actionPlan.findMany({ where: { userId: session.uid }, orderBy: { createdAt: "desc" }, select: { diagnosticAnswers: true, personalization: true } }),
+      prisma.discoveryJourney.findUnique({ where: { userId: session.uid }, select: { setup: true } }),
+    ]);
+    const setup = readDiscoverySetup(journey?.setup);
+    const openingAnswers = plans.map(plan => diagnoseBodySchema.shape.answers.unwrap().length(3).safeParse(plan.diagnosticAnswers).data).find(Boolean) || (setup?.answers.length === 3 ? setup.answers : []);
+    const response = ok({ openingAnswers, personalization: personalizationSchema.safeParse(plans[0]?.personalization).data || setup?.personalization || null });
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  } catch (error) { return failFromError(error); }
 }

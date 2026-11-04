@@ -1,3 +1,4 @@
+import { personalizationSchema } from "@/lib/action-plan/personalization";
 import { z } from "zod";
 import { requirePlan } from "@/lib/billing/gate";
 import { linkJourney, validationSnapshot } from "@/lib/validation/service";
@@ -24,8 +25,8 @@ export async function POST(req: NextRequest) {
     await prisma.$transaction(async tx => {
       if (await tx.discoveryJourney.findUnique({ where: { userId: session.uid }, select: { id: true } })) return;
       const current = await discoveryAccount(session.uid, tx as unknown as import("@prisma/client").Prisma.TransactionClient);
-      const plan = await tx.actionPlan.findFirst({ where: { userId: session.uid, activeKey: session.uid }, select: { diagnosticAnswers: true } });
-      if (!current || !discoveryPaid(current) || !Array.isArray(plan?.diagnosticAnswers) || plan.diagnosticAnswers.length !== 3) throw new PlanWriteError("請先回答三題並確認個人化起步計畫 / Answer three questions and confirm your starter plan first", 409);
+      const plan = await tx.actionPlan.findFirst({ where: { userId: session.uid, activeKey: session.uid }, select: { diagnosticAnswers: true, personalization: true } });
+      if (!current || !discoveryPaid(current) || (!personalizationSchema.safeParse(plan?.personalization).success && (!Array.isArray(plan?.diagnosticAnswers) || plan.diagnosticAnswers.length !== 3))) throw new PlanWriteError("請先回答三題並確認個人化起步計畫 / Answer three questions and confirm your starter plan first", 409);
       await tx.discoveryJourney.upsert({ where: { userId: session.uid }, create: { userId: session.uid }, update: {} });
     });
     return ok(await getDiscoverySnapshot(session.uid));

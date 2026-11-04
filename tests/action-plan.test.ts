@@ -482,21 +482,20 @@ test("任務生成每批保留診斷作答，成功產出五項", async () => {
   for (const request of requests) assert.match(request.messages[0].content, /APAC enterprise buyers/);
 });
 
-test("三題草稿在診斷失敗前保存，重試沿用三份回答，生成需要人工確認", async () => {
-  const state: unknown[] = [], cache = new Map<string, string>(), payloads: Array<{ answers: Array<{ question: string; answer: string }> }> = [];
+test("五題草稿在失敗前保存，沿用已存開場回答且生成需要人工確認", async () => {
+  const state: unknown[] = [], cache = new Map<string, string>(), payloads: Array<{ answers: Array<{ question: string; answer: string }>; personalization: import("../src/lib/action-plan/personalization").Personalization }> = [];
   let cursor = 0, diagnosing = 0;
   const require = createRequire(import.meta.url), loaded = { exports: {} as { default(props: object): ReactNode } };
-  const questions = require("../src/lib/action-plan/builder-draft").DIAGNOSTIC_QUESTIONS.en;
+  const opening = ["Enterprise buyers", "Ten interviews", "Five paid pilots"].map((answer, i) => ({ question: `Saved opening ${i}`, answer }));
   const code = ts.transpileModule(readFileSync("src/components/dashboard/ActionPlanBuilder.tsx", "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
   runInNewContext(code, {
     module: loaded, exports: loaded.exports, crypto: require("node:crypto"), Date, document: { body: {} },
     localStorage: { getItem: (key: string) => cache.get(key) || null, setItem: (key: string, value: string) => cache.set(key, value), removeItem: (key: string) => cache.delete(key) },
     fetch: async (url: string, options?: { body: string }) => {
-      if (!options?.body) return Response.json({ data: { planId: null } });
+      if (!options?.body) return Response.json({ data: url.endsWith("diagnose") ? { openingAnswers: opening, personalization: null } : { planId: null } });
       const body = JSON.parse(options.body); payloads.push(body);
       if (url.includes("diagnose")) { diagnosing++;
-        if (body.answers.length < 3) return Response.json({ data: { status: "needs_input", question: questions[body.answers.length] } });
-        if (diagnosing === 3) return Response.json({ error: "Diagnostic service unavailable" }, { status: 504 });
+        if (diagnosing === 1) return Response.json({ error: "Diagnostic service unavailable" }, { status: 504 });
         return Response.json({ data: { status: "ready", diagnosis: { ...readyDiagnosis, bottleneckGroup: "Sales" } } });
       }
       return Response.json({ data: { id: "created-plan" } });
@@ -506,6 +505,7 @@ test("三題草稿在診斷失敗前保存，重試沿用三份回答，生成�
         useRef: (value: unknown) => { const i = cursor++; if (!(i in state)) state[i] = { current: value }; return state[i]; },
         useState: (value: unknown) => { const i = cursor++; if (!(i in state)) state[i] = value; return [state[i], (next: unknown) => { state[i] = next; }]; } };
       if (id === "react-dom") return { createPortal: (node: ReactNode) => node };
+      if (id === "./PersonalizationQuestions") return { default: "PersonalizationQuestions", PersonalizationSummary: "PersonalizationSummary" };
       if (id === "./DashboardUserProvider") return { useDashboardUser: () => "qa" };
       if (id === "./PlanRefresh") return { notifyPlanChanged() {} };
       if (id === "@/lib/action-plan/schemas") return require("../src/lib/action-plan/schemas");
@@ -520,25 +520,24 @@ test("三題草稿在診斷失敗前保存，重試沿用三份回答，生成�
   type Props = { children?: ReactNode; role?: string; value?: string; disabled?: boolean; onClick(): void | Promise<void>; onChange(event: { target: { value: string } }): void; onSubmit(event: { preventDefault(): void }): Promise<void> };
   function render() { cursor = 0; const nodes: Array<{ type: unknown; props: Props }> = []; function visit(node: ReactNode) { Children.forEach(node, child => { if (isValidElement<Props>(child)) { nodes.push(child); visit(child.props.children); } }); } visit(loaded.exports.default({})); return nodes; }
   const button = (name: string) => render().find(n => n.type === "button" && n.props.children === name)!.props;
-  await button("build").onClick();
-  for (const answer of ["Enterprise buyers", "Ten interviews", "Five paid pilots"]) { render().find(n => n.type === "textarea")!.props.onChange({ target: { value: answer } }); await render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} }); }
-  assert.equal(JSON.parse(cache.get("nova:action-builder:qa")!).answers.length, 3);
+  await button("build").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
+  const choices = { payingCustomers: "none", interviews: "1-5", channel: "referrals", weeklyTime: "under3", goal: "first_order" } as const;
+  const choose = (value: object) => (render().find(n => n.type === "PersonalizationQuestions")!.props.onChange as unknown as (value: object) => void)(value);
+  const submit = async () => { render().find(n => n.type === "form")!.props.onSubmit({ preventDefault() {} }); await new Promise(resolve => setTimeout(resolve, 0)); };
+  choose(choices); await submit();
+  assert.deepEqual(JSON.parse(cache.get("nova:action-builder:qa")!).answers, opening);
+  assert.deepEqual(JSON.parse(cache.get("nova:action-builder:qa")!).personalization, choices);
   assert(render().some(n => n.props.role === "alert" && n.props.children === "Diagnostic service unavailable"));
   assert(!render().some(n => n.props.children === "confirmDiagnosis"));
-  await button("continue").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
-  assert.equal(payloads[3].answers.length, 3); assert(!render().some(n => n.type === "textarea"));
+  await submit(); assert.equal(payloads[1].answers.length, 3);
   button("correctDiagnosis").onClick();
-  assert.equal(JSON.parse(cache.get("nova:action-builder:qa")!).diagnosis, null, "修改回答不能沿用舊診斷");
-  assert.equal(render().filter(n => n.type === "textarea").length, 3);
-  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "" } });
-  assert(require("../src/lib/action-plan/builder-draft").readBuilderDraft(cache.get("nova:action-builder:qa")), "編輯中清空一題仍能恢復草稿");
-  assert.equal(button("continue").disabled, true);
-  render().find(n => n.type === "textarea")!.props.onChange({ target: { value: "Updated enterprise buyers" } });
-  await button("continue").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
-  assert(!render().some(n => n.type === "textarea"));
-  assert(!payloads.some(p => "candidateCount" in p), "修改或分析回答不自動建立計畫");
+  assert.equal(JSON.parse(cache.get("nova:action-builder:qa")!).diagnosis, null);
+  choose({ ...choices, goal: "fundraising" }); await submit();
+  assert(!render().some(n => n.type === "textarea"), "Opening answers are never asked again");
+  assert(!payloads.some(p => "candidateCount" in p), "Diagnosis never creates a plan automatically");
   await button("confirmDiagnosis").onClick(); await new Promise(resolve => setTimeout(resolve, 0));
-  assert.deepEqual(payloads.at(-1)?.answers.map(a => a.answer), ["Updated enterprise buyers", "Ten interviews", "Five paid pilots"]);
+  assert.deepEqual(payloads.at(-1)?.answers.map(a => a.answer), opening.map(a => a.answer));
+  assert.equal(payloads.at(-1)?.personalization.goal, "fundraising");
   assert.equal(cache.size, 0);
 });
 
@@ -620,4 +619,15 @@ test("同分同時間任務不受資料庫回傳順序影響，Home 與 Next ste
   const expected = ["task_1", "task_2", "task_10"];
   assert.deepEqual(rankActions(rows).map(row => row.clientKey), expected);
   assert.deepEqual(rankActions([...rows].reverse()).map(row => row.clientKey), expected);
+});
+
+test("Five-choice diagnosis reuses all saved opening answers and never asks another opening question", async () => {
+  const requests: AiRequest[] = [];
+  const ai = loadAi(async request => { requests.push(request); return { content: [{ type: "tool_use", name: "submit_action_plan_diagnosis", input: readyDiagnosis }] }; });
+  const opening = [{ question: "Saved bottleneck", answer: "Original buyer evidence" }, { question: "Saved progress", answer: "Existing prototype" }, { question: "Saved goal", answer: "Recurring customers" }];
+  const personalization = { payingCustomers: "6-20", interviews: "6-15", channel: "events", weeklyTime: "under3", goal: "fundraising" } as const;
+  const result = await ai.diagnoseActionPlan({ locale: "en", profile: null, quiz: null, messages: [], answers: opening, personalization });
+  assert.equal(result.status, "ready"); assert.equal(requests.length, 1); assert.equal(requests[0].messages.length, 17);
+  const sent = JSON.stringify(requests[0].messages);
+  for (const answer of ["Original buyer evidence", "Existing prototype", "Recurring customers", "6–20", "Events and trade shows", "Under 3 hours", "Prepare fundraising materials"]) assert(sent.includes(answer));
 });

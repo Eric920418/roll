@@ -32,6 +32,7 @@ export default function AgendaBoard({ userId, actionPlan, guided = false, hidePr
   return (
     <div className="mt-7 flex flex-col gap-8">
       <PlanRefresh userId={userId} />
+      {currentPlan?.personalization?.weeklyTime === "under3" && <p className="rounded-xl border border-dark/15 bg-white p-5 text-sm">{zh ? "本週只聚焦目前這一步，後續任務依序安排。" : "Focus on the current step this week. Later tasks follow in order."}</p>}
       {!hideProgress && <section data-next-step="insights" aria-label={zh ? "計畫進度" : "Plan progress"} className="rounded-2xl border border-dark/15 bg-white p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-dark/65">{zh ? "整體進度" : "Overall progress"}</p><div className="mt-4 flex flex-wrap items-baseline gap-3"><span aria-live="polite" className="text-5xl font-bold tracking-tight">{progress}%</span><span className="text-base text-dark/65">{zh ? "目前計畫已完成" : "of your plan completed"}</span></div>
         <div role="progressbar" aria-label={zh ? "任務與小步驟進度" : "Task and step progress"} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="mt-3 h-3 overflow-hidden rounded-full bg-dark/10"><div className="h-full rounded-full bg-black transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${progress}%` }} /></div>
