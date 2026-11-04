@@ -202,6 +202,8 @@ Next dev 自動更新既有 AGENTS.md 的框架說明區塊，保留並納入提
 
 後台共用導覽於手機改為上方可橫向捲動的單列，桌面保留側欄，操作區至少 44px，避免固定 240px 側欄擠壓新報表；未更動其他後台頁的資料或操作。正式追蹤環境已成對設定自建網站 ID／script URL，報表金鑰使用 Production sensitive 變數；前端 77 個 JS bundle 已檢查沒有伺服器金鑰。
 
+main 的功能與手機導覽版本 9787120／b51e630 已推送，NOVA Production `dpl_BbLSUc98yk6rDkMtWoZ8PxPj1exF` READY。正式瀏覽器走 `/product → Start for free → /signup`，沒有提交註冊或付款；實際收到 1 頁面瀏覽、1 去重訪客、1 次 `upgrade_start` 與 1 次 `feature_time`，NOVA 正式後台顯示漏斗開始 1／完成 0、平均有效停留 28 秒。這是驗收流量，不視為真實會員轉換。`upgrade` 統一標示「方案／註冊入口」，其事件包含免費註冊 CTA／方案流程，不能標成已訂閱或已完成註冊。單日樣本圖限制柱寬，避免唯一資料點填滿整張卡。Cloud 歷史資料未匯入新庫，僅保留原 Cloud 的登入入口。
+
 自建原始碼僅調整 Vercel 的 pnpm 安裝／建置指令、Next.js framework／iad1 區域，以及 Biome 不依賴 CLI 上傳時被排除的 `.gitignore`；不修改 Umami 的應用程式／權限查詢。以官方 migrations 僅初始化已驗證為空的獨立庫；上線前停用預設 admin 密碼，報表使用獨立 view-only 帳號，網站不建立公開分享。
 
 新增受管理員登入保護的 `/admin/analytics` 與 `GET /api/admin/analytics?days=7|30|90&feature=icp`，顯示去重訪客、頁面瀏覽、造訪次數、台北每日趨勢、熱門安全路徑、各功能開始／成功／失敗，以及所選功能 60 分鐘內依序完成的 Umami 漏斗與每段有效停留。以官方 Umami v3.4.1 API 格式驗證，不把事件次數當作精準會員轉換或付款；新資料不足兩個完整比較期間時明示比較資料不足。載入、零資料、權限、上游錯誤與重試分開顯示。瀏覽器僅請求本站 API，唯讀金鑰不進入公開環境變數、iframe 或公開分享連結；伺服器固定來源、限流、15 秒逾時、禁止重新導向、每實例快取五分鐘及防同時重複查詢。
