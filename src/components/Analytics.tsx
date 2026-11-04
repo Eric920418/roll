@@ -9,7 +9,7 @@ export default function Analytics() {
   const pathname = usePathname();
   const enabled = process.env.NEXT_PUBLIC_UMAMI_ENABLED === "true";
   const website = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID || "", script = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL || "https://cloud.umami.is/script.js";
-  const configured = enabled && /^[\da-f]{8}-[\da-f-]{27}$/i.test(website) && /^https:\/\/([a-z0-9-]+\.)?umami\.is\/script\.js$/.test(script);
+  const configured = enabled && /^[\da-f]{8}-[\da-f-]{27}$/i.test(website) && (/^https:\/\/([a-z0-9-]+\.)?umami\.is\/script\.js$/.test(script) || script === "https://analytics.rollon.com.tw/script.js");
   useEffect(() => {
     (window as unknown as { novaAnalyticsBeforeSend: typeof safeAnalyticsPayload }).novaAnalyticsBeforeSend = safeAnalyticsPayload;
   }, []);

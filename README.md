@@ -188,6 +188,26 @@ Next dev 自動更新既有 AGENTS.md 的框架說明區塊，保留並納入提
 
 正式已依序完成純新增 schema、環境變數、main 推送與 Production READY（功能版本 f1f141f）。Umami 已收到 feedback_start／success、icp_start／success、upgrade_start、feature_time；已儲存 60 分鐘視窗的 Product → Upgrade、Feedback → Submit、ICP → Save 三個漏斗。當前樣本含驗收流量，不視為真實會員轉換率；升級入口也不等同付款。沒有執行真實付費 AI 搜尋或金流；Omrade 等 API 文件另行串接，供應商 POC 免費及成本說明不視為已驗證。
 
+## 管理員 Umami 數據整合（2026-11-04）
+
+回歸測試涵蓋固定期間／功能、管理員授權、伺服器金鑰與私人路徑隔離、並行快取、上游錯誤安全顯示、重試與使用正式 React renderer 的基本介面載入狀態。
+
+已透過 Vercel 官方受保護存取驗證實際 stats、pageviews、event metrics、漏斗及停留 API；Umami PostgreSQL 的 Decimal 停留數值實際回傳數字字串，邊界只轉換已驗證的非負數字字串，再驗證有限數值，兼容 Zod 4 的輸入／輸出型別並納入回歸，不將格式錯誤當成零。既有部署保護不變。
+
+自建固定入口為 `https://analytics.rollon.com.tw`，使用現有網域子網域（不另買網域）；Vercel 保留原 `all_except_custom_domains` 部署保護，沒有放寬預覽／部署網址。Neon 運算範圍已限制為 0.25 CU，保留 5 分鐘閒置休眠；不新增背景資料庫輪詢。來源上傳另以 `.vercelignore` 明確排除所有 `.env*`、相依套件與建置產物，憑證只由 Vercel 伺服器環境設定提供。
+
+唯讀金鑰所屬帳號同時採全域 `view-only`、獨立團隊 `team-view-only`，網站屬該團隊而非服務帳號本人（Umami 的個人網站所有者可修改網站，即使全域 view-only；不能只看角色名稱就宣稱唯讀）。初始化與所有團隊設定僅發生於本輪新建分析資料庫。
+
+驗收：448 項隔離資料庫測試全過、0 skip；lint 0 errors／14 既有 warnings，正式建置與 TypeScript 通過。實際 Umami 未登入報表、服務金鑰新增網站及修改網站都回 401；讀取報表成功。GoDaddy 僅新增 `analytics CNAME e1ab839ef4d2e4e7.vercel-dns-016.com`，既有 DNS 不修改；權威 DNS、Vercel misconfigured=false、自動 HTTPS 憑證與公開 script.js 200 已確認。Umami Production `dpl_95hQ23gcqpuPLBf6usD3TErkuXsV` READY，最終部署來源檔樹確認沒有任何 `.env*`。本機隔離庫管理員頁成功讀取實際自建報表，呈現真實空資料與比較不足狀態；主資料庫未改 schema 或會員資料。
+
+自建原始碼僅調整 Vercel 的 pnpm 安裝／建置指令、Next.js framework／iad1 區域，以及 Biome 不依賴 CLI 上傳時被排除的 `.gitignore`；不修改 Umami 的應用程式／權限查詢。以官方 migrations 僅初始化已驗證為空的獨立庫；上線前停用預設 admin 密碼，報表使用獨立 view-only 帳號，網站不建立公開分享。
+
+新增受管理員登入保護的 `/admin/analytics` 與 `GET /api/admin/analytics?days=7|30|90&feature=icp`，顯示去重訪客、頁面瀏覽、造訪次數、台北每日趨勢、熱門安全路徑、各功能開始／成功／失敗，以及所選功能 60 分鐘內依序完成的 Umami 漏斗與每段有效停留。以官方 Umami v3.4.1 API 格式驗證，不把事件次數當作精準會員轉換或付款；新資料不足兩個完整比較期間時明示比較資料不足。載入、零資料、權限、上游錯誤與重試分開顯示。瀏覽器僅請求本站 API，唯讀金鑰不進入公開環境變數、iframe 或公開分享連結；伺服器固定來源、限流、15 秒逾時、禁止重新導向、每實例快取五分鐘及防同時重複查詢。
+
+自建 Umami 固定官方 v3.4.1（559e3c607c23d2c72d9bd4f6481bda428255323c），獨立原始碼目錄 `/Users/eric/Desktop/nova-umami`，獨立 Vercel 專案 `nova-umami` 與 Neon 免費專案 `long-term-34189878`（nova-umami，美東 Virginia）。Neon 本帳號確認 Free，每專案 100 CU-hours／1 GB；既有 Vercel Pro 共用用量額度，沒有增加固定方案或自動升級資料庫。自建不等於永久零成本；Vercel 超出團隊含用額度仍可能計費，不設定會連帶暫停 NOVA 的團隊總額硬停。NOVA 原資料庫與 schema 完全不變。部署後切換單一 tracker，不雙重送出；原 Umami Cloud Hobby 與歷史資料保留，管理員可登入原站查看，不捏造匯入或合併統計。
+
+設定：Umami 專案僅使用自己的 `DATABASE_URL`／`DIRECT_DATABASE_URL`／`APP_SECRET`、關閉遙測，不啟用錄影／MCP。NOVA 伺服器設定 `UMAMI_REPORTS_ENABLED`、`UMAMI_API_KEY`（網站專用 view-only 使用者）及 `UMAMI_COLLECTION_STARTED_AT`；公開 tracker 沿用 `NEXT_PUBLIC_UMAMI_ENABLED`、`NEXT_PUBLIC_UMAMI_WEBSITE_ID`、`NEXT_PUBLIC_UMAMI_SCRIPT_URL`，只允許 Cloud 與該自建固定 HTTPS 網域。缺設定不影響產品，報表清楚提示未設定。上線與驗收結果完成後補記本節。
+
 # ROLL ON. 企業官網
 
 ## 工作區統一使用 main（2026-10-27）
