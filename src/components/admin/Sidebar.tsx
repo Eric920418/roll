@@ -36,12 +36,12 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-60 shrink-0 bg-neutral-900 text-neutral-100 min-h-screen flex flex-col sticky top-0">
+    <aside className="w-full md:w-60 shrink-0 bg-neutral-900 text-neutral-100 md:min-h-screen flex flex-col md:sticky md:top-0">
       <div className="px-5 py-6 border-b border-white/10">
         <p className="font-bold tracking-tight">ROLL ON. CMS</p>
         <p className="text-xs text-white/40 mt-0.5">內容管理後台</p>
       </div>
-      <nav className="flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto">
+      <nav aria-label="管理員導覽" className="flex-1 px-2 py-3 flex md:flex-col gap-0.5 overflow-x-auto md:overflow-y-auto">
         {NAV.map((item) => {
           const active =
             item.href === "/admin"
@@ -51,7 +51,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+              className={`min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 py-3 text-sm transition-colors ${
                 active
                   ? "bg-white text-neutral-900 font-medium"
                   : "text-white/70 hover:bg-white/10 hover:text-white"

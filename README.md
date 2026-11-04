@@ -200,6 +200,8 @@ Next dev 自動更新既有 AGENTS.md 的框架說明區塊，保留並納入提
 
 驗收：448 項隔離資料庫測試全過、0 skip；lint 0 errors／14 既有 warnings，正式建置與 TypeScript 通過。實際 Umami 未登入報表、服務金鑰新增網站及修改網站都回 401；讀取報表成功。GoDaddy 僅新增 `analytics CNAME e1ab839ef4d2e4e7.vercel-dns-016.com`，既有 DNS 不修改；權威 DNS、Vercel misconfigured=false、自動 HTTPS 憑證與公開 script.js 200 已確認。Umami Production `dpl_95hQ23gcqpuPLBf6usD3TErkuXsV` READY，最終部署來源檔樹確認沒有任何 `.env*`。本機隔離庫管理員頁成功讀取實際自建報表，呈現真實空資料與比較不足狀態；主資料庫未改 schema 或會員資料。
 
+後台共用導覽於手機改為上方可橫向捲動的單列，桌面保留側欄，操作區至少 44px，避免固定 240px 側欄擠壓新報表；未更動其他後台頁的資料或操作。正式追蹤環境已成對設定自建網站 ID／script URL，報表金鑰使用 Production sensitive 變數；前端 77 個 JS bundle 已檢查沒有伺服器金鑰。
+
 自建原始碼僅調整 Vercel 的 pnpm 安裝／建置指令、Next.js framework／iad1 區域，以及 Biome 不依賴 CLI 上傳時被排除的 `.gitignore`；不修改 Umami 的應用程式／權限查詢。以官方 migrations 僅初始化已驗證為空的獨立庫；上線前停用預設 admin 密碼，報表使用獨立 view-only 帳號，網站不建立公開分享。
 
 新增受管理員登入保護的 `/admin/analytics` 與 `GET /api/admin/analytics?days=7|30|90&feature=icp`，顯示去重訪客、頁面瀏覽、造訪次數、台北每日趨勢、熱門安全路徑、各功能開始／成功／失敗，以及所選功能 60 分鐘內依序完成的 Umami 漏斗與每段有效停留。以官方 Umami v3.4.1 API 格式驗證，不把事件次數當作精準會員轉換或付款；新資料不足兩個完整比較期間時明示比較資料不足。載入、零資料、權限、上游錯誤與重試分開顯示。瀏覽器僅請求本站 API，唯讀金鑰不進入公開環境變數、iframe 或公開分享連結；伺服器固定來源、限流、15 秒逾時、禁止重新導向、每實例快取五分鐘及防同時重複查詢。
