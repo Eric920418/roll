@@ -14,7 +14,7 @@ import {
 } from "@/lib/auth/session";
 import { destinationFor } from "@/lib/auth/onboarding";
 import type { Locale } from "@/i18n/routing";
-import { safeInvestorInvitePath } from "@/lib/auth/return-path";
+import { safeLoginReturnPath } from "@/lib/auth/return-path";
 
 const GOOGLE_STATE_COOKIE = "g_oauth";
 
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const next = saved?.next || "/";
   const prefix = localePrefixFromNext(next);
   const locale: Locale = prefix === "/zh-tw" ? "zh-tw" : "en";
-  const inviteNext = safeInvestorInvitePath(next, locale);
+  const inviteNext = safeLoginReturnPath(next, locale);
 
   const redirectError = (msg: string) => {
     let ref = ""; try { const code = referralCode(saved?.referralCode); if (code) ref = `&ref=${code}`; } catch { /* Keep malformed codes out of redirect URLs. */ }

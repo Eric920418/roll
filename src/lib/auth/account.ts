@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { cache } from "react";
 import { readIcp, type IcpDraft } from "@/lib/icp/schema";
 import { prisma } from "@/lib/prisma";
@@ -69,8 +70,8 @@ export interface Account {
  * 取目前登入會員的安全 DTO。
  * 未登入、或 session 指向的 User 已不存在（被刪）一律回 null。
  */
-export const getBetaAccess = cache(async (): Promise<boolean> => {
-  const setting = await prisma.setting.findUnique({
+export const getBetaAccess = cache(async (db: Pick<Prisma.TransactionClient, "setting"> = prisma as unknown as Prisma.TransactionClient): Promise<boolean> => {
+  const setting = await db.setting.findUnique({
     where: { key: "billing.betaAccess" },
   });
   return (setting?.value as { enabled?: unknown } | null)?.enabled === true;

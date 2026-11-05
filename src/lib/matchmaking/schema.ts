@@ -50,13 +50,14 @@ export type CardStats = { interviews: number; payingCustomers: number | null; mi
 export type PublicCard = {
   id: string; displayName?: string; stage?: string; chat?: { id: string; status: string; outgoing: boolean } | null; companyName?: string; role: CardDraft["role"]; categories: CardDraft["categories"]; country?: string; industry?: string; slogan?: string;
   companyPitch?: string; icp?: string; markets?: string[]; offers?: string; looksFor?: string; stats?: CardStats;
-  photo?: string; activity: ReturnType<typeof activityGroup>; verified: boolean; recommended: boolean;
+  photo?: string; mentorCertified?: boolean; activity: ReturnType<typeof activityGroup>; verified: boolean; recommended: boolean;
   reasons: ReturnType<typeof overlapReasons>;
 };
 // Build the whitelist explicitly: never spread a database member into a client response.
-export function publicCard(row: Omit<CardDraft, "displayName"> & { id: string; sourcePolicy?: number | null; revision?: number; displayName?: string | null; blurredPhoto?: string | null; lastActiveAt: Date | null; verified: boolean; recommended: boolean }, source: CardSources, stats: CardStats, viewer: Parameters<typeof overlapReasons>[0], now = new Date(), restricted = false): PublicCard {
+export function publicCard(row: Omit<CardDraft, "displayName"> & { id: string; sourcePolicy?: number | null; revision?: number; displayName?: string | null; blurredPhoto?: string | null; lastActiveAt: Date | null; verified: boolean; recommended: boolean; mentorCertified?: boolean }, source: CardSources, stats: CardStats, viewer: Parameters<typeof overlapReasons>[0], now = new Date(), restricted = false): PublicCard {
   const fields = new Set(row.visibleFields);
   const card: PublicCard = { id: row.id, role: row.role, categories: row.categories, activity: activityGroup(row.lastActiveAt, now), verified: row.verified && ["investor", "buyer"].includes(row.role), recommended: row.recommended, reasons: [] };
+  if (row.mentorCertified) card.mentorCertified = true;
   if (row.displayName) card.displayName = row.displayName;
   if (fields.has("stage") && source?.companyStage) card.stage = source.companyStage;
   for (const key of ["country", "industry", "slogan", "offers", "looksFor"] as const) if (fields.has(key)) card[key] = row[key];

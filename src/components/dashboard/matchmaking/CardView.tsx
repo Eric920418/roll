@@ -51,7 +51,7 @@ export default function CardView({ card, detail = false }: { card: PublicCard; d
     <div className={card.activity === "inactive" ? "opacity-60" : ""}>{card.photo ? <PrivatePhoto url={card.photo} alt={t("blurredPhoto")} /> : <div className="flex aspect-square items-center justify-center rounded-xl bg-neutral-100 text-4xl font-semibold" aria-label={t("noPhoto")}>{(card.displayName || card.companyName || t(`roles.${card.role}`)).slice(0, 1)}</div>}</div>
     <h2 className="mt-4 break-words text-xl font-semibold">{card.displayName || card.companyName || t(`roles.${card.role}`)}</h2>
     {card.displayName && card.companyName && <p className="mt-1 break-words text-sm">{card.companyName}</p>}
-    <p className="mt-2 text-sm text-dark/65">{t(`roles.${card.role}`)}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}{card.verified ? " · ✓" : ""}</p>
+    <p className="mt-2 text-sm text-dark/65">{t(`roles.${card.role}`)}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}{card.verified ? " · ✓" : ""}{card.mentorCertified ? (locale === "zh-tw" ? " · 認證導師" : " · Certified mentor") : ""}</p>
     <p className="mt-4 text-sm font-semibold">{t("fields.looksFor")}</p><div className="mt-2 flex flex-wrap gap-2">{card.categories.map(c => <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs" key={c}>{t(`categories.${c}`)}</span>)}</div>
     {copy.reasons[0] && <p className="mt-4 rounded-xl bg-neutral-50 p-3 text-sm">{zh ? "為何適合交流" : "Why connect"} · {copy.reasons.join(zh ? "；" : "; ")}</p>}
     {detail && <dl className="mt-5 space-y-4 border-t border-dark/10 pt-4 text-sm">

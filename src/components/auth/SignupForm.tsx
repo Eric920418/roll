@@ -10,7 +10,7 @@ import AuthInput from "./AuthInput";
 import AuthButton from "./AuthButton";
 import GoogleButton from "./GoogleButton";
 import { resolveAuthError } from "./error-codes";
-import { safeInvestorInvitePath } from "@/lib/auth/return-path";
+import { safeLoginReturnPath } from "@/lib/auth/return-path";
 
 type Mode = "email" | "google";
 
@@ -60,7 +60,7 @@ export default function SignupForm() {
     if (e) setError(e);
     const ref = new URLSearchParams(window.location.search).get("ref");
     if (ref && !referralTouched.current) setReferralCode(ref.slice(0, 128));
-    const requested = safeInvestorInvitePath(
+    const requested = safeLoginReturnPath(
       new URLSearchParams(window.location.search).get("next"),
       locale,
     );

@@ -1,3 +1,4 @@
+import RoundtableCommitments from "@/components/dashboard/roundtables/Commitments";
 import { InvestorProgress } from "@/components/dashboard/network/NetworkPanels";
 import { requireUserPage } from "@/lib/auth/guard";
 import NextStepsTour from "@/components/dashboard/NextStepsTour";
@@ -36,6 +37,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
         <h1 className="text-4xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
           {t("title")}
         </h1>
+        <RoundtableCommitments />
         {discovery && current ? <><div className="mt-7"><DiscoveryJourney userId={current.id} compactTrial /></div><details className="mt-6 rounded-2xl border border-dark/10 bg-white p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "歷史對話紀錄" : "Conversation history"}</summary><ConversationHistory /></details><InvestorProgress confirmationOnly /></> : <PlanPaywall locale={l} />}
       </div>
     );
@@ -56,6 +58,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
 
       {actionPlan && <NextStepsTour workflowVersion={actionPlan.workflowVersion} mission={currentTask?.title || (awaitingOutcome ? (locale === "zh-tw" ? "確認本階段成果並繼續" : "Confirm this stage’s outcomes and continue") : (locale === "zh-tw" ? "驗證你的目標客戶" : "Validate your ICP"))} target={currentTask?.metric?.target} reward={Boolean(currentTask)} />}
       <GettingStartedHint mode="next" />
+      <RoundtableCommitments />
       <AgendaBoard guided={guided || !actionPlan} userId={account.id}
         actionPlan={actionPlan}
       />

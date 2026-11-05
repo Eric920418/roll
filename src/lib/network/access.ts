@@ -10,7 +10,7 @@ type DB = Prisma.TransactionClient;
 export async function networkAccount(userId: string, db: DB = prisma as unknown as DB) {
   const row = await db.user.findUnique({ where: { id: userId }, include: { matchmakingProfile: true, profile: true } });
   if (!row) throw new MemberError("請重新登入 / Please sign in", 401);
-  const plan = getEffectivePlan({ ...row, plan: toPlanKey(row.plan), trialPlan: row.trialPlan ? toPlanKey(row.trialPlan) : null, betaAccess: await getBetaAccess() });
+  const plan = getEffectivePlan({ ...row, plan: toPlanKey(row.plan), trialPlan: row.trialPlan ? toPlanKey(row.trialPlan) : null, betaAccess: await getBetaAccess(db) });
   return { ...row, effectivePlan: plan, verifiedInvestor: row.matchmakingProfile?.role === "investor" && row.matchmakingProfile.verified };
 }
 export function sources(row: Pick<User, "plan" | "paypalSubscriptionId" | "subscriptionStatus" | "currentPeriodEnd" | "planUpdatedAt" | "founderStartedAt" | "founderEndsAt" | "trialPlan" | "trialStartsAt" | "trialEndsAt" | "trialPolicy" | "rollonMember">, now = new Date()) {

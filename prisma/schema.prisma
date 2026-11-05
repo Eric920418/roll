@@ -142,6 +142,9 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  mentorCertification MentorCertification?
+  hostedRoundtables Roundtable[]
+  roundtableRegistrations RoundtableRegistration[]
   billingCouponCheckouts BillingCouponCheckout[]
   prospectingWorkspace ProspectingWorkspace?
   prospectingOrders ProspectingOrder[]
@@ -693,6 +696,7 @@ model ActionItem {
 
 /// Home 安排與完成任務獨立；移除任務後仍保留來源種類，避免付費內容外洩。
 model WeekCalendarItem {
+  roundtableRegistration RoundtableRegistration?
   id String @id @default(cuid())
   userId String
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1482,4 +1486,71 @@ model ProspectingTrialGrant {
   orderId String? @unique
   order ProspectingOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+}
+
+// Certification is independent of member roles, subscriptions and investor verification.
+model MentorCertification {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status String @default("pending")
+  draft Json
+  revision Int @default(0)
+  note String @default("")
+  history Json @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Roundtable {
+  id String @id @default(cuid())
+  hostId String?
+  host User? @relation(fields: [hostId], references: [id], onDelete: SetNull)
+  topic String
+  description String
+  steps String[]
+  industry String
+  languages String[]
+  startsAt DateTime
+  endsAt DateTime
+  timezone String
+  capacity Int
+  registrationMode String
+  meetingUrl String
+  status String @default("scheduled")
+  cancelReason String @default("")
+  revision Int @default(0)
+  requestId String
+  requestHash String
+  completionHash String?
+  registrations RoundtableRegistration[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([hostId, requestId])
+  @@index([status, startsAt])
+}
+
+model RoundtableRegistration {
+  id String @id @default(cuid())
+  roundtableId String
+  roundtable Roundtable @relation(fields: [roundtableId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name String
+  question String
+  status String @default("pending")
+  approvedAt DateTime?
+  consentAt DateTime
+  reason String @default("")
+  planId String?
+  stepId String?
+  attendance String @default("unknown")
+  commitment Json?
+  calendarItemId String? @unique
+  calendarItem WeekCalendarItem? @relation(fields: [calendarItemId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([roundtableId, userId])
+  @@index([roundtableId, status, createdAt])
+  @@index([userId, createdAt])
 }

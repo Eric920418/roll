@@ -14,7 +14,7 @@ import { monthlyCycle } from "../src/lib/ai/allowance-cycle";
 import en from "../messages/en.json";
 import zh from "../messages/zh-tw.json";
 import { validateInvestorPdf } from "../src/lib/investor/pdf";
-import { safeInvestorInvitePath } from "../src/lib/auth/return-path";
+import { safeLoginReturnPath } from "../src/lib/auth/return-path";
 
 test("PayPal 環境值必須精確，不接受從 env 範例複製出的引號或註解", () => {
   assert.throws(
@@ -111,8 +111,12 @@ test("Investor Portal 只接受 10 MB 內且具有 PDF 檔頭的 PDF", () => {
 
 test("登入返回路徑只允許本語系 Investor 一次性邀請", () => {
   const token = "a".repeat(43);
-  assert.equal(safeInvestorInvitePath(`/investor/invite/${token}`, "en"), `/investor/invite/${token}`);
-  assert.equal(safeInvestorInvitePath(`/zh-tw/investor/invite/${token}`, "zh-tw"), `/zh-tw/investor/invite/${token}`);
-  assert.equal(safeInvestorInvitePath("https://evil.example/investor/invite/" + token, "en"), null);
-  assert.equal(safeInvestorInvitePath(`/investor/invite/${token}`, "zh-tw"), null);
+  assert.equal(safeLoginReturnPath(`/investor/invite/${token}`, "en"), `/investor/invite/${token}`);
+  assert.equal(safeLoginReturnPath(`/zh-tw/investor/invite/${token}`, "zh-tw"), `/zh-tw/investor/invite/${token}`);
+  assert.equal(safeLoginReturnPath("https://evil.example/investor/invite/" + token, "en"), null);
+  assert.equal(safeLoginReturnPath("/roundtables/qa_123-abc", "en"), "/roundtables/qa_123-abc");
+  assert.equal(safeLoginReturnPath("/zh-tw/roundtables/qa_123-abc", "zh-tw"), "/zh-tw/roundtables/qa_123-abc");
+  for (const bad of ["/roundtables/../admin", "//evil.example/roundtables/id", "https://evil.example/roundtables/id", "/roundtables/id?next=https://evil.example", "/zh-tw/roundtables/id"]) assert.equal(safeLoginReturnPath(bad, "en"), null);
+
+  assert.equal(safeLoginReturnPath(`/investor/invite/${token}`, "zh-tw"), null);
 });

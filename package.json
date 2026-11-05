@@ -16,7 +16,8 @@
     "db:super": "tsx scripts/create-super-user.ts",
     "db:studio": "prisma studio",
     "test:english": "node scripts/qa-english.mjs",
-    "test:flow": "node scripts/qa-english.mjs flow"
+    "test:flow": "node scripts/qa-english.mjs flow",
+    "test:roundtables": "node scripts/qa-english.mjs roundtables"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

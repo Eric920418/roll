@@ -10,7 +10,7 @@ import AuthInput from "./AuthInput";
 import AuthButton from "./AuthButton";
 import GoogleButton from "./GoogleButton";
 import { resolveAuthError } from "./error-codes";
-import { safeInvestorInvitePath } from "@/lib/auth/return-path";
+import { safeLoginReturnPath } from "@/lib/auth/return-path";
 
 export default function LoginForm() {
   const t = useTranslations("Auth.login");
@@ -30,7 +30,7 @@ export default function LoginForm() {
   useEffect(() => {
     const e = new URLSearchParams(window.location.search).get("error");
     if (e) setError(e);
-    const requested = safeInvestorInvitePath(
+    const requested = safeLoginReturnPath(
       new URLSearchParams(window.location.search).get("next"),
       locale,
     );
@@ -55,7 +55,7 @@ export default function LoginForm() {
           ),
         );
       }
-      const dest = safeInvestorInvitePath(next, locale) ?? destinationFor(
+      const dest = safeLoginReturnPath(next, locale) ?? destinationFor(
           {
             completed: Boolean(json.data?.completed),
             onboardingStep: Number(json.data?.onboardingStep ?? 2),

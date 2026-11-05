@@ -17,7 +17,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow'].includes(scenario), 'Use pnpm test:english [start|dev|flow].');
+assert(['start', 'dev', 'flow', 'roundtables'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -46,6 +46,13 @@ async function startServer() {
     server.once('error', error => { clearTimeout(timer); reject(error); });
     server.once('exit', code => { clearTimeout(timer); reject(new Error(`QA server exited during startup (${code}). See server.log.`)); });
   });
+}
+
+// Observe failures immediately so a failed click still reaches fixture cleanup.
+function waitResponse(page, predicate) {
+  const pending = page.waitForResponse(predicate);
+  pending.catch(() => {});
+  return pending;
 }
 
 async function redirects() {
@@ -129,7 +136,7 @@ async function closeTour(page) {
   catch (error) { if (await skip.isVisible()) throw error; }
 }
 async function saveResponse(page, action) {
-  const response = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().endsWith(`/actions/${action}`));
+  const response = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(`/actions/${action}`));
   await page.getByRole('button', { name: 'Save statement', exact: true }).click();
   return (await response).status();
 }
@@ -161,7 +168,7 @@ async function core(key, width) {
   check(`Valid saved task unlocks ${width}`, await complete.isEnabled());
   await screenshot(page, `task-${width}`);
   await page.route('**/api/action-plans/actions/*', route => route.request().method() === 'POST' ? route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'QA analysis unavailable; your saved records are retained.', code: 'qa_analysis_unavailable', requestId: 'qa-safe-trace' }) }) : route.continue());
-  const completed = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().endsWith(`/actions/${users[key].actionId}`));
+  const completed = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(`/actions/${users[key].actionId}`));
   await complete.click(); check(`Task completes through real API ${width}`, (await completed).status() === 200);
   await page.getByText('QA analysis unavailable; your saved records are retained.', { exact: false }).first().waitFor();
   check(`Analysis error has HTTP/code/trace ${width}`, (await page.getByRole('alert').allInnerTexts()).some(t => t.includes('502') && t.includes('qa_analysis_unavailable') && t.includes('qa-safe-trace')));
@@ -174,7 +181,8 @@ async function core(key, width) {
   await page.locator('#matchmaking-panel-all article').filter({ hasText: 'QA investor' }).waitFor();
   check(`Role and text filters ${width}`, await page.locator('#matchmaking-panel-all article').count() === 1);
   await page.getByRole('tab', { name: 'Roundtables', exact: true }).click();
-  check(`Roundtables is honest preparation ${width}`, await page.getByText('In preparation', { exact: true }).isVisible() && await page.locator('#matchmaking-panel-roundtables button').count() === 0);
+  await page.getByText('No sessions match. Check your records or adjust the filters.', { exact: true }).waitFor();
+  check(`Roundtables shows real availability ${width}`, await page.getByText('No sessions match. Check your records or adjust the filters.', { exact: true }).isVisible());
   await screenshot(page, `matchmaking-${width}`);
   await page.goto(`${origin}/dashboard/messages?connection=${users[key].connectionId}`);
   await page.waitForURL(/tab=messages/); await page.getByRole('textbox', { name: 'Message', exact: true }).waitFor();
@@ -182,7 +190,7 @@ async function core(key, width) {
   await layout(page, `Inbox ${width}`);
   await page.getByRole('tab', { name: /^Messages/ }).getByLabel('1 unread messages', { exact: true }).waitFor();
   check(`Unread badge matches saved message ${width}`, true);
-  const read = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().endsWith(`/connections/${users[key].connectionId}`));
+  const read = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(`/connections/${users[key].connectionId}`));
   await page.getByRole('button', { name: 'Mark read', exact: true }).click();
   check(`Mark read uses real API ${width}`, (await read).status() === 200);
   await page.getByRole('tab', { name: /^Messages/ }).getByLabel('1 unread messages', { exact: true }).waitFor({ state: 'hidden' });
@@ -209,23 +217,23 @@ async function core(key, width) {
   await screenshot(page, `messages-${width}`);
   await page.getByRole('checkbox', { name: 'Company profile', exact: true }).check();
   const shareUrl = `/connections/${users[key].connectionId}/sharing`;
-  let shared = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().endsWith(shareUrl));
+  let shared = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(shareUrl));
   await page.getByRole('button', { name: 'Confirm sharing consent', exact: true }).click();
   check(`Explicit private sharing saves ${width}`, (await shared).status() === 200);
   await page.getByRole('button', { name: 'Revoke all my sharing with this member', exact: true }).waitFor();
   check(`Only consented section is shared ${width}`, (await db.networkShare.findFirst({ where: { connectionId: users[key].connectionId, ownerId: users[key].id } })).sections.join() === 'profile');
-  shared = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().endsWith(shareUrl));
+  shared = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(shareUrl));
   await page.getByRole('button', { name: 'Revoke all my sharing with this member', exact: true }).click();
   check(`Private sharing revokes ${width}`, (await shared).status() === 200);
   await page.getByRole('button', { name: 'Revoke all my sharing with this member', exact: true }).waitFor({ state: 'hidden' });
   await page.goto(`${origin}/dashboard/matchmaking?tab=messages&connection=${users[key].invitationId}`);
   const reply = width === 390 ? 'accept' : 'decline';
-  const invitation = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().endsWith(`/connections/${users[key].invitationId}`));
+  const invitation = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(`/connections/${users[key].invitationId}`));
   await page.getByRole('button', { name: reply, exact: true }).click();
   check(`Invitation ${reply} ${width}`, (await invitation).status() === 200 && (await db.networkConnection.findUnique({ where: { id: users[key].invitationId } })).status === (reply === 'accept' ? 'accepted' : 'declined'));
   await page.getByRole('button', { name: reply, exact: true }).waitFor({ state: 'hidden' });
   await page.getByRole('button', { name: /^QA investor ·/ }).click();
-  const blocked = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().endsWith(`/connections/${users[key].connectionId}`));
+  const blocked = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(`/connections/${users[key].connectionId}`));
   await page.getByRole('button', { name: 'Block and stop private sharing', exact: true }).click();
   check(`Blocking stops new messages ${width}`, (await blocked).status() === 200);
   await page.getByRole('textbox', { name: 'Message', exact: true }).waitFor({ state: 'hidden' });
@@ -313,7 +321,7 @@ async function flowCore(key, width, locale) {
   const article = page.locator('article[data-next-step="record"]');
   const saveLabel = w('儲存本步成果', 'Save this step'), completeLabel = w('確認並完成', 'Confirm and complete');
   async function postClick(label) {
-    const response = page.waitForResponse(r => r.request().method() === 'POST' && r.url().includes('/api/action-plans/flow'));
+    const response = waitResponse(page, r => r.request().method() === 'POST' && r.url().includes('/api/action-plans/flow'));
     await page.getByRole('button', { name: label, exact: true }).click();
     return (await response).status();
   }
@@ -349,7 +357,7 @@ async function flowCore(key, width, locale) {
   check('New workflow CAS returns 409 ' + width, await postClick(saveLabel) === 409);
   const delayedGet = '**/api/action-plans/flow?*';
   await page.route(delayedGet, async route => { if (route.request().method() === 'GET') await new Promise(resolve => setTimeout(resolve, 500)); await route.continue(); });
-  const comparison = page.waitForResponse(r => r.request().method() === 'GET' && r.url().includes('/api/action-plans/flow'));
+  const comparison = waitResponse(page, r => r.request().method() === 'GET' && r.url().includes('/api/action-plans/flow'));
   await page.getByRole('button', { name: w('比較最新版本並保留草稿', 'Compare latest version and keep draft'), exact: true }).click();
   check('Conflict reload locks save until latest revision ' + width, await page.getByRole('button', { name: saveLabel, exact: true }).isDisabled());
   await comparison; await page.unroute(delayedGet);
@@ -363,18 +371,23 @@ async function flowCore(key, width, locale) {
   await article.getByRole('checkbox', { name: w('我已核對並確認這一項', 'I reviewed and confirm this item'), exact: true }).check();
   await saved(); check('Owner cannot claim five replies ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
   const anonymous = await browser.newContext({ extraHTTPHeaders: { 'x-forwarded-for': testIp } }); contexts.push(anonymous);
+  const confirmationLinks = new Set();
   for (let i = 0; i < 5; i++) {
     await article.getByLabel(w('選擇受訪者', 'Choose an interviewee'), { exact: true }).selectOption({ index: i + 1 });
     check('Generate private confirmation link ' + width, await postClick(w('建立確認連結', 'Create confirmation link')) === 200);
     const link = await page.getByLabel(w('專屬連結（可複製）', 'Dedicated link (copy to share)'), { exact: true }).inputValue();
+    check('Each interviewee receives a new dedicated link ' + width + ' ' + i, !confirmationLinks.has(link)); confirmationLinks.add(link);
     const url = new URL(link), id = url.pathname.split('/').at(-1);
     if (i === 0) {
       const recipient = await anonymous.newPage(); await recipient.goto(link);
       await recipient.getByRole('button', { name: w('符合，這就是我的情況', 'Yes, this describes my situation'), exact: true }).click();
       await recipient.getByRole('status').waitFor(); await screenshot(recipient, 'flow-confirmation-' + locale + '-' + width); await recipient.close();
     } else check('Anonymous interviewee response ' + width, (await anonymous.request.post(origin + '/api/action-plans/confirm/' + id, { headers: { origin }, data: { token: url.searchParams.get('token'), answer: 'yes' } })).status() === 200);
+    const refreshed = waitResponse(page, r => r.request().method() === 'GET' && r.url().includes('/api/action-plans/flow'));
     await article.getByRole('button', { name: w('更新回覆', 'Refresh responses'), exact: true }).click();
-    await page.waitForTimeout(150);
+    const refreshedState = await (await refreshed).json();
+    check('Server counts the correct interviewee response ' + width + ' ' + i, refreshedState.data.steps.find(s => s.id === '01-2').current === i + 1);
+    await page.waitForFunction(name => [...document.querySelectorAll('button')].some(b => b.textContent === name && !b.disabled), w('更新回覆', 'Refresh responses'));
   }
   await anonymous.close();
   await completed(w('建立潛在客戶評分標準', 'Define lead qualification criteria'));
@@ -412,12 +425,12 @@ async function flowCore(key, width, locale) {
   check('Old plan is archived ' + width, Boolean((await db.actionPlan.findUnique({ where: { id: oldPlan } })).archivedAt));
   const history = page.locator('details').filter({ has: page.locator('summary').filter({ hasText: w('計畫歷史與新計畫', 'Plan history and a new plan') }) });
   await history.locator('summary').click();
-  const historyResponse = page.waitForResponse(r => r.request().method() === 'GET' && r.url().includes('planId=' + oldPlan));
+  const historyResponse = waitResponse(page, r => r.request().method() === 'GET' && r.url().includes('planId=' + oldPlan));
   await history.getByRole('button').nth(1).click(); await historyResponse;
   const goalHeader = page.locator('header[data-next-step="goal"]');
   await goalHeader.getByText('NOVA · ' + w('歷史計畫', 'ARCHIVED PLAN'), { exact: true }).waitFor();
   check('Archived plan shows its actual task count ' + width, !(await goalHeader.innerText()).includes('16') && (await goalHeader.innerText()).includes('/ ' + JSON.parse(before).length));
-  const activeResponse = page.waitForResponse(r => r.request().method() === 'GET' && r.url().includes('planId=' + plan.id));
+  const activeResponse = waitResponse(page, r => r.request().method() === 'GET' && r.url().includes('planId=' + plan.id));
   await page.getByRole('button', { name: w('回到目前計畫', 'Return to the active plan'), exact: true }).click(); await activeResponse;
   await page.getByRole('heading', { name: w('取得付款或簽約證據', 'Obtain payment or signed contract evidence'), exact: true }).waitFor();
   check('Return from history preserves the active step ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
@@ -463,12 +476,12 @@ async function flowDocumentAndReview() {
   await review.goto(origin + '/admin/task-evidence'); await review.getByRole('heading', { name: 'Flow company 0 · 實際付款', exact: true }).waitFor();
   for (const width of [390, 1440]) { await review.setViewportSize({ width, height: 1000 }); check('Admin review layout ' + width, await review.evaluate(() => document.querySelectorAll('h1').length === 1 && document.documentElement.scrollWidth <= innerWidth + 1)); }
   await review.getByLabel('本次核對理由', { exact: true }).fill('QA fixture has no uploaded file; request a correction.');
-  let decision = review.waitForResponse(r => r.request().method() === 'PATCH' && r.url().includes('/api/admin/task-evidence'));
+  let decision = waitResponse(review, r => r.request().method() === 'PATCH' && r.url().includes('/api/admin/task-evidence'));
   await review.getByRole('button', { name: '核對通過', exact: true }).click();
   check('Missing private storage cannot approve proof', (await decision).status() === 503);
   await review.getByRole('alert').filter({ hasText: 'HTTP 503' }).waitFor();
   check('Review error keeps reason and HTTP status', (await review.getByRole('alert').filter({ hasText: 'HTTP 503' }).innerText()).includes('503') && (await review.getByLabel('本次核對理由', { exact: true }).inputValue()).includes('QA fixture'));
-  decision = review.waitForResponse(r => r.request().method() === 'PATCH' && r.url().includes('/api/admin/task-evidence'));
+  decision = waitResponse(review, r => r.request().method() === 'PATCH' && r.url().includes('/api/admin/task-evidence'));
   await review.getByRole('button', { name: '要求補正', exact: true }).click();
   check('Administrator rejection persists through real API', (await decision).status() === 200);
   check('Rejected proof stays rejected', (await db.deal.findUnique({ where: { id: deal.id } })).validation.proofs[0].review.status === 'rejected');
@@ -480,11 +493,187 @@ async function flowDocumentAndReview() {
   await context.close(); await anonymous.close(); await admin.close();
 }
 
+const createdRoundtables = [];
+async function roundtableCore(hostKey, memberKey, width, locale, approvalMode) {
+  const zh = locale === 'zh-tw', w = (a, b) => zh ? a : b, prefix = zh ? '/zh-tw' : '';
+  const { context: host, page } = await session(hostKey, width, true);
+  const topic = 'QA roundtable ' + locale + ' ' + suffix, publicName = 'QA Mentor ' + locale;
+  const originalActions = JSON.stringify(await db.actionItem.findMany({ where: { actionPlan: { userId: users[memberKey].id } }, orderBy: { id: 'asc' } }));
+  await page.goto(origin + prefix + '/dashboard/matchmaking?tab=roundtables');
+  const panel = page.locator('#matchmaking-panel-roundtables');
+  const mentorSection = panel.locator('details').filter({ has: page.locator('summary').filter({ hasText: w('導師認證與主持', 'Mentor certification and hosting') }) });
+  await mentorSection.locator('summary').click();
+  await mentorSection.getByLabel(w('公開導師名稱', 'Public mentor name'), { exact: true }).fill(publicName);
+  await mentorSection.getByLabel(w('專業簡介（至少 20 字）', 'Professional bio (at least 20 characters)'), { exact: true }).fill('Experienced founder helping teams test real customer demand and pilot offers.');
+  await mentorSection.getByLabel(w('可協助的問題與經驗（至少 10 字）', 'Expertise and experience (at least 10 characters)'), { exact: true }).fill('Customer interviews, qualification criteria and paid pilots.');
+  await mentorSection.getByLabel(w('佐證網址（每行一個，僅本人及管理員可見）', 'Evidence URLs (one per line; private to you and administrators)'), { exact: true }).fill('https://example.com/private-qa-reference-' + locale);
+  await mentorSection.getByRole('checkbox', { name: w('同意認證資料使用', 'Consent to certification use'), exact: true }).check();
+  let response = waitResponse(page, r => r.request().method() === 'POST' && r.url().endsWith('/api/roundtables'));
+  await mentorSection.getByRole('button', { name: w('送出導師認證申請', 'Submit mentor application'), exact: true }).click();
+  check('Mentor application through real UI ' + locale, (await response).status() === 200);
+  check('Pending mentor cannot host ' + locale, await mentorSection.getByRole('button', { name: w('建立圓桌會議', 'Create roundtable'), exact: true }).count() === 0);
+  check('Member cannot access mentor review queue ' + locale, (await host.request.get(origin + '/api/admin/mentors')).status() === 401);
+  const admin = await browser.newContext({ viewport: { width, height: 1000 } }); contexts.push(admin);
+  const token = await new SignJWT({ email: 'qa-mentor-reviewer-' + suffix + '@example.invalid', role: 'admin' }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('1h').sign(new TextEncoder().encode(authSecret));
+  await admin.addCookies([{ name: 'admin_session', value: token, domain: hostname, path: '/', httpOnly: true, sameSite: 'Lax' }]);
+  const review = await admin.newPage(); review.on('pageerror', error => report.browserErrors.push(error.message));
+  await review.goto(origin + '/admin/mentors');
+  const card = review.locator('article').filter({ has: review.getByRole('heading', { name: publicName + ' · ' + users[hostKey].email, exact: true }) });
+  await card.getByLabel('本次核對理由', { exact: true }).fill('Professional background and public references verified in this QA fixture.');
+  response = waitResponse(review, r => r.request().method() === 'PATCH' && r.url().endsWith('/api/admin/mentors'));
+  await card.getByRole('button', { name: '認證通過', exact: true }).click();
+  check('Administrator approves mentor through UI ' + locale, (await response).status() === 200);
+  check('Certification retains member role and plan ' + locale, (await db.matchmakingProfile.findUnique({ where: { userId: users[hostKey].id } })).role === (hostKey === 'investor' ? 'investor' : 'founder') && (await db.user.findUnique({ where: { id: users[hostKey].id } })).plan === 'business');
+  await panel.getByRole('button', { name: w('更新場次與名額', 'Refresh sessions and seats'), exact: true }).click();
+  const create = mentorSection.locator('form');
+  await create.getByLabel(w('圓桌主題', 'Session topic'), { exact: true }).fill(topic);
+  await create.getByLabel(w('交流目的與會前準備', 'Purpose and preparation'), { exact: true }).fill('Bring actual customer evidence and discuss one measurable next action.');
+  await create.getByLabel(w('總人數（含主持導師）', 'Total capacity (including the host)'), { exact: true }).selectOption('4');
+  const start = await page.evaluate(() => { const d = new Date(Date.now() + 86400000); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); });
+  await create.getByLabel(w('開始時間（使用瀏覽器時區）', 'Start time (your browser time zone)'), { exact: true }).fill(start);
+  await create.getByLabel(w('報名方式', 'Registration mode'), { exact: true }).selectOption(approvalMode ? 'approval' : 'instant');
+  await create.getByLabel(w('HTTPS 會議連結（僅主持與正式成員可見）', 'HTTPS meeting URL (host and confirmed members only)'), { exact: true }).fill('https://meet.google.com/private-' + locale + '-qa');
+  response = waitResponse(page, r => r.request().method() === 'POST' && r.url().endsWith('/api/roundtables'));
+  await create.getByRole('button', { name: w('建立圓桌會議', 'Create roundtable'), exact: true }).click();
+  const createdResponse = await response, createdBody = await createdResponse.json();
+  check('Certified mentor creates session ' + locale + (createdBody.error ? ': ' + createdBody.error : ''), createdResponse.status() === 200 && Boolean(createdBody.data.selectedId));
+  const id = createdBody.data.selectedId; createdRoundtables.push(id);
+  const publicState = await (await host.request.get(origin + '/api/roundtables?id=' + id)).json();
+  check('Host is counted within capacity ' + locale, publicState.data.sessions.find(s => s.id === id).confirmed === 1);
+  async function responsive(target, name) {
+    for (const size of [390, 768, 1440]) {
+      await target.setViewportSize({ width: size, height: 1000 });
+      check(name + ' ' + locale + ' ' + size, await target.evaluate(() => document.querySelectorAll('h1').length === 1 && document.documentElement.scrollWidth <= innerWidth + 1));
+    }
+    await target.setViewportSize({ width, height: 1000 });
+  }
+  await responsive(page, 'Host creation and details'); await screenshot(page, 'roundtable-host-' + locale);
+  await responsive(review, 'Mentor review'); await screenshot(review, 'roundtable-mentor-review-' + locale);
+  const memberContext = await browser.newContext({ viewport: { width, height: 1000 }, extraHTTPHeaders: { 'x-forwarded-for': testIp } }); contexts.push(memberContext);
+  const memberPage = await memberContext.newPage();
+  memberPage.on('pageerror', error => report.browserErrors.push(error.message)); memberPage.on('dialog', dialog => dialog.accept());
+  const member = { context: memberContext, page: memberPage };
+  await member.page.goto(origin + prefix + '/roundtables/' + id);
+  check('Registration URL carries a safe login return path ' + locale, new URL(member.page.url()).pathname === prefix + '/login' && new URL(member.page.url()).searchParams.get('next') === prefix + '/roundtables/' + id);
+  await member.page.locator('input[name="email"]').fill(users[memberKey].email);
+  await member.page.locator('input[name="password"]').fill(password);
+  await member.page.getByRole('button', { name: w('登入', 'Log in'), exact: true }).click();
+  await member.page.waitForURL(origin + prefix + '/dashboard/matchmaking?tab=roundtables&roundtable=' + id);
+  check('Member login returns to the requested roundtable ' + locale, true);
+  const detail = member.page.locator('#roundtable-detail');
+  await detail.getByRole('heading', { name: topic, exact: true }).waitFor();
+  check('Stranger sees no private meeting URL ' + locale, await detail.getByRole('link', { name: w('開啟會議連結', 'Open meeting link'), exact: true }).count() === 0);
+  await detail.getByLabel(w('本場顯示名稱', 'Name for this session'), { exact: true }).fill('Primary founder ' + locale);
+  await detail.getByLabel(w('最想交流的問題與會前準備', 'Question and preparation for the group'), { exact: true }).fill('How do I test this paid pilot offer with actual buyers?');
+  await detail.getByRole('checkbox', { name: w('同意同組分享', 'Consent to group sharing'), exact: true }).check();
+  response = waitResponse(member.page, r => r.request().method() === 'POST' && r.url().endsWith('/api/roundtables'));
+  await detail.getByRole('button', { name: w('申請加入', 'Apply to join'), exact: true }).click();
+  check('Founder applies through real UI ' + locale, (await response).status() === 200);
+  async function state() { return (await (await host.request.get(origin + '/api/roundtables?id=' + id)).json()).data.sessions.find(s => s.id === id); }
+  async function approve(registrationId) {
+    const fresh = await state();
+    const r = await host.request.post(origin + '/api/roundtables', { headers: { origin }, data: { action: 'decide', id, revision: fresh.revision, registrationId, decision: 'approve', reason: 'Relevant actual customer evidence' } });
+    assert.equal(r.status(), 200, 'Host application approval');
+  }
+  if (approvalMode) {
+    check('Pending application gets no meeting link ' + locale, await detail.getByRole('link', { name: w('開啟會議連結', 'Open meeting link'), exact: true }).count() === 0);
+    await panel.getByRole('button', { name: w('更新場次與名額', 'Refresh sessions and seats'), exact: true }).click();
+    const person = page.locator('#roundtable-detail article').filter({ hasText: 'Primary founder ' + locale });
+    await person.getByLabel(w('處理理由', 'Decision reason'), { exact: true }).fill('The founders question fits this topic.');
+    response = waitResponse(page, r => r.request().method() === 'POST' && r.url().endsWith('/api/roundtables'));
+    await person.getByRole('button', { name: w('核准申請', 'Approve application'), exact: true }).click();
+    check('Host reviews application through real UI ' + locale, (await response).status() === 200);
+    await member.page.getByRole('button', { name: w('更新場次與名額', 'Refresh sessions and seats'), exact: true }).click();
+  }
+  await detail.getByRole('link', { name: w('開啟會議連結', 'Open meeting link'), exact: true }).waitFor();
+  await responsive(member.page, 'Application and confirmed member'); await screenshot(member.page, 'roundtable-member-' + locale);
+  const fillers = ['desktop', 'mobile', 'blocked', 'outcome', 'complete', 'newpaid'].filter(k => k !== memberKey && k !== hostKey).slice(0, 3);
+  const fillerContexts = [];
+  for (const key of fillers) fillerContexts.push(await session(key, width));
+  const applications = await Promise.all(fillers.map((key, i) => fillerContexts[i].context.request.post(origin + '/api/roundtables', { headers: { origin }, data: { action: 'apply', id, name: 'QA founder ' + key, question: 'A private question about qualifying real buyers.', consent: true } })));
+  check('Concurrent real applications keep the seat lock live ' + locale, applications.every(r => r.status() === 200));
+  if (approvalMode) for (const key of fillers) await approve((await db.roundtableRegistration.findUniqueOrThrow({ where: { roundtableId_userId: { roundtableId: id, userId: users[key].id } } })).id);
+  let row = await state();
+  check('Full capacity has a real approved waitlist ' + locale, row.confirmed === 4 && row.waiting === 1);
+  const registrations = await db.roundtableRegistration.findMany({ where: { roundtableId: id } });
+  const waiting = registrations.find(r => r.status === 'waitlisted' && r.approvedAt);
+  const leaving = registrations.find(r => r.status === 'confirmed' && r.userId !== users[memberKey].id);
+  const leavingIndex = fillers.findIndex(key => users[key].id === leaving.userId);
+  const withdrawal = await fillerContexts[leavingIndex].context.request.post(origin + '/api/roundtables', { headers: { origin }, data: { action: 'withdraw', id } });
+  check('Withdrawal promotes oldest approved waiter ' + locale, withdrawal.status() === 200 && (await db.roundtableRegistration.findUniqueOrThrow({ where: { id: waiting.id } })).status === 'confirmed');
+  check('Promoted member receives an in-app notice ' + locale, await db.memberNotification.count({ where: { userId: waiting.userId, eventKey: { startsWith: 'roundtable:' + id + ':seat:' } } }) === 1);
+  await panel.getByRole('button', { name: w('更新場次與名額', 'Refresh sessions and seats'), exact: true }).click();
+  const linkSection = page.locator('#roundtable-detail details').filter({ has: page.locator('summary').filter({ hasText: w('更新會議連結', 'Update meeting link') }) });
+  await linkSection.locator('summary').click();
+  const fresh = await state();
+  assert.equal((await host.request.post(origin + '/api/roundtables', { headers: { origin }, data: { action: 'meetingLink', id, revision: fresh.revision, meetingUrl: 'https://meet.google.com/concurrent-' + locale } })).status(), 200);
+  await linkSection.getByLabel(w('新會議連結', 'New meeting URL'), { exact: true }).fill('https://meet.google.com/preserved-draft-' + locale);
+  response = waitResponse(page, r => r.request().method() === 'POST' && r.url().endsWith('/api/roundtables'));
+  await linkSection.getByRole('button', { name: w('儲存會議連結', 'Save meeting URL'), exact: true }).click();
+  check('Real host CAS conflict returns 409 ' + locale, (await response).status() === 409);
+  await panel.getByRole('alert').filter({ hasText: 'HTTP 409' }).waitFor();
+  check('Conflict preserves meeting-link draft ' + locale, (await linkSection.getByLabel(w('新會議連結', 'New meeting URL'), { exact: true }).inputValue()).includes('preserved-draft'));
+  await panel.getByRole('button', { name: w('載入最新狀態並保留草稿', 'Load latest state and keep draft'), exact: true }).click();
+  await panel.getByRole('button', { name: w('更新場次與名額', 'Refresh sessions and seats'), exact: true }).waitFor();
+  await page.waitForFunction(name => [...document.querySelectorAll('button')].some(b => b.textContent === name && !b.disabled), w('儲存會議連結', 'Save meeting URL'));
+  response = waitResponse(page, r => r.request().method() === 'POST' && r.url().endsWith('/api/roundtables'));
+  await linkSection.getByRole('button', { name: w('儲存會議連結', 'Save meeting URL'), exact: true }).click();
+  check('Host draft retries against the latest revision ' + locale, (await response).status() === 200);
+  await page.route('**/api/roundtables?*', async route => { if (route.request().method() === 'GET') await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'QA temporary read failure', code: 'qa_roundtable_read', requestId: 'qa-roundtable-trace' }) }); else await route.continue(); });
+  await panel.getByRole('button', { name: w('更新場次與名額', 'Refresh sessions and seats'), exact: true }).click();
+  await panel.getByRole('alert').filter({ hasText: 'HTTP 503' }).waitFor();
+  check('Read failure shows safe status and trace ' + locale, (await panel.getByRole('alert').innerText()).includes('qa-roundtable-trace'));
+  check('Read failure preserves host draft ' + locale, (await linkSection.getByLabel(w('新會議連結', 'New meeting URL'), { exact: true }).inputValue()).includes('preserved-draft'));
+  await page.unroute('**/api/roundtables?*');
+  await panel.getByRole('button', { name: w('載入最新狀態並保留草稿', 'Load latest state and keep draft'), exact: true }).click();
+  await page.waitForFunction(name => [...document.querySelectorAll('button')].some(b => b.textContent === name && !b.disabled), w('儲存會議連結', 'Save meeting URL'));
+  // Advance only the owned fixture's clock instead of adding a production time-bypass switch.
+  await db.roundtable.update({ where: { id }, data: { startsAt: new Date(Date.now() - 7200000), endsAt: new Date(Date.now() - 3600000) } });
+  await panel.getByRole('button', { name: w('更新場次與名額', 'Refresh sessions and seats'), exact: true }).click();
+  const outcomes = page.locator('#roundtable-detail details').filter({ has: page.locator('summary').filter({ hasText: w('會後出席與承諾', 'Attendance and commitments') }) });
+  await outcomes.locator('summary').click();
+  const outcomeRows = outcomes.locator('form > fieldset > div');
+  await outcomeRows.nth(0).getByLabel(w('實際出席', 'Attendance'), { exact: true }).waitFor();
+  const count = await outcomeRows.count();
+  assert.equal(count, 3);
+  const dueDate = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+  for (let i = 0; i < count; i++) {
+    const r = outcomeRows.nth(i);
+    await r.getByLabel(w('實際出席', 'Attendance'), { exact: true }).selectOption(i === 1 ? 'absent' : 'attended');
+    if (i !== 1) {
+      await r.getByLabel(w('承諾行動', 'Committed action'), { exact: true }).fill('Interview three buyers ' + locale + ' ' + i);
+      await r.getByLabel(w('可衡量的完成標準', 'Measurable completion criteria'), { exact: true }).fill('Save three real buyer conversations and compare the main pain.');
+      await r.getByLabel(w('承諾期限', 'Commitment deadline'), { exact: true }).fill(dueDate);
+    }
+  }
+  await responsive(page, 'Post-session outcomes'); await screenshot(page, 'roundtable-outcomes-' + locale);
+  response = waitResponse(page, r => r.request().method() === 'POST' && r.url().endsWith('/api/roundtables'));
+  await outcomes.getByRole('button', { name: w('確認結案並寫入今日任務', "Finish and add commitments to today's tasks"), exact: true }).click();
+  check('Host finalizes actual attendance and commitments ' + locale, (await response).status() === 200);
+  check('Only attendees get one task each ' + locale, await db.weekCalendarItem.count({ where: { requestId: { startsWith: 'roundtable:' + id + ':' } } }) === 2);
+  await member.page.getByRole('button', { name: w('更新場次與名額', 'Refresh sessions and seats'), exact: true }).click();
+  await detail.getByRole('link', { name: w('查看今日任務承諾', "View commitments in today's tasks"), exact: true }).click();
+  const commitments = member.page.locator('#roundtable-commitments');
+  await commitments.waitFor(); await closeTour(member.page);
+  const zhSkip = member.page.getByRole('button', { name: '略過導覽', exact: true }); if (await zhSkip.isVisible()) await zhSkip.click();
+  if (!await commitments.evaluate(e => e.open)) await commitments.locator('summary').click();
+  await responsive(member.page, 'Commitments within today tasks'); await screenshot(member.page, 'roundtable-commitment-' + locale);
+  response = waitResponse(member.page, r => r.request().method() === 'POST' && r.url().endsWith('/api/roundtables'));
+  await commitments.getByRole('button', { name: w('標示承諾已完成', 'Mark commitment done'), exact: true }).click();
+  check('Member completes own commitment through real UI ' + locale, (await response).status() === 200);
+  await commitments.getByRole('button', { name: w('重新開啟承諾', 'Reopen commitment'), exact: true }).waitFor();
+  check('Original action-plan results stay byte-identical ' + locale, JSON.stringify(await db.actionItem.findMany({ where: { actionPlan: { userId: users[memberKey].id } }, orderBy: { id: 'asc' } })) === originalActions);
+  check('No invitation emails are sent ' + locale, await db.memberNotificationDelivery.count({ where: { notification: { userId: { in: created.map(u => u.id) }, kind: 'roundtable' } } }) === 0);
+  check('Approved mentor has a separate public badge ' + locale, (await (await member.context.request.get(origin + '/api/matchmaking/members/' + (await db.matchmakingProfile.findUnique({ where: { userId: users[hostKey].id } })).id)).json()).data.mentorCertified === true);
+  await host.close(); await member.context.close(); await admin.close(); for (const c of fillerContexts) await c.context.close();
+}
+
 try {
   await startServer(); await redirects();
   if (mode === 'start') {
     await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'flow') { await flowCore('mobile', 390, 'zh-tw'); await flowCore('desktop', 1440, 'en'); await flowDocumentAndReview(); }
+    if (scenario === 'roundtables') { await roundtableCore('investor', 'desktop', 1440, 'en', false); await roundtableCore('requester', 'mobile', 390, 'zh-tw', true); }
+    else if (scenario === 'flow') { await flowCore('mobile', 390, 'zh-tw'); await flowCore('desktop', 1440, 'en'); await flowDocumentAndReview(); }
     else { await core('mobile', 390); await core('desktop', 1440); await tablet(); await states(); }
     check('No browser runtime errors', report.browserErrors.length === 0);
   }
@@ -496,6 +685,7 @@ try {
   await browser?.close();
   try {
     if (created.length) {
+      if (createdRoundtables.length) await db.roundtable.deleteMany({ where: { id: { in: createdRoundtables }, hostId: { in: created.map(u => u.id) } } });
       const removed = await db.user.deleteMany({ where: { id: { in: created.map(u => u.id) }, email: { in: created.map(u => u.email) } } });
       assert.equal(removed.count, created.length, 'Every owned fixture must be cleaned up.');
       await db.rateCounter.deleteMany({ where: { OR: [{ key: `login-ip:${testIp}` }, ...created.flatMap(u => [{ key: { contains: u.id } }, { key: { contains: u.email } }]), ...Object.values(users).flatMap(u => (u.flowActionIds || []).map(id => ({ key: { contains: id } })))] } });

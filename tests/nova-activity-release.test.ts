@@ -117,11 +117,20 @@ test("Switching tabs retains the mounted inbox, marks it inactive and supports k
   assert.equal(render().find(n => n.type === Inbox)?.props.active, true);
 });
 
-test("Roundtable preparation contains no fake registration action", () => {
-  const component = load<{ default(): ReactNode }>("src/components/dashboard/matchmaking/RoundtablesPanel.tsx", { "next-intl": intl });
-  const tree = nodes(component.default());
-  assert.equal(tree.filter(n => n.type === "button" || n.type === "a").length, 0);
-  assert.match(JSON.stringify(tree), /籌備中/); assert.match(JSON.stringify(tree), /4–6/);
+test("Inactive roundtable panel starts no requests; visible panel loads actual server records", async () => {
+  const calls: string[] = [], effects: Array<() => unknown> = [];
+  const component = load<{ default(p: object): ReactNode }>("src/components/dashboard/matchmaking/RoundtablesPanel.tsx", {
+    react: { useCallback: (fn: unknown) => fn, useRef: (value: unknown) => ({ current: value }), useEffect: (fn: () => unknown) => effects.push(fn), useState: (value: unknown) => [value, () => {}] },
+    "next-intl": intl, "next/link": { default: "a" },
+    "@/lib/member-fetch": { memberFetch: async (path: string) => { calls.push(path); return { sessions: [] }; } },
+    "@/lib/routes": { pathForLocale: (path: string) => path }, "@/lib/roundtables/schema": { INDUSTRIES: [], LANGUAGES: [] },
+    "@/lib/action-plan/flow/catalog": { STEPS: [] }, "@/lib/member-options": {},
+    "../flow/Templates": {}, "../roundtables/Forms": {},
+  }, { window: { location: { href: "https://nova.test/dashboard/matchmaking?tab=roundtables" } }, setTimeout, clearTimeout, AbortController });
+  component.default({ userId: "owner", active: false }); effects.splice(0).forEach(fn => fn());
+  await new Promise(r => setTimeout(r, 10)); assert.equal(calls.length, 0);
+  component.default({ userId: "owner", active: true }); effects.splice(0).forEach(fn => fn());
+  await new Promise(r => setTimeout(r, 10)); assert.deepEqual(calls, ["/api/roundtables"]);
 });
 
 test("An inactive inbox starts no requests or polling; activating it resumes real inbox data", async () => {

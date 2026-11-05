@@ -161,7 +161,7 @@ test("Errors and OAuth redirects never reveal raw secrets, SQL, cookies or SDK b
     assert.doesNotMatch(JSON.stringify([body, captured]), /TOP_SECRET|SELECT|postgresql|passwordHash/);
     const route = load<typeof import("../src/app/api/auth/google/callback/route")>("src/app/api/auth/google/callback/route.ts", {
       "@/lib/auth/rollon": {}, "@/lib/prisma": { prisma: {} }, "@/lib/auth/google": { localePrefixFromNext: () => "", exchangeCodeForProfile: async () => { throw error; } },
-      "@/lib/auth/session": sessions, "@/lib/auth/onboarding": {}, "@/lib/auth/return-path": { safeInvestorInvitePath: () => null },
+      "@/lib/auth/session": sessions, "@/lib/auth/onboarding": {}, "@/lib/auth/return-path": { safeLoginReturnPath: () => null },
     });
     const req = new NextRequest("https://example.test/api/auth/google/callback?state=s&code=c"); req.cookies.set("g_oauth", JSON.stringify({ state: "s", next: "/" }));
     const res = await route.GET(req); assert.equal(res.status, 307); assert.doesNotMatch(decodeURIComponent(res.headers.get("location")!), /TOP_SECRET|SELECT|postgresql/);
