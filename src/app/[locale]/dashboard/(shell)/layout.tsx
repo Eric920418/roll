@@ -1,4 +1,3 @@
-import { NetworkBadge } from "@/components/dashboard/network/NetworkPanels";
 import DashboardUserProvider from "@/components/dashboard/DashboardUserProvider";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -49,7 +48,7 @@ export default async function DashboardLayout({ children, params }: Props) {
         userLabel={userLabel}
       />
       <main className="nova-page-enter min-w-0 flex-1 px-5 py-8 md:px-8 print:p-0">
-        <div className="mx-auto w-full max-w-7xl"><div className="print:hidden"><NetworkBadge /><TrialFeedback key={account.id} userId={account.id} discovery={isDiscoveryMember(account)} paidDiscovery={isDiscoveryMember(account) && effectivePlan !== "free"} /></div>{children}</div>
+        <div className="mx-auto w-full max-w-7xl"><div className="print:hidden"><TrialFeedback key={account.id} userId={account.id} discovery={isDiscoveryMember(account)} paidDiscovery={isDiscoveryMember(account) && effectivePlan !== "free"} /></div>{children}</div>
       </main>
     </div>
     </RewardsProvider></DashboardUserProvider>

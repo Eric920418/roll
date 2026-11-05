@@ -568,6 +568,8 @@ test("Next steps 五項任務只出現一次，不重複頂部進度條，只有
       if (id === "./ActionTaskRow") return { default: ({ action }: { action: ActionPlanActionDto }) => require("react/jsx-runtime").jsx("input", { type: "checkbox", disabled: !action.done && action.dependency.blocked }) };
       if (id === "./ActionPlanManager") return { ActionEditor: () => null };
       if (id === "./InterviewWorkspace") return { default: () => null, InterviewInsights: () => null };
+      if (id === "./ActionMap") return { default: ({ children }: { children: ReactNode }) => children };
+      if (id === "./ConversationHistory") return { default: () => null };
       if (id === "./ValidationWorkspace") return { default: () => null };
       if (id === "./TaskWorkspace") return { default: () => null };
       if (id === "@/lib/roadmap/corrections") return require("../src/lib/roadmap/corrections");

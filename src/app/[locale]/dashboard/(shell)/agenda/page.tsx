@@ -1,6 +1,7 @@
 import { InvestorProgress } from "@/components/dashboard/network/NetworkPanels";
 import { requireUserPage } from "@/lib/auth/guard";
 import NextStepsTour from "@/components/dashboard/NextStepsTour";
+import ProspectSearch from "@/components/dashboard/prospecting/ProspectSearch";
 import ConversationHistory from "@/components/dashboard/ConversationHistory";
 import GettingStartedHint from "@/components/dashboard/GettingStartedHint";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -35,7 +36,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
         <h1 className="text-4xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
           {t("title")}
         </h1>
-        {discovery && current ? <><div className="mt-7"><DiscoveryJourney userId={current.id} compactTrial /></div><ConversationHistory /><InvestorProgress confirmationOnly /></> : <PlanPaywall locale={l} />}
+        {discovery && current ? <><div className="mt-7"><DiscoveryJourney userId={current.id} compactTrial /></div><details className="mt-6 rounded-2xl border border-dark/10 bg-white p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "歷史對話紀錄" : "Conversation history"}</summary><ConversationHistory /></details><InvestorProgress confirmationOnly /></> : <PlanPaywall locale={l} />}
       </div>
     );
   }
@@ -59,8 +60,8 @@ export default async function AgendaPage({ params, searchParams }: Props) {
         actionPlan={actionPlan}
       />
       {savedDiscovery?.journeyId && (savedDiscovery.total > 0 || savedDiscovery.setup?.confirmed) && <div className="my-7"><DiscoveryJourney userId={account.id} compactTrial /></div>}
+      {!actionPlan && !savedDiscovery?.journeyId && <details id="prospects" className="mt-6 scroll-mt-6 rounded-2xl border border-dark/15 bg-white p-5"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "搜尋優先聯絡的公司" : "Find companies worth contacting"}</summary><ProspectSearch userId={account.id} /></details>}
       <InvestorProgress confirmationOnly />
-      <ConversationHistory />
     </div>
   );
 }

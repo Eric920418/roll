@@ -50,6 +50,7 @@ export default function ValidationWorkspace({ userId, planId, journeyId, revisio
         </div>
       </section>
       {selected && <SalesEditor key={`${query}:${selected.company}`} userId={userId} prospect={selected} data={data} scope={scope} onSaved={fresh => { setData(fresh); notifyPlanChanged(userId); router.refresh(); }} />}
+      <section id="prospects" className="scroll-mt-6"><span className="sr-only">{zh ? "公司搜尋" : "Company search"}</span></section>
       <section data-next-step="new-companies" className="space-y-3"><h3 className="text-xl font-bold">{zh ? "找尚未接觸的新公司" : "Find new companies you haven’t contacted"}</h3>      <ProspectSearch userId={userId} onSelect={c => setSelected({ company: c.name, name: c.contact.name || "", quote: "", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "", prospectOrderId: c.orderId, prospectCompanyId: c.id })} />
       {Object.keys(data.prospects).length > 0 && <details><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{zh ? "歷史 AI 公司名單（不會自動重搜）" : "Historical AI lists (no automatic search)"}</summary>{Object.entries(data.prospects).map(([key, report]) => <div key={key} className="space-y-2 border-t py-3"><p>{key} · {report.companies.length} {zh ? "家歷史公司；舊來源需重新確認" : "historical companies; review old sources"}</p>{report.companies.map(c => <p key={c.website}><a className="inline-flex min-h-11 items-center underline" href={c.website} target="_blank" rel="noopener noreferrer">{c.name} ↗</a></p>)}</div>)}</details>}
 </section>

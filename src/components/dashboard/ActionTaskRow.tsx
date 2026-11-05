@@ -6,7 +6,7 @@ import TaskProgressLog from "./TaskProgressLog";
 import { useLocale } from "next-intl";
 import TaskCheckbox from "./TaskCheckbox";
 import LearningResources from "./LearningResources";
-import { workspaceKind } from "@/lib/action-plan/workspace";
+import { workspaceKind, workspaceComplete } from "@/lib/action-plan/workspace";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { taskReference, priorityTier } from "@/lib/action-plan/ranking";
 import { formatActionTime } from "@/lib/action-plan/time";
@@ -29,7 +29,8 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
       <div className="mt-3 flex flex-wrap gap-2">{onEdit && <button type="button" disabled={busy} onClick={onEdit} className={button}>{zh ? "編輯" : "Edit"}</button>}{onDelete && <button type="button" disabled={busy} onClick={onDelete} className={`${button} text-red-700`}>{zh ? "刪除" : "Delete"}</button>}{href && <a href={href} className={button}>{zh ? "開啟今日任務" : "Open today's tasks"} →</a>}</div>
     </details></>;
   const interviewPending = focusMode && action.recordingMode === "interview" && action.metric?.target != null && (action.metric.current ?? 0) < action.metric.target;
-  const checkbox = !readOnly && (onToggle || action.dependency.blocked) && <TaskCheckbox label={`${zh ? "完成任務" : "Complete task"}: ${action.title}`} checked={action.done} locked={!action.done && (action.dependency.blocked || interviewPending)} disabled={busy} reason={interviewPending ? (zh ? "達到有效訪談公司數目標後，才能確認完成" : "Reach the valid company interview target before confirming completion") : blockedReason} onChange={onToggle || (() => {})} />;
+  const workspacePending = focusMode && Boolean(workspaceKind(action)) && workspaceKind(action) !== "interview" && !commercialTask(action) && !workspaceComplete(action.taskWorkspace ?? null);
+  const checkbox = !readOnly && (onToggle || action.dependency.blocked) && <TaskCheckbox label={`${zh ? "完成任務" : "Complete task"}: ${action.title}`} checked={action.done} locked={!action.done && (action.dependency.blocked || interviewPending || workspacePending)} disabled={busy} reason={interviewPending ? (zh ? "達到有效訪談公司數目標後，才能確認完成" : "Reach the valid company interview target before confirming completion") : workspacePending ? (zh ? "請先儲存符合完成標準的紀錄" : "Save records that meet the completion criteria first") : blockedReason} onChange={onToggle || (() => {})} />;
   const badges = !focusMode && <div className="mt-2 flex flex-wrap gap-2 text-xs"><span className={`rounded-md px-2 py-1 ${action.done ? "bg-dark/5" : action.dependency.blocked ? "bg-amber-100 text-amber-900" : "bg-green-100 text-green-900"}`}>{status}</span><span className="rounded-md bg-amber-100/70 px-2 py-1 text-amber-900">{priorityTier(action.priorityScore)}</span></div>;
   const metric = <>{action.metric?.target != null && !(focusMode && workspace) && <div className="mt-3">
     <p className="text-sm font-semibold">{action.metric.current ?? (zh ? "尚未回報" : "Not reported")}/{action.metric.target} {action.metric.unit}</p>
@@ -38,15 +39,15 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
   const shortBlocker = action.dependency.milestoneTitle || (action.dependency.missingLink ? (zh ? "請設定前置任務" : "Link prerequisites") : action.dependency.actionRefs.filter(d => !(d.resolved ?? d.done)).map(d => `${d.crossMilestone && d.milestonePosition != null ? (zh ? `里程碑 ${Number(d.milestonePosition) + 1} 的 ` : `Milestone ${Number(d.milestonePosition) + 1} · `) : ""}#${d.displayNumber}${d.minimumCurrent != null ? ` (${d.metricCurrent ?? "?"}/${d.minimumCurrent} ${d.metricUnit || ""})` : ""}`).join(", "));
   const number = <span aria-hidden="true" className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dark/20 text-sm font-bold">{action.displayNumber}</span>;
   if (compact) return <article className={`min-w-0 rounded-2xl border bg-white p-3 [overflow-wrap:anywhere] sm:p-4 ${featured ? "border-black shadow-sm" : focusMode ? "border-dark/30" : "border-dark/10"}`}>
-    <div className={focusMode ? "relative" : "flex items-start gap-2 sm:gap-3"}><div className={focusMode ? "absolute left-0 top-0 flex items-start gap-2" : "flex shrink-0 flex-col items-center gap-2 sm:flex-row sm:items-start"}>{number}{checkbox}</div>
+    <div className={focusMode ? "relative" : "flex items-start gap-2 sm:gap-3"}><div className={focusMode ? "absolute left-0 top-0 flex items-start gap-2" : "flex shrink-0 flex-col items-center gap-2 sm:flex-row sm:items-start"}>{number}{!featured && checkbox}</div>
       <details key={featured ? "featured" : "secondary"} open={featured} className="group/task min-w-0 flex-1">
-        <summary className={`flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 [&::-webkit-details-marker]:hidden ${focusMode ? "pl-24" : ""}`}>
+        <summary className={`flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 [&::-webkit-details-marker]:hidden ${focusMode ? (featured ? "pl-12" : "pl-24") : ""}`}>
           <h3 className={`min-w-0 flex-1 font-bold ${focusMode && featured ? "text-lg sm:text-2xl leading-snug" : ""} ${action.done ? "text-dark/50 line-through" : focusMode && !featured ? "text-dark/60" : "text-dark"}`}>{action.title}</h3>
           {!focusMode && action.dependency.blocked && !action.done && <span className="order-last basis-full text-xs font-medium text-dark/60 sm:order-none sm:basis-auto">{zh ? "前置條件" : "Requires"}: {shortBlocker}</span>}
           <span aria-hidden="true" className="shrink-0 text-dark/50 group-open/task:rotate-180">⌄</span>
           <span className="sr-only">{zh ? "展開或收合任務" : "Expand or collapse task"}</span>
         </summary>
-        {badges}<p className="mt-3 line-clamp-3 text-sm leading-6 text-dark/65">{action.expectedOutcome.text}</p>{focusMode && !workspace && <div className="mt-5"><LearningResources kind={workspaceKind(action)} question={action.title} /></div>}{metric}{workspace}{fullDetails}
+        {badges}<div className="mt-4 border-t border-dark/10 pt-4">{focusMode && <p className="text-xs font-semibold tracking-wide text-dark/55">{zh ? "完成標準" : "COMPLETION CRITERIA"}</p>}<p className="mt-2 whitespace-pre-wrap text-base leading-7 text-dark/75">{action.expectedOutcome.text}</p></div>{focusMode && !workspace && <div className="mt-5"><LearningResources kind={workspaceKind(action)} question={action.title} /></div>}{metric}{workspace}{fullDetails}{featured && checkbox && <label className="mt-5 inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}
       </details>
     </div>
   </article>;

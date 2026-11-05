@@ -17,7 +17,7 @@ const button = "min-h-11 rounded-xl border border-dark/20 px-4 py-2 text-sm font
 async function readInterviews(actionId: string) {
   const res = await fetch(`/api/customer-insights?actionId=${encodeURIComponent(actionId)}`, { cache: "no-store" });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+  if (!res.ok) throw new Error([`HTTP ${res.status}`, json.error, json.code, json.requestId].filter(Boolean).join("\n"));
   return json.data as { rows: Array<InterviewRow & { updatedAt: string }>; summary: InterviewSummary; plan: ActionPlanDto | null };
 }
 
@@ -40,14 +40,14 @@ export default function InterviewWorkspace({ userId, action, busy, onChanged, on
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
   }
   return <section className="mt-5 space-y-5 border-t border-dark/10 pt-5">
-    <LearningResources collapsed kind="interview" question={zh ? "如何進行訪談？" : "How to run an interview?"} />
+    <LearningResources collapsed kind="interview" question={zh ? "如何進行客戶對話？" : "How to run a customer conversation?"} />
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold">{zh ? "已記錄訪談" : "Interviews logged"} · {rows ? interviewSummary(action.id, rows).total : "…"}/{target ?? "?"} {zh ? "間不同公司" : "distinct companies"}</p><button type="button" onClick={onInsights} className={button}>{zh ? "查看 Insights" : "View Insights"}</button></div>
-      <progress aria-label={zh ? "有效訪談進度" : "Valid interview progress"} className="mt-3 h-2 w-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" value={action.recordingMode === "interview" ? Math.min(action.metric?.current ?? 0, target ?? 1) : 0} max={target ?? 1} />
+      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold">{zh ? "已記錄客戶對話" : "Conversations recorded"} · {rows ? interviewSummary(action.id, rows).total : "…"}/{target ?? "?"} {zh ? "間不同公司" : "distinct companies"}</p><button type="button" onClick={onInsights} className={button}>{zh ? "查看關鍵發現" : "View findings"}</button></div>
+      <progress aria-label={zh ? "有效訪談進度" : "Valid conversation progress"} className="mt-3 h-2 w-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" value={action.recordingMode === "interview" ? Math.min(action.metric?.current ?? 0, target ?? 1) : 0} max={target ?? 1} />
     </div>
-      {!rows && !error && <p role="status" className="text-sm">{zh ? "載入訪談紀錄…" : "Loading interviews…"}</p>}
+      {!rows && !error && <p role="status" className="text-sm">{zh ? "載入訪談紀錄…" : "Loading conversations…"}</p>}
       {rows && <CustomerDiscovery userId={userId} actionId={action.id} rows={rows} outcomes={[]} readOnly={busy || action.done || action.dependency.blocked} onSaved={plan => { void reload(plan); }} />}
-      {action.done ? <div className="space-y-3 rounded-xl border border-dark/15 bg-white p-4"><h4 className="font-semibold">{zh ? "訪談任務已完成，下一步整理 ICP" : "Interviews complete. Next: review your ICP"}</h4><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "建立或更新 ICP · 需確認並儲存" : "Create or update ICP · confirm and save there"} →</Link></div> : null}
+      {action.done ? <div className="space-y-3 rounded-xl border border-dark/15 bg-white p-4"><h4 className="font-semibold">{zh ? "對話任務已完成，下一步整理目標客戶" : "Conversations complete. Next: review your target customer"}</h4><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "確認或更新目標客戶" : "Confirm or update your target customer"} →</Link></div> : null}
     {error && <div role="alert" className="space-y-2 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p>{<button type="button" className={button} onClick={() => { void reload(); }}>{zh ? "重新載入（保留輸入）" : "Reload (keep input)"}</button>}</div>}
   </section>;
 }
@@ -67,7 +67,7 @@ export function InterviewInsights({ actionId, title, onClose }: { actionId: stri
     <div className="flex items-start justify-between gap-4"><div><h2 id="interview-insights-title" className="text-2xl font-bold">Insights</h2><p className="mt-2 text-sm text-dark/60">{title}</p></div><button type="button" aria-label={zh ? "關閉 Insights" : "Close Insights"} className={button} onClick={() => dialog.current?.close()}>{zh ? "關閉" : "Close"}</button></div>
     {!summary && !error && <p role="status" className="mt-5">{zh ? "載入統計…" : "Loading summary…"}</p>}
     {summary && <InterviewSummaryView summary={summary} />}
-    {summary && summary.total > 0 && <div className="mt-6 space-y-3 border-t border-dark/10 pt-5"><h3 className="font-semibold">{zh ? "下一步：確認你的 ICP" : "Next: review your ICP"}</h3><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "建立或更新 ICP · 需確認並儲存" : "Create or update ICP · confirm and save there"} →</Link></div>}
+    {summary && summary.total > 0 && <div className="mt-6 space-y-3 border-t border-dark/10 pt-5"><h3 className="font-semibold">{zh ? "下一步：確認你的 ICP" : "Next: review your target customer"}</h3><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "確認或更新目標客戶" : "Confirm or update your target customer"} →</Link></div>}
     {error && <div role="alert" className="mt-5 space-y-3"><p className="whitespace-pre-wrap text-red-700">{error}</p><button type="button" className={button} onClick={() => { void load(); }}>{zh ? "重試" : "Retry"}</button></div>}
   </dialog>;
 }

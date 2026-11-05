@@ -20,11 +20,12 @@ import CardView, { PrivatePhoto, CardChatAction } from "./CardView";
 const button = "min-h-11 rounded-lg border border-dark/20 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
 const input = "mt-2 w-full min-w-0 rounded-lg border border-dark/20 bg-white p-3 text-sm";
 type Listing = { cards: PublicCard[]; hasMore: boolean };
-export default function MatchmakingPage({ active = true, editOnly = false }: { active?: boolean; editOnly?: boolean }) {
+export default function MatchmakingPage({ active = true, editOnly = false, memberView }: { active?: boolean; editOnly?: boolean; memberView?: "recommendations" | "all" }) {
   const router = useRouter(), rewards = useRewards();
   const { value: network, error: networkError, load: reloadNetwork } = useNetwork();
   const canBrowse = network !== null && (!network.enabled || network.network);
-  const [view, setView] = useState("recommendations");
+  const [selectedView, setView] = useState("recommendations");
+  const view = memberView ?? selectedView;
   const [company, setCompany] = useState<{ companyName: string; country: string; industry: string; oneLinePitch: string; companyStage: string } | null>(null);
   const [role, setRole] = useState("all"), [country, setCountry] = useState(""), [industry, setIndustry] = useState(""), [query, setQuery] = useState(""), [q, setQ] = useState("");
   const t = useTranslations("Matchmaking"), locale = useLocale() as Locale;
@@ -133,7 +134,7 @@ export default function MatchmakingPage({ active = true, editOnly = false }: { a
       <p className="text-sm">{locale === "zh-tw" ? "你仍可編輯自己的卡片、接受邀請及回覆既有聊天。「找新公司」另依公司搜尋與試用資格開放。" : "You can still edit your card, accept invitations and reply to existing chats. Find new companies has separate search and trial eligibility."}</p>
       <div className="flex flex-wrap gap-3"><Link className={`${button} inline-flex items-center bg-black! text-white!`} href={pathForLocale("/dashboard/account#plan", locale)}>{locale === "zh-tw" ? "查看方案與試用狀態" : "View plans & trial status"}</Link><Link className={`${button} inline-flex items-center`} href={pathForLocale("/dashboard/messages", locale)}>{locale === "zh-tw" ? "邀請與聊天" : "Invitations & chats"}</Link><button className={button} onClick={() => void reloadNetwork()}>{locale === "zh-tw" ? "重新確認權益" : "Recheck access"}</button></div>
     </section> : <>
-    <div className="flex flex-wrap gap-2" aria-label={locale === "zh-tw" ? "推薦模式" : "Member view"}>{["recommendations", "all"].map(v => <button key={v} type="button" className={`${button} ${view === v ? "bg-black! text-white!" : ""}`} aria-pressed={view === v} onClick={() => { setView(v); setPage(1); }}>{v === "recommendations" ? (locale === "zh-tw" ? "推薦給你" : "Recommendations") : (locale === "zh-tw" ? "所有會員" : "All members")}</button>)}</div>
+    {!memberView && <div className="flex flex-wrap gap-2" aria-label={locale === "zh-tw" ? "推薦模式" : "Member view"}>{["recommendations", "all"].map(v => <button key={v} type="button" className={`${button} ${view === v ? "bg-black! text-white!" : ""}`} aria-pressed={view === v} onClick={() => { setView(v); setPage(1); }}>{v === "recommendations" ? (locale === "zh-tw" ? "推薦給你" : "Recommendations") : (locale === "zh-tw" ? "所有會員" : "All members")}</button>)}</div>}
     <nav aria-label={t("role")} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{["all", ...ROLES].map(v => <button key={v} className={`min-h-20 rounded-2xl border px-4 py-5 text-sm font-semibold focus-visible:outline-2 ${role === v ? "border-black bg-black text-white" : "border-dark/15 bg-white"}`} aria-pressed={role === v} onClick={() => { setRole(v); setPage(1); }}>{v === "all" ? (locale === "zh-tw" ? "全部" : "All") : t(`roles.${v}`)}</button>)}</nav>
     <form className="space-y-4 rounded-2xl border border-dark/15 bg-white p-5" role="search" onSubmit={e => { e.preventDefault(); setPage(1); setQ(query.trim()); track("flow_start", { feature: "matchmaking" }); }}>
       <div className="flex gap-3"><label className="min-w-0 flex-1"><span className="sr-only">{locale === "zh-tw" ? "搜尋公開公司卡片" : "Search public company cards"}</span><input type="search" maxLength={100} className={`${input} mt-0! min-h-11`} value={query} onChange={e => setQuery(e.target.value)} placeholder={locale === "zh-tw" ? "搜尋公司、簡介或需求…" : "Search company, pitch or needs…"} /></label><button className={`${button} bg-black! text-white!`} type="submit">{locale === "zh-tw" ? "搜尋" : "Search"}</button></div>

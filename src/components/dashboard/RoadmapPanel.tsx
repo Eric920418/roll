@@ -1,6 +1,8 @@
 "use client";
 import { personalizationResponses } from "@/lib/action-plan/personalization";
 import ValidationWorkspace from "./ValidationWorkspace";
+import ActionMap from "./ActionMap";
+import ConversationHistory from "./ConversationHistory";
 import { commercialTask } from "@/lib/validation/schema";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -34,6 +36,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [note, setNote] = useState("");
   const [editing, setEditing] = useState<ActionPlanActionDto | "new" | null>(null);
   const [search, setSearch] = useState("");
+  const [mapEvent, setMapEvent] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const [completion, setCompletion] = useState(""), [insights, setInsights] = useState<{ id: string; title: string } | null>(null);
   const [historical, setHistorical] = useState<ActionPlanDto | null>(null);
@@ -55,10 +58,13 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   async function request(method = "GET", data?: object, path = "/api/action-plans/roadmap") {
     const response = await fetch(path, { method, cache: "no-store", ...(data ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) } : {}) });
     let json; try { json = await response.json(); } catch { throw new Error(`HTTP ${response.status}: ${response.statusText || t("connectionError")}`); }
-    if (!response.ok) throw new Error(json.error || `HTTP ${response.status}`);
+    if (!response.ok) throw new Error([`HTTP ${response.status}`, json.error, json.code, json.requestId].filter(Boolean).join("\n"));
     return json.data;
   }
-  function accept(fresh: RoadmapView) { setView(fresh); onChanged(fresh.active); }
+  function accept(fresh: RoadmapView) {
+    if (fresh.active?.roadmap && (!initialPlan?.roadmap || fresh.active.id !== initialPlan.id)) setMapEvent(`goal:${fresh.active.id}`);
+    setView(fresh); onChanged(fresh.active);
+  }
   async function reload(preserve = true) {
     setBusy(true);
     try {
@@ -113,7 +119,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     busyRef.current = true; setBusy(true); setError("");
     try {
       const fresh: RoadmapView = await request("PATCH", { revision: initialPlan.revision, achieved, outcomeNote: note }, `/api/action-plans/milestones/${milestone.id}`);
-      accept(fresh); setNote(""); try { localStorage.removeItem(`nova:roadmap-outcome:${userId}:${milestone.id}`); } catch { setNotice(t("storageError")); } router.refresh();
+      accept(fresh); if (achieved) setMapEvent(`milestone:${milestone.id}`); setNote(""); try { localStorage.removeItem(`nova:roadmap-outcome:${userId}:${milestone.id}`); } catch { setNotice(t("storageError")); } router.refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { busyRef.current = false; setBusy(false); }
   }
@@ -153,7 +159,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   const completedReferences = initialPlan?.actions.filter(action => action.done && (workspaceKind(action) || action.taskFinding?.result)).sort((a, b) => (a.milestonePosition ?? 0) - (b.milestonePosition ?? 0) || (a.displayNumber ?? 0) - (b.displayNumber ?? 0)) ?? [];
   function taskRow(a: ActionPlanActionDto, readOnly = false) {
     return <div key={a.id} id={readOnly ? undefined : `action-${a.id}`} tabIndex={-1} data-next-step={!readOnly && a.id === featuredId ? "record" : undefined} className="scroll-mt-24">
-      {!readOnly && a.id === featuredId && completedReferences.length > 0 && <div>{completedReferences.map((action, i) => i === completedReferences.length - 1 ? <CompletedTaskInsights key={action.id} action={action} revision={initialPlan?.revision} /> : <details key={action.id} className="mb-3"><summary className="min-h-11 cursor-pointer py-3 text-sm text-dark/60">Insights · #{action.displayNumber} · {action.title}</summary><CompletedTaskInsights action={action} revision={initialPlan?.revision} /></details>)}</div>}
+
       <ActionTaskRow action={a} compact focusMode featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
         onToggle={readOnly ? undefined : () => { void changeTask(a.id, { done: !a.done }).then(saved => { if (saved && !a.done) { setCompletion(locale === "zh-tw" ? `已完成：${a.title}` : `Completed: ${a.title}`); if (a.recordingMode === "interview") setInsights({ id: a.id, title: a.title }); } }); }}
         onMetric={readOnly ? undefined : metric => changeTask(a.id, metric, "PATCH", true)}
@@ -161,6 +167,8 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
         onDependencyChange={readOnly ? undefined : (dependencyThresholds, revision) => changeTask(a.id, { dependencyThresholds, revision: revision ?? initialPlan?.revision }, "PATCH", true)}
         onEdit={readOnly ? undefined : () => setEditing(a)}
         onDelete={readOnly ? undefined : () => { if (window.confirm(locale === "zh-tw" ? `刪除任務「${a.title}」？` : `Delete task “${a.title}”?`)) void changeTask(a.id, {}, "DELETE"); }} />
+
+      {!readOnly && a.id === featuredId && completedReferences.length > 0 && <div>{completedReferences.map((action, i) => i === completedReferences.length - 1 ? <CompletedTaskInsights key={action.id} action={action} revision={initialPlan?.revision} /> : <details key={action.id} className="mb-3"><summary className="min-h-11 cursor-pointer py-3 text-sm text-dark/60">{locale === "zh-tw" ? "關鍵發現" : "Findings"} · #{action.displayNumber} · {action.title}</summary><CompletedTaskInsights action={action} revision={initialPlan?.revision} /></details>)}</div>}
     </div>;
   }
   useEffect(() => {
@@ -191,12 +199,14 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   function updateCorrection(next: StageCorrection) { setCorrection(next); try { localStorage.setItem(cacheKey, JSON.stringify({ goal, deadline, draft: form, correction: next })); } catch { setNotice(t("storageError")); } }
   const disabled = busy || Boolean(view?.pending) || !view;
   return <section id="goal-roadmap" className="min-w-0 rounded-2xl border border-dark/15 bg-white p-4 sm:p-7">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">{t("title")}</h2><button ref={planTrigger} type="button" className={button} onClick={() => void open()}>+ {t("title")}</button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">{t("title")}</h2><button ref={planTrigger} type="button" className={button} onClick={() => void open()}>{initialPlan ? (locale === "zh-tw" ? "修改目標" : "Edit goal") : `+ ${t("title")}`}</button></div>
     {initialPlan && <section data-next-step="goal" className="mt-5 rounded-xl border border-dark/10 bg-dark/[0.02] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-dark/55">{locale === "zh-tw" ? "我的目標" : "My goal"}</p><p className="mt-2 whitespace-pre-wrap text-lg font-bold">{initialPlan.roadmap?.goal || (initialPlan.personalization ? personalizationResponses(initialPlan.personalization, locale)[4].answer : (locale === "zh-tw" ? "尚未設定目標" : "No goal set yet"))}</p><p className="mt-2 text-sm">{initialPlan.roadmap?.deadline || ""}</p></section>}
-    {initialPlan?.actions.find(a => a.id === featuredId && matches(a)) && <section className="mt-6 space-y-3"><h3 className="text-xl font-bold">{locale === "zh-tw" ? "目前這一步" : "Your current step"}</h3>{taskRow(initialPlan.actions.find(a => a.id === featuredId)!)}</section>}
-    {stageAction && current && <section data-next-step="record" className="mt-6 space-y-3"><h3 className="text-xl font-bold">{locale === "zh-tw" ? "確認成果，繼續下一步" : "Confirm outcomes, then continue"}</h3>{milestoneCard(current)}</section>}
+    {initialPlan?.actions.find(a => a.id === featuredId && matches(a)) && <section className="mt-6 space-y-3"><h3 className="text-sm font-semibold tracking-wide text-dark/55">{locale === "zh-tw" ? "本日優先行動" : "TODAY’S PRIORITY"}</h3>{taskRow(initialPlan.actions.find(a => a.id === featuredId)!)}</section>}
+    {stageAction && current && <section id="current-outcome" data-next-step="record" className="mt-6 scroll-mt-6 space-y-3"><h3 className="text-xl font-bold">{locale === "zh-tw" ? "確認成果，繼續下一步" : "Confirm outcomes, then continue"}</h3>{milestoneCard(current)}</section>}
     {initialPlan && <ValidationWorkspace userId={userId} planId={initialPlan.id} revision={initialPlan.revision} />}
-    {initialPlan && <div id="action-plan-list" tabIndex={-1} className="mt-7 scroll-mt-6"><h3 className="text-xl font-bold">{locale === "zh-tw" ? "後續任務" : "Next actions"}</h3>
+    {completion && <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-black p-4 text-white motion-safe:animate-[fadeIn_.3s_ease-out]"><p>✓ {completion}</p><button className="min-h-11 px-3 text-sm underline" onClick={() => setCompletion("")}>{locale === "zh-tw" ? "關閉" : "Dismiss"}</button></div>}
+    {initialPlan && <ActionMap userId={userId} plan={initialPlan} event={mapEvent}>
+    {initialPlan && <div id="action-plan-list" tabIndex={-1} className="mt-7 scroll-mt-6">
       <details className="mt-3 text-sm"><summary className="min-h-11 cursor-pointer font-semibold">{locale === "zh-tw" ? "搜尋與篩選" : "Search and filter"}</summary><div className="mt-2 flex flex-wrap gap-2">
         <input aria-label={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} placeholder={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} value={search} onChange={e => setSearch(e.target.value)} className={`${input} min-h-11 sm:w-auto`} />
         <select aria-label={locale === "zh-tw" ? "任務狀態" : "Task status"} value={filter} onChange={e => setFilter(e.target.value)} className={`${input} min-h-11 sm:w-auto`}>{["all", "ready", "blocked", "done"].map((value, i) => <option key={value} value={value}>{(locale === "zh-tw" ? ["全部", "可執行", "受阻擋", "已完成"] : ["All", "Ready", "Blocked", "Done"])[i]}</option>)}</select>
@@ -208,7 +218,8 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     {initialPlan?.roadmap && initialPlan.actions.some(a => !a.milestoneId) && <div className="mt-4 space-y-3">{initialPlan.actions.filter(a => !a.milestoneId && a.id !== featuredId && matches(a)).map(a => taskRow(a))}</div>}
     {initialPlan && <button type="button" className={`${button} mt-4`} disabled={busy} onClick={() => setEditing("new")}>{locale === "zh-tw" ? "新增任務" : "Add task"}</button>}
     <button type="button" className={`${button} mt-4 ml-2`} onClick={() => void open()}>{t("history")}</button>
-    {completion && <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-black p-4 text-white motion-safe:animate-[fadeIn_.3s_ease-out]"><p>✓ {completion}</p><button className="min-h-11 px-3 text-sm underline" onClick={() => setCompletion("")}>{locale === "zh-tw" ? "關閉" : "Dismiss"}</button></div>}
+    <details className="mt-5"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "歷史對話紀錄" : "Conversation history"}</summary><ConversationHistory /></details>
+    </ActionMap>}
     {insights && <InterviewInsights actionId={insights.id} title={insights.title} onClose={() => setInsights(null)} />}
     {editing && initialPlan && <ActionEditor key={editing === "new" ? "new" : editing.id} action={editing === "new" ? null : editing} plan={initialPlan} onClose={() => setEditing(null)} onSaved={next => { onChanged(next); router.refresh(); setEditing(null); setError(""); }} />}
     {error && !opened && <div role="alert" className="mt-3 space-y-3 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
