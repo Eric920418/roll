@@ -40,7 +40,7 @@ export default function ActionMap({ userId, plan, event, children }: {
           <span className="inline-flex min-h-11 items-center rounded-xl border border-dark/15 bg-white px-4 text-sm font-semibold">{zh ? "查看全部步驟" : "View all steps"} ↕</span>
         </div>
         <div className="mt-4 flex gap-1.5" aria-hidden="true">{milestones.length > 0 ? milestones.map(m => <span key={m.id} className={`h-1.5 min-w-0 flex-1 rounded-full ${m.achievedAt ? "bg-black" : m.id === current?.id ? "bg-dark/45" : "bg-dark/10"}`} />) : <progress className="h-1.5 w-full accent-black" value={completed} max={Math.max(1, plan.actions.length)} />}</div>
-        <p className="mt-3 text-sm text-dark/65">{milestones.length > 0 ? `${milestones.length} ${zh ? "個里程碑 · " : "milestones · "}` : ""}{completed} / {plan.actions.length} {zh ? "步已完成" : "steps completed"}{current?.targetDate ? ` · ${zh ? "截止" : "Due"} ${current.targetDate}` : ""}</p>
+        <p className="mt-3 text-sm text-dark/65">{milestones.length > 0 ? `${milestones.length} ${zh ? "個里程碑 · " : (milestones.length === 1 ? "milestone · " : "milestones · ")}` : ""}{completed} / {plan.actions.length} {zh ? "步已完成" : "steps completed"}{current?.targetDate ? ` · ${zh ? "截止" : "Due"} ${current.targetDate}` : ""}</p>
       </summary>
       <div className="mt-5 border-t border-dark/10 pt-1">{children}</div>
     </details>

@@ -14,7 +14,8 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:super": "tsx scripts/create-super-user.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:english": "node scripts/qa-english.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
