@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { memberFetch } from "@/lib/member-fetch";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import { matchCopy } from "@/lib/matchmaking/schema";
@@ -36,13 +35,11 @@ export function PrivatePhoto({ url, alt }: { url: string; alt: string }) {
 const actionButton = "inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-dark/20 bg-black px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
 export function CardChatAction({ card, network }: { card: PublicCard; network: { enabled: boolean; invite: boolean } | null }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw";
-  const [connection, setConnection] = useState(card.chat), [error, setError] = useState(""), [busy, setBusy] = useState(false);
+  const connection = card.chat;
   if (!network?.enabled) return null;
   if (connection?.status === "blocked") return <p className="text-sm">{zh ? "此連結無法聊天" : "Chat unavailable"}</p>;
-  if (connection?.status === "accepted" || connection?.status === "pending" && !connection.outgoing) return <Link className={actionButton} href={pathForLocale(`/dashboard/messages?connection=${connection.id}`, locale)}>{connection.status === "accepted" ? (zh ? "開啟聊天" : "Open chat") : (zh ? "回覆邀請" : "Respond to invitation")}</Link>;
-  if (connection?.status === "pending") return <p role="status" className="flex min-h-11 items-center text-sm">{zh ? "等待對方接受" : "Chat request pending"}</p>;
-  if (!network.invite) return <Link className={actionButton} href={pathForLocale("/dashboard/account#plan", locale)}>{zh ? "升級 NOVA 以邀請聊天" : "Upgrade to NOVA to request a chat"}</Link>;
-  return <div>{error && <p role="alert" className="mb-2 whitespace-pre-wrap break-words text-sm text-red-800">{error}</p>}<button type="button" className={actionButton} disabled={busy} onClick={async () => { if (busy) return; setBusy(true); setError(""); try { const result = await memberFetch<{ id: string; status: string }>("/api/network/connections", { method: "POST", body: JSON.stringify({ profileId: card.id, conditions: [] }) }); const state = await memberFetch<{ connection: PublicCard["chat"] }>(`/api/network/profiles/${encodeURIComponent(card.id)}/connection`); setConnection(state.connection || { ...result, outgoing: true }); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>{busy ? (zh ? "送出中…" : "Sending…") : (zh ? "提出交流" : "Request to chat")}</button></div>;
+  if (connection?.status === "accepted" || connection?.status === "pending") return <Link className={actionButton} href={pathForLocale(`/dashboard/messages?connection=${connection.id}`, locale)}>{connection.status === "accepted" ? (zh ? "開啟聊天" : "Open chat") : (zh ? "查看邀請" : "View invitation")}</Link>;
+  return <Link className={actionButton} href={pathForLocale(network.invite ? `/dashboard/matchmaking/${card.id}` : "/dashboard/account#plan", locale)}>{network.invite ? (zh ? "提出交流 · 5 Token" : "Request to chat · 5 Token") : (zh ? "查看 NOVA 方案" : "View NOVA plans")}</Link>;
 }
 export default function CardView({ card, detail = false }: { card: PublicCard; detail?: boolean }) {
   const t = useTranslations("Matchmaking"), locale = useLocale(), zh = locale === "zh-tw";

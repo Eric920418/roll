@@ -17,7 +17,8 @@
     "db:studio": "prisma studio",
     "test:english": "node scripts/qa-english.mjs",
     "test:flow": "node scripts/qa-english.mjs flow",
-    "test:roundtables": "node scripts/qa-english.mjs roundtables"
+    "test:roundtables": "node scripts/qa-english.mjs roundtables",
+    "test:tokens": "node scripts/qa-english.mjs tokens"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

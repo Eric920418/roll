@@ -219,6 +219,9 @@ model User {
   mindsetEntries     MindsetEntry[]
   quizSubmissions   QuizSubmission[]
   subscriptions     Subscription[]
+  tokenWallet       TokenWallet?
+  tokenReservations TokenReservation[]
+  tokenLedger       TokenLedger[]
   aiAllowance       AiAllowance?
   aiUsages          AiUsage[]
   aiCreditPurchases AiCreditPurchase[]
@@ -1553,4 +1556,47 @@ model RoundtableRegistration {
   @@unique([roundtableId, userId])
   @@index([roundtableId, status, createdAt])
   @@index([userId, createdAt])
+}
+
+model TokenWallet {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  available Int @default(0)
+  reserved Int @default(0)
+  updatedAt DateTime @updatedAt
+}
+model TokenReservation {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestId String
+  payloadHash String
+  kind String
+  resourceId String
+  resourceVersion Int @default(0)
+  amount Int
+  status String @default("reserved")
+  expiresAt DateTime
+  settledAt DateTime?
+  metadata Json @default("{}")
+  createdAt DateTime @default(now())
+  ledger TokenLedger[]
+  @@unique([userId, requestId])
+  @@unique([kind, resourceId, resourceVersion])
+  @@index([status, expiresAt])
+  @@index([userId, createdAt])
+}
+model TokenLedger {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservationId String?
+  reservation TokenReservation? @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  eventKey String @unique
+  kind String
+  availableDelta Int
+  reservedDelta Int
+  reason String
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt, id])
 }

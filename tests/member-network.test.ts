@@ -75,6 +75,8 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
     const photo = load<typeof import("../src/lib/matchmaking/photo")>("src/lib/matchmaking/photo.ts");
     await db.matchmakingProfile.update({ where: { userId: owner.id }, data: { originalPhoto: "qa/original.webp", blurredPhoto: "qa/blurred.webp" } });
     await photo.readPhoto(investor.id, owner.matchmakingProfile!.id); assert.equal(photoPath, "qa/blurred.webp");
+    const tokens = load<typeof import("../src/lib/tokens/service")>("src/lib/tokens/service.ts");
+    await db.$transaction(tx => tokens.grantTokens(tx, investor.id, 150, `qa-investor:${investor.id}`, "QA fixture grant"));
     const journey = await db.discoveryJourney.create({ data: { userId: owner.id } });
     await t.test("New SPARK is gated; expired legacy sources and self-declared investors cannot elevate access", async () => {
       assert.equal((await access.features(spark.id)).prospects, false);
@@ -131,7 +133,7 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
       await db.setting.delete({ where: { key: marker } });
     });
     await t.test("Pair deduplication, explicit acceptance and idempotent messages retain ownership boundaries", async () => {
-      const args = { profileId: owner.matchmakingProfile!.id, conditions: ["interviews_5" as const] };
+      const args = { requestId: randomUUID(), pricingVersion: 1 as const, opening: "Hello from the QA invitation", profileId: owner.matchmakingProfile!.id, conditions: ["interviews_5" as const] };
       const results = await Promise.all([service.invite(investor.id, args), service.invite(investor.id, args)]);
       linkId = results[0]!.id; assert.equal(results[1]!.id, linkId);
       assert.equal(await db.networkConnection.count({ where: { pairKey: pairKey(owner.id, investor.id) } }), 1);
@@ -144,8 +146,8 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
       assert.equal(sent[0]!.id, sent[1]!.id);
       await assert.rejects(service.sendMessage(investor.id, linkId, { ...input, body: "changed" }));
       await assert.rejects(service.messages(stranger.id, linkId));
-      assert.equal((await service.messages(owner.id, linkId)).messages.length, 1);
-      assert.equal((await service.listConnections(owner.id))[0]!.unread, 1);
+      assert.equal((await service.messages(owner.id, linkId)).messages.length, 2);
+      assert.equal((await service.listConnections(owner.id))[0]!.unread, 2);
     });
     await t.test("Private Portal requires consent, survives no kill-switch downgrade, and rejects foreign workspaces", async () => {
       const p = await db.investorPortal.create({ data: { userId: owner.id, shareProfile: true } });
@@ -230,7 +232,7 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
       assert.equal(await access.activeShare(owner.id, investor.id, "signals"), null);
       await photo.readPhoto(investor.id, owner.matchmakingProfile!.id); assert.equal(photoPath, "qa/blurred.webp");
       await assert.rejects(service.sendMessage(investor.id, linkId, { requestId: randomUUID(), body: "blocked" }));
-      assert.equal((await service.messages(owner.id, linkId)).messages.length, 1);
+      assert.equal((await service.messages(owner.id, linkId)).messages.length, 2);
       assert.equal((await notifications.notificationList(investor.id)).notifications.find(n => n.kind === "unavailable")?.payload && true, true);
     });
     await t.test("Weekly email subject, text and HTML omit zero roles; an all-zero delivery is cancelled", async () => {

@@ -1,4 +1,6 @@
 import "server-only";
+import { resourceFee, settleTokens } from "@/lib/tokens/service";
+import { expireTokens } from "@/lib/tokens/expiry";
 import { randomUUID } from "node:crypto";
 import { Prisma, type ProspectingOrder } from "@prisma/client";
 import { z } from "zod";
@@ -41,11 +43,14 @@ async function completeCheck(order: ProspectingOrder, token: string) {
     await lockMember(tx, order.userId);
     const fresh = await tx.prospectingOrder.findUniqueOrThrow({ where: { id: order.id } });
     if (fresh.leaseToken !== token) throw new ProspectingError("訂單處理權已變更 / Processing lease changed", 409, "lease_changed");
-    const context = await exclusions(order.userId, tx), eligible = uniqueProspects(companies, context.names);
+    const context = await exclusions(order.userId, tx), fee = await resourceFee(tx, "search", order.id);
+    const frozen = (fee?.metadata as { exclusions?: string[] } | undefined)?.exclusions;
+    const eligible = uniqueProspects(companies, frozen || context.names);
+    if (fee) await settleTokens(tx, fee.id, eligible.length === order.count ? "capture" : "refund", eligible.length === order.count ? "五家新公司已核對交付 / Five new companies verified and delivered" : "合格交付不足，20 Token 退回 / Insufficient verified delivery; 20 Token returned");
     if (eligible.length < companies.length) rejections.known_or_duplicate = companies.length - eligible.length;
     const grant = await tx.prospectingTrialGrant.findUnique({ where: { userId: order.userId } });
-    if (order.poc && eligible.length && !grant) await tx.prospectingTrialGrant.create({ data: { userId: order.userId, orderId: order.id } });
-    await tx.prospectingOrder.update({ where: { id: order.id }, data: { result: json(eligible), rejections, checkedAt: new Date(), status: "completed", leaseToken: null, leaseUntil: null, failureCode: null, failureMessage: null } });
+    if (order.poc && eligible.length && (!fee || eligible.length === order.count) && !grant) await tx.prospectingTrialGrant.create({ data: { userId: order.userId, orderId: order.id } });
+    await tx.prospectingOrder.update({ where: { id: order.id }, data: { result: json(eligible), rejections, checkedAt: new Date(), status: "completed", leaseToken: null, leaseUntil: null, failureCode: fee && eligible.length < order.count ? "delivery_refunded" : null, failureMessage: fee && eligible.length < order.count ? "合格公司不足，20 Token 已退回；可用相同餘額重新搜尋 / Insufficient verified companies; 20 Token returned for a replacement search" : null } });
     return eligible.length;
   }, { timeout: 15000 });
 }
@@ -60,16 +65,21 @@ async function acceptResponse(order: ProspectingOrder, token: string, payload: u
   await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
     await lockMember(tx, order.userId);
+    const uncertain = data.status === "failed" && (!failure || failure === "provider_outcome_unknown");
     const saved = await tx.prospectingOrder.updateMany({ where: { id: order.id, leaseToken: token }, data: {
       providerOrderId: data.order_id, providerResult: json(payload), providerRequestId: requestId || null, acceptedAt: new Date(data.created_at), period: data.billing.period,
       deliveredAt: data.delivered_at ? new Date(data.delivered_at) : null, deliveredCount: data.delivered_count,
-      reservedCount: data.status === "completed" || data.status === "failed" ? 0 : order.count,
-      status: data.status === "completed" ? "checking" : data.status,
+      reservedCount: data.status === "completed" || data.status === "failed" && !uncertain ? 0 : order.count,
+      status: uncertain ? "reconciling" : data.status === "completed" ? "checking" : data.status,
       failureCode: data.status === "failed" ? failure ? `provider_${failure}` : "provider_failed" : null,
-      failureMessage: data.status === "failed" ? `${failure ? failureMessages[failure] : "供應商未交付公司 / Provider delivered no companies"}。未扣公司額度或收費，預留量已釋放 / No companies charged; reservation released` : null,
+      failureMessage: uncertain ? "供應商結果不明，原單與 Token 預扣保留對帳 / Provider outcome unknown; original order and Token hold retained for reconciliation" : data.status === "failed" ? `${failure ? failureMessages[failure] : "供應商未交付公司 / Provider delivered no companies"}。未扣公司額度或收費，預留量已釋放 / No companies charged; reservation released` : null,
       nextAttemptAt: new Date(Date.now() + Math.max(15, retryAfter) * 1000),
     } });
     if (!saved.count) throw new ProspectingError("處理權已變更 / Processing lease changed", 409, "lease_changed");
+    if (data.status === "failed" && !uncertain) {
+      const fee = await resourceFee(tx, "search", order.id);
+      if (fee) await settleTokens(tx, fee.id, "refund", "供應商確認未交付 / Provider confirmed no delivery");
+    }
   });
   return data.status === "completed";
 }
@@ -79,7 +89,12 @@ async function submitGate(order: ProspectingOrder, token: string) {
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291734)::text`;
     const fresh = await tx.prospectingOrder.findUniqueOrThrow({ where: { id: order.id } });
     if (fresh.leaseToken !== token) throw new ProspectingError("處理權已變更 / Processing lease changed", 409, "lease_changed");
-    if (fresh.submittedAt) return;
+    if (fresh.submittedAt) {
+      if (Date.now() - fresh.submittedAt.getTime() >= 86400000) throw new ProspectingError("已停止重送逾日的未確認訂單，保留預扣供管理員對帳 / Unconfirmed order is over a day old; resubmission stopped and hold retained for reconciliation", 409, "reconciliation_required", 3600);
+      return;
+    }
+    const fee = await resourceFee(tx, "search", order.id);
+    if (fee && fee.expiresAt <= new Date()) throw new ProspectingError("搜尋預扣已逾期，尚未送出 / Search hold expired before submission", 403, "hold_expired");
     const rights = await eligibility(order.userId, tx);
     if (!rights.canSearch || (order.poc && !rights.poc)) throw new ProspectingError("搜尋權限或 POC 資格已變更，尚未下單 / Search access or POC eligibility changed; order was not submitted", 403, "access_changed");
     const pending = await tx.prospectingOrder.count({ where: { id: { not: order.id }, submittedAt: { not: null }, status: { in: ["pending", "queued", "running", "reconciling"] } } });
@@ -127,12 +142,20 @@ async function failedAttempt(order: ProspectingOrder, token: string, error: unkn
   const delayed = Date.now() - (fresh.submittedAt || fresh.createdAt).getTime() > 40 * MINUTE_MS;
   const retry = Math.max(15, known ? error.retryAfter : 60, Math.min(300, 15 * 2 ** Math.min(fresh.attempts, 4)));
   const message = known ? error.message : "搜尋暫時無法確認，原訂單及預留量保留，系統會重試 / Search unconfirmed; original order and reservation retained for retry";
-  await ownedUpdate(order.id, token, { status: definite ? "failed" : fresh.status === "checking" ? "checking" : delayed ? "reconciling" : fresh.status,
+  await prisma.$transaction(async raw => {
+    const tx = raw as unknown as Prisma.TransactionClient;
+    await lockMember(tx, order.userId);
+    const owned = await tx.prospectingOrder.findUniqueOrThrow({ where: { id: order.id } });
+    if (owned.leaseToken !== token) return;
+  await tx.prospectingOrder.updateMany({ where: { id: order.id, leaseToken: token }, data: { status: definite ? "failed" : fresh.status === "checking" ? "checking" : delayed ? "reconciling" : fresh.status,
     ...(definite ? { reservedCount: 0 } : {}), failureCode: known ? error.code : "processing_unconfirmed", failureMessage: message,
-    ...(provider && error.requestId ? { providerRequestId: error.requestId } : {}), nextAttemptAt: new Date(Date.now() + retry * 1000) });
+    ...(provider && error.requestId ? { providerRequestId: error.requestId } : {}), nextAttemptAt: new Date(Date.now() + retry * 1000) } });
+    if (definite) { const fee = await resourceFee(tx, "search", order.id); if (fee) await settleTokens(tx, fee.id, "refund", "搜尋確定未送出／被拒絕 / Search confirmed unsubmitted or rejected"); }
+  });
   if (definite && provider && error.status === 404 && order.audienceParentId) await prisma.prospectingWorkspace.updateMany({ where: { userId: order.userId, omradeIcpId: order.audienceParentId }, data: { omradeIcpId: null, omradeIcpVersion: null, audienceHash: null } });
 }
 export async function runProspecting() {
+  await expireTokens();
   if (process.env.OMRADE_WORKER_ENABLED === "false" || !process.env.OMRADE_API_KEY) return { enabled: false, processed: 0 };
   const enabled = configured(), deadline = Date.now() + 200000; let processed = 0;
   const seen: string[] = [];

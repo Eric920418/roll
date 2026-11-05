@@ -1,4 +1,6 @@
 import "server-only";
+import { reserveTokens, resourceFee, settleTokens, tokenHash } from "@/lib/tokens/service";
+import { expireTokens } from "@/lib/tokens/expiry";
 import { privacyState } from "./viewer-privacy";
 import { identifiedViewsEnabled } from "./identified-visitors";
 import { Prisma } from "@prisma/client";
@@ -19,21 +21,32 @@ async function connection(db: DB, userId: string, id: string, lock = false) {
   return row;
 }
 export async function invite(userId: string, input: z.infer<typeof inviteSchema>) {
-  requireEnabled(); await requireNetwork(userId, "invite");
-  const target = await prisma.matchmakingProfile.findFirst({ where: { id: input.profileId, visible: true } });
+  requireEnabled(); await expireTokens(userId);
+  const target = await prisma.matchmakingProfile.findUnique({ where: { id: input.profileId } });
   if (!target || target.userId === userId) throw new MemberError("無法邀請此會員 / Cannot invite this member", 404);
-  if (input.conditions.length && !(await networkAccount(userId)).verifiedInvestor) throw new MemberError("觀察條件僅供已驗證投資人 / Verified investors only", 403);
   const key = pairKey(userId, target.userId);
   return prisma.$transaction(async raw => {
     const tx = raw as unknown as DB;
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
+    if (input.requestId) {
+      const replay = await tx.tokenReservation.findUnique({ where: { userId_requestId: { userId, requestId: input.requestId } } });
+      if (replay) {
+        if (replay.kind !== "invite" || replay.payloadHash !== tokenHash(input)) throw new MemberError("同一次提交已使用不同內容 / Request ID already used with different content", 409);
+        const original = await tx.networkConnection.findUniqueOrThrow({ where: { id: replay.resourceId } });
+        return { id: original.id, status: original.status };
+      }
+    }
+    await requireNetwork(userId, "invite", tx);
+    if (input.conditions.length && !(await networkAccount(userId, tx)).verifiedInvestor) throw new MemberError("觀察條件僅供已驗證投資人 / Verified investors only", 403);
     if (!await tx.matchmakingProfile.findFirst({ where: { id: target.id, visible: true } })) throw new MemberError("此卡片已隱藏 / This card is hidden", 404);
     let row = await tx.networkConnection.findUnique({ where: { pairKey: key } });
     if (row?.status === "blocked") throw new MemberError("此連結無法接受邀請 / Connection unavailable", 403);
     if (row?.status === "declined" && Date.now() - row.updatedAt.getTime() < 7 * DAY_MS) throw new MemberError("邀請已拒絕，七天後可再試 / Invitation declined; retry after seven days", 409);
-    if (!row || row.status === "declined") {
+    if (!row || ["declined", "expired", "cancelled"].includes(row.status)) {
+      if (!input.requestId || !input.opening || input.pricingVersion !== 1) throw new MemberError("請重新載入，確認開場訊息及 5 Token 費用後送出 / Reload and confirm your opening message and 5 Token fee", 400);
       if (!(await checkRateLimit(`network-invite:${userId}`, 20, DAY_MS, false, tx)).ok) throw new MemberError("今日邀請上限為 20 次 / Daily limit: 20 invitations", 429);
       row = row ? await tx.networkConnection.update({ where: { id: row.id }, data: { senderId: userId, recipientId: target.userId, status: "pending", revision: { increment: 1 } } }) : await tx.networkConnection.create({ data: { pairKey: key, senderId: userId, recipientId: target.userId } });
+      await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash: tokenHash(input), kind: "invite", resourceId: row.id, resourceVersion: row.revision, expiresAt: new Date(Date.now() + 7 * DAY_MS), metadata: { opening: input.opening } });
       await queueNotification(tx, target.userId, `invite:${row.id}:${row.revision}`, "invitation", { connectionId: row.id });
     }
     for (const condition of new Set(input.conditions)) await tx.investorWatch.upsert({ where: { investorId_startupId_condition_scopeKey: { investorId: userId, startupId: target.userId, condition, scopeKey: "pending" } }, create: { connectionId: row.id, investorId: userId, startupId: target.userId, condition }, update: {} });
@@ -43,6 +56,7 @@ export async function invite(userId: string, input: z.infer<typeof inviteSchema>
   });
 }
 export async function listConnections(userId: string) {
+  await expireTokens(userId);
   const rows = await prisma.networkConnection.findMany({ where: { OR: [{ senderId: userId }, { recipientId: userId }] }, orderBy: { updatedAt: "desc" }, take: 50, include: { sender: { select: { profile: { select: { companyName: true } }, matchmakingProfile: { select: { id: true, role: true, verified: true, blurredPhoto: true } } } }, recipient: { select: { profile: { select: { companyName: true } }, matchmakingProfile: { select: { id: true, role: true, verified: true, blurredPhoto: true } } } }, shares: true, watches: { select: { id: true, condition: true, status: true, investorId: true } } } });
   return Promise.all(rows.map(async r => {
     const outgoing = r.senderId === userId, peer = outgoing ? r.recipient : r.sender;
@@ -54,28 +68,44 @@ export async function listConnections(userId: string) {
     const signalScope = (await import("./policy")).scope.safeParse(signalShare?.scope);
     let privateProgress: Awaited<ReturnType<typeof progressSnapshot>> | null = null;
     if (signalScope.success) { try { privateProgress = await progressSnapshot(prisma as unknown as DB, peerId, signalScope.data); } catch { /* An archived workspace grants no current progress. */ } }
-    return { portalId: portal?.id, privateProgress, photo: r.status === "accepted" && peer.matchmakingProfile?.blurredPhoto ? `/api/matchmaking/members/${peer.matchmakingProfile.id}/photo` : null, id: r.id, status: r.status, revision: r.revision, outgoing, company: peer.profile?.companyName || "Member", profileId: peer.matchmakingProfile?.id, verified: peer.matchmakingProfile?.verified, role: peer.matchmakingProfile?.role, unread: r.status === "accepted" ? await prisma.networkMessage.count({ where: { connectionId: r.id, senderId: { not: userId }, createdAt: { gt: (outgoing ? r.senderReadAt : r.recipientReadAt) || new Date(0) } } }) : 0, sharing: r.shares.filter(s => s.ownerId === userId).map(s => ({ revision: s.revision, sections: s.revokedAt ? [] : s.sections, scope: s.scope }))[0] || { revision: 0, sections: [], scope: null }, watches: r.watches.map(w => ({ id: w.id, condition: w.condition, status: w.status, mine: w.investorId === userId })) };
+    const fee = await resourceFee(prisma as unknown as DB, "invite", r.id);
+    const opening = fee?.metadata as { opening?: string } | undefined;
+    return { tokenFee: fee ? { amount: fee.amount, status: fee.status, expiresAt: fee.expiresAt, opening: opening?.opening || "" } : null, portalId: portal?.id, privateProgress, photo: r.status === "accepted" && peer.matchmakingProfile?.blurredPhoto ? `/api/matchmaking/members/${peer.matchmakingProfile.id}/photo` : null, id: r.id, status: r.status, revision: r.revision, outgoing, company: peer.profile?.companyName || "Member", profileId: peer.matchmakingProfile?.id, verified: peer.matchmakingProfile?.verified, role: peer.matchmakingProfile?.role, unread: r.status === "accepted" ? await prisma.networkMessage.count({ where: { connectionId: r.id, senderId: { not: userId }, createdAt: { gt: (outgoing ? r.senderReadAt : r.recipientReadAt) || new Date(0) } } }) : 0, sharing: r.shares.filter(s => s.ownerId === userId).map(s => ({ revision: s.revision, sections: s.revokedAt ? [] : s.sections, scope: s.scope }))[0] || { revision: 0, sections: [], scope: null }, watches: r.watches.map(w => ({ id: w.id, condition: w.condition, status: w.status, mine: w.investorId === userId })) };
   }));
 }
 export async function changeConnection(userId: string, id: string, input: z.infer<typeof connectionSchema>) {
-  return prisma.$transaction(async raw => {
+  const result = await prisma.$transaction(async raw => {
     const tx = raw as unknown as DB, row = await connection(tx, userId, id, true);
     if (input.action === "read") {
       const latest = await tx.networkMessage.findFirst({ where: { connectionId: id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
       if (latest) await tx.networkConnection.update({ where: { id }, data: row.senderId === userId ? { senderReadAt: latest.createdAt } : { recipientReadAt: latest.createdAt } });
       return { saved: true };
     }
-    const status = { accept: "accepted", decline: "declined", block: "blocked" }[input.action];
+    const fee = await resourceFee(tx, "invite", id);
+    if (row.status === "pending" && fee?.status === "reserved" && fee.expiresAt <= new Date()) {
+      await tx.networkConnection.update({ where: { id }, data: { status: "expired", revision: { increment: 1 } } });
+      await settleTokens(tx, fee.id, "refund", "七日未回覆，退回預扣 / No reply within seven days; hold released");
+      return { saved: false, expired: true };
+    }
+    const status = { accept: "accepted", decline: "declined", block: "blocked", cancel: "cancelled" }[input.action];
     if (row.status === status && (status !== "blocked" || row.blockedBy === userId)) return { saved: true };
     if (row.revision !== input.revision) throw changed();
-    if (input.action !== "block" && (row.recipientId !== userId || row.status !== "pending")) throw new MemberError("只有收件者能處理待接受邀請 / Only the recipient can respond to a pending invitation", 403);
+    if (input.action === "cancel" && (row.senderId !== userId || row.status !== "pending")) throw new MemberError("只有寄件者可撤回待接受邀請 / Only the sender can cancel a pending invitation", 403);
+    if (input.action !== "block" && input.action !== "cancel" && (row.recipientId !== userId || row.status !== "pending")) throw new MemberError("只有收件者能處理待接受邀請 / Only the recipient can respond to a pending invitation", 403);
     await tx.networkConnection.update({ where: { id }, data: { status, revision: { increment: 1 }, ...(status === "accepted" ? { acceptedAt: new Date() } : {}), ...(status === "blocked" ? { blockedBy: userId } : {}) } });
+    if (row.status === "pending" && fee?.status === "reserved") {
+      await settleTokens(tx, fee.id, status === "accepted" ? "capture" : "refund", status === "accepted" ? "交流邀請已接受 / Invitation accepted" : "邀請未接受，退回預扣 / Invitation not accepted; hold released");
+      const opening = (fee.metadata as { opening?: string }).opening;
+      if (status === "accepted" && opening) await tx.networkMessage.create({ data: { connectionId: id, senderId: row.senderId, requestId: `invite:${fee.id}`, body: opening } });
+    }
     if (status === "blocked") {
       await tx.networkShare.updateMany({ where: { connectionId: id }, data: { revokedAt: new Date(), revision: { increment: 1 } } });
       await tx.investorWatch.updateMany({ where: { connectionId: id }, data: { status: "paused" } });
     }
     return { saved: true };
   });
+  if ("expired" in result) throw new MemberError("邀請已逾七日，5 Token 已退回 / Invitation expired after seven days; 5 Token returned", 409);
+  return result;
 }
 export async function messages(userId: string, id: string, cursor?: string) {
   const row = await connection(prisma as unknown as DB, userId, id);
@@ -156,6 +186,7 @@ export async function visitorSummary(userId: string, week = weekKey(), now = new
   return { week, ...counts(rows), previous: counts(previous), comparable: Number.isFinite(coverage) && coverage <= periods.previousStart.getTime(), asOf: now.toISOString(), previousAsOf: periods.previousCutoff.toISOString() };
 }
 export async function connectionForProfile(userId: string, profileId: string) {
+  await expireTokens(userId);
   const profile = await prisma.matchmakingProfile.findUnique({ where: { id: profileId }, select: { userId: true, visible: true } });
   if (!profile) throw new MemberError("找不到卡片 / Card not found", 404);
   if (profile.userId === userId) return { own: true, connection: null };

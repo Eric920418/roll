@@ -149,7 +149,7 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       if (!result) { const companies = Array.from({ length: body.count }, () => providerCompany(++sequence)); result = { order_id: randomUUID(), icp_id: body.icp_id, icp_version: body.icp_version, requested_count: body.count, delivered_count: body.count, companies, status: "completed", created_at: new Date().toISOString(), delivered_at: new Date().toISOString(), billing: { period: utcPeriod(), currency: "USD", max_charge_cents: 0, amount_cents: 0, free_companies: body.count, paid_companies: 0 } }; vendor.set(key!, result); }
       if (mode === "uncertain") { mode = "complete"; throw new Error("Connection closed after vendor acceptance"); }
       if (mode === "queued") return Response.json({ ...result, created_at: String(result.created_at).replace("Z", "+00:00"), status: "queued", delivered_count: 0, companies: [], delivered_at: null, billing: { ...(result.billing as object), free_companies: 0 } }, { status: 202, headers: { "Retry-After": "30" } });
-      if (mode === "insufficient") return Response.json({ ...result, status: "failed", delivered_count: 0, companies: [], delivered_at: null, failure: { code: "insufficient_matches", message: "secret private-test-key" }, billing: { ...(result.billing as object), free_companies: 0 } });
+      if (mode === "insufficient" || mode === "unknown-failed") return Response.json({ ...result, status: "failed", delivered_count: 0, companies: [], delivered_at: null, failure: { code: mode === "unknown-failed" ? "provider_outcome_unknown" : "insufficient_matches", message: "secret private-test-key" }, billing: { ...(result.billing as object), free_companies: 0 } });
       if (mode === "bad-release") return Response.json({ ...result, status: "failed", delivered_count: 0, companies: [], delivered_at: null });
       if (mode === "offset") { const created_at = `${String(result.created_at).slice(0, 7)}-01T00:30:00+08:00`; return Response.json({ ...result, created_at, billing: { ...(result.billing as object), period: utcPeriod(new Date(created_at)) } }); }
       return Response.json(result);
@@ -159,10 +159,11 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
     if (mode === "limited") return new Response(null, { status: 429, headers: { "Retry-After": "120" } });
     assert(result); return Response.json(result);
   };
-  const load = loader({ "@/lib/prisma": { prisma: serviceDB }, "@/lib/network/access": { features: async (id: string) => ({ prospects: full.has(id) }) }, "@/lib/rate-limit": { MINUTE_MS: 60000, HOUR_MS: 3600000, checkRateLimit: async () => ({ ok: rateAllowed, retryAfterMs: 60000 }) }, "@/lib/member-http": { memberAccess: async () => uid || Response.json({ error: "Unauthorized" }, { status: 401 }), privateOk: (data: unknown, status = 200) => Response.json({ data }, { status }), memberError: () => Response.json({ error: "Safe failure" }, { status: 500 }) }, "./contact": { verifyCompany: (raw: unknown, country: string) => contactModule.verifyCompany(raw, country, contactsAvailable ? html : async () => null) }, "@/lib/security/http": { browserMutationGuard: () => null }, "@/lib/ai/allowance": { reserveAiUsage: () => { throw new Error("Company search must not debit AI"); } }, "@anthropic-ai/sdk": class { constructor() { throw new Error("Company search must not call Anthropic"); } } }, env, fetcher);
+  const load = loader({ "@/lib/prisma": { prisma: serviceDB }, "@/lib/network/access": { features: async (id: string) => ({ prospects: full.has(id) }), networkAccount: async (id: string) => ({ effectivePlan: full.has(id) ? "business" : "free" }) }, "@/lib/rate-limit": { MINUTE_MS: 60000, HOUR_MS: 3600000, checkRateLimit: async () => ({ ok: rateAllowed, retryAfterMs: 60000 }) }, "@/lib/member-http": { MemberError: class extends Error { constructor(message: string, public status = 409) { super(message); } }, memberAccess: async () => uid || Response.json({ error: "Unauthorized" }, { status: 401 }), privateOk: (data: unknown, status = 200) => Response.json({ data }, { status }), memberError: () => Response.json({ error: "Safe failure" }, { status: 500 }) }, "./contact": { verifyCompany: (raw: unknown, country: string) => contactModule.verifyCompany(raw, country, contactsAvailable ? html : async () => null) }, "@/lib/security/http": { browserMutationGuard: () => null }, "@/lib/ai/allowance": { reserveAiUsage: () => { throw new Error("Company search must not debit AI"); } }, "@anthropic-ai/sdk": class { constructor() { throw new Error("Company search must not call Anthropic"); } } }, env, fetcher);
   const service = load<typeof import("../src/lib/prospecting/service")>("src/lib/prospecting/service.ts"), worker = load<typeof import("../src/lib/prospecting/worker")>("src/lib/prospecting/worker.ts");
-  const input = (revision = 0, count: 5 | 10 = 5) => ({ requestId: randomUUID(), revision, country: "TW", description: "Inventory operations buyers in Taiwan", count });
+  const input = (revision = 0, count: 5 | 10 = 5) => ({ requestId: randomUUID(), pricingVersion: 1 as const, revision, country: "TW", description: "Inventory operations buyers in Taiwan", count });
   async function member(paid = true) { const user = await db.user.create({ data: { email: `omrade-${randomUUID()}@example.invalid`, ...(paid ? {} : { trialPolicy: "interviews-3-v1", trialPlan: "pro", trialStartsAt: new Date(Date.now() - 1000), trialEndsAt: new Date(Date.now() + 86400000) }) } }); ids.push(user.id); if (paid) full.add(user.id); return user; }
+  const balance = async (id: string) => { const row = await db.tokenWallet.findUniqueOrThrow({ where: { userId: id } }); return [row.available, row.reserved]; };
   const due = (id: string) => db.prospectingOrder.update({ where: { id }, data: { nextAttemptAt: new Date(0) } });
   const clean = async (id: string) => { await db.user.delete({ where: { id } }); };
   try {
@@ -170,7 +171,7 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       const user = await member(); mode = "insufficient";
       const failed = await service.createProspectOrder(user.id, input()); await worker.runProspecting();
       const result = await service.getProspectOrder(user.id, failed.id);
-      assert.equal(result.status, "failed"); assert.equal(result.delivered, 0); assert.equal(result.usable, 0);
+      assert.equal(result.status, "failed"); assert.deepEqual(await balance(user.id), [150, 0]); assert.equal(result.delivered, 0); assert.equal(result.usable, 0);
       assert.equal(result.code, "provider_insufficient_matches"); assert.match(result.error!, /足額|enough/); assert(!result.error!.includes("private-test-key"));
       assert.equal((await service.prospectSnapshot(user.id)).quota.reserved, 0);
       await clean(user.id);
@@ -197,7 +198,7 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       assert.equal(calls.length, beforeCalls, "Client POST only persists; no foreground provider network");
       await assert.rejects(service.createProspectOrder(user.id, { ...body, description: "Different targeting" }), /不同內容|different/);
       await assert.rejects(service.getProspectOrder("other", order.id), /找不到|not found/);
-      const snap = await service.prospectSnapshot(user.id); assert.equal(snap.quota.reserved, 5);
+      const snap = await service.prospectSnapshot(user.id); assert.equal(snap.quota.reserved, 5); assert.deepEqual(await balance(user.id), [130, 20]);
       await worker.runProspecting();
       const complete = await service.getProspectOrder(user.id, order.id); assert.equal(complete.usable, 5); assert.equal(complete.delivered, 5);
       assert(!JSON.stringify(complete).includes("mock-only-key"));
@@ -223,11 +224,12 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       const attempts = calls.filter(c => c.path === "/orders" && c.key === row.orderKey); assert.equal(attempts.length, 2); assert.deepEqual(attempts[0].body, attempts[1].body); assert.equal((await service.getProspectOrder(user.id, order.id)).delivered, 5); await clean(user.id);
     });
     await t.test("Version conflicts, monthly reservations and parallel creates cannot exceed ten deliveries", async () => {
-      const user = await member(); const first = await service.createProspectOrder(user.id, input(0, 10)); await worker.runProspecting();
+      const user = await member(); const first = await service.createProspectOrder(user.id, input()); await worker.runProspecting();
+      await service.createProspectOrder(user.id, input(1)); await worker.runProspecting();
       await assert.rejects(service.createProspectOrder(user.id, input(0)), /另一頁|another tab/);
-      await assert.rejects(service.createProspectOrder(user.id, input(1)), /月|Monthly/);
+      await assert.rejects(service.createProspectOrder(user.id, input(2)), /月|Monthly/);
       const row = await db.prospectingOrder.findUniqueOrThrow({ where: { id: first.id } }); await db.prospectingOrder.update({ where: { id: row.id }, data: { period: "2000-01" } });
-      const results = await Promise.allSettled([service.createProspectOrder(user.id, input(1)), service.createProspectOrder(user.id, input(1))]); assert.equal(results.filter(r => r.status === "fulfilled").length, 1); assert.equal((await service.prospectSnapshot(user.id)).quota.reserved, 5);
+      const results = await Promise.allSettled([service.createProspectOrder(user.id, input(2)), service.createProspectOrder(user.id, input(2))]); assert.equal(results.filter(r => r.status === "fulfilled").length, 1); assert.equal((await service.prospectSnapshot(user.id)).quota.reserved, 5);
       await clean(user.id);
     });
     await t.test("Free exhaustion releases reservation; disabled/expired access creates no new order", async () => {
@@ -258,8 +260,39 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       const order = await service.createProspectOrder(user.id, input()); failSave = true;
       await worker.runProspecting(); failSave = false;
       assert.equal(await db.prospectingTrialGrant.count({ where: { userId: user.id } }), 0);
-      assert.equal((await service.getProspectOrder(user.id, order.id)).status, "checking");
+      assert.equal((await service.getProspectOrder(user.id, order.id)).status, "checking"); assert.deepEqual(await balance(user.id), [0, 20]);
       const before = calls.length; await due(order.id); await worker.runProspecting(); assert.equal(calls.length, before); assert.equal(await db.prospectingTrialGrant.count({ where: { userId: user.id } }), 1); await clean(user.id);
+    });
+    await t.test("Provider outcome_unknown is never a refund receipt; later matching delivery captures once", async () => {
+      const user = await member(); mode = "unknown-failed";
+      const order = await service.createProspectOrder(user.id, input()); await worker.runProspecting();
+      assert.equal((await service.getProspectOrder(user.id, order.id)).status, "reconciling"); assert.deepEqual(await balance(user.id), [130, 20]);
+      mode = "complete"; await due(order.id); await worker.runProspecting();
+      assert.deepEqual(await balance(user.id), [130, 0]);
+      assert.equal(await db.tokenLedger.count({ where: { userId: user.id, kind: "capture" } }), 1); await clean(user.id);
+    });
+    await t.test("Unknown submission over one day stops POST replay and retains the hold for reconciliation", async () => {
+      const user = await member(); mode = "uncertain";
+      const order = await service.createProspectOrder(user.id, input()); await worker.runProspecting();
+      await db.prospectingOrder.update({ where: { id: order.id }, data: { submittedAt: new Date(Date.now() - 86400001), nextAttemptAt: new Date(0) } });
+      const before = calls.filter(c => c.path === "/orders").length; await worker.runProspecting();
+      assert.equal(calls.filter(c => c.path === "/orders").length, before); assert.deepEqual(await balance(user.id), [130, 20]);
+      assert.equal((await service.getProspectOrder(user.id, order.id)).code, "reconciliation_required"); await clean(user.id);
+    });
+    await t.test("Data-error recheck refunds a captured fee once; CRM follow-up does not become a refund or new charge", async () => {
+      const user = await member(); mode = "complete";
+      const order = await service.createProspectOrder(user.id, input()); await worker.runProspecting(); assert.deepEqual(await balance(user.id), [130, 0]);
+      const result = await service.getProspectOrder(user.id, order.id); await service.addProspectContact(user.id, order.id, result.companies[0].id);
+      await worker.recheckProspectOrder(user.id, order.id); assert.deepEqual(await balance(user.id), [130, 0]);
+      contactsAvailable = false; await worker.recheckProspectOrder(user.id, order.id); await worker.recheckProspectOrder(user.id, order.id);
+      assert.deepEqual(await balance(user.id), [150, 0]); assert.equal(await db.tokenLedger.count({ where: { userId: user.id, kind: "refund" } }), 1);
+      contactsAvailable = true; await worker.recheckProspectOrder(user.id, order.id); assert.deepEqual(await balance(user.id), [150, 0]); await clean(user.id);
+    });
+    await t.test("Legacy ten-company receipt replays unchanged without Token conversion or retroactive fees", async () => {
+      const user = await member(), body = { requestId: randomUUID(), revision: 0, country: "TW", description: "Original legacy customer criteria", count: 10 as const };
+      const row = await db.prospectingOrder.create({ data: { userId: user.id, requestId: body.requestId, payloadHash: service.hash(body), country: "TW", description: body.description, count: 10, period: utcPeriod(), reservedCount: 0, status: "completed", audienceRequest: {}, audienceKey: randomUUID(), orderKey: randomUUID() } });
+      assert.equal((await service.createProspectOrder(user.id, body)).id, row.id); assert.equal((await service.getProspectOrder(user.id, row.id)).requested, 10);
+      assert.equal(await db.tokenLedger.count({ where: { userId: user.id } }), 0); await clean(user.id);
     });
     await t.test("Trial POC counts three distinct valid companies, zero-quality retry and lifetime grant survive order removal", async () => {
       const user = await member(false), journey = await db.discoveryJourney.create({ data: { userId: user.id } });

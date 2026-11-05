@@ -1,4 +1,6 @@
 import "server-only";
+import { grantTokens, reserveTokens, resourceFee, tokenSnapshot } from "@/lib/tokens/service";
+import { expireTokens } from "@/lib/tokens/expiry";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma, type ProspectingOrder } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +25,7 @@ export async function eligibility(userId: string, tx: DB = prisma as unknown as 
   const poc = !rights.prospects && activeTrial && !grant && interviews >= 3;
   return { canSearch: rights.prospects || poc, fullAccess: rights.prospects, poc, activeTrial, interviews, claimed: Boolean(grant) };
 }
-export async function exclusions(userId: string, tx: DB = prisma as unknown as DB) {
+export async function exclusions(userId: string, tx: DB = prisma as unknown as DB, priorOrders = false) {
   const [profile, notes, contacts, deals] = await Promise.all([
     tx.onboardingProfile.findUnique({ where: { userId } }), tx.meetingNote.findMany({ where: { userId }, select: { insight: true } }),
     tx.contact.findMany({ where: { userId }, select: { company: true, notes: true } }), tx.deal.findMany({ where: { userId }, select: { title: true, validation: true } }),
@@ -32,6 +34,10 @@ export async function exclusions(userId: string, tx: DB = prisma as unknown as D
     const v = d.validation as { company?: unknown; prospect?: { name?: unknown; aliases?: unknown; website?: unknown } } | null;
     return [d.title, v?.company, v?.prospect?.name, v?.prospect?.website, ...(Array.isArray(v?.prospect?.aliases) ? v.prospect.aliases : [])].filter((s): s is string => typeof s === "string");
   })].filter(Boolean);
+  if (priorOrders) {
+    const previous = await tx.prospectingOrder.findMany({ where: { userId, status: "completed" }, select: { result: true } });
+    names.push(...previous.flatMap(o => storedCompanies(o).flatMap(c => [c.name, c.website])));
+  }
   const domains = [...new Set(names.flatMap(value => { try { const u = new URL(value); return ["http:", "https:"].includes(u.protocol) ? [u.hostname.toLowerCase().replace(/^www\./, "")] : []; } catch { return []; } }))].sort();
   if (domains.length > 1000) throw new ProspectingError("排除網域超過供應商上限，請聯絡管理員 / Too many excluded domains; contact administrator", 409, "exclusion_limit");
   return { profile, names: [...new Set(names)], domains };
@@ -48,6 +54,8 @@ export function orderView(order: ProspectingOrder, excluded: string[], workspace
     companies, rejections: order.rejections, error: order.failureMessage, code: order.failureCode, requestId: order.providerRequestId };
 }
 export async function prospectSnapshot(userId: string, cursor?: string) {
+  await expireTokens(userId);
+  const tokens = await tokenSnapshot(userId);
   if (cursor && !await prisma.prospectingOrder.findFirst({ where: { id: cursor, userId }, select: { id: true } })) throw new ProspectingError("找不到名單頁次 / Invalid history cursor", 400, "invalid_cursor");
   const [workspace, rights, context, orders, pending, usage] = await Promise.all([
     prisma.prospectingWorkspace.findUnique({ where: { userId } }), eligibility(userId), exclusions(userId),
@@ -58,14 +66,18 @@ export async function prospectSnapshot(userId: string, cursor?: string) {
   const suggested = audienceDescription(readIcp(context.profile?.icpDetails)) || context.profile?.icp?.slice(0, 4000) || "";
   const values = workspace || { revision: 0, country: "TW", description: suggested };
   const delivered = usage._sum.deliveredCount || 0, reserved = usage._sum.reservedCount || 0;
-  return { enabled: configured(), access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
+  return { tokens: { available: tokens.available, reserved: tokens.reserved }, enabled: configured(), access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
     quota: { period: utcPeriod(), limit: 10, delivered, reserved, remaining: Math.max(0, 10 - delivered - reserved) },
-    pending: pending ? orderView(pending, context.names, values) : null, orders: orders.slice(0, 20).map(o => orderView(o, context.names, values)), nextCursor: orders.length > 20 ? orders[19].id : null };
+    pending: pending ? orderView(pending, context.names, values) : null, orders: await Promise.all(orders.slice(0, 20).map(async o => ({ ...orderView(o, context.names, values), tokenFee: await feeView(o.id) }))), nextCursor: orders.length > 20 ? orders[19].id : null };
 }
 export async function getProspectOrder(userId: string, id: string) {
   const [order, context, workspace] = await Promise.all([prisma.prospectingOrder.findFirst({ where: { id, userId } }), exclusions(userId), prisma.prospectingWorkspace.findUnique({ where: { userId } })]);
   if (!order) throw new ProspectingError("找不到公司搜尋訂單 / Search order not found", 404, "not_found");
-  return orderView(order, context.names, workspace);
+  return { ...orderView(order, context.names, workspace), tokenFee: await feeView(order.id) };
+}
+async function feeView(id: string) {
+  const fee = await resourceFee(prisma as unknown as DB, "search", id);
+  return fee ? { amount: fee.amount, status: fee.status } : null;
 }
 export async function createProspectOrder(userId: string, input: z.infer<typeof orderInputSchema>) {
   const payloadHash = hash(input);
@@ -74,6 +86,7 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     await lockMember(tx, userId);
     const replay = await tx.prospectingOrder.findUnique({ where: { userId_requestId: { userId, requestId: input.requestId } } });
     if (replay) { if (replay.payloadHash !== payloadHash) throw new ProspectingError("同一次提交已使用不同內容；請比較最新版 / Request ID already used with different content", 409, "idempotency_conflict"); return { id: replay.id, status: replay.status }; }
+    if (input.pricingVersion !== 1 || input.count !== 5) throw new ProspectingError("新搜尋固定五家公司／20 Token，請重新載入並確認費用 / New searches require five companies / 20 Token; reload and confirm the fee", 400, "pricing_confirmation_required");
     if (!configured()) throw new ProspectingError("公司搜尋尚未開放，已存名單仍可查看 / Company search is not configured; saved lists remain readable", 503, "not_configured");
     const rights = await eligibility(userId, tx);
     if (!rights.canSearch) throw new ProspectingError(rights.activeTrial && !rights.claimed ? "完成三家有效訪談後可領一次五家公司 / Complete three valid company interviews for one five-company POC" : "需要 NOVA 或有效既有權益；一般試用 POC 每帳號一次 / NOVA or valid existing entitlement required; trial POC is once per account", 403, "access_required");
@@ -84,12 +97,14 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     if ((workspace?.revision || 0) !== input.revision) throw new ProspectingError("另一頁已更新搜尋條件，輸入保留；請載入並比對 / Search criteria changed in another tab; reload and compare", 409, "version_conflict");
     const period = utcPeriod(), monthly = await tx.prospectingOrder.aggregate({ where: { userId, period }, _sum: { reservedCount: true, deliveredCount: true } });
     if ((monthly._sum.reservedCount || 0) + (monthly._sum.deliveredCount || 0) + input.count > 10) throw new ProspectingError("本月交付與預留量已達上限，請選較小批次或下個 UTC 月再試 / Monthly delivered and reserved limit reached; choose a smaller batch or retry next UTC month", 429, "member_quota");
-    const context = await exclusions(userId, tx), definition = { description: input.description, countries: [input.country], industries: [], exclude_domains: context.domains, contact_requirement: "email_or_contact_page" };
+    const context = await exclusions(userId, tx, true), definition = { description: input.description, countries: [input.country], industries: [], exclude_domains: context.domains, contact_requirement: "email_or_contact_page" };
     const audienceHash = hash(definition), sameAudience = workspace?.audienceHash === audienceHash && workspace.omradeIcpId && workspace.omradeIcpVersion;
     await tx.prospectingWorkspace.upsert({ where: { userId }, create: { userId, country: input.country, description: input.description, revision: 1 }, update: { country: input.country, description: input.description, revision: { increment: 1 } } });
     const order = await tx.prospectingOrder.create({ data: { userId, requestId: input.requestId, payloadHash, country: input.country, description: input.description, count: input.count, poc: rights.poc, period, reservedCount: input.count,
       audienceRequest: json({ name: "NOVA confirmed buyer criteria", definition }), audienceKey: randomUUID(), audienceParentId: workspace?.omradeIcpId || null,
       omradeIcpId: sameAudience ? workspace!.omradeIcpId : null, omradeIcpVersion: sameAudience ? workspace!.omradeIcpVersion : null, orderKey: randomUUID() } });
+    if (rights.poc) await grantTokens(tx, userId, 20, `poc:${userId}`, "一次公司搜尋 POC 贈額 / One-time search POC grant");
+    await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash, kind: "search", resourceId: order.id, expiresAt: new Date(Date.now() + 86400000), metadata: { exclusions: context.names } });
     return { id: order.id, status: order.status };
   }, { timeout: 15000 });
 }

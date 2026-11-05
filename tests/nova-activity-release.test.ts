@@ -104,6 +104,7 @@ test("Switching tabs retains the mounted inbox, marks it inactive and supports k
   const workspace = load<{ default(p: object): ReactNode }>("src/components/dashboard/matchmaking/MatchmakingWorkspace.tsx", {
     react: { useCallback: (fn: unknown) => fn, useEffect() {}, useState: (initial: unknown) => { const i = cursor++; if (!(i in state)) state[i] = typeof initial === "function" ? initial() : initial; return [state[i], (value: unknown) => { state[i] = typeof value === "function" ? value(state[i]) : value; }]; } },
     "next-intl": intl, "next/link": { default: "a" }, "./MatchmakingPage": { default: () => null }, "./RoundtablesPanel": { default: () => null },
+    "../TokenBalance": { default: () => null },
     "../network/NetworkPanels": { MessagesPage: Inbox, useNetwork: () => ({ value: { enabled: false } }) },
     "@/lib/member-fetch": {}, "@/lib/dashboard/home": { MATCHMAKING_TABS, matchmakingTab }, "@/lib/routes": { pathForLocale: (path: string) => path },
   }, { window: { location: { get href() { return currentUrl; } }, history: { replaceState: (_: unknown, __: unknown, path: string) => { currentUrl = new URL(path, currentUrl).href; } } }, document: { getElementById: () => ({ focus() {} }) } });

@@ -17,7 +17,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -39,7 +39,7 @@ async function startServer() {
     const timer = setTimeout(() => reject(new Error('QA server startup timed out.')), 60000);
     server = spawn(process.execPath, [require.resolve('next/dist/bin/next'), mode, '--hostname', hostname, '--port', String(port)], {
       cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: '', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '' },
+      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: scenario === 'tokens' ? 'qa-disabled' : '', OMRADE_ENABLED: scenario === 'tokens' ? 'true' : 'false', OMRADE_WORKER_ENABLED: scenario === 'tokens' ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '' },
     });
     server.stdout.on('data', chunk => { serverLog.write(chunk); startup += chunk; if (startup.includes('Ready in')) { clearTimeout(timer); resolve(); } });
     server.stderr.on('data', chunk => serverLog.write(chunk));
@@ -668,11 +668,100 @@ async function roundtableCore(hostKey, memberKey, width, locale, approvalMode) {
   await host.close(); await member.context.close(); await admin.close(); for (const c of fillerContexts) await c.context.close();
 }
 
+async function tokenCore(senderKey, recipientKey, width, locale, resolution) {
+  const w = (zh, en) => locale === 'zh-tw' ? zh : en, prefix = locale === 'zh-tw' ? '/zh-tw' : '';
+  const sender = await session(senderKey, width), recipient = await session(recipientKey, width);
+  const profile = await db.matchmakingProfile.findUniqueOrThrow({ where: { userId: users[recipientKey].id } });
+  await sender.page.goto(origin + prefix + '/dashboard/matchmaking');
+  await sender.page.getByText(/Token (可用|available) 150/, { exact: false }).waitFor();
+  check('Monthly Token grant visible ' + width + locale, (await db.tokenWallet.findUniqueOrThrow({ where: { userId: users[senderKey].id } })).available === 150);
+  await sender.page.goto(origin + prefix + '/dashboard/matchmaking/' + profile.id);
+  await sender.page.getByRole('button', { name: w('提出交流 · 預扣 5 Token', 'Request to chat · hold 5 Token'), exact: true }).waitFor();
+  const opening = 'QA Token opening ' + width + locale;
+  await sender.page.getByRole('textbox', { name: w('建議開場 · 可編輯', 'Suggested message · editable'), exact: true }).fill(opening);
+  let submitted, inject = true;
+  await sender.page.route('**/api/network/connections', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    const body = route.request().postDataJSON(); if (submitted) check('Invitation retry retains request UUID ' + locale + width, body.requestId === submitted.requestId); else submitted = body;
+    const response = await route.fetch();
+    if (inject) { inject = false; assert.equal(response.status(), 201); return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'QA lost acknowledgement; retry original invitation.', code: 'qa_ack_lost', requestId: 'qa-safe-token-trace' }) }); }
+    return route.fulfill({ response });
+  });
+  let response = waitResponse(sender.page, r => r.request().method() === 'POST' && r.url().endsWith('/api/network/connections'));
+  await sender.page.getByRole('button', { name: w('提出交流 · 預扣 5 Token', 'Request to chat · hold 5 Token'), exact: true }).click();
+  assert.equal((await response).status(), 503);
+  await sender.page.getByRole('alert').filter({ hasText: 'qa_ack_lost' }).waitFor();
+  check('Safe fee error includes HTTP code and trace ' + locale + width, (await sender.page.getByRole('alert').allInnerTexts()).some(v => v.includes('503') && v.includes('qa-safe-token-trace')));
+  check('Fee retry retains opening ' + locale + width, await sender.page.getByRole('textbox', { name: w('建議開場 · 可編輯', 'Suggested message · editable') }).inputValue() === opening);
+  response = waitResponse(sender.page, r => r.request().method() === 'POST' && r.url().endsWith('/api/network/connections'));
+  await sender.page.getByRole('button', { name: w('提出交流 · 預扣 5 Token', 'Request to chat · hold 5 Token'), exact: true }).click(); assert.equal((await response).status(), 201);
+  const hold = await db.tokenReservation.findUniqueOrThrow({ where: { userId_requestId: { userId: users[senderKey].id, requestId: submitted.requestId } } });
+  check('Lost acknowledgement creates one 5 Token hold ' + locale + width, hold.amount === 5 && await db.tokenLedger.count({ where: { reservationId: hold.id, kind: 'reserve' } }) === 1);
+  await recipient.page.goto(origin + prefix + '/dashboard/matchmaking?tab=messages&connection=' + hold.resourceId);
+  await recipient.page.getByText(opening, { exact: true }).waitFor();
+  if (resolution === 'expire') await db.tokenReservation.update({ where: { id: hold.id }, data: { expiresAt: new Date(0) } });
+  const acting = resolution === 'cancel' ? sender : recipient;
+  if (resolution === 'cancel') await sender.page.goto(origin + prefix + '/dashboard/matchmaking?tab=messages&connection=' + hold.resourceId);
+  const label = resolution === 'cancel' ? w('撤回邀請並退回預扣', 'Cancel invitation and release hold') : resolution === 'decline' ? w('拒絕', 'decline') : w('接受聊天邀請', 'accept');
+  response = waitResponse(acting.page, r => r.request().method() === 'PATCH' && r.url().endsWith('/connections/' + hold.resourceId));
+  await acting.page.getByRole('button', { name: label, exact: true }).click();
+  check('Invitation resolution ' + resolution + locale + width, (await response).status() === (resolution === 'expire' ? 409 : 200));
+  const settled = await db.tokenReservation.findUniqueOrThrow({ where: { id: hold.id } });
+  check('Fee settlement ' + resolution + locale + width, settled.status === (resolution === 'accept' ? 'captured' : 'released'));
+  const balance = await db.tokenWallet.findUniqueOrThrow({ where: { userId: users[senderKey].id } });
+  check('Correct final fee ' + resolution + locale + width, balance.available === (resolution === 'accept' ? 145 : 150) && balance.reserved === 0);
+  check('Opening delivered once only on acceptance ' + locale + width, await db.networkMessage.count({ where: { connectionId: hold.resourceId, body: opening } }) === (resolution === 'accept' ? 1 : 0));
+  check('Fee settlement never shares private data ' + locale + width, await db.networkShare.count({ where: { connectionId: hold.resourceId } }) === 0);
+  await sender.page.goto(origin + prefix + '/dashboard/matchmaking');
+  await sender.page.getByText(/Token (可用|available) (145|150)/, { exact: false }).waitFor();
+  await sender.page.getByText(w('收支紀錄', 'Transaction history'), { exact: true }).click();
+  if (locale === 'en') check('English ledger descriptions stay English ' + width, !/[\u4e00-\u9fff]/.test(await sender.page.locator('section[aria-label="Token"]').innerText()));
+  const bounds = await sender.page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > innerWidth + 1, headings: document.querySelectorAll('h1').length }));
+  check('Token ledger layout ' + locale + width, !bounds.overflow && bounds.headings === 1);
+  await screenshot(sender.page, 'tokens-' + locale + '-' + width);
+  await sender.context.close(); await recipient.context.close();
+}
+
+async function tokenAdminAndSearch() {
+  const admin = await browser.newContext({ viewport: { width: 768, height: 1000 } }); contexts.push(admin);
+  const token = await new SignJWT({ email: 'qa-token-reviewer-' + suffix + '@example.invalid', role: 'admin' }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('1h').sign(new TextEncoder().encode(authSecret));
+  await admin.addCookies([{ name: 'admin_session', value: token, domain: hostname, path: '/', httpOnly: true, sameSite: 'Lax' }]);
+  const page = await admin.newPage(); page.on('pageerror', error => report.browserErrors.push(error.message));
+  await page.goto(origin + '/admin/tokens'); await page.getByLabel('會員 ID', { exact: true }).fill(users.newpaid.id);
+  let response = waitResponse(page, r => r.url().includes('/api/admin/tokens?')); await page.getByRole('button', { name: '查詢帳本', exact: true }).click(); assert.equal((await response).status(), 200);
+  await page.getByLabel('加退點數量', { exact: true }).fill('25'); await page.getByLabel('原因', { exact: true }).fill('QA approved Token adjustment');
+  response = waitResponse(page, r => r.url().endsWith('/api/admin/tokens') && r.request().method() === 'POST'); await page.getByRole('button', { name: '確認加退點', exact: true }).click(); assert.equal((await response).status(), 200);
+  check('Admin adjustment visible in ledger', await db.tokenLedger.count({ where: { userId: users.newpaid.id, reason: 'QA approved Token adjustment', availableDelta: 25 } }) === 1);
+  await screenshot(page, 'tokens-admin-768');
+  const member = await session('desktop', 390);
+  check('Member cannot adjust Token', (await member.context.request.post(origin + '/api/admin/tokens', { headers: { origin }, data: { userId: users.newpaid.id, amount: 999, reason: 'Unauthorized', requestId: randomUUID() } })).status() === 401);
+  await member.page.goto(origin + '/dashboard/agenda#prospects'); await closeTour(member.page);
+  const search = member.page.locator('section[data-next-step="new-companies"]');
+  await search.getByRole('textbox', { name: 'Target buyer description', exact: true }).fill('QA business inventory operations buyers');
+  await search.getByRole('checkbox').check();
+  response = waitResponse(member.page, r => r.url().endsWith('/api/prospects/orders') && r.request().method() === 'POST');
+  await search.getByRole('button', { name: 'Find 5 new companies · hold 20 Token', exact: true }).click(); assert.equal((await response).status(), 202);
+  const receipt = await (await response).json(), request = (await response).request().postDataJSON();
+  check('Search UI confirms new 5 / 20 price', request.count === 5 && request.pricingVersion === 1);
+  const retry = await member.context.request.post(origin + '/api/prospects/orders', { headers: { origin }, data: request }); assert.equal(retry.status(), 202);
+  check('Search retry keeps original order', (await retry.json()).data.id === receipt.data.id);
+  const hold = await db.tokenReservation.findFirstOrThrow({ where: { resourceId: receipt.data.id } }); check('Search holds 20 once', hold.amount === 20 && await db.tokenLedger.count({ where: { reservationId: hold.id, kind: 'reserve' } }) === 1);
+  await db.tokenReservation.update({ where: { id: hold.id }, data: { expiresAt: new Date(0) } });
+  assert.equal((await member.context.request.get(origin + '/api/tokens')).status(), 200);
+  check('Unsubmitted search expires and refunds', (await db.tokenReservation.findUniqueOrThrow({ where: { id: hold.id } })).status === 'released');
+  await member.page.reload(); await closeTour(member.page); await search.getByText('20 Token · Hold released', { exact: true }).waitFor();
+  const layout = await member.page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > innerWidth + 1, headings: document.querySelectorAll('h1').length })); check('Search mobile layout', !layout.overflow && layout.headings === 1);
+  check('Token scenarios never debit AI', await db.aiUsage.count({ where: { userId: { in: created.map(u => u.id) } } }) === 0);
+  await screenshot(member.page, 'tokens-search-390');
+  await member.context.close(); await admin.close();
+}
+
 try {
   await startServer(); await redirects();
   if (mode === 'start') {
     await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'roundtables') { await roundtableCore('investor', 'desktop', 1440, 'en', false); await roundtableCore('requester', 'mobile', 390, 'zh-tw', true); }
+    if (scenario === 'tokens') { await tokenCore('newpaid', 'blocked', 1440, 'en', 'accept'); await tokenCore('complete', 'outcome', 390, 'zh-tw', 'decline'); await tokenCore('desktop', 'newpaid', 390, 'en', 'cancel'); await tokenCore('mobile', 'complete', 1440, 'zh-tw', 'expire'); await tokenAdminAndSearch(); }
+    else if (scenario === 'roundtables') { await roundtableCore('investor', 'desktop', 1440, 'en', false); await roundtableCore('requester', 'mobile', 390, 'zh-tw', true); }
     else if (scenario === 'flow') { await flowCore('mobile', 390, 'zh-tw'); await flowCore('desktop', 1440, 'en'); await flowDocumentAndReview(); }
     else { await core('mobile', 390); await core('desktop', 1440); await tablet(); await states(); }
     check('No browser runtime errors', report.browserErrors.length === 0);

@@ -19,6 +19,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/feedback", label: "問題回報" },
   { href: "/admin/users", label: "註冊帳戶" },
   { href: "/admin/referrals", label: "邀請獎勵核對" },
+  { href: "/admin/tokens", label: "Token 帳本" },
   { href: "/admin/mentors", label: "導師認證審核" },
   { href: "/admin/task-evidence", label: "今日任務證據審核" },
   { href: "/admin/matchmaking", label: "Matchmaking 審核" },

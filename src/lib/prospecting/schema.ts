@@ -7,7 +7,7 @@ export class ProspectingError extends Error {
 }
 export const activeOrderStatuses = ["pending", "queued", "running", "checking", "reconciling"];
 export const utcPeriod = (now = new Date()) => now.toISOString().slice(0, 7);
-export const orderInputSchema = z.object({ requestId: z.string().uuid(), revision: z.number().int().nonnegative(), country: z.string().refine(v => COUNTRY_CODES.includes(v), "請選擇國家 / Select a country"), description: z.string().trim().min(10).max(4000), count: z.union([z.literal(5), z.literal(10)]) }).strict();
+export const orderInputSchema = z.object({ requestId: z.string().uuid(), pricingVersion: z.literal(1).optional(), revision: z.number().int().nonnegative(), country: z.string().refine(v => COUNTRY_CODES.includes(v), "請選擇國家 / Select a country"), description: z.string().trim().min(10).max(4000), count: z.union([z.literal(5), z.literal(10)]) }).strict();
 const httpsUrl = z.string().max(2000).refine(publicWebsite, "Public HTTPS source required");
 export const evidenceSchema = z.object({ criterion: z.string().trim().min(1).max(4000), source_url: httpsUrl, observed_at: z.string().max(80).optional() });
 export const providerCompanySchema = z.object({

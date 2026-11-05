@@ -1,0 +1,16 @@
+"use client";
+import { useRef, useState } from "react";
+import { memberFetch } from "@/lib/member-fetch";
+import type { tokenSnapshot } from "@/lib/tokens/service";
+type Snapshot = Awaited<ReturnType<typeof tokenSnapshot>>;
+const field = "min-h-11 w-full rounded-xl border p-3";
+export default function Tokens() {
+  const [userId, setUserId] = useState(""), [amount, setAmount] = useState("150"), [reason, setReason] = useState(""), [data, setData] = useState<Snapshot | null>(null), [loadedUser, setLoadedUser] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const attempt = useRef<{ key: string; requestId: string } | null>(null);
+  async function load(cursor?: string) { setBusy(true); try { const next = await memberFetch<Snapshot>(`/api/admin/tokens?${new URLSearchParams({ userId, ...(cursor ? { cursor } : {}) })}`); setData(old => cursor && old ? { ...next, ledger: [...old.ledger, ...next.ledger] } : next); setLoadedUser(userId); setError(""); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
+  async function adjust() {
+    setBusy(true);
+    try { const body = { userId, amount: Number(amount), reason: reason.trim() }, key = JSON.stringify(body); if (attempt.current?.key !== key) attempt.current = { key, requestId: crypto.randomUUID() }; await memberFetch("/api/admin/tokens", { method: "POST", body: JSON.stringify({ ...body, requestId: attempt.current.requestId }) }); attempt.current = null; setReason(""); await load(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
+  }
+  return <div className="max-w-4xl space-y-5"><h1 className="text-3xl font-semibold">Token 帳本</h1><p>只調整獨立 Token，不改 AI 次數、積分或方案。正數加點，負數扣可用餘額；預扣中的額度不能人工挪用。原因會顯示給會員。</p><form className="space-y-4" onSubmit={e => { e.preventDefault(); void load(); }}><label className="block">會員 ID<input className={field} required value={userId} maxLength={200} onChange={e => setUserId(e.target.value)} /></label><button className="min-h-11 rounded-xl border px-4" disabled={busy}>查詢帳本</button></form>{error && <p role="alert" className="whitespace-pre-wrap break-words text-red-800">{error}</p>}{data && loadedUser === userId && <><p>可用 {data.available} · 預扣 {data.reserved}</p><form className="space-y-4 rounded-xl border p-5" onSubmit={e => { e.preventDefault(); void adjust(); }}><label className="block">加退點數量<input className={field} type="number" required min={-1000000} max={1000000} step={1} value={amount} onChange={e => setAmount(e.target.value)} /></label><label className="block">原因<textarea className={field} required minLength={5} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label><button className="min-h-11 rounded-xl bg-black px-4 text-white disabled:opacity-50" disabled={busy || !Number.isSafeInteger(Number(amount)) || Number(amount) === 0}>確認加退點</button></form><ul className="space-y-3">{data.ledger.map(r => <li className="break-words rounded-xl border p-4" key={r.id}><p>{r.reason}</p><p>可用 {r.availableDelta} · 預扣 {r.reservedDelta} · {new Date(r.createdAt).toLocaleString("zh-TW")}</p><p className="text-xs">{r.id}</p></li>)}</ul>{data.nextCursor && <button className="min-h-11 underline" disabled={busy} onClick={() => void load(data.nextCursor!)}>較早紀錄</button>}</>}</div>;
+}
