@@ -19,7 +19,9 @@ export const storedFindingSchema = z.object({ result: findingSchema.nullable(), 
 export type TaskFinding = z.infer<typeof storedFindingSchema>;
 
 // shortcut: Existing AI tasks have no typed workspace; infer these six families from their titles until generation returns a typed kind.
-export function workspaceKind(action: { title: string; recordingMode?: string | null; taskWorkspace?: unknown }): WorkspaceKind | null {
+export function workspaceKind(action: { clientKey?: string; title: string; recordingMode?: string | null; taskWorkspace?: unknown }): WorkspaceKind | null {
+  if (action.clientKey?.startsWith("nova_v2_")) return null;
+  if (action.taskWorkspace && typeof action.taskWorkspace === "object" && "version" in action.taskWorkspace && action.taskWorkspace.version === 2) return null;
   const stored = workspaceSchema.safeParse(action.taskWorkspace);
   if (stored.success) return stored.data.kind;
   if (action.recordingMode === "interview") return "interview";

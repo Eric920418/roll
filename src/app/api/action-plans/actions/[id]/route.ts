@@ -39,8 +39,9 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     if (!parsed.success) {
       return fail(parsed.error.issues.map((issue) => `${issue.path.join(".") || "欄位"}：${issue.message}`).join("；"), 400);
     }
-    const found = await prisma.actionItem.findFirst({ where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } }, select: { actionPlanId: true } });
+    const found = await prisma.actionItem.findFirst({ where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } }, select: { actionPlanId: true, clientKey: true } });
     if (!found) return fail("找不到 Action。", 404);
+    if (found.clientKey?.startsWith("nova_v2_")) return fail("請使用新版今日任務工作區 / Use the new task workspace", 409);
     await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
     await lockActivePlan(tx, session.uid, found.actionPlanId, revision);
@@ -253,8 +254,9 @@ export async function DELETE(req: NextRequest, { params }: Context) {
     if (!(await requirePlan("pro"))) return fail("此功能需 Pro 以上方案", 403);
     const { id } = await params;
     const { revision } = planRevisionSchema.parse(await req.json());
-    const found = await prisma.actionItem.findFirst({ where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } }, select: { actionPlanId: true } });
+    const found = await prisma.actionItem.findFirst({ where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } }, select: { actionPlanId: true, clientKey: true } });
     if (!found) return fail("找不到 Action。", 404);
+    if (found.clientKey?.startsWith("nova_v2_")) return fail("請使用新版今日任務工作區 / Use the new task workspace", 409);
     await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
     await lockActivePlan(tx, session.uid, found.actionPlanId, revision);

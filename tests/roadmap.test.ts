@@ -123,6 +123,7 @@ test("Activating a new roadmap preserves saved questionnaires and leaves complet
     actionItem: { createMany: async () => {} }, actionDependency: { createMany: async () => {} }, $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(db),
   };
   const service = load<typeof Service>("src/lib/roadmap/service.ts", {
+    "@/lib/action-plan/flow/persist": { insertFlow: async () => {} },
     "@/lib/prisma": { prisma: db }, "@/lib/action-plan/service": { PlanWriteError: WriteError, lockActivePlan: async () => {}, getActiveActionPlan: async () => null, actionRecord: () => ({}) },
     "@/lib/ai/allowance": {}, "@/lib/rate-limit": {}, "@/lib/check-ins/ai": {}, "./ai": {}, "./schema": require("../src/lib/roadmap/schema"), "./corrections": require("../src/lib/roadmap/corrections"),
   });

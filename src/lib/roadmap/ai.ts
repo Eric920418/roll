@@ -1,4 +1,5 @@
 import "server-only";
+import { flowActions, flowMilestones } from "@/lib/action-plan/flow/catalog";
 import Anthropic from "@anthropic-ai/sdk";
 import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { z } from "zod";
@@ -34,6 +35,7 @@ export async function generateRoadmap(input: { goal: string; startsAt: string; d
     if (!accepted) throw new Error("AI 里程碑格式不合格，輸入已保留，請重試。 / Invalid AI roadmap. Your input is saved; retry.");
     metadata = accepted;
   }
+  if (!milestoneId) return roadmapDraftSchema.parse({ goal, startsAt, deadline, ...metadata, workflowVersion: 2, milestones: flowMilestones(startsAt, deadline, locale), actions: flowActions(metadata.diagnosis, locale), mode: "new", milestoneId: null });
   const milestone = milestoneId ? current!.roadmap!.milestones.find(m => m.id === milestoneId)! : metadata.milestones[0];
   const actions = await generateActionCandidates({ locale, profile: account.profile, quiz: null, diagnosis: metadata.diagnosis, candidateCount: 5, existingTitles: milestoneId ? current?.actions.map(a => a.title) : [], allowCritical: !milestoneId || !current?.actions.some(a => a.impact.label === "Critical"), timeoutMs: 35_000, answers: current?.diagnosticAnswers || [], messages: [{ role: "user", content: JSON.stringify({ goal, deadline, milestone, personalization: current?.personalization, allMilestones: metadata.milestones, assumptions: metadata.assumptions, priorOutcomes: current?.roadmap?.milestones.filter(m => m.achievedAt), priorTasks: current?.actions.map(a => ({ title: a.title, done: a.done })), instruction: "Propose exactly five distinct tasks for this milestone only. Respect the scope of EVERY milestone, not just the current one. Do not duplicate work reserved for later milestones. Customer-discovery stages focus on interviews and ICP evidence; if a later milestone tests paid pilots, reserve paid pilots for that later stage. Do not repeat prior completed tasks or invent verified outcomes. Do not expose internal schema keys or bottleneck codes in user-facing text." }) }] });
   return roadmapDraftSchema.parse({ goal, startsAt, deadline, ...metadata, actions, mode: milestoneId ? "next" : "new", milestoneId: milestoneId || null });

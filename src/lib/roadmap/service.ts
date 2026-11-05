@@ -1,3 +1,4 @@
+import { isFlowAction } from "@/lib/action-plan/flow/catalog";
 import { commercialTask } from "@/lib/validation/schema";
 import { assertCommercialPrerequisites } from "@/lib/validation/service";
 import { logSecurityError } from "@/lib/security/log";
@@ -107,9 +108,11 @@ export async function patchRoadmap(userId: string, input: z.infer<typeof roadmap
     if (!claimed.count) throw conflict();
     if (input.action === "edit") return;
     const draft = input.draft;
+    if (draft.mode === "new" && Date.parse(draft.deadline) - Date.parse(draft.startsAt) < 35 * 86400000) throw new PlanWriteError("16 步含連續四週開發，目標期限至少須留 35 天 / Allow at least 35 days for the sixteen-step plan", 400);
     const active = await tx.actionPlan.findFirst({ where: { userId, activeKey: userId, archivedAt: null }, include: { milestones: true, actions: true } });
     if ((active?.id || null) !== workspace.basePlanId || (active?.revision ?? null) !== workspace.basePlanRevision) throw new PlanWriteError("目前計畫已變更，請重新生成草稿再確認；編輯已保留。 / Current plan changed. Regenerate before activation; your edits are preserved.");
     if (active) await lockActivePlan(tx, userId, active.id, workspace.basePlanRevision!);
+    if (draft.mode === "next" && active?.actions.some(isFlowAction)) throw new PlanWriteError("新版 16 步已完整建立，不能插入額外階段 / All sixteen steps already exist", 409);
     if (draft.mode === "next") {
       if (!active?.goal || active.goal !== draft.goal || active.goalStartsAt?.toISOString().slice(0, 10) !== draft.startsAt || active.goalDeadline?.toISOString().slice(0, 10) !== draft.deadline) throw new PlanWriteError("下一階段不可更換目標或期限 / The next stage cannot change the goal or horizon", 400);
       const stage = active.milestones.find(m => m.id === draft.milestoneId);
@@ -124,8 +127,8 @@ export async function patchRoadmap(userId: string, input: z.infer<typeof roadmap
       if (draft.deadline <= today()) throw new PlanWriteError("目標期限已過，請調整日期 / The deadline has passed; adjust the dates", 400);
       if (active && process.env.MEMBER_NETWORK_ENABLED === "true") await tx.investorWatch.updateMany({ where: { startupId: userId, scopeKey: `plan:${active.id}`, status: { notIn: ["disabled", "merged"] } }, data: { status: "paused" } });
       if (active) await tx.actionPlan.update({ where: { id: active.id }, data: { activeKey: null, archivedAt: new Date() } });
-      const plan = await tx.actionPlan.create({ data: { userId, locale: input.locale, requestId: input.requestId, activeKey: userId, diagnosticAnswers: active?.diagnosticAnswers ?? Prisma.DbNull, personalization: active?.personalization ?? Prisma.DbNull, ...draft.diagnosis, goal: draft.goal, goalStartsAt: new Date(draft.startsAt), goalDeadline: new Date(draft.deadline), goalAssumptions: asJson(draft.assumptions), milestones: { create: draft.milestones.map((m, position) => ({ ...m, position, targetDate: new Date(m.targetDate) })) } }, include: { milestones: { orderBy: { position: "asc" } } } });
-      await insertActions(tx, plan.id, plan.milestones[0].id, draft, 0);
+      const plan = await tx.actionPlan.create({ data: { userId, locale: input.locale, requestId: input.requestId, activeKey: userId, diagnosticAnswers: active?.diagnosticAnswers ?? Prisma.DbNull, personalization: active?.personalization ?? Prisma.DbNull, ...draft.diagnosis, goal: draft.goal, goalStartsAt: new Date(draft.startsAt), goalDeadline: new Date(draft.deadline), goalAssumptions: asJson(draft.assumptions), milestones: undefined }, include: { milestones: { orderBy: { position: "asc" } } } });
+      await (await import("@/lib/action-plan/flow/persist")).insertFlow(tx, plan.id, input.locale, draft.diagnosis, draft.startsAt, draft.deadline);
     }
     await tx.roadmapWorkspace.update({ where: { userId }, data: { draft: Prisma.DbNull } });
   });
@@ -136,6 +139,7 @@ export async function confirmMilestone(userId: string, id: string, input: z.infe
   if (!found) throw new PlanWriteError("找不到里程碑 / Milestone not found", 404);
   await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
+    if (await tx.actionItem.findFirst({ where: { actionPlanId: found.actionPlanId, clientKey: { startsWith: "nova_v2_" } } })) throw new PlanWriteError("新版里程碑由步驟完成自動確認 / New milestone outcomes follow verified step completion", 409);
     await lockActivePlan(tx, userId, found.actionPlanId, input.revision);
     const stages = await tx.planMilestone.findMany({ where: { actionPlanId: found.actionPlanId }, include: { actions: true }, orderBy: { position: "asc" } });
     const stage = stages.find(m => m.id === id)!;
@@ -199,6 +203,7 @@ async function patchCorrection(userId: string, input: Extract<z.infer<typeof roa
     if (input.action === "editCorrection") return;
     const record = await tx.actionPlan.findFirst({ where: { id: workspace.basePlanId || "", userId, activeKey: userId, archivedAt: null }, include: includes });
     if (!record || record.revision !== workspace.basePlanRevision) throw conflict();
+    if (record.actions.some(isFlowAction)) throw new PlanWriteError("新版使用固定 16 步；請在目前工作區修改成果 / Edit outcomes in the current sixteen-step workspace", 409);
     try { validateCorrection(input.correction, serializePlan(record)); } catch (cause) { throw new PlanWriteError(cause instanceof Error ? cause.message : "無效修正 / Invalid correction", 400); }
     await lockActivePlan(tx, userId, record.id, workspace.basePlanRevision!);
     // Validate the complete proposed graph before applying any edge changes.

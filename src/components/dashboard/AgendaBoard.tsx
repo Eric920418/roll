@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import PlanRefresh, { notifyPlanChanged } from "./PlanRefresh";
+import FlowWorkspace from "./flow/Workspace";
 import RoadmapPanel from "./RoadmapPanel";
 import ActionPlanManager, { ActionDiagnosis } from "@/components/dashboard/ActionPlanManager";
 import { useLocale } from "next-intl";
@@ -31,7 +32,7 @@ export default function AgendaBoard({ userId, actionPlan, guided = false }: Prop
       <PlanRefresh userId={userId} />
       {currentPlan?.personalization?.weeklyTime === "under3" && <p className="rounded-xl border border-dark/15 bg-white p-5 text-sm">{zh ? "本週只聚焦目前這一步，後續任務依序安排。" : "Focus on the current step this week. Later tasks follow in order."}</p>}
       {!currentPlan && <><ActionPlanManager guided={guided} initialPlan={null} onChanged={acceptPlan} /><RoadmapPanel userId={userId} initialPlan={null} onChanged={acceptPlan} /></>}
-      {currentPlan && <><ActionDiagnosis plan={currentPlan} /><RoadmapPanel userId={userId} initialPlan={currentPlan} onChanged={acceptPlan} /></>}
+      {currentPlan && <><ActionDiagnosis plan={currentPlan} />{currentPlan.workflowVersion === 2 ? <FlowWorkspace key={currentPlan.id} userId={userId} plan={currentPlan} onChanged={acceptPlan} /> : <RoadmapPanel userId={userId} initialPlan={currentPlan} onChanged={acceptPlan} />}</>}
 
     </div>
   );

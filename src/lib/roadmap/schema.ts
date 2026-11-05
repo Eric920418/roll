@@ -48,11 +48,13 @@ export const milestoneSchema = z.object({
   acceptanceCriteria: z.string().trim().min(3).max(1000), targetDate: dateSchema,
 }).strict();
 export const roadmapDraftSchema = z.object({
+  workflowVersion: z.literal(2).optional(),
   goal: z.string().trim().min(3).max(2000), startsAt: dateSchema, deadline: dateSchema,
   assumptions: z.array(z.string().trim().min(1).max(1000)).max(12), diagnosis: diagnosisSchema,
-  milestones: z.array(milestoneSchema).min(3).max(5), actions: generatedPlanSchema.shape.actions.length(5),
+  milestones: z.array(milestoneSchema).min(3).max(5), actions: generatedPlanSchema.shape.actions.min(5).max(16),
   mode: z.enum(["new", "next"]), milestoneId: z.string().nullable(),
 }).strict().superRefine((v, ctx) => {
+  if (v.actions.length !== (v.workflowVersion === 2 ? 16 : 5) || (v.workflowVersion === 2 && (v.milestones.length !== 5 || v.mode !== "new"))) ctx.addIssue({ code: "custom", message: "新版須完整 5 個里程碑與 16 步 / New workflows require five milestones and sixteen steps" });
   if (v.deadline <= v.startsAt) ctx.addIssue({ code: "custom", message: "目標期限必須在起始日之後 / Deadline must follow the start date" });
   let previous = v.startsAt;
   for (const m of v.milestones) {

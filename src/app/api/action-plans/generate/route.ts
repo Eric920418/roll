@@ -1,4 +1,4 @@
-import { personalizedActions } from "@/lib/action-plan/personalization";
+import { flowActions } from "@/lib/action-plan/flow/catalog";
 import { browserMutationGuard } from "@/lib/security/http";
 import { z } from "zod";
 import { type NextRequest } from "next/server";
@@ -9,8 +9,6 @@ import { getCurrentAccount } from "@/lib/auth/account";
 import { DISCOVERY_POLICY, discoveryTrialActive } from "@/lib/discovery/policy";
 import { confirmDiscoverySetup, discoverySetupResult } from "@/lib/discovery/setup";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
-import { getLatestQuizResult } from "@/lib/quiz/result";
-import { generateActionCandidates } from "@/lib/action-plan/ai";
 import { generateBodySchema } from "@/lib/action-plan/schemas";
 import { assertGenerationAllowance, getActiveActionPlan, getPlanByRequestId, persistGeneratedPlan, PlanWriteError } from "@/lib/action-plan/service";
 
@@ -40,22 +38,10 @@ export async function POST(req: NextRequest) {
     if (!rate.ok) return fail(`已達每日 ${DAILY_LIMIT} 次生成請求保護上限，請稍後再試。 / Daily generation request limit reached (${DAILY_LIMIT} attempts).`, 429);
 
     const basePlan = await getActiveActionPlan(session.uid);
-    const quiz = await getLatestQuizResult(session.uid);
-    const interviewEvidence = account.trialPolicy === "interviews-3-v1"
-      ? await (await import("@/lib/discovery/service")).getDiscoverySnapshot(session.uid).then(snapshot => ({ companies: snapshot.total, report: snapshot.report, preview: snapshot.preview }))
-      : undefined;
-    const actions = parsed.data.personalization ? personalizedActions(parsed.data.personalization, parsed.data.locale, parsed.data.diagnosis) : await generateActionCandidates({
-      locale: parsed.data.locale,
-      interviewEvidence,
-      profile: account.profile,
-      quiz,
-      messages: parsed.data.messages,
-      answers: parsed.data.answers,
-      diagnosis: parsed.data.diagnosis,
-      candidateCount: parsed.data.candidateCount,
-    });
+    const actions = flowActions(parsed.data.diagnosis, parsed.data.locale);
     const plan = await persistGeneratedPlan({
       userId: session.uid,
+      workflowVersion: 2,
       locale: parsed.data.locale,
       requestId: parsed.data.requestId,
       diagnosis: parsed.data.diagnosis,

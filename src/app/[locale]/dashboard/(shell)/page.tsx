@@ -48,6 +48,12 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
     action: "", outcome: "Your tasks are complete. Confirm the actual outcomes to move forward.", next: "The previous stage is confirmed. Plan your next stage now.", complete: "Your current plan is complete. Review your evidence and results.", blocked: "Review the action map to see which prerequisites need attention.",
     setup: "Choose five answers. NOVA will identify one clear action for you.", conversation: "Start with potential customers. Capture their needs and payment signals.", prospects: "Your starting conversations are complete. Find companies worth contacting next.", starter: "Your starting direction is ready. Begin with an action that fits your current situation.", upgrade: "Review your available features and plan. Your saved records are retained.",
   };
+  const completedFlow = plan?.workflowVersion === 2 && next.kind === "complete";
+  if (completedFlow) labels.complete = zh ? "查看與分享驗證報告" : "View and share validation report";
+  if (plan?.workflowVersion === 2 && next.kind === "blocked") {
+    labels.blocked = zh ? "補正付款證據" : "Review payment evidence";
+    descriptions.blocked = zh ? "先前證據已失效，完成紀錄仍保留。補正後即可繼續或分享報告。" : "Earlier evidence needs attention. Completion history is retained; correct the proof to continue or share.";
+  }
   const progress = plan ? actionProgress(plan.actions) : next.kind === "conversation" || next.kind === "prospects" ? Math.min(100, Math.round((discovery?.total || 0) / (discovery?.target || 3) * 100)) : null;
   return <div className="space-y-8 font-[family-name:var(--font-body)]">
     <PlanRefresh userId={account.id} />
@@ -63,7 +69,7 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
     </section>
     <section aria-labelledby="home-task-title" className="rounded-2xl bg-black p-6 text-white sm:p-9">
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-semibold tracking-[0.18em] text-white/60">{zh ? "今日任務 · 目前這一步" : "TODAY'S TASK · YOUR CURRENT STEP"}</p>{milestone?.targetDate && <p className="text-sm text-white/70">{zh ? "截止" : "Due"} {milestone.targetDate}</p>}</div>
-      <h2 id="home-task-title" className="mt-5 max-w-4xl break-words text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">{next.action?.title || labels[next.kind]}</h2>
+      <h2 id="home-task-title" className="mt-5 max-w-4xl break-words text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">{next.action?.title || (completedFlow ? (zh ? "已完成驗證" : "Validation complete") : labels[next.kind])}</h2>
       <div className="mt-5 max-w-3xl border-t border-white/20 pt-5"><p className="text-xs font-semibold text-white/60">{next.action ? (zh ? "完成標準" : "COMPLETION CRITERIA") : (zh ? "接下來" : "WHAT'S NEXT")}</p><p className="mt-2 whitespace-pre-wrap text-base leading-7 text-white/85">{next.action?.expectedOutcome.text || descriptions[next.kind]}</p>{next.action?.metric?.target != null && <p className="mt-3 text-sm tabular-nums">{zh ? "目前進度" : "Progress"} · {next.action.metric.current ?? 0} / {next.action.metric.target}</p>}{next.kind === "conversation" && <p className="mt-3 text-sm">{zh ? "已記錄" : "Recorded"} {discovery?.total} / {discovery?.target} {zh ? "家公司的有效對話" : "valid company conversations"}</p>}</div>
       <Link href={pathForLocale(next.href, l)} className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">{labels[next.kind]} →</Link>
     </section>

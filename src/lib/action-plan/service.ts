@@ -16,6 +16,8 @@ const actionInclude = {
 } as const;
 
 export type ActionPlanDto = {
+  workflowVersion?: 2;
+  workflowNeedsReview?: boolean;
   personalization?: Personalization | null;
   sourceJourneyId?: string | null;
   diagnosticAnswers?: Array<{ question: string; answer: string }> | null;
@@ -44,6 +46,7 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
   const blocks = new Map(milestones.filter(m => m.status === "blocked").map(m => [m.id, m.title]));
   const actions = rankActions(plan.actions, blocks, new Map(milestones.map(m => [m.id, m.position])));
   return {
+    ...(plan.actions.some(a => a.clientKey.startsWith("nova_v2_")) ? { workflowVersion: 2 as const } : {}),
     sourceJourneyId: plan.sourceJourneyId,
     personalization: personalizationSchema.safeParse(plan.personalization).data ?? null,
     diagnosticAnswers: generateBodySchema.shape.answers.safeParse(plan.diagnosticAnswers).data ?? null,
@@ -71,7 +74,16 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
 
 export async function getActiveActionPlan(userId: string): Promise<ActionPlanDto | null> {
   const plan = await findActivePlanRecord(userId);
-  return plan ? serializePlan(plan) : null;
+  if (!plan) return null;
+  const result = serializePlan(plan);
+  if (result.workflowVersion === 2) {
+    const { flowContext } = await import("./flow/service"), { flowView } = await import("./flow/evaluate");
+    const steps = flowView(await flowContext(plan)), current = steps.find(step => !step.done);
+    result.workflowNeedsReview = steps.some(step => step.done && !step.ready);
+    const action = result.actions.find(action => action.id === current?.actionId);
+    if (action && current) action.metric = { target: current.target, current: current.current, unit: plan.locale === "zh-tw" ? "筆有效成果" : "verified records" };
+  }
+  return result;
 }
 
 export async function getPlanByRequestId(userId: string, requestId: string): Promise<ActionPlanDto | null> {
@@ -83,7 +95,7 @@ export async function getPlanByRequestId(userId: string, requestId: string): Pro
 }
 
 export async function assertGenerationAllowance(userId: string, tx: Pick<Prisma.TransactionClient, "actionPlan"> = prisma as unknown as Prisma.TransactionClient) {
-  const count = await tx.actionPlan.count({ where: { userId, goal: null, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } });
+  const count = await tx.actionPlan.count({ where: { userId, OR: [{ goal: null }, { actions: { some: { clientKey: { startsWith: "nova_v2_" } } } }], createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } });
   if (count >= 3) throw new PlanWriteError("已達最近 24 小時 3 次成功生成上限。 / Maximum 3 successful action plans per 24 hours.", 429);
 }
 
@@ -91,6 +103,7 @@ export async function persistGeneratedPlan(input: {
   userId: string;
   locale: string;
   requestId: string;
+  workflowVersion?: 2;
   diagnosis: Diagnosis;
   actions: GeneratedAction[];
   answers: Array<{ question: string; answer: string }>;
@@ -123,6 +136,7 @@ export async function persistGeneratedPlan(input: {
         where: { userId: input.userId, activeKey: input.userId, archivedAt: null },
         data: { activeKey: null, archivedAt: new Date(), revision: { increment: 1 } },
       });
+      const dates = input.workflowVersion === 2 ? await import("@/lib/roadmap/schema").then(m => ({ startsAt: m.today(), deadline: m.addMonths(m.today(), 12) })) : null;
       const plan = await tx.actionPlan.create({
         data: {
           userId: input.userId,
@@ -132,12 +146,17 @@ export async function persistGeneratedPlan(input: {
           ...(input.personalization ? { personalization: personalizationSchema.parse(input.personalization) } : {}),
           requestId: input.requestId,
           activeKey: input.userId,
-          actions: {
+          ...(dates ? { goal: input.answers.at(-1)?.answer || (input.locale === "zh-tw" ? "建立穩定付費客戶" : "Build a steady paying customer base"), goalStartsAt: new Date(dates.startsAt), goalDeadline: new Date(dates.deadline) } : {}),
+          actions: dates ? undefined : {
             create: input.actions.map((action, index) => ({ ...actionRecord(action, actionIds.get(action.clientKey)!), ...(input.personalization && personalizationRoute(input.personalization) === "interviews" && index === 0 ? { recordingMode: "interview", metricTarget: 3, metricUnit: input.locale === "zh-tw" ? "間公司" : "companies", metricCurrent: 0 } : {}) })),
           },
         },
         select: { id: true },
       });
+      if (dates) {
+        await (await import("./flow/persist")).insertFlow(tx, plan.id, input.locale, input.diagnosis, dates.startsAt, dates.deadline);
+        return plan.id;
+      }
       const dependencies = input.actions.flatMap((action) =>
         action.dependsOnKeys.map((dependencyKey) => ({
           actionId: actionIds.get(action.clientKey)!,

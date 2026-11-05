@@ -12,6 +12,7 @@ export const proofSchema = z.object({
   id: z.string().uuid(), kind: z.enum(["signed", "paid"]), amount: z.string().regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/).refine(v => Number(v) > 0, "Amount must be positive / 金額須大於零"),
   currency: z.string().regex(/^[A-Z]{3}$/), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, "Invalid date"),
   pathname: z.string().min(1).max(1000), filename: z.string().min(1).max(200), confirmed: z.literal(true),
+  review: z.object({ status: z.enum(["pending", "approved", "rejected"]), note: z.string().max(2000).optional(), by: z.string().max(200).optional(), at: z.iso.datetime().optional(), history: z.array(z.object({ status: z.enum(["approved", "rejected"]), note: z.string().max(2000), by: z.string().max(200), at: z.iso.datetime() })).max(50).optional() }).strict().optional(),
   revokedAt: z.iso.datetime().optional(), revokeReason: z.string().max(2000).optional(),
 }).strict();
 export const salesEventSchema = z.object({
@@ -33,13 +34,13 @@ export const salesMutationSchema = z.object({
   prospectOrderId: z.string().uuid().optional(), prospectCompanyId: z.string().uuid().optional(),
   status: z.enum(salesStatuses), quote: z.string().trim().max(4000), reason: z.string().trim().max(4000),
   amount: salesEventSchema.shape.amount, currency: salesEventSchema.shape.currency,
-  proof: proofSchema.omit({ revokedAt: true, revokeReason: true }).optional(),
+  proof: proofSchema.omit({ revokedAt: true, revokeReason: true, review: true }).optional(),
   revoke: z.object({ id: z.string().uuid(), reason: z.string().trim().min(1).max(2000) }).optional(),
   scripts: z.record(z.string(), z.string().max(8000)).optional(),
 }).strict().superRefine((value, ctx) => { if (Boolean(value.prospectOrderId) !== Boolean(value.prospectCompanyId)) ctx.addIssue({ code: "custom", path: ["prospectOrderId"], message: "請選擇完整名單來源 / Select a complete prospect source" }); if (value.proof && value.proof.kind !== value.status) ctx.addIssue({ code: "custom", path: ["proof", "kind"], message: "證據類型須與付款／簽約狀態一致 / Proof kind must match payment or signing status" }); });
 export type SalesMutation = z.infer<typeof salesMutationSchema>;
 export function sameScope(a: Scope, b: Scope) { return a.planId === b.planId && a.journeyId === b.journeyId; }
-export function validProofs(record: SalesRecord) { return record.proofs.filter(p => !p.revokedAt); }
+export function validProofs(record: SalesRecord) { return record.proofs.filter(p => !p.revokedAt && (!p.review || p.review.status === "approved")); }
 export function commitmentSummary(records: SalesRecord[]) {
   const signed = new Set<string>(), paid = new Set<string>();
   const amounts: Record<string, { signed: number; paid: number }> = {};
@@ -50,7 +51,8 @@ export function commitmentSummary(records: SalesRecord[]) {
   }
   return { total: new Set([...signed, ...paid]).size, signed: signed.size, paid: paid.size, amounts };
 }
-export function commercialTask(action: { title: string; taskWorkspace?: unknown; commercialValidation?: unknown }) {
+export function commercialTask(action: { clientKey?: string; title: string; taskWorkspace?: unknown; commercialValidation?: unknown }) {
+  if (action.clientKey?.startsWith("nova_v2_")) return false;
   return !!action.commercialValidation || workspaceKind(action) === "pilot" || /paying customer|paid commitment|付費試營運|付費客戶|付費承諾|收款|付費合約/i.test(action.title);
 }
 export function commercialTarget(action: { metricTarget?: number | null; title: string; expectedOutcome?: string }) {

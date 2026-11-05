@@ -50,6 +50,7 @@ export async function saveCheckIn(userId: string, input: Extract<CheckInRequest,
         const task = plan.actions.find(a => a.id === m.actionId);
         if (!task || (m.current != null && !task.metricUnit)) throw new PlanWriteError("請先確認數量目標與單位 / Confirm the metric target and unit first", 400);
         if (task.metricCurrent === m.current) continue;
+        if (task.clientKey?.startsWith("nova_v2_")) throw new PlanWriteError("新版進度由工作區成果判定，不能手填 / New workflow progress comes from saved evidence", 409);
         if (commercialTask(task)) throw new PlanWriteError("成交數量由私密付款／合約證據計算，不能手填 / Commercial totals come from private payment / contract evidence", 409);
         if (task.recordingMode === "interview") throw new PlanWriteError("訪談數量由實際紀錄計算 / Interview totals come from saved records", 409);
         const unresolved = task.dependencies.some(edge => !dependencySatisfied({ ...edge, dependsOn: { ...edge.dependsOn, metricCurrent: input.metrics.some(change => change.actionId === edge.dependsOn.id) ? input.metrics.find(change => change.actionId === edge.dependsOn.id)!.current : edge.dependsOn.metricCurrent } }));
@@ -126,7 +127,9 @@ export async function patchCheckIn(userId: string, input: Extract<CheckInRequest
       if (row.basePlanRevision !== input.planRevision) throw conflict();
       await lockActivePlan(tx, userId, planId, input.planRevision);
       const record = await tx.actionPlan.findUniqueOrThrow({ where: { id: planId }, include: includes });
-      const plan = serializePlan(record), output = weeklyOutputSchema.safeParse(row.recommendations);
+      const plan = serializePlan(record);
+      if (plan.workflowVersion === 2) throw new PlanWriteError("新版 16 步順序固定，不套用重新排序 / The sixteen-step order is fixed", 409);
+      const output = weeklyOutputSchema.safeParse(row.recommendations);
       if (!output.success || !output.data.nextActionIds.length) throw new PlanWriteError("沒有可套用的建議 / No recommendations to apply", 400);
       const ready = new Set(plan.nextMoves.concat(plan.actions.filter(a => !a.done && !a.dependency.blocked)).map(a => a.id));
       if (output.data.nextActionIds.some(id => !ready.has(id))) throw conflict();

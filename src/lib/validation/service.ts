@@ -103,7 +103,7 @@ export async function saveSalesRecord(userId: string, input: SalesMutation) {
       const existingProofs = await tx.deal.findMany({ where: { userId, validation: { not: Prisma.DbNull } }, select: { validation: true } });
       if (existingProofs.some(d => salesRecordSchema.safeParse(d.validation).data?.proofs.some(p => p.id === input.proof!.id || p.pathname === input.proof!.pathname))) throw new PlanWriteError("此證據已儲存，不可重複計入 / Evidence already saved; cannot count it twice", 409);
       if (proofs.some(p => p.id === input.proof!.id)) throw new PlanWriteError("證據識別碼已使用 / Evidence ID already used", 409);
-      proofs.push(input.proof);
+      proofs.push({ ...input.proof, ...(context.actions.some(a => a.clientKey.startsWith("nova_v2_")) ? { review: { status: "pending" as const } } : {}) });
     }
     if (input.revoke) {
       const proof = proofs.find(p => p.id === input.revoke!.id);

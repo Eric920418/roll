@@ -33,7 +33,7 @@ export default function ActionMap({ userId, plan, event, children }: {
   }, [event, userId, plan.id, zh]);
   return <div className="mt-8 min-w-0">
     {warning && <p role="status" className="mb-3 text-sm text-amber-800">{warning}</p>}
-    <details id="action-map" ref={ref} className="scroll-mt-6 rounded-2xl border border-dark/15 bg-dark/[0.015] p-4 sm:p-5">
+    <details data-next-step="map" id="action-map" ref={ref} className="scroll-mt-6 rounded-2xl border border-dark/15 bg-dark/[0.015] p-4 sm:p-5">
       <summary className="min-h-11 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div><h3 className="text-lg font-semibold">{zh ? "行動地圖" : "Action map"}</h3><p className="mt-1 text-sm text-dark/65">{current ? `${zh ? "目前里程碑" : "Current milestone"} ${current.position + 1} · ${current.title}` : zh ? "目前計畫" : "Current plan"}</p></div>

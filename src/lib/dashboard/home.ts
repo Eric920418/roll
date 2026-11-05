@@ -9,6 +9,7 @@ export function homeNextStep({ plan, isPaying, discovery }: {
 }) {
   const agenda = "/dashboard/agenda";
   if (isPaying && plan) {
+    if (plan.workflowVersion === 2 && plan.workflowNeedsReview) return { kind: "blocked" as const, href: agenda + "#flow-evidence" };
     const action = plan.nextMoves.find(a => !a.done && !a.dependency.blocked)
       ?? plan.actions.find(a => !a.done && !a.dependency.blocked);
     if (action) return { kind: "action" as const, href: `${agenda}#action-${action.id}`, action };
@@ -16,7 +17,7 @@ export function homeNextStep({ plan, isPaying, discovery }: {
     if (milestone?.status === "awaiting" || milestone?.status === "unplanned")
       return { kind: milestone.status === "awaiting" ? "outcome" as const : "next" as const, href: `${agenda}#current-outcome` };
     if (plan.roadmap ? !milestone : plan.actions.length > 0 && plan.actions.every(a => a.done))
-      return { kind: "complete" as const, href: `${agenda}#action-map` };
+      return { kind: "complete" as const, href: plan.workflowVersion === 2 ? agenda + "#flow-report" : `${agenda}#action-map` };
     return { kind: "blocked" as const, href: `${agenda}#action-map` };
   }
   if (discovery && !isPaying && discovery.active) {

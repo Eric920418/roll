@@ -54,7 +54,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
         {t("title")}
       </h1>
 
-      {actionPlan && <NextStepsTour mission={currentTask?.title || (awaitingOutcome ? (locale === "zh-tw" ? "確認本階段成果並繼續" : "Confirm this stage’s outcomes and continue") : (locale === "zh-tw" ? "驗證你的目標客戶" : "Validate your ICP"))} target={currentTask?.metric?.target} reward={Boolean(currentTask)} />}
+      {actionPlan && <NextStepsTour workflowVersion={actionPlan.workflowVersion} mission={currentTask?.title || (awaitingOutcome ? (locale === "zh-tw" ? "確認本階段成果並繼續" : "Confirm this stage’s outcomes and continue") : (locale === "zh-tw" ? "驗證你的目標客戶" : "Validate your ICP"))} target={currentTask?.metric?.target} reward={Boolean(currentTask)} />}
       <GettingStartedHint mode="next" />
       <AgendaBoard guided={guided || !actionPlan} userId={account.id}
         actionPlan={actionPlan}

@@ -25,6 +25,10 @@ test("Home chooses one real ready task; expired access cannot reveal a saved pai
   assert.equal(homeNextStep({ isPaying: true, plan: plan({ actions: [blocked], nextMoves: [blocked] }), discovery: null }).kind, "blocked");
   assert.equal(homeNextStep({ isPaying: true, plan: plan({ actions: [{ ...action, done: true }], nextMoves: [] }), discovery: null }).kind, "complete");
   assert.equal(homeNextStep({ isPaying: true, plan: plan({ actions: [], nextMoves: [] }), discovery: null }).kind, "blocked");
+  const completedFlow = plan({ workflowVersion: 2, actions: [{ ...action, done: true }], nextMoves: [] });
+  assert.equal(homeNextStep({ isPaying: true, plan: completedFlow, discovery: null }).href, "/dashboard/agenda#flow-report");
+  assert.equal(homeNextStep({ isPaying: true, plan: { ...completedFlow, workflowNeedsReview: true }, discovery: null }).href, "/dashboard/agenda#flow-evidence");
+
 });
 
 test("Home preserves trial setup, actual evidence and the paid five-question starting route", () => {

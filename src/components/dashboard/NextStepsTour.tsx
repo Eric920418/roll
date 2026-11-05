@@ -5,11 +5,12 @@ import { memberFetch } from "@/lib/member-fetch";
 import type { tourState } from "@/lib/network/viewer-privacy";
 import { REWARD_RULES } from "@/lib/rewards/policy";
 type State = ReturnType<typeof tourState>;
-const selectors = ["goal", "record", "insights", "followup"];
+
 const button = "min-h-11 rounded-xl border border-dark/20 bg-white px-4 py-3 text-sm font-semibold disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
-export default function NextStepsTour({ mission, target, reward = false }: { mission: string; target?: number | null; reward?: boolean }) {
+export default function NextStepsTour({ mission, target, reward = false, workflowVersion }: { mission: string; target?: number | null; reward?: boolean; workflowVersion?: 2 }) {
   const zh = useLocale() === "zh-tw", dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null), title = useRef<HTMLHeadingElement>(null);
   const [state, setState] = useState<State | null>(null), [step, setStep] = useState(0), [opened, setOpened] = useState(false), [error, setError] = useState(""), [busy, setBusy] = useState(false), [rect, setRect] = useState<DOMRect | null>(null);
+  const selector = ["goal", "record", "insights", workflowVersion === 2 ? "map" : "followup"][step];
   const stateRef = useRef<State | null>(null), loaded = useRef(false), pending = useRef({ key: "", id: "" });
   const load = useCallback(async () => { try { const next = await memberFetch<State>("/api/account/next-steps-tour"); stateRef.current = next; setState(next); setError(""); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } }, []);
   useEffect(() => { void Promise.resolve().then(load); }, [load]);
@@ -22,13 +23,13 @@ export default function NextStepsTour({ mission, target, reward = false }: { mis
   }, [state, open]);
   useEffect(() => {
     if (!opened) return;
-    const target = document.querySelector<HTMLElement>(`[data-next-step="${selectors[step]}"]`);
+    const target = document.querySelector<HTMLElement>(`[data-next-step="${selector}"]`);
     target?.scrollIntoView({ block: "center", behavior: "instant" });
     const update = () => setRect(target?.getBoundingClientRect() || null);
     const timer = setTimeout(() => { update(); title.current?.focus(); }, 0);
     window.addEventListener("resize", update); window.addEventListener("scroll", update, true);
     return () => { clearTimeout(timer); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
-  }, [opened, step]);
+  }, [opened, step, selector]);
   async function persist(nextStep: number, finished: boolean) {
     const current = stateRef.current; if (!current || busy) return;
     const payload = { version: 1, step: nextStep, finished, revision: current.revision }, key = JSON.stringify(payload);
@@ -43,6 +44,11 @@ export default function NextStepsTour({ mission, target, reward = false }: { mis
   }
   const titles = zh ? ["先看目前目標", "完成一個有效行動", "查看進度與 Insights", "先跟進，再找新公司"] : ["Start with your current goal", "Record one meaningful action", "Review progress and Insights", "Follow up, then find new companies"];
   const descriptions = zh ? ["目前最優先的任務會展開。完成後，依既有規則突出下一項。", "訪談與行動證據直接記錄在任務中。同公司多次訪談只計一間。", "有效紀錄推進進度；按完成並通過驗證後，才發分及解鎖下一步。", "已訪談／已聯絡公司在前，新推薦公司在後。名單由你確認後產生，服務未啟用時不會自動搜尋。"] : ["Your current priority is expanded. The next eligible task is highlighted after completion.", "Save interview and action evidence inside the task. Repeat interviews at one company count once.", "Saved evidence moves progress. Points and unlocks require explicit completion and server verification.", "Follow up interviewed or contacted companies first. New recommendations are separate and require your confirmation. Search stays off while unavailable."];
+  if (workflowVersion === 2) {
+    descriptions[1] = zh ? "目前一步使用對話、整理、聯絡或文件模板；完成標準由已儲存成果判定。" : "The current step uses a conversation, organizing, outreach or document template. Saved results determine completion.";
+    titles[3] = zh ? "查看完整行動地圖" : "View the complete action map";
+    descriptions[3] = zh ? "頁底顯示 5 個里程碑、16 步。完成紀錄可檢視，後續步驟依序開啟。" : "The bottom map shows five milestones and sixteen steps. Review completed results and unlock later steps in order.";
+  }
   return <div className="my-4"><button ref={trigger} className="min-h-11 text-sm font-semibold underline" disabled={!state || busy} onClick={() => open(0)}>{zh ? "操作導覽" : "Take a tour"}</button>{error && !opened && <p role="alert" className="whitespace-pre-wrap text-sm text-red-800">{error}<button className={`${button} ml-2`} onClick={() => void load()}>{zh ? "重新載入導覽設定" : "Reload tour settings"}</button></p>}
     {/* Inherit NOVA variables: nova-theme itself adds an opaque background over the spotlight. */}
     <dialog ref={dialog} aria-labelledby="next-steps-tour-title" onCancel={e => { e.preventDefault(); void persist(step, true); }} onClose={() => { setOpened(false); requestAnimationFrame(() => trigger.current?.focus()); }} className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden border-0 bg-transparent p-0 text-dark backdrop:bg-transparent">

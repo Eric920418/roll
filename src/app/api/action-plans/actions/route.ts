@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     await prisma.$transaction(async raw => {
       const tx = raw as unknown as Prisma.TransactionClient;
       await lockActivePlan(tx, session.uid, plan.id, revision);
+      if (await tx.actionItem.findFirst({ where: { actionPlanId: plan.id, clientKey: { startsWith: "nova_v2_" } } })) throw new PlanWriteError("新版固定 16 步，不能新增或更換步驟 / The new workflow has sixteen fixed steps", 409);
       if (await tx.actionItem.count({ where: { actionPlanId: plan.id } }) >= 100) throw new PlanWriteError("每份計畫最多 100 項 / Maximum 100 tasks");
       const stages = await tx.planMilestone.findMany({ where: { actionPlanId: plan.id }, orderBy: { position: "asc" }, include: { _count: { select: { actions: true } } } });
       const stage = stages.find(m => !m.achievedAt);
