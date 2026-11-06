@@ -2,9 +2,11 @@
 
 依使用者最新指示停止麥克風實測。這次本機 Chrome 已取得本次授權並進入收音狀態，但未取得實際辨識文字；真人與現場辨識效果由團隊自行驗收。已修正麥克風授權等待時提前顯示「正在收音」：等待期間顯示啟動與取消，收到瀏覽器 onstart 才顯示收音，20 秒未啟動會停止並顯示 start-timeout。辨識結束但沒有文字時顯示 no-result；原始錯誤碼與訊息、逐字稿保留，取消、錯誤與卸載會解除事件及停止辨識，不自動儲存、完成任務或扣 AI／Token。沿用瀏覽器服務，沒有新增付費轉寫。既有中英文瀏覽器回歸增加等待授權、取消、20 秒啟動逾時、無文字結束與 abort 例外後可重試的檢查，等待畫面更新後判斷狀態；模擬事件僅驗證程式行為，不當作實機結果。
 
-依使用者確認沿用 Vivian.lee@roll-grp.com，以正式電子報 API 提出一封訂閱確認信（HTTP 200），不更動該信箱既有會員與方案，未確認前不寄週報。實際寄送與收件狀態待核對；供應商接受或 Delivered 不等於已確認收件匣。此封尚待原有 15 分鐘排程處理；本次發布依指示先完成，不以實機或真人收件未完成當成通過。
+依使用者確認沿用 Vivian.lee@roll-grp.com，以正式電子報 API 提出一封訂閱確認信（HTTP 200），不更動該信箱既有會員與方案。原有 15 分鐘正式排程於 2026-11-07 03:00:18（Asia/Taipei）完成送交 Resend：accepted、嘗試一次、無錯誤，providerId 為 01a1b23b-afa9-7238-b3df-a4c4b834e5b0。供應商接受不等於確認收件匣，實際收信仍待使用者回覆；此項與已發布功能分開記錄。只移除本次新建且未確認的測試訂閱及其收據，未留下持續週報同意，原有同信箱會員保留。
 
-驗收：隔離 PostgreSQL 完整 pnpm test 520 項通過、零失敗／skip；中英文 390／768／1440px 瀏覽器回歸 71 項、零執行錯誤，10 個隔離 QA 帳號全部清理。TypeScript、build 通過；lint 零錯誤／14 個既有 warnings，修改檔案另通過 focused lint。正式隱藏 QA 帳號及其計畫已刪除，23 位原會員完整欄位（排除 updatedAt）指紋一致；不需要資料遷移，未修改既有會員、方案與計畫。非機密瀏覽器證據位於既有視覺目錄 nova-voice-release/acceptance.json。
+驗收：隔離 PostgreSQL 完整 pnpm test 520 項通過、零失敗／skip；中英文 390／768／1440px 瀏覽器回歸 71 項、零執行錯誤，10 個隔離 QA 帳號全部清理。TypeScript、build 通過；lint 零錯誤／14 個既有 warnings，修改檔案另通過 focused lint。正式隱藏 QA 帳號及其計畫已刪除，23 位原會員完整欄位（排除 updatedAt）指紋一致；不需要資料遷移，未修改既有會員、方案與計畫。非機密瀏覽器證據位於既有視覺目錄 nova-voice-release/result.json 與 production-acceptance.json。
+
+程式 6f56543 已推送 origin/main，Vercel Production READY（roll-j0tfhniz0），正式 rollon.com.tw 別名已指向此部署。正式中英文公開頁 HTTP 200；/en/dashboard → /dashboard → /login 無轉址循環，匿名 /api/evidence 為 401。未再進行麥克風實測。
 
 # NOVA 三份 PDF 整合交付（2026-11-07）
 
