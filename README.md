@@ -17,9 +17,9 @@
 
 驗收已通過：隔離 PostgreSQL 完整測試 520 項、中英文 390／768／1440px 瀏覽器 461 項（新流程 59、既有登入 106、16 步 146、圓桌 91、Token 59），零執行錯誤。涵蓋一次展開地圖、跨會員隔離、舊完成紀錄逐位元保留、版本衝突、失去回應後同請求重送、錯誤與草稿保留、語音拒絕、Email 預設與退訂、假設／來源變動及系列隔離。報告中英文皆實際列印並由 macOS Vision 解碼 QR。lint 零錯誤／14 個既有 warnings；TypeScript 與 build 通過。
 
-正式既有假設 API 實測 HTTP 200／三個假設；23 位原會員完整欄位指紋一致，自建隱藏 QA 已清理。新增痛點與定位協助在隔離資料庫使用真實供應商產出，逐字引用及三個版本通過，操作區與來源未被自動寫入；扣退次另由隔離回歸驗證。未改正式金鑰；本機 shell／舊 .env 曾指向已無餘額的帳務，驗收改用目前專案設定，正式服務實測正常。
+正式既有假設 API 實測 HTTP 200／三個假設；23 位原會員業務欄位（排除 updatedAt）指紋一致，自建隱藏 QA 已清理。新增痛點與定位協助在隔離資料庫使用真實供應商產出，逐字引用及三個版本通過，操作區與來源未被自動寫入；扣退次另由隔離回歸驗證。未改正式金鑰；本機 shell／舊 .env 曾指向已無餘額的帳務，驗收改用目前專案設定，正式服務實測正常。
 
-遷移：`prisma/pdf-completion.sql` 純新增 EvidenceWorkspace、RoundtableMatchRequest、NewsletterSubscriber、NewsletterDelivery 四表及五個圓桌欄位；QR 僅以 pnpm 加入 qrcode／型別。`scripts/apply-pdf-completion.mjs` 同一交易鎖定並依原欄位核對全部既有表完整指紋，禁止破壞式 SQL。已在舊版隔離資料庫證明 75 表資料不變；正式已於同一交易套用，75 張既有表（含 23 位會員）的原欄位完整內容指紋一致，耗時 1.825 秒；指紋 13add09de2231a5e3c29ac1ebe222b2644367d773da156c5aa0d6a3a3bbef57d。main 部署與正式站核對中。回退程式須保留新增表欄與帳務退款排程，暫停新電子報入口，不刪資料。
+遷移：`prisma/pdf-completion.sql` 純新增 EvidenceWorkspace、RoundtableMatchRequest、NewsletterSubscriber、NewsletterDelivery 四表及五個圓桌欄位；QR 僅以 pnpm 加入 qrcode／型別。`scripts/apply-pdf-completion.mjs` 同一交易鎖定並依原欄位核對全部既有表完整指紋，禁止破壞式 SQL。已在舊版隔離資料庫證明 75 表資料不變；正式已於同一交易套用，75 張既有表（含 23 位會員）的原欄位完整內容指紋一致，耗時 1.825 秒；指紋 13add09de2231a5e3c29ac1ebe222b2644367d773da156c5aa0d6a3a3bbef57d。主程式 81518c9 已推送 main，Vercel Production 成功；正式新功能 59 項核對通過（中英文 390／768／1440px），零瀏覽器錯誤。兩筆真實 AI 收據各成功一次、重送不增加扣次，Token 扣次為零，原始工作區與完成狀態保留；匿名與未認證權限、簽章回呼均核對。正式隱藏 QA 已清除，23 位原會員與方案的業務欄位（排除 updatedAt）指紋一致。手機首頁卡片標題另縮至 20px 並平衡換行，避免繁中孤字。回退程式須保留新增表欄與帳務退款排程，暫停新電子報入口，不刪資料。
 
 未實測真人麥克風辨識準確度與真人信箱收件；驗收使用瀏覽器事件及模擬寄送，未向既有會員寄測試信。
 
