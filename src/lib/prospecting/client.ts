@@ -41,7 +41,10 @@ export async function omradeRequest(path: string, body?: unknown, key?: string) 
   const rawId = response.headers.get("x-request-id"), requestId = rawId && /^[\w-]{1,150}$/.test(rawId) ? rawId : undefined;
   if (!response.ok) {
     const codes: Record<number, string> = { 400: "provider_input", 401: "provider_credentials", 402: "free_exhausted", 403: "provider_permissions", 404: "provider_missing", 409: "provider_conflict", 410: "provider_expired", 429: "provider_limit" };
-    await response.body?.cancel(); throw new OmradeError(response.status, codes[response.status] || "provider_unconfirmed", retryAfter, requestId);
+    await response.body?.cancel();
+    const error = new OmradeError(response.status, codes[response.status] || "provider_unconfirmed", retryAfter, requestId);
+    error.message = `Omrade HTTP ${response.status} · ${error.message}`;
+    throw error;
   }
   const reader = response.body?.getReader(); let size = 0; const parts: Uint8Array[] = [];
   if (!reader) throw new OmradeError(503, "provider_invalid_response");

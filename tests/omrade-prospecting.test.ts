@@ -33,6 +33,16 @@ test("Omrade input only accepts one ISO market and 5/10; buyer ICP and UTC perio
   assert.equal(utcPeriod(new Date("2026-11-01T00:00:00Z")), "2026-11");
   assert(audienceDescription({ who: "Food distributors", problem: "Inventory planning" }).includes("Food distributors"));
 });
+test("Legacy discovery search forwards the explicit Token price acknowledgement and keeps the original request identity", async () => {
+  const calls: unknown[] = [];
+  const legacy = loader({ "@/lib/prospecting/service": { createProspectOrder: async (userId: string, value: unknown) => { calls.push({ userId, value }); return { id: "same-order" }; } } })("src/lib/validation/prospects.ts") as typeof import("../src/lib/validation/prospects");
+  const common = { requestId: randomUUID(), revision: 4, country: "TW", description: "Buyer operations teams", prospectCount: 5, locale: "en" };
+  const body = legacy.prospectInputSchema.parse({ ...common, pricingVersion: 1 });
+  await legacy.generateProspects({ id: "member" } as never, body);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ userId: "member", value: { requestId: body.requestId, pricingVersion: 1, revision: 4, country: "TW", description: body.description, count: 5 } }]);
+  assert(!legacy.prospectInputSchema.safeParse({ ...common, pricingVersion: 99 }).success);
+  assert(!legacy.prospectInputSchema.safeParse({ ...common, amount: 0 }).success);
+});
 test("Public email needs official HTML; shared inboxes, possible matches, private URLs and genuine contact pages are distinguished", async () => {
   const raw = providerCompany();
   const checked = await contactModule.verifyCompany(raw, "TW", html);
@@ -76,6 +86,16 @@ test("Omrade v1.1 official contact pages require public access and independently
   assert.equal((await contactModule.verifyCompany(company({ url: "https://127.0.0.1/contact" }), "TW", read)).rejection, "invalid_fields");
   assert.equal((await contactModule.verifyCompany(company({ url: "https://other.example.com/contact" }), "TW", read)).rejection, "no_verified_contact");
   assert.equal((await contactModule.verifyCompany(company(), "TW", async target => ({ url: target, html: '<form><input type="email">Newsletter only</form>' }))).rejection, "no_verified_contact");
+});
+test("Official public Cloudflare-protected email links qualify as a contact page, while hidden, external and malformed markers do not", async () => {
+  const raw = providerCompany(), url = raw.website_url + "/contact";
+  const candidate = { ...raw, contacts: { emails: [], contact_pages: [{ url, kind: "contact_page", access: "public", status: "published", observed_at: new Date().toISOString() }] } };
+  const encode = (value: string) => Buffer.from([103, ...Buffer.from(value).map(byte => byte ^ 103)]).toString("hex");
+  const path = "/cdn-cgi/l/email-protection#" + encode("service@buyer.example.com"), anchor = `<a href="${path}">Email us</a>`;
+  const check = (html: string) => contactModule.verifyCompany(candidate, "TW", async target => ({ url: target, html }));
+  const result = await check(anchor); assert.equal(result.company?.contact.kind, "page"); assert.equal(result.company?.contact.value, url); assert.equal(result.company?.contact.name, null);
+  for (const html of [`<!-- ${anchor} -->`, `<script>${anchor}</script>`, `<a data-href="${path}">Hidden metadata</a>`, `<a href="https://external.example.com${path}">Email</a>`, `<a href="/cdn-cgi/l/email-protection#${encode("not-an-email")}">Email</a>`, '<span data-cfemail="123456">Email</span>', '<a href="/cdn-cgi/l/email-protection#1234567">Email</a>', '<a href="tel:123">Call</a>']) assert.equal((await check(html)).company, undefined);
+  assert((await check('<a href="/cdn-cgi/l/email-protection#1234567">Invalid</a>' + anchor)).company);
 });
 test("HTML reader pins public DNS, rejects private/oversized/non-HTML sources and bounds redirects without credentials", async () => {
   type Reply = { status?: number; location?: string; type?: string; size?: number; html?: string };
@@ -125,6 +145,13 @@ test("Provider timestamps accept RFC3339 offsets and fractional seconds, but rej
   assert(!orderResponse.safeParse({ ...body, created_at: "2026-10-31T05:15:04" }).success);
 });
 
+test("Actual supplier HTTP 500 retains its safe status and trace without exposing the response body", async () => {
+  const client = loader({}, { OMRADE_API_KEY: "private-test-key" }, async () => Response.json({ error: { code: "internal_error", message: "private-test-key SQL details" } }, { status: 500, headers: { "X-Request-ID": "real-supplier-trace" } }))("src/lib/prospecting/client.ts") as typeof import("../src/lib/prospecting/client");
+  await assert.rejects(client.omradeRequest("/icps", { name: "QA", definition: {} }, randomUUID()), (error: unknown) => {
+    const value = error as InstanceType<typeof client.OmradeError>;
+    assert.equal(value.status, 500); assert.equal(value.requestId, "real-supplier-trace"); assert.equal(value.code, "provider_unconfirmed"); assert.match(value.message, /Omrade HTTP 500/); assert(!value.message.includes("private-test-key")); assert(!value.message.includes("SQL")); return true;
+  });
+});
 test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_REWARDS_TEST_DATABASE_URL }, async t => {
   const connectionString = process.env.ROLL_REWARDS_TEST_DATABASE_URL!, url = new URL(connectionString);
   assert(["127.0.0.1", "localhost"].includes(url.hostname) && url.pathname.startsWith("/roll_rewards_qa"));
@@ -222,6 +249,15 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       mode = "limited"; rateAllowed = false; await due(order.id); await worker.runProspecting(); rateAllowed = true; row = await db.prospectingOrder.findUniqueOrThrow({ where: { id: order.id } }); assert.equal(row.status, "reconciling"); assert.equal(row.reservedCount, 5);
       mode = "complete"; await due(order.id); await worker.runProspecting();
       const attempts = calls.filter(c => c.path === "/orders" && c.key === row.orderKey); assert.equal(attempts.length, 2); assert.deepEqual(attempts[0].body, attempts[1].body); assert.equal((await service.getProspectOrder(user.id, order.id)).delivered, 5); await clean(user.id);
+    });
+    await t.test("Scoped live acceptance processes only its owned member and leaves other queued reservations untouched", async () => {
+      const own = await member(), other = await member(); mode = "complete";
+      const first = await service.createProspectOrder(own.id, input()), second = await service.createProspectOrder(other.id, input());
+      await worker.runProspecting(own.id);
+      assert.equal((await service.getProspectOrder(own.id, first.id)).status, "completed");
+      const untouched = await db.prospectingOrder.findUniqueOrThrow({ where: { id: second.id } });
+      assert.equal(untouched.status, "pending"); assert.equal(untouched.providerOrderId, null); assert.equal(untouched.submittedAt, null); assert.deepEqual(await balance(other.id), [130, 20]);
+      await clean(own.id); await clean(other.id);
     });
     await t.test("Version conflicts, monthly reservations and parallel creates cannot exceed ten deliveries", async () => {
       const user = await member(); const first = await service.createProspectOrder(user.id, input()); await worker.runProspecting();

@@ -154,8 +154,8 @@ async function failedAttempt(order: ProspectingOrder, token: string, error: unkn
   });
   if (definite && provider && error.status === 404 && order.audienceParentId) await prisma.prospectingWorkspace.updateMany({ where: { userId: order.userId, omradeIcpId: order.audienceParentId }, data: { omradeIcpId: null, omradeIcpVersion: null, audienceHash: null } });
 }
-export async function runProspecting() {
-  await expireTokens();
+export async function runProspecting(userId?: string) {
+  await expireTokens(userId);
   if (process.env.OMRADE_WORKER_ENABLED === "false" || !process.env.OMRADE_API_KEY) return { enabled: false, processed: 0 };
   const enabled = configured(), deadline = Date.now() + 200000; let processed = 0;
   const seen: string[] = [];
@@ -163,7 +163,7 @@ export async function runProspecting() {
     const claimed = await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291735)::text`;
-      const order = await tx.prospectingOrder.findFirst({ where: { id: { notIn: seen }, status: { in: activeOrderStatuses }, nextAttemptAt: { lte: new Date() }, OR: [{ leaseUntil: null }, { leaseUntil: { lt: new Date() } }], ...(!enabled ? { providerOrderId: { not: null } } : {}) }, orderBy: { nextAttemptAt: "asc" } });
+      const order = await tx.prospectingOrder.findFirst({ where: { ...(userId ? { userId } : {}), id: { notIn: seen }, status: { in: activeOrderStatuses }, nextAttemptAt: { lte: new Date() }, OR: [{ leaseUntil: null }, { leaseUntil: { lt: new Date() } }], ...(!enabled ? { providerOrderId: { not: null } } : {}) }, orderBy: { nextAttemptAt: "asc" } });
       if (!order) return null;
       const token = randomUUID(); await tx.prospectingOrder.update({ where: { id: order.id }, data: { leaseToken: token, leaseUntil: new Date(Date.now() + leaseMs), attempts: { increment: 1 } } });
       return { order, token };

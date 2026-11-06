@@ -1,6 +1,7 @@
 import "server-only";
 import { get } from "node:https";
 import { lookup } from "node:dns";
+import { z } from "zod";
 import { publicWebsite } from "@/lib/validation/prospect-schema";
 import { publicProspectAddress } from "@/lib/validation/prospect-contact";
 import { providerCompanySchema, type PublicProspect } from "./schema";
@@ -35,7 +36,16 @@ export async function readPublicPage(value: string, website: string): Promise<{ 
 }
 const sharedInbox = (email: string) => /^(?:info|hello|contact|sales|support|admin|office|team|service|enquiries|inquiries|business|marketing)(?:[+._-].*)?$/i.test(email.split("@")[0]);
 function text(html: string) {
-  return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ").replace(/&#(?:x([0-9a-f]+)|(\d+));?/gi, (_, hex, dec) => { const n = parseInt(hex || dec, hex ? 16 : 10); return n <= 0x10ffff ? String.fromCodePoint(n) : ""; }).replace(/&commat;/gi, "@").replace(/&period;/gi, ".");
+  return html.replace(/<!--[\s\S]*?-->/g, " ").replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ").replace(/&#(?:x([0-9a-f]+)|(\d+));?/gi, (_, hex, dec) => { const n = parseInt(hex || dec, hex ? 16 : 10); return n <= 0x10ffff ? String.fromCodePoint(n) : ""; }).replace(/&commat;/gi, "@").replace(/&period;/gi, ".");
+}
+function protectedEmail(html: string) {
+  // Keep the official page as the contact route; do not invent or publish a decoded inbox.
+  for (const [, hex] of html.matchAll(/<a\b[^>]*\shref\s*=\s*["']\/cdn-cgi\/l\/email-protection#([a-f0-9]{6,510})["'][^>]*>/gi)) {
+    if (hex.length % 2) continue;
+    const bytes = Buffer.from(hex, "hex"), email = Buffer.from(bytes.subarray(1).map(byte => byte ^ bytes[0])).toString("utf8");
+    if (z.email().max(254).safeParse(email).success) return true;
+  }
+  return false;
 }
 export async function verifyCompany(raw: unknown, country: string, read = readPublicPage): Promise<{ company?: PublicProspect; rejection?: string }> {
   const parsed = providerCompanySchema.safeParse(raw);
@@ -61,6 +71,7 @@ export async function verifyCompany(raw: unknown, country: string, read = readPu
     if (published.some(v => v.toLowerCase() === route.email.toLowerCase())) { contact = { kind: "email", value: route.email, source: page.url, name: !sharedInbox(route.email) && route.name && text(page.html).includes(route.name) ? route.name : null, role: !sharedInbox(route.email) && route.name && route.role && text(page.html).includes(route.name) && text(page.html).includes(route.role) ? route.role : null }; break; }
   }
   const qualifies = (page: { url: string; html: string }) => (contactPath(page.url) || contactPages.has(page.url)) && (
+    protectedEmail(text(page.html)) ||
     /href\s*=\s*["']mailto:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text(page.html)) ||
     /<form\b[^>]*>[\s\S]*?(?:<textarea\b|name\s*=\s*["'](?:message|subject|enquiry|inquiry)["'])[\s\S]*?<\/form>/i.test(text(page.html))
   );
