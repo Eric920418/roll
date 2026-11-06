@@ -13,6 +13,7 @@ type Recognition = {
     start(): void;
     stop(): void;
     abort(): void;
+    onstart: (() => void) | null;
     onresult: ((e: {
         resultIndex: number;
         results: ArrayLike<{
@@ -43,7 +44,8 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
     onRefresh(): void;
     onApply(v: FlowData): void;
 }) {
-    const w = (a: string, b: string) => locale === 'zh-tw' ? a : b, [transcript, setTranscript] = useState(''), [result, setResult] = useState<z.infer<typeof assistResult> | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [listening, setListening] = useState(false), [supported, setSupported] = useState(false);
+    const w = (a: string, b: string) => locale === 'zh-tw' ? a : b, [transcript, setTranscript] = useState(''), [result, setResult] = useState<z.infer<typeof assistResult> | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [listening, setListening] = useState(false), [started, setStarted] = useState(false), [supported, setSupported] = useState(false);
+    const speechTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const recognition = useRef<Recognition | null>(null), text = useRef(transcript), attempt = useRef<{
         key: string;
         id: string;
@@ -61,7 +63,9 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
         }, 0);
         return () => {
             clearTimeout(timer);
+            if (speechTimeout.current) clearTimeout(speechTimeout.current);
             if (recognition.current) {
+                recognition.current.onstart = null;
                 recognition.current.onresult = null;
                 recognition.current.onerror = null;
                 recognition.current.onend = null;
@@ -70,6 +74,17 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
             }
         };
     }, [key]);
+    function finishSpeech(r: Recognition, message?: string) {
+        if (recognition.current !== r) return;
+        recognition.current = null;
+        if (speechTimeout.current) clearTimeout(speechTimeout.current);
+        r.onstart = r.onend = null;
+        r.onresult = r.onerror = null;
+        setListening(false);
+        setStarted(false);
+        if (message) setError(message);
+        try { r.abort(); } catch { /* Recognition may already have ended. */ }
+    }
     function update(value: string) {
         setTranscript(value);
         text.current = value;
@@ -82,7 +97,14 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
     }
     function speech() {
         if (listening) {
-            recognition.current?.stop();
+            const r = recognition.current;
+            if (r) {
+                if (!started) finishSpeech(r);
+                else {
+                    try { r.stop(); }
+                    catch (e) { finishSpeech(r, String(e)); }
+                }
+            }
             return;
         }
         const API = (window as SpeechWindow).SpeechRecognition || (window as SpeechWindow).webkitSpeechRecognition;
@@ -93,28 +115,38 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
         r.lang = locale === 'zh-tw' ? 'zh-TW' : 'en-US';
         r.continuous = true;
         r.interimResults = false;
+        let received = false;
+        r.onstart = () => {
+            if (recognition.current !== r) return;
+            if (speechTimeout.current) clearTimeout(speechTimeout.current);
+            setStarted(true);
+        };
         r.onresult = e => {
+            if (recognition.current !== r) return;
             const chunks = [];
             for (let i = e.resultIndex; i < e.results.length; i++)
                 if (e.results[i].isFinal)
                     chunks.push(e.results[i][0].transcript);
+            if (!chunks.some(chunk => chunk.trim())) return;
+            received = true;
             const next = [text.current, ...chunks].filter(Boolean).join('\n');
             if (next.length > 30000) {
-                r.stop();
-                setError(w('逐字稿已達 30,000 字，已停止收音；既有文字保留。', 'Transcript reached 30,000 characters. Listening stopped; existing text retained.'));
+                finishSpeech(r, w('逐字稿已達 30,000 字，已停止收音；既有文字保留。', 'Transcript reached 30,000 characters. Listening stopped; existing text retained.'));
                 return;
             }
             update(next);
         };
-        r.onerror = e => { setError(w('語音辨識未完成：', 'Speech recognition failed: ') + e.error + (e.message ? ' · ' + e.message : '')); r.onerror = null; r.onend = null; r.abort(); recognition.current = null; setListening(false); };
-        r.onend = () => setListening(false);
+        r.onerror = e => finishSpeech(r, w('語音辨識未完成：', 'Speech recognition failed: ') + e.error + (e.message ? ' · ' + e.message : '') + w('。請檢查麥克風權限與連線後重試，或貼上逐字稿；既有文字保留。', '. Check microphone permissions and connectivity, then retry or paste a transcript. Existing text is retained.'));
+        r.onend = () => finishSpeech(r, received ? undefined : w('辨識已結束，未收到文字（no-result）。請檢查麥克風後重試，或貼上逐字稿；既有文字保留。', 'Recognition ended without text (no-result). Check your microphone and retry, or paste a transcript. Existing text is retained.'));
+        setListening(true);
+        setStarted(false);
+        setError('');
+        speechTimeout.current = setTimeout(() => finishSpeech(r, w('語音辨識啟動逾時（start-timeout）。請允許麥克風權限，回到此分頁後重試，或貼上逐字稿；既有文字保留。', 'Speech recognition did not start (start-timeout). Allow microphone access, return to this tab and retry, or paste a transcript. Existing text is retained.')), 20000);
         try {
             r.start();
-            setListening(true);
-            setError('');
         }
         catch (e) {
-            setError(String(e));
+            finishSpeech(r, String(e));
         }
     }
     async function generate() {
@@ -147,7 +179,7 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
             onBusy(false);
         }
     }
-    return <details className="space-y-4 rounded-xl border p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w('語音／逐字稿與 AI 草稿協助', 'Speech, transcript and AI drafting')}</summary><p className="text-sm">{w('轉寫不會自動儲存或完成任務。語音由瀏覽器提供，可能使用瀏覽器供應商的服務；只有你按下開始才收音。', 'Transcription never saves or completes a task automatically. Speech is provided by your browser and may use its vendor’s service. Listening starts only when you choose it.')}</p><label className="block text-sm">{w('貼上會議紀錄或逐字稿', 'Paste meeting notes or a transcript')}<textarea className="mt-2 min-h-32 w-full rounded-xl border p-3" maxLength={30000} value={transcript} disabled={busy || disabled} onChange={e => update(e.target.value)}/></label><div className="flex flex-wrap gap-3">{supported ? <button type="button" className={button} aria-pressed={listening} disabled={busy || disabled} onClick={speech}>{listening ? w('停止收音', 'Stop listening') : w('開始語音轉寫', 'Start speech transcription')}</button> : <p className="text-sm">{w('此瀏覽器沒有語音辨識，請貼上逐字稿。', 'Speech recognition is unavailable in this browser. Paste a transcript instead.')}</p>}<button type="button" className={button} disabled={disabled || busy || listening} onClick={() => void generate()}>{w('產生未確認草稿 · 使用 1 次 AI 額度', 'Generate unconfirmed draft · uses 1 AI allowance')}</button></div>{listening && <p role="status">{w('正在收音，按「停止收音」結束。', 'Listening. Choose Stop listening to finish.')}</p>}
+    return <details className="space-y-4 rounded-xl border p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w('語音／逐字稿與 AI 草稿協助', 'Speech, transcript and AI drafting')}</summary><p className="text-sm">{w('轉寫不會自動儲存或完成任務。語音由瀏覽器提供，可能使用瀏覽器供應商的服務；只有你按下開始才收音。', 'Transcription never saves or completes a task automatically. Speech is provided by your browser and may use its vendor’s service. Listening starts only when you choose it.')}</p><label className="block text-sm">{w('貼上會議紀錄或逐字稿', 'Paste meeting notes or a transcript')}<textarea className="mt-2 min-h-32 w-full rounded-xl border p-3" maxLength={30000} value={transcript} disabled={busy || disabled} onChange={e => update(e.target.value)}/></label><div className="flex flex-wrap gap-3">{supported ? <button type="button" className={button} aria-pressed={listening} disabled={busy || disabled} onClick={speech}>{listening ? started ? w('停止收音', 'Stop listening') : w('取消啟動', 'Cancel speech start') : w('開始語音轉寫', 'Start speech transcription')}</button> : <p className="text-sm">{w('此瀏覽器沒有語音辨識，請貼上逐字稿。', 'Speech recognition is unavailable in this browser. Paste a transcript instead.')}</p>}<button type="button" className={button} disabled={disabled || busy || listening} onClick={() => void generate()}>{w('產生未確認草稿 · 使用 1 次 AI 額度', 'Generate unconfirmed draft · uses 1 AI allowance')}</button></div>{listening && <p role="status">{started ? w('正在收音，按「停止收音」結束。', 'Listening. Choose Stop listening to finish.') : w('正在啟動語音辨識，請允許麥克風權限；可隨時取消。', 'Starting speech recognition. Allow microphone access; you can cancel at any time.')}</p>}
  {result && <section className="space-y-3 border-t pt-4"><h3 className="font-bold">{w('草稿 · 請核對來源後套用', 'Draft · review sources before applying')}</h3>{result.variants.map((v, i) => <label className="flex min-h-11 items-start gap-3 whitespace-pre-wrap rounded border p-3 text-sm" key={i}>{step === "01-2" && result.draft.kind === "organize" && <input type="radio" className="mt-1 h-5 w-5 shrink-0" name={"positioning:" + userId} checked={result.draft.values.positioning === v} onChange={() => setResult(old => old?.draft.kind === "organize" ? { ...old, draft: { ...old.draft, values: { ...old.draft.values, positioning: v }, confirmed: [] } } : old)}/>}{i + 1}. {v}</label>)}{result.draft.kind === 'document' && result.draft.sections.map(s => <p className="whitespace-pre-wrap text-sm" key={s.id}>{s.body}</p>)}{result.draft.kind === 'outreach' && result.draft.contacts.map(c => <p className="whitespace-pre-wrap text-sm" key={c.id}>{c.company} · {c.name}：{c.offer}</p>)}{result.draft.kind === 'conversation' && result.draft.records.map(r => <p className="whitespace-pre-wrap text-sm" key={r.id}>{r.company} · {r.name}：{r.pain} · {r.solution}</p>)}{result.draft.kind === 'organize' && Object.entries(result.draft.values).map(([k, v]) => <p key={k} className="whitespace-pre-wrap text-sm">{v}</p>)}<details><summary className="min-h-11 cursor-pointer py-3">{w('查看原文佐證', 'Review source quotes')}</summary>{result.sources.map((s, i) => <blockquote className="my-3 border-l pl-3 text-sm" key={i}>{s.quote}</blockquote>)}</details><button type="button" className={button} disabled={disabled || busy} onClick={() => {
                 if (window.confirm(w('將這份未確認草稿帶入操作區？原紀錄不改，仍需核對並按儲存。', 'Apply this unconfirmed draft to the work area? Saved records stay unchanged; review and save explicitly.')))
                     onApply(result.draft);
