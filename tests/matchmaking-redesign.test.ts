@@ -134,7 +134,7 @@ test("Visit recorder cancels background-tab timers and records only a visible tw
     require: (id: string) => {
       if (id === "react") return { useState: (initial: unknown) => [initial === null ? { enabled: true } : initial, () => {}], useCallback: (fn: unknown) => fn, useEffect: (fn: () => void) => effects.push(fn), useRef: (value: unknown) => ({ current: value }) };
       if (id === "@/lib/member-fetch") return { memberFetch: async (path: string) => { requests.push(path); return {}; } };
-      if (id === "./ViewerOverview" || id === "../matchmaking/CardView" || id === "next/link") return {};
+      if (id === "./ReportDraft" || id === "../evidence/Preferences" || id === "./ViewerOverview" || id === "../matchmaking/CardView" || id === "next/link") return {};
       if (id === "next-intl") return { useLocale: () => "en" };
       return native(id.startsWith("@/") ? `../src/${id.slice(2)}` : id);
     },

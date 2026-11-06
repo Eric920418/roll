@@ -21,6 +21,7 @@ export default function FooterClient({
   brand?: "rollon" | "nova";
 }) {
   const t = useTranslations("Footer");
+  const Reveal = brand === "nova" ? "div" : ScrollReveal;
   const locale = useLocale();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,7 +41,7 @@ export default function FooterClient({
         body: JSON.stringify({ name, email, message, company, locale }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || t("error"));
+      if (!res.ok) throw new Error([json.error || t("error"), `HTTP ${res.status}`,json.code,json.requestId].filter(Boolean).join(" · "));
       setStatus("ok");
       setName("");
       setEmail("");
@@ -62,7 +63,7 @@ export default function FooterClient({
       <div className="w-full max-w-5xl mx-auto px-5 md:px-8 flex flex-col pt-12 ">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 md:gap-24">
           {/* Left: Brand Info */}
-          <ScrollReveal direction="left" className="h-full">
+          <Reveal {...(brand === "nova" ? {} : {direction: "left" as const})} className="h-full">
             <div className="h-full flex flex-col justify-between gap-8">
               <div>
                 <div className="mb-6">
@@ -129,10 +130,10 @@ export default function FooterClient({
                 )}
               </div>
             </div>
-          </ScrollReveal>
+          </Reveal>
 
           {/* Right: Contact Form */}
-          <ScrollReveal direction="right">
+          <Reveal {...(brand === "nova" ? {} : {direction: "right" as const})}>
             <div>
               <h3 className="text-xs uppercase tracking-[0.3em] text-white/50 mb-10 font-[family-name:var(--font-heading)]">
                 {t("contactUs")}
@@ -141,33 +142,33 @@ export default function FooterClient({
                 <div className="group relative">
                   <input
                     type="text"
-                    placeholder={t("name")}
+                    placeholder={t("name")} aria-label={t("name")}
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 font-[family-name:var(--font-heading)]"
+                    className="min-h-11 w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 font-[family-name:var(--font-heading)]"
                   />
                   <div className="absolute bottom-0 left-0 h-px w-0 bg-white group-focus-within:w-full transition-all duration-500" />
                 </div>
                 <div className="group relative">
                   <input
                     type="email"
-                    placeholder={t("email")}
+                    placeholder={t("email")} aria-label={t("email")}
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 font-[family-name:var(--font-heading)]"
+                    className="min-h-11 w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 font-[family-name:var(--font-heading)]"
                   />
                   <div className="absolute bottom-0 left-0 h-px w-0 bg-white group-focus-within:w-full transition-all duration-500" />
                 </div>
                 <div className="group relative">
                   <textarea
-                    placeholder={t("message")}
+                    placeholder={t("message")} aria-label={t("message")}
                     rows={3}
                     required
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 resize-none font-[family-name:var(--font-heading)]"
+                    className="min-h-11 w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 resize-none font-[family-name:var(--font-heading)]"
                   />
                   <div className="absolute bottom-0 left-0 h-px w-0 bg-white group-focus-within:w-full transition-all duration-500" />
                 </div>
@@ -210,7 +211,7 @@ export default function FooterClient({
                 )}
               </form>
             </div>
-          </ScrollReveal>
+          </Reveal>
         </div>
 
         {/* Copyright */}

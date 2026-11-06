@@ -18,7 +18,8 @@
     "test:english": "node scripts/qa-english.mjs",
     "test:flow": "node scripts/qa-english.mjs flow",
     "test:roundtables": "node scripts/qa-english.mjs roundtables",
-    "test:tokens": "node scripts/qa-english.mjs tokens"
+    "test:tokens": "node scripts/qa-english.mjs tokens",
+    "test:pdf": "node scripts/qa-english.mjs pdf"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -60,6 +61,7 @@
     "next-mdx-remote": "^6.0.0",
     "ogl": "1.0.11",
     "prisma": "^7.10.0",
+    "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^9.1.0",
@@ -75,6 +77,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/mdx": "^2.0.14",
     "@types/node": "^20.19.43",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.2",

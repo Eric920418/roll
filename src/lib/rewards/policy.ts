@@ -37,3 +37,5 @@ export function nextReminderAt(time: string, timeZone: string, now = new Date())
 export function validQuizAnswers(selected: { id: string; options: unknown[] }[], answers: { questionId: string; choice: number }[]): boolean {
   return selected.length > 0 && answers.length === selected.length && new Set(answers.map(a => a.questionId)).size === selected.length && selected.every(q => answers.some(a => a.questionId === q.id && Number.isInteger(a.choice) && a.choice >= 0 && a.choice < q.options.length));
 }
+
+export function nextWeeklyAt(timeZone:string,now=new Date()){let at=nextReminderAt('09:00',timeZone,now);for(let i=0;i<7;i++){if(new Intl.DateTimeFormat('en-US',{timeZone,weekday:'short'}).format(at)==='Mon')return at;at=nextReminderAt('09:00',timeZone,new Date(at.getTime()+1000));}throw new Error('Cannot schedule weekly email');}

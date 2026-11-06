@@ -2,6 +2,7 @@ import { countryLabel } from "@/lib/member-options";
 import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import EvidencePanel from "@/components/dashboard/evidence/EvidencePanel";
 import IcpPanel from "@/components/dashboard/IcpPanel";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
@@ -40,7 +41,7 @@ export default async function CompanyProfilePage({ params }: Props) {
           <Row label={t("icp.homeMarket")} value={p?.country ? countryLabel(p.country, locale) : na} />
         </dl>
       </section>
-      <IcpPanel userId={account.id} saved={p?.icpDetails || null} legacy={p?.icp || null} version={p?.icpVersion || 0} canUseAi={planAtLeast(getEffectivePlan(account), "pro")} />
+      <div className="min-w-0 space-y-5"><EvidencePanel userId={account.id} /><details className="rounded-xl border p-5"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{l === "zh-tw" ? "既有目標客戶資料與進階整理" : "Saved customer profile and advanced tools"}</summary><IcpPanel userId={account.id} saved={p?.icpDetails || null} legacy={p?.icp || null} version={p?.icpVersion || 0} canUseAi={planAtLeast(getEffectivePlan(account), "pro")} /></details></div>
     </div>
   </div>;
 }

@@ -22,7 +22,7 @@ test("Workflow catalog has exactly five milestones, sixteen ordered steps and fo
   assert.equal(flowDataSchema.safeParse({ kind: "organize", values: {}, confirmed: [], criteria: [], tiers: [], selections: [], confirmations: 5 }).success, false);
 });
 test("New completion rejects bare counts, duplicate people, future dates and owner-forged review", () => {
-  const rows = Array.from({ length: 10 }, (_, i) => ({ ...emptyRecord("r" + i), company: "Company " + i, name: "Person " + i, relationship: "Customer", date: "2026-08-03", pain: "Slow reporting", severity: "high" as const, solution: "Spreadsheets", wtp: "willing" as const }));
+  const rows = Array.from({ length: 10 }, (_, i) => ({ ...emptyRecord("r" + i), company: "Company " + i, name: "Person " + i, fit: "yes" as const, relationship: "Customer", date: "2026-08-03", pain: "Slow reporting", severity: "high" as const, solution: "Spreadsheets", wtp: "willing" as const }));
   const context: FlowContext = { actions: [], proofs: [], locale: "en", now: new Date("2026-09-07") };
   assert(evaluateStep(context, "01-1", { kind: "conversation", market: "TW", records: rows }).ready);
   assert(!evaluateStep(context, "01-1", { kind: "conversation", market: "TW", records: [...rows.slice(0, 9), rows[0]] }).ready);
@@ -96,7 +96,7 @@ test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replie
     await t.test("Empty completion, jumping and stale versions fail; failed writes retain records", async () => {
       await assert.rejects(complete("01-1"), /Save this step/);
       await assert.rejects(flow.mutateFlow(owner.id, { action: "complete", planId: current.plan.id, revision: current.plan.revision!, step: "02-1", requestId: randomUUID() }), /current step/);
-      const rows = Array.from({ length: 10 }, (_, i) => ({ ...emptyRecord("r" + i), company: "Customer " + i, name: "Person " + i, relationship: "Potential customer", date: "2026-08-03", pain: "Manual reporting", severity: "high" as const, solution: "Spreadsheets", wtp: "willing" as const }));
+      const rows = Array.from({ length: 10 }, (_, i) => ({ ...emptyRecord("r" + i), company: "Customer " + i, name: "Person " + i, fit: "yes" as const, relationship: "Potential customer", date: "2026-08-03", pain: "Manual reporting", severity: "high" as const, solution: "Spreadsheets", wtp: "willing" as const }));
       const revision = current.plan.revision!;
       await save("01-1", { kind: "conversation", market: "TW", records: rows });
       await assert.rejects(flow.mutateFlow(owner.id, { action: "save", planId: current.plan.id, revision, step: "01-1", data: { kind: "conversation", market: "", records: [] } }), /changed/);

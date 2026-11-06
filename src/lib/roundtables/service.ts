@@ -1,3 +1,5 @@
+import { evidenceStateSchema } from "@/lib/evidence/schema";
+import { weeklyEvidence } from "@/lib/evidence/service";
 import "server-only";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -7,7 +9,7 @@ import { features, networkAccount } from "@/lib/network/access";
 import { queueNotification } from "@/lib/network/notifications";
 import { flowStep } from "@/lib/action-plan/flow/catalog";
 import { today } from "@/lib/roadmap/schema";
-import { mentorDraftSchema, commitmentSchema, type RoundtableMutation, type mentorReviewSchema } from "./schema";
+import { mentorDraftSchema, commitmentSchema, similarEvidenceStages, type RoundtableMutation, type mentorReviewSchema } from "./schema";
 import type { z } from "zod";
 type DB = Prisma.TransactionClient;
 const json = (value: unknown) => value as Prisma.InputJsonValue;
@@ -22,6 +24,11 @@ async function blocked(tx: DB, a: string | null, b: string) {
   return a && await tx.networkConnection.findFirst({ where: { status: "blocked", OR: [{ senderId: a, recipientId: b }, { senderId: b, recipientId: a }] }, select: { id: true } });
 }
 
+async function stageFit(tx:DB,sessionId:string,userId:string){
+  const members=await tx.roundtableRegistration.findMany({where:{roundtableId:sessionId,status:"confirmed"},select:{userId:true}}),ids=[...new Set([userId,...members.map(r=>r.userId)])];
+  const rows=await tx.evidenceWorkspace.findMany({where:{userId:{in:ids}},select:{userId:true,data:true}});
+  return similarEvidenceStages(ids.map(id=>evidenceStateSchema.parse(rows.find(r=>r.userId===id)?.data||{}).maxStage));
+}
 async function lockMentor(tx: DB, userId: string) {
   await tx.$queryRawUnsafe('SELECT "id" FROM "User" WHERE "id" = $1 FOR UPDATE', userId);
   const cert = await tx.mentorCertification.findUnique({ where: { userId } });
@@ -49,8 +56,12 @@ async function promote(tx: DB, row: { id: string; hostId: string | null; capacit
   while (filled < slots) {
     const reg = await tx.roundtableRegistration.findFirst({ where: { roundtableId: row.id, status: "waitlisted", approvedAt: { not: null } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
     if (!reg) break;
-    if (!await eligible(reg.userId, tx) || await blocked(tx, row.hostId, reg.userId)) {
-      await tx.roundtableRegistration.update({ where: { id: reg.id }, data: { status: "rejected", approvedAt: null, reason: "目前資格或交流權限不符，可恢復資格後重新申請 / Eligibility or connection access changed; reapply when eligible" } });
+    const peers=await tx.roundtableRegistration.findMany({where:{roundtableId:row.id,status:"confirmed"},select:{userId:true}});
+    const peerBlocked=(await Promise.all(peers.map(p=>blocked(tx,p.userId,reg.userId)))).some(Boolean);
+    const automatic=await tx.roundtableMatchRequest.findFirst({where:{userId:reg.userId,sessionId:row.id},select:{requestId:true}});
+    const phaseChanged=automatic&&!await stageFit(tx,row.id,reg.userId);
+    if (!await eligible(reg.userId, tx) || await blocked(tx, row.hostId, reg.userId) || peerBlocked || phaseChanged) {
+      await tx.roundtableRegistration.update({ where: { id: reg.id }, data: { status: "rejected", approvedAt: null, reason: "目前資格、配組階段或交流權限不符，請重新選擇適合場次 / Eligibility, grouping stage or connection access changed; choose a suitable session" } });
       await notice(tx, reg.userId, row, "rejected", "eligibility:" + reg.id + ":" + reg.createdAt.getTime());
       continue;
     }
@@ -98,17 +109,17 @@ function project(row: Awaited<ReturnType<typeof lockSession>>, userId: string, b
   };
   const status = !row.hostId && row.status === "scheduled" ? "cancelled" : row.status;
   return {
-    id: row.id, topic: row.topic, description: row.description, steps: row.steps, industry: row.industry, languages: row.languages,
+    seriesId: row.seriesId, frameworkStages: row.frameworkStages, id: row.id, topic: row.topic, description: row.description, steps: row.steps, industry: row.industry, languages: row.languages,
     startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString(), timezone: row.timezone, capacity: row.capacity,
     registrationMode: row.registrationMode, status, cancelReason: row.cancelReason || (!row.hostId && status === "cancelled" ? "主持帳號已停用，場次取消；報名紀錄保留 / Host account removed; session cancelled and records retained" : ""), revision: row.revision, host,
     mentor: { name: hostBlocked ? "NOVA" : mentor?.publicName || "NOVA", bio: hostBlocked ? "" : mentor?.bio || "", certified: !hostBlocked && cert?.status === "approved" },
     confirmed: row.registrations.filter(r => r.status === "confirmed").length + (row.hostId ? 1 : 0),
     waiting: approvedQueue.length, pending: host ? row.registrations.filter(r => r.status === "pending" || r.status === "waitlisted" && !r.approvedAt).length : undefined,
     meetingUrl: authorized && row.status === "scheduled" && cert?.status === "approved" ? row.meetingUrl : null,
-    mine: mine ? { id: mine.id, status: mine.status, approved: Boolean(mine.approvedAt), name: mine.name, question: mine.question, reason: mine.reason,
+    mine: mine ? { id: mine.id, revision: mine.revision, preparation: mine.preparation, feedback: mine.feedback, status: mine.status, approved: Boolean(mine.approvedAt), name: mine.name, question: mine.question, reason: mine.reason,
       position: mine.status === "waitlisted" && mine.approvedAt ? approvedQueue.findIndex(r => r.id === mine.id) + 1 : null, attendance: mine.attendance, commitment: commitment(mine) } : null,
     people: authorized ? row.registrations.filter(r => host || !blockedPeers.has(r.userId) && r.status === "confirmed").map(r => ({ id: r.id, name: blockedPeers.has(r.userId) ? "不可交流會員 / Unavailable member" : r.name, unavailable: blockedPeers.has(r.userId), status: r.status, approved: Boolean(r.approvedAt), attendance: r.attendance,
-      ...(host ? { question: blockedPeers.has(r.userId) ? "" : r.question, reason: r.reason } : {}), commitment: row.status === "completed" && !blockedPeers.has(r.userId) ? commitment(r) : null })) : [],
+      preparation: r.status === "confirmed" && !blockedPeers.has(r.userId) && r.preparation && typeof r.preparation === "object" && "share" in r.preparation && r.preparation.share === true ? r.preparation : null, ...(host ? { feedback: r.feedback, question: blockedPeers.has(r.userId) ? "" : r.question, reason: r.reason } : {}), commitment: row.status === "completed" && !blockedPeers.has(r.userId) ? commitment(r) : null })) : [],
   };
 }
 export async function getRoundtables(userId: string, id?: string) {
@@ -135,7 +146,21 @@ export async function myCommitments(userId: string) {
   const rows = await prisma.roundtableRegistration.findMany({ where: { userId, commitment: { not: Prisma.DbNull } }, orderBy: { updatedAt: "desc" }, take: 100, include: { roundtable: { select: { id: true, topic: true, endsAt: true } }, calendarItem: true } });
   return rows.map(r => ({ id: r.id, session: r.roundtable.id, topic: r.roundtable.topic, at: r.roundtable.endsAt.toISOString(), planId: r.planId, stepId: r.stepId, ...commitmentSchema.parse(r.commitment), done: r.calendarItem?.done || false, revision: r.calendarItem?.revision ?? 0, calendarRemoved: Boolean(r.calendarItem?.deletedAt) }));
 }
-export async function mutateRoundtable(userId: string, input: RoundtableMutation): Promise<string | null> {
+export async function mutateRoundtable(userId: string, input: RoundtableMutation, auto?: {requestId:string;requestHash:string}): Promise<string | null> {
+  if(input.action === "autoApply") {
+    const requestHash=hash(input),replay=await prisma.roundtableMatchRequest.findUnique({where:{userId_requestId:{userId,requestId:input.requestId}}});
+    if(replay){if(replay.requestHash!==requestHash)throw changed();return replay.sessionId;}
+    const account=await networkAccount(userId),state=evidenceStateSchema.parse((await prisma.evidenceWorkspace.findUnique({where:{userId}}))?.data||{});
+    const options=await prisma.roundtable.findMany({where:{status:"scheduled",startsAt:{gt:new Date()},languages:{has:input.language},host:{mentorCertification:{status:"approved"}}},orderBy:{startsAt:"asc"},take:100});
+    const matching=options.filter(r=>r.hostId!==userId&&(!r.frameworkStages.length||r.frameworkStages.some(n=>Math.abs(n-state.maxStage)<=1))&&(r.industry==="all"||r.industry===account.profile?.industry)).sort((a,b)=>Number(b.timezone===input.timezone)-Number(a.timezone===input.timezone)||a.startsAt.getTime()-b.startsAt.getTime());
+    for(const candidate of matching){
+      const peers=await prisma.roundtableRegistration.findMany({where:{roundtableId:candidate.id,status:"confirmed"},select:{userId:true,user:{select:{evidenceWorkspace:{select:{data:true}}}}}});
+      if(!similarEvidenceStages([state.maxStage,...peers.map(p=>evidenceStateSchema.parse(p.user.evidenceWorkspace?.data||{}).maxStage)]))continue;
+      if(await blocked(prisma as unknown as DB,candidate.hostId,userId)||(await Promise.all(peers.map(p=>blocked(prisma as unknown as DB,p.userId,userId)))).some(Boolean))continue;
+      return mutateRoundtable(userId,{action:"apply",id:candidate.id,name:input.name,question:input.question,consent:true},{requestId:input.requestId,requestHash});
+    }
+    throw new MemberError("目前沒有符合階段、產業與語言的真實場次；請查看其他圓桌 / No real session matches your stage, industry and language; browse other sessions",404);
+  }
   return prisma.$transaction(async raw => {
     const tx = raw as unknown as DB;
     if (input.action === "mentorApply") {
@@ -159,27 +184,51 @@ export async function mutateRoundtable(userId: string, input: RoundtableMutation
     if (["create", "edit", "meetingLink", "cancel", "decide", "finish"].includes(input.action)) await lockMentor(tx, userId);
     if (input.action === "create") {
       const existing = await tx.roundtable.findUnique({ where: { hostId_requestId: { hostId: userId, requestId: input.requestId } } });
-      if (existing) { if (existing.requestHash !== hash(input.draft)) throw changed(); return existing.id; }
+      if (existing) { if (existing.requestHash !== sessionHash(input.draft)) throw changed(); return existing.id; }
       if (Date.parse(input.draft.startsAt) <= Date.now()) throw new MemberError("請選擇未來開始時間 / Choose a future start time", 400);
       if (await tx.roundtable.count({ where: { hostId: userId, status: "scheduled", endsAt: { gt: new Date(input.draft.startsAt) }, startsAt: { lt: new Date(input.draft.endsAt) } } })) throw new MemberError("主持場次時間重疊 / Your hosted sessions overlap", 409);
-      return (await tx.roundtable.create({ data: { ...input.draft, hostId: userId, requestId: input.requestId, requestHash: hash(input.draft), startsAt: new Date(input.draft.startsAt), endsAt: new Date(input.draft.endsAt) } })).id;
+      const { repeatCount, ...draft } = input.draft, seriesId = repeatCount > 1 ? hash([userId,input.requestId]) : null;
+      let first = "";
+      for(let i=0;i<repeatCount;i++) {
+        const startsAt = new Date(Date.parse(draft.startsAt)+i*14*86400000), endsAt = new Date(Date.parse(draft.endsAt)+i*14*86400000);
+        if(await tx.roundtable.count({where:{hostId:userId,status:"scheduled",endsAt:{gt:startsAt},startsAt:{lt:endsAt}}}))throw new MemberError("系列場次與已有會議重疊，未建立任何場次 / A series session overlaps; no sessions created",409);
+        const created=await tx.roundtable.create({data:{...draft,seriesId,hostId:userId,requestId:input.requestId+(i?":"+i:""),requestHash:sessionHash(input.draft),startsAt,endsAt}});if(!i)first=created.id;
+      }
+      return first;
     }
+    if(auto){await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id"=${userId} FOR UPDATE`;const replay=await tx.roundtableMatchRequest.findUnique({where:{userId_requestId:{userId,requestId:auto.requestId}}});if(replay){if(replay.requestHash!==auto.requestHash)throw changed();return replay.sessionId;}}
+    const rememberAuto=async(sessionId:string)=>{if(auto)await tx.roundtableMatchRequest.create({data:{userId,...auto,sessionId}});};
     const row = await lockSession(tx, input.id);
+    if(input.action === "prepare" || input.action === "feedback") {
+      const reg=row.registrations.find(r=>r.userId===userId);
+      if(!reg || reg.status!=="confirmed" || await blocked(tx,row.hostId,userId))throw new MemberError("只有正式成員可提交 / Only a confirmed participant can submit",403);
+      if(input.action === "feedback") {
+        if(row.status!=="completed"||reg.attendance!=="attended")throw new MemberError("出席並結案後才能評分 / Attend the completed session before rating",409);
+        if(reg.feedback) { const old=reg.feedback as {requestId?:string;rating?:number;note?:string};if(old.requestId===input.requestId&&old.rating===input.rating&&old.note===input.note)return row.id;throw new MemberError("評分已保存，不能覆寫 / Feedback is already saved and cannot be overwritten",409); }
+        await tx.roundtableRegistration.update({where:{id:reg.id},data:{feedback:{requestId:input.requestId,rating:input.rating,note:input.note,at:new Date().toISOString()},revision:{increment:1}}});return row.id;
+      }
+      open(row);if(reg.revision!==input.revision)throw changed();
+      const summary=await weeklyEvidence(userId,new Date(),tx);
+      await tx.roundtableRegistration.update({where:{id:reg.id},data:{question:input.question,preparation:{...summary,share:input.share,submittedAt:new Date().toISOString()},revision:{increment:1}}});return row.id;
+    }
     if (input.action === "apply") {
       open(row);
       if (row.hostId === userId) throw new MemberError("主持已保留一席，不需報名 / A host seat is already reserved", 409);
       if (row.host?.mentorCertification?.status !== "approved") throw new MemberError("主持認證無效，無法報名 / Host certification is inactive", 409);
       if (await blocked(tx, row.hostId, userId)) throw new MemberError("此圓桌目前無法申請 / This session is unavailable for applications", 403);
+      for(const peer of row.registrations.filter(r=>r.status === "confirmed")) if(await blocked(tx,peer.userId,userId))throw new MemberError("此組已有無法交流的會員，請選其他場次 / A group member cannot connect with you; choose another session",403);
+      if(auto&&!await stageFit(tx,row.id,userId))throw new MemberError("小組階段已改變，請重新配組 / Group stages changed; try matching again",409);
       if (!await eligible(userId, tx)) throw new MemberError("需創辦人身分與有效商機媒合權益 / Founder identity and eligible member-network access are required", 403);
       const reg = row.registrations.find(r => r.userId === userId);
-      if (reg && activeStatuses.includes(reg.status)) { if (reg.name !== input.name || reg.question !== input.question) throw new MemberError("已有報名；請先取消再修改問題 / Already registered; withdraw before changing your question", 409); return row.id; }
+      if (reg && activeStatuses.includes(reg.status)) { if (reg.name !== input.name || reg.question !== input.question) throw new MemberError("已有報名；請先取消再修改問題 / Already registered; withdraw before changing your question", 409); await rememberAuto(row.id); return row.id; }
       const plan = await tx.actionPlan.findFirst({ where: { userId, activeKey: userId, archivedAt: null }, include: { actions: { orderBy: { executionOrder: "asc" } } } });
       const current = plan?.actions.find(a => !a.done);
       const status = row.registrationMode === "instant" ? "waitlisted" : row.registrations.filter(r => r.status === "confirmed").length >= row.capacity - 1 ? "waitlisted" : "pending";
-      const data = { name: input.name, question: input.question, consentAt: new Date(), createdAt: new Date(), status, approvedAt: row.registrationMode === "instant" ? new Date() : null, reason: "", planId: plan?.id || null, stepId: current ? flowStep(current)?.id || current.id : null };
+      const data = { name: input.name, question: input.question, consentAt: new Date(), createdAt: new Date(), status, approvedAt: row.registrationMode === "instant" ? new Date() : null, reason: "", preparation: Prisma.DbNull, feedback: Prisma.DbNull, revision:{increment:1}, planId: plan?.id || null, stepId: current ? flowStep(current)?.id || current.id : null };
       if (reg) await tx.roundtableRegistration.update({ where: { id: reg.id }, data });
-      else await tx.roundtableRegistration.create({ data: { ...data, userId, roundtableId: row.id } });
+      else await tx.roundtableRegistration.create({ data: { ...data, revision:0, userId, roundtableId: row.id } });
       await promote(tx, row);
+      await rememberAuto(row.id);
     } else if (input.action === "withdraw") {
       open(row);
       const reg = row.registrations.find(r => r.userId === userId);
@@ -212,6 +261,14 @@ export async function mutateRoundtable(userId: string, input: RoundtableMutation
           await notice(tx, reg.userId, row, entry.commitment ? "commitment" : "completed", "outcome:" + reg.id);
         }
         await tx.roundtable.update({ where: { id: row.id }, data: { status: "completed", completionHash, revision: { increment: 1 } } });
+        if(row.seriesId) for(const entry of input.entries.filter(e=>e.attendance==="absent")) {
+          const reg=accepted.find(r=>r.id===entry.registrationId)!;
+          const recent=await tx.roundtableRegistration.findMany({where:{userId:reg.userId,roundtable:{seriesId:row.seriesId,hostId:row.hostId,status:"completed",endsAt:{lte:row.endsAt}}},orderBy:{roundtable:{endsAt:"desc"}},take:2});
+          if(recent.length===2&&recent.every(r=>r.attendance==="absent")) {
+            const future=await tx.roundtable.findMany({where:{seriesId:row.seriesId,hostId:row.hostId,status:"scheduled",startsAt:{gt:new Date()},registrations:{some:{userId:reg.userId,status:{in:activeStatuses}}}},orderBy:{id:"asc"}});
+            for(const session of future){const locked=await lockSession(tx,session.id);await tx.roundtableRegistration.updateMany({where:{roundtableId:session.id,userId:reg.userId,status:{in:activeStatuses}},data:{status:"cancelled",approvedAt:null,reason:"連續兩場缺席，釋出本系列後續名額 / Two consecutive absences released future series seats"}});await promote(tx,locked);await notice(tx,reg.userId,locked,"cancelled","absence:"+reg.id);}
+          }
+        }
         return row.id;
       }
       if (input.action === "meetingLink") {
@@ -221,10 +278,11 @@ export async function mutateRoundtable(userId: string, input: RoundtableMutation
       }
       open(row);
       if (input.action === "edit") {
+        if(input.draft.repeatCount!==1)throw new MemberError("修改場次不能另建系列，請建立新系列 / Create a new series separately",400);
         if (row.registrations.length) throw new MemberError("已有報名紀錄，請取消並另建場次；可單獨更新會議連結 / Applications exist; cancel and create a new session. Meeting links can be updated separately", 409);
         if (Date.parse(input.draft.startsAt) <= Date.now()) throw new MemberError("請選擇未來時間 / Choose a future time", 400);
         if (await tx.roundtable.count({ where: { hostId: userId, id: { not: row.id }, status: "scheduled", endsAt: { gt: new Date(input.draft.startsAt) }, startsAt: { lt: new Date(input.draft.endsAt) } } })) throw new MemberError("主持場次時間重疊 / Hosted sessions overlap", 409);
-        await tx.roundtable.update({ where: { id: row.id }, data: { ...input.draft, startsAt: new Date(input.draft.startsAt), endsAt: new Date(input.draft.endsAt), revision: { increment: 1 } } });
+        await tx.roundtable.update({ where: { id: row.id }, data: { ...editableDraft(input.draft), startsAt: new Date(input.draft.startsAt), endsAt: new Date(input.draft.endsAt), revision: { increment: 1 } } });
         return row.id;
       }
       if (input.action === "decide") {
@@ -240,3 +298,6 @@ export async function mutateRoundtable(userId: string, input: RoundtableMutation
     return row.id;
   }, { timeout: 15000 });
 }
+
+function editableDraft(draft: import("zod").infer<typeof import("./schema").sessionDraftSchema>) { return Object.fromEntries(Object.entries(draft).filter(([key])=>key!=="repeatCount")) as Omit<typeof draft,"repeatCount">; }
+function sessionHash(draft: import("zod").infer<typeof import("./schema").sessionDraftSchema>) { const {repeatCount,frameworkStages,...base}=draft;return hash(repeatCount===1&&!frameworkStages.length?base:{...base,repeatCount,frameworkStages}); }

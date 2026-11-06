@@ -1,3 +1,4 @@
+import { weightedMatch } from "./rank";
 import { COMPANY_STAGES } from "@/lib/action-plan/constants";
 import { awardProfile, rewardTransaction } from "@/lib/rewards/service";
 import { canonicalCountry, countryCode, industryCode } from "@/lib/member-options";
@@ -6,7 +7,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { changed, MemberError } from "@/lib/member-http";
-import { cardDraftSchema, interviewCompanies, publicCard, listingSchema, matchesPublicCard, recommendationRank, type CardFilters, type CardDraft, type CardSources, type CardStats, type CardWrite } from "./schema";
+import { cardDraftSchema, interviewCompanies, publicCard, listingSchema, matchesPublicCard, type CardFilters, type CardDraft, type CardSources, type CardStats, type CardWrite } from "./schema";
 
 export const requestHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export const sourceSelect = { companyName: true, companyStage: true, country: true, industry: true, oneLinePitch: true, icp: true, targetMarkets: true } as const;
@@ -78,8 +79,8 @@ export async function writeMyCard(userId: string, input: CardWrite) {
   return getMyCard(userId);
 }
 async function viewerSources(userId: string) {
-  const [profile, card] = await Promise.all([prisma.onboardingProfile.findUnique({ where: { userId }, select: { industry: true, targetMarkets: true } }), prisma.matchmakingProfile.findUnique({ where: { userId }, select: { categories: true } })]);
-  return { ...profile, categories: card?.categories || [] };
+  const [profile, card] = await Promise.all([prisma.onboardingProfile.findUnique({ where: { userId }, select: { industry: true, targetMarkets: true, companyStage: true, icp: true } }), prisma.matchmakingProfile.findUnique({ where: { userId }, select: { categories: true, offers: true, looksFor: true } })]);
+  return { ...profile, categories: card?.categories || [], offers: card?.offers || "", looksFor: card?.looksFor || "" };
 }
 async function withChat(userId: string, cards: { userId: string; card: import("./schema").PublicCard }[]) {
   const rows = await prisma.networkConnection.findMany({ where: { OR: [{ senderId: userId, recipientId: { in: cards.map(v => v.userId) } }, { recipientId: userId, senderId: { in: cards.map(v => v.userId) } }] }, select: { id: true, senderId: true, recipientId: true, status: true } });
@@ -90,20 +91,23 @@ export async function listCards(userId: string, category: string | null, page: n
   const filters = listingSchema.parse({ ...options, category: category || "all", page });
   const [viewer, blocked] = await Promise.all([viewerSources(userId), prisma.networkConnection.findMany({ where: { status: "blocked", OR: [{ senderId: userId }, { recipientId: userId }] }, select: { senderId: true, recipientId: true } })]);
   const excluded = [userId, ...blocked.flatMap(v => [v.senderId, v.recipientId])];
-  const selected: { userId: string; card: import("./schema").PublicCard; at: number }[] = [], offset = (page - 1) * 24;
+  const selected: { userId: string; card: import("./schema").PublicCard; at: number; rank: number }[] = [], offset = (page - 1) * 24;
   let cursor: string | undefined;
   // shortcut: rank public projections in batches; index a public search projection when the network grows.
   for (;;) {
     const rows = await prisma.matchmakingProfile.findMany({ where: { userId: { notIn: excluded }, visible: true, ...(!networkEnabled() ? { sourcePolicy: null } : {}), ...(filters.category !== "all" ? { categories: { has: filters.category } } : {}), ...(filters.role !== "all" ? { role: filters.role } : {}) }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }], take: 100, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), include: { user: { select: { profile: { select: sourceSelect }, mentorCertification: { select: { status: true } } } } } });
     const stats = networkEnabled() ? null : await statsFor(rows.map(r => r.userId));
+    const replies = await prisma.networkConnection.groupBy({ by:["recipientId","status"], where:{ recipientId:{in:rows.map(r=>r.userId)},createdAt:{gte:new Date(Date.now()-30*86400000)},status:{in:["pending","accepted","declined","expired"]}},_count:true });
     for (const row of rows) {
       const card = publicCard({ ...cardDraftSchema.parse({ displayName: row.displayName || "", role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, sourcePolicy: row.sourcePolicy, displayName: row.displayName, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended, mentorCertified: row.user.mentorCertification?.status === "approved" }, row.user.profile, stats?.get(row.userId) || { interviews: 0, payingCustomers: null, milestones: 0 }, viewer, new Date(), networkEnabled());
-      if (matchesPublicCard(card, filters) && (filters.view !== "recommendations" || recommendationRank(card) > 0)) selected.push({ userId: row.userId, card, at: row.lastActiveAt?.getTime() || 0 });
+      const history=replies.filter(r=>r.recipientId===row.userId),total=history.reduce((sum,r)=>sum+r._count,0),rate=total>=3?history.filter(r=>["accepted","declined"].includes(r.status)).reduce((sum,r)=>sum+r._count,0)/total:null;
+      const match=weightedMatch(viewer,card,rate);card.matchReasons=match.reasons;
+      if (matchesPublicCard(card, filters) && (filters.view !== "recommendations" || match.relevant)) selected.push({ userId: row.userId, card, rank: match.score, at: row.lastActiveAt?.getTime() || 0 });
     }
     if (rows.length < 100) break;
     cursor = rows.at(-1)!.id;
   }
-  selected.sort((a, b) => (filters.view === "recommendations" ? recommendationRank(b.card) - recommendationRank(a.card) : 0) || b.at - a.at || a.card.id.localeCompare(b.card.id));
+  selected.sort((a, b) => (filters.view === "recommendations" ? Number(a.card.activity === "inactive") - Number(b.card.activity === "inactive") || b.rank - a.rank : 0) || b.at - a.at || a.card.id.localeCompare(b.card.id));
   return { cards: await withChat(userId, selected.slice(offset, offset + 24)), hasMore: selected.length > offset + 24 };
 }
 export async function getMemberCard(userId: string, id: string) {
@@ -114,6 +118,7 @@ export async function getMemberCard(userId: string, id: string) {
   if (blocked) throw new MemberError("找不到可見卡片 / Visible card not found", 404);
   const [stats, viewer] = await Promise.all([statsFor([row.userId]), viewerSources(userId)]);
   const card = publicCard({ ...cardDraftSchema.parse({ role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, displayName: row.displayName, sourcePolicy: row.sourcePolicy, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended, mentorCertified: row.user.mentorCertification?.status === "approved" }, row.user.profile, stats.get(row.userId)!, viewer, new Date(), networkEnabled());
+  card.matchReasons=weightedMatch(viewer,card).reasons;
   return (await withChat(userId, [{ userId: row.userId, card }]))[0]!;
 }
 export async function recordActivity(userId: string, now = new Date()) {

@@ -1,215 +1,36 @@
 "use client";
-
+import { useState } from "react";
+import { useLocale } from "next-intl";
 import { track } from "@/lib/analytics";
 import { planContent } from "@/lib/billing/catalog";
-import { useState } from "react";
-import { useTranslations, useLocale } from "next-intl";
-import { motion, useReducedMotion, type Variants } from "motion/react";
+import { priceLabel, monthlyEquivalentLabel, type BillingInterval } from "@/lib/billing/plans";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
-import {
-  monthlyEquivalentLabel,
-  priceLabel,
-  type BillingInterval,
-} from "@/lib/billing/plans";
-
-const container: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.12 } },
-};
-
-const card: Variants = {
-  hidden: { opacity: 0, y: 36 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-type Plan = { key: "free" | "pro" | "business" | "enterprise"; featured?: boolean };
-
-const PLANS: Plan[] = [
-  { key: "free" },
-  { key: "pro" },
-  { key: "business", featured: true },
-  { key: "enterprise" },
-];
-
-
-function Check({ featured }: { featured?: boolean }) {
-  return (
-    <span
-      className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full ${
-        featured ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-      }`}
-    >
-      <svg viewBox="0 0 20 20" fill="none" className="w-3 h-3" aria-hidden="true">
-        <path
-          d="M4 10.5l3.5 3.5L16 5.5"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </span>
-  );
-}
 
 export default function Pricing() {
-  const t = useTranslations("Product.pricing");
-  const locale = useLocale() as Locale;
-  const reduceMotion = useReducedMotion();
-  const catalog = planContent(locale === "zh-tw");
-  const [interval, setInterval] = useState<BillingInterval>("month");
-
-  // 公開行銷頁：訪客尚未登入，無法直接觸發 PayPal。
-  // 付費方案 → 導向註冊開始漏斗（完成 onboarding 後於 /dashboard/billing 訂閱）；Enterprise → 洽詢。
-  const ctaHref = (key: Plan["key"]) =>
-    key === "enterprise" ? "#contact" : pathForLocale("/signup", locale);
-
-  return (
-    <section id="pricing" className="bg-cream py-20 md:py-28 px-5 md:px-8 scroll-mt-24">
-      <div className="max-w-6xl mx-auto">
-        <motion.h2
-          initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-12%" }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center text-3xl md:text-5xl font-extrabold text-dark tracking-[-0.04em] font-[family-name:var(--font-heading)]"
-        >
-          {t("title")}
-        </motion.h2>
-
-        <div className="mt-8 flex justify-center">
-          <div className="inline-flex rounded-full border border-dark/10 bg-white p-1" aria-label={t("billingInterval")}>
-            {(["month", "year"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setInterval(value)}
-                aria-pressed={interval === value}
-                className={`min-h-11 rounded-full px-5 text-sm font-semibold ${
-                  interval === value ? "bg-dark text-white" : "text-dark/60"
-                }`}
-              >
-                {t(value)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <motion.div
-          initial={reduceMotion ? false : "hidden"}
-          whileInView="visible"
-          viewport={{ once: true, margin: "-10%" }}
-          variants={container}
-          className="mt-10 md:mt-16 grid md:grid-cols-2 xl:grid-cols-4 gap-5 md:gap-6 items-stretch"
-        >
-          {PLANS.map(({ key, featured }, index) => (
-            <motion.div
-              key={key}
-              variants={card}
-              whileHover={
-                reduceMotion ? undefined : { y: -6, scale: 1.01 }
-              }
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className={`group relative flex flex-col overflow-hidden rounded-2xl px-7 py-9 transition-[border-color,box-shadow] duration-300 md:px-8 md:py-10 ${
-                featured
-                  ? "bg-primary text-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.38)] md:-mb-4 md:-mt-4"
-                  : "border border-dark/5 bg-white text-dark shadow-[0_4px_24px_rgba(0,0,0,0.04)] hover:border-accent/60 hover:shadow-[0_18px_50px_-30px_rgba(0,0,0,0.32)]"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className="nova-pricing-sheen pointer-events-none absolute inset-y-0 left-0 w-1/2"
-              />
-              <motion.span
-                aria-hidden="true"
-                initial={reduceMotion ? false : { x: "-190%", skewX: "-12deg" }}
-                whileInView={reduceMotion ? undefined : { x: "280%", skewX: "-12deg" }}
-                viewport={{ once: true, amount: 0.55 }}
-                transition={{
-                  duration: 1.05,
-                  delay: 0.25 + index * 0.22,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                className="nova-pricing-reveal pointer-events-none absolute inset-y-0 left-0 w-1/2"
-              />
-              {featured && (
-                <span className="absolute top-5 right-5 rounded-full bg-accent text-dark text-[11px] font-bold uppercase tracking-[0.12em] px-3 py-1 font-[family-name:var(--font-heading)]">
-                  {t("badge")}
-                </span>
-              )}
-
-              <h3
-                className={`text-lg font-bold tracking-[-0.02em] font-[family-name:var(--font-heading)] ${
-                  featured ? "text-white" : "text-dark"
-                }`}
-              >
-                {catalog[key].name}
-              </h3>
-
-              <p className="mt-2 text-sm">{catalog[key].audience}</p>
-              <div className="mt-4 flex items-end gap-2">
-                <span className="text-4xl lg:text-5xl font-extrabold tracking-[-0.04em] leading-none whitespace-nowrap font-[family-name:var(--font-heading)]">
-                  {key === "free" ? "US$0" : key === "enterprise"
-                    ? t(`${key}.price`)
-                    : interval === "month"
-                      ? priceLabel(key, "month")
-                      : monthlyEquivalentLabel(key)}
-                </span>
-                {key !== "enterprise" && key !== "free" && (
-                  <span
-                    className={`pb-1 text-sm font-[family-name:var(--font-body)] ${
-                      featured ? "text-white/70" : "text-dark/50"
-                    }`}
-                  >
-                    {t("perMonth")}
-                  </span>
-                )}
-              </div>
-              {key !== "enterprise" && key !== "free" && interval === "year" && (
-                <p className={`mt-3 text-xs ${featured ? "text-white/70" : "text-dark/50"}`}>
-                  {t("annualCharge", {
-                    total: priceLabel(key, "year")!,
-                  })}
-                </p>
-              )}
-
-              <ul className="mt-8 flex flex-col gap-4">
-                {catalog[key].features.map((f) => (
-                  <li key={f} className="flex items-center gap-3">
-                    <Check featured={featured} />
-                    <span
-                      className={`text-sm leading-snug font-[family-name:var(--font-body)] ${
-                        featured ? "text-white/90" : "text-dark/70"
-                      }`}
-                    >
-                      {f}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-9 md:mt-auto md:pt-9">
-                <a
-                  href={ctaHref(key)}
-                  onClick={() => track("flow_start", { feature: "upgrade" })}
-                  className={`flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold font-[family-name:var(--font-heading)] transition-colors duration-300 ${
-                    featured
-                      ? "bg-white text-primary hover:bg-cream"
-                      : "bg-primary text-white hover:bg-primary-dark"
-                  }`}
-                >
-                  {key === "free" ? (locale === "zh-tw" ? "免費開始" : "Start for free") : t(`${key}.cta`)}
-                </a>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </div>
-    </section>
-  );
+  const locale = useLocale() as Locale, zh = locale === "zh-tw", w = (a: string,b: string) => zh ? a : b;
+  const [interval, setInterval] = useState<BillingInterval>("month"), catalog = planContent(zh);
+  const plans = ["free", "pro", "business", "enterprise"] as const;
+  const rows = [
+    [w("公司檔案與目標客戶假設", "Company profile and customer hypotheses"), ["✓","✓","✓","✓"]],
+    [w("客戶對話與關鍵發現", "Customer conversations and findings"), [w("試用 3 家", "3-company trial"),"✓","✓","✓"]],
+    [w("5 里程碑／16 步今日任務", "Five milestones / sixteen priority steps"), [w("試用起步流程", "Trial starting steps"),"✓","✓","✓"]],
+    [w("Google／Apple 行事曆匯出", "Google / Apple Calendar export"), ["—","✓","✓","✓"]],
+    [w("每月方案贈送 Token", "Monthly plan Token grant"), ["—","150","150","150"]],
+    [w("新公司搜尋與會員媒合", "Company search and member matchmaking"), [w("符合資格一次 POC", "One eligible POC"),"—","✓","✓"]],
+    [w("認證導師圓桌會議", "Roundtables with certified mentors"), ["—","—","✓","✓"]],
+    [w("成果報告、列印與主動分享", "Result reports, printing and optional sharing"), ["—","✓","✓","✓"]],
+    [w("市場進入顧問與執行", "Market-entry advisory and execution"), ["—","—","—","✓"]],
+  ] as const;
+  return <section id="pricing" className="scroll-mt-24 px-6 py-16 md:py-24"><div className="mx-auto max-w-[1312px]">
+    <p className="text-[10px] font-semibold tracking-[.18em]">{w("方案價格", "PRICING")}</p><h2 className="mt-5 text-4xl font-semibold tracking-[-.05em] md:text-6xl">{w("選擇你現在的階段。", "Choose the stage you're in.")}</h2><p className="mt-4 text-sm text-neutral-600">{w("免費開始，需要時再升級。", "Start free. Upgrade when you're ready to grow.")}</p>
+    <div className="mt-7 flex gap-1" role="group" aria-label={w("付款週期", "Billing interval")}>{(["month","year"] as const).map(v => <button key={v} type="button" aria-pressed={interval===v} className={`min-h-11 rounded-md border px-5 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${interval===v?"bg-black text-white":"bg-white"}`} onClick={() => setInterval(v)}>{v==="month"?w("月繳","Monthly"):w("年繳","Yearly")}</button>)}</div>
+    <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{plans.map(key => <article key={key} className={`flex min-w-0 flex-col rounded-xl border p-6 ${key==="business"?"border-black bg-black text-white":"border-neutral-300 bg-white"}`}>
+      <p className="min-h-5 text-[10px] font-semibold tracking-widest">{key==="business"?w("熱門選擇","MOST POPULAR"):""}</p><h3 className="mt-3 text-lg font-bold">{catalog[key].name}</h3><p className="mt-3 min-h-12 text-sm opacity-70">{catalog[key].audience}</p><p className="mt-5 text-3xl font-semibold tracking-tight">{key==="free"?"USD 0":key==="enterprise"?w("客製報價","Custom"):interval==="month"?priceLabel(key,"month"):monthlyEquivalentLabel(key)}</p><p className="mt-2 min-h-10 text-xs opacity-70">{key==="free"?w("14 天 · 無需信用卡","14 days · No credit card"):key==="enterprise"?w("依市場與目標洽詢","Tailored to your market and goals"):interval==="year"?w(`每年實收 ${priceLabel(key,"year")}`,`${priceLabel(key,"year")} charged yearly`):w("每月收費","Charged monthly")}</p>
+      <ul className="my-6 space-y-3 text-sm">{catalog[key].features.map(f => <li key={f} className="flex gap-2"><span aria-hidden="true">✓</span><span>{f}</span></li>)}</ul>
+      <a className={`mt-auto inline-flex min-h-11 items-center justify-center rounded-md border px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${key==="business"?"bg-white text-black":"border-black bg-black text-white"}`} href={key==="enterprise"?"#contact":pathForLocale("/signup",locale)} onClick={() => track("flow_start",{feature:"upgrade"})}>{key==="enterprise"?w("聯絡團隊","Talk to sales"):key==="free"?w("免費開始","Start for free"):w("開始使用","Get started")}</a>
+    </article>)}</div>
+    <div className="mt-10 overflow-x-auto rounded-lg border border-neutral-300" tabIndex={0} role="region" aria-label={w("方案功能比較，可水平捲動", "Plan comparison; scroll horizontally")}><table className="w-full min-w-[660px] border-collapse text-left text-sm"><caption className="sr-only">{w("各方案實際功能", "Actual plan features")}</caption><thead><tr className="border-b bg-neutral-100"><th scope="col" className="p-4">{w("功能", "Features")}</th>{plans.map(key => <th scope="col" key={key} className="p-4">{catalog[key].name}</th>)}</tr></thead><tbody>{rows.map(([label,values]) => <tr key={label} className="border-b last:border-0"><th scope="row" className="p-4 font-normal">{label}</th>{values.map((v,i) => <td className={`p-4 ${i===2?"bg-black text-white":""}`} key={i}>{v}</td>)}</tr>)}</tbody></table></div>
+    <p className="mt-5 text-xs leading-6 text-neutral-600">{w("價格為美元。搜尋每 5 家 20 Token；交流預扣 5 Token，接受後結算。Token 與 AI 次數分開；既有方案權益保留。", "Prices in USD. Search five companies for 20 Token; chat requests reserve 5 Token, settled on acceptance. Token are separate from AI allowances. Existing entitlements are preserved.")}</p>
+  </div></section>;
 }

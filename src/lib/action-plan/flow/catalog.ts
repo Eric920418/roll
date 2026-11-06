@@ -36,7 +36,7 @@ export function isFlowAction(action: { clientKey?: string }) { return Boolean(ac
 export function flowStep(action: { clientKey: string }) { return STEPS.find(s => flowKey(s.id) === action.clientKey); }
 
 const text = z.string().trim().max(4000), id = z.string().trim().max(200);
-const record = z.object({ id: id.min(1), company: text, name: text, relationship: text, date: dateSchema.or(z.literal("")), pain: text, severity: z.enum(["", "low", "medium", "high"]), solution: text, wtp: z.enum(["", "not_asked", "willing", "considering", "declined"]), reason: text, missing: text, referral: text }).strict();
+const record = z.object({ fit:z.enum(['yes','possible','uncertain','no']).optional(),role:text.optional(),loss:text.optional(),amount:z.string().regex(/^\d{1,10}(\.\d{1,2})?$/,'請輸入數字，最多兩位小數，例如 3000 / Enter a number with at most two decimal places, for example 3000').or(z.literal('')).optional(),currency:z.string().regex(/^[A-Z]{3}$/).or(z.literal('')).optional(),buyer:text.optional(),nextStep:text.optional(),nextDate:dateSchema.or(z.literal('')).optional(),quote:text.optional(),hypothesisId:id.optional(), id: id.min(1), company: text, name: text, relationship: text, date: dateSchema.or(z.literal("")), pain: text, severity: z.enum(["", "low", "medium", "high"]), solution: text, wtp: z.enum(["", "not_asked", "willing", "considering", "declined"]), reason: text, missing: text, referral: text }).strict();
 const contact = z.object({ id: id.min(1), company: text, name: text, leadId: id, date: dateSchema.or(z.literal("")), channel: text, status: z.enum(["draft", "sent", "replied", "conversation", "agreed"]), offer: text, matches: z.array(id).max(6), pain: text, solution: text, wtp: z.enum(["", "not_asked", "willing", "considering", "declined"]) }).strict();
 export const flowDataSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("conversation"), market: text, records: z.array(record).max(250) }).strict(),
@@ -46,7 +46,7 @@ export const flowDataSchema = z.discriminatedUnion("kind", [
 ]);
 export type FlowData = z.infer<typeof flowDataSchema>;
 export const flowStoredSchema = z.object({ version: z.literal(2), step: stepIdSchema, data: flowDataSchema }).strict();
-export const emptyRecord = (key: string): z.infer<typeof record> => ({ id: key, company: "", name: "", relationship: "", date: "", pain: "", severity: "", solution: "", wtp: "", reason: "", missing: "", referral: "" });
+export const emptyRecord = (key: string): z.infer<typeof record> => ({ fit: "uncertain", id: key, company: "", name: "", relationship: "", date: "", pain: "", severity: "", solution: "", wtp: "", reason: "", missing: "", referral: "" });
 export const emptyContact = (key: string): z.infer<typeof contact> => ({ id: key, company: "", name: "", leadId: "", date: "", channel: "", status: "draft", offer: "", matches: [], pain: "", solution: "", wtp: "" });
 export function emptyFlowData(kind: TemplateKind): FlowData {
   if (kind === "conversation") return { kind, market: "", records: [] };

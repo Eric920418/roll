@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -17,7 +17,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -26,7 +26,7 @@ const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 // Next treats a rewrite to a different host as an external request; use one host for both sides.
 const hostname = 'localhost', port = 3116, origin = `http://${hostname}:${port}`;
 const report = { mode, scenario, checks: [], screenshots: [], browserErrors: [], cleanup: null };
-const users = {}, created = [], contexts = [];
+const users = {}, created = [], contexts = [], newsletterEmails=[];
 const password = randomBytes(24).toString('base64url'), authSecret = randomBytes(32).toString('hex');
 const suffix = randomUUID(), testIp = `192.0.2.${1 + randomBytes(1)[0] % 253}`;
 let server, browser;
@@ -130,8 +130,8 @@ async function screenshot(page, name) {
   const file = path.join(output, `${mode}-${name}.png`);
   await page.screenshot({ path: file, fullPage: true }); report.screenshots.push(file);
 }
-async function closeTour(page) {
-  const skip = page.getByRole('button', { name: 'Skip tour', exact: true });
+async function closeTour(page, locale='en') {
+  const skip = page.getByRole('button', { name: locale==='zh-tw'?'略過導覽':'Skip tour', exact: true });
   try { await skip.waitFor({ state: 'visible', timeout: 3000 }); await skip.click(); await skip.waitFor({ state: 'hidden' }); }
   catch (error) { if (await skip.isVisible()) throw error; }
 }
@@ -330,6 +330,7 @@ async function flowCore(key, width, locale) {
     await page.waitForFunction(name => [...document.querySelectorAll('button')].some(b => b.textContent === name && !b.disabled), completeLabel);
     check('Complete current step ' + width, await postClick(completeLabel) === 200);
     await article.getByRole('heading', { name: title, exact: true }).waitFor();
+    check('Only current-step work form remains '+width,await article.locator(':scope > fieldset').count()===1);
   }
   async function responsive(name) {
     for (const size of [390, 768, 1440]) {
@@ -348,7 +349,10 @@ async function flowCore(key, width, locale) {
   for (let i = 0; i < 10; i++) {
     await article.getByRole('button', { name: w('＋ 記錄客戶對話', '＋ Record a conversation'), exact: true }).click();
     const row = article.locator('details[open]');
-    for (const [label, value] of [[w('公司', 'Company'), 'Flow company ' + i], [w('對象姓名', 'Person'), 'Person ' + i], [w('你與對方的關係', 'Your relationship'), 'Prospect'], [w('對話日期', 'Conversation date'), date], [w('痛點與原話', 'Pain and customer wording'), 'Manual reporting'], [w('目前的解決方式', 'Current solution'), 'Spreadsheets']]) await row.getByLabel(label, { exact: true }).fill(value);
+    await row.getByRole('button', { name: w('顯示完整表單', 'Show complete form'), exact: true }).click();
+    await row.getByLabel(w('你與對方的關係', 'Your relationship'), { exact: true }).selectOption('prospect');
+    await row.getByLabel(w('是否符合目標客群', 'Target customer fit'), { exact: true }).selectOption('yes');
+    for (const [label, value] of [[w('公司', 'Company'), 'Flow company ' + i], [w('對象姓名', 'Person'), 'Person ' + i], [w('對話日期', 'Conversation date'), date], [w('痛點與原話', 'Pain and customer wording'), 'Manual reporting'], [w('目前的解決方式', 'Current solution'), 'Spreadsheets']]) await row.getByLabel(label, { exact: true }).fill(value);
     await row.getByLabel(w('痛點嚴重程度', 'Pain severity'), { exact: true }).selectOption('high');
     await row.getByLabel(w('付費意願', 'Willingness to pay'), { exact: true }).selectOption('willing');
     if (i === 8) { await saved(); check('Nine conversations cannot complete ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled()); }
@@ -398,6 +402,7 @@ async function flowCore(key, width, locale) {
   for (let i = 0; i < await tierCards.count(); i++) {
     const checks = tierCards.nth(i).getByRole('checkbox');
     if (i < 3) for (let n = 0; n < 4; n++) await checks.nth(n).check();
+    else { await tierCards.nth(i).getByLabel(w('手動調整（選填）','Manual override (optional)'),{exact:true}).selectOption('C');await tierCards.nth(i).getByLabel(w('調整理由','Override reason'),{exact:true}).fill('QA: explicitly defer these leads while testing the three-priority-lead path'); }
     await checks.last().check();
   }
   await saved();
@@ -447,7 +452,7 @@ async function flowDocumentAndReview() {
   await db.actionItem.update({ where: { id: handbook.id }, data: { taskWorkspace: { version: 2, step: '03-3', data: { kind: 'document', sections: [3, 1, 0, 2].map(i => ({ id: String(i), body: ('QA chapter ' + i + ': use reviewed customer evidence, record actual outreach, preserve private proof and review the next action.\n').repeat(8), confirmed: true })) } } } });
   await page.goto(origin + '/task-report/' + handbook.id);
   await page.getByRole('heading', { name: 'Complete your acquisition playbook', exact: true }).waitFor();
-  check('Document chapters use canonical ID order', (await page.locator('main > section h2').allInnerTexts()).join('|') === 'Lead sources|Outreach message|Conversation script|Closing steps');
+  check('Document chapters use canonical ID order', (await page.locator('main > section h2').allInnerTexts()).map(v=>v.replace(/^\d+\s*·\s*/, '')).join('|') === 'Lead sources|Outreach message|Conversation script|Closing steps');
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     check('Document preview layout ' + width, await page.evaluate(() => document.querySelectorAll('h1').length === 1 && document.documentElement.scrollWidth <= innerWidth + 1));
@@ -756,11 +761,70 @@ async function tokenAdminAndSearch() {
   await member.context.close(); await admin.close();
 }
 
+async function pdfCompletion() {
+  const publicContext = await browser.newContext({extraHTTPHeaders:{"x-forwarded-for":testIp}});contexts.push(publicContext);
+  const publicPage=await publicContext.newPage();publicPage.on('pageerror',e=>report.browserErrors.push(e.message));
+  for(const locale of ['en','zh-tw'])for(const width of [390,768,1440]){
+    const prefix=locale==='en'?'':'/zh-tw';await publicPage.setViewportSize({width,height:1000});await publicPage.goto(origin+prefix+'/product',{waitUntil:'domcontentloaded'});
+    await publicPage.getByRole('heading',{level:1}).waitFor();
+    check('Public landing '+locale+width,await publicPage.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));
+    await publicPage.evaluate(()=>scrollTo(0,0));
+    try{await publicPage.waitForFunction(()=>[...document.images].filter(i=>i.loading!=='lazy').every(i=>i.complete&&i.naturalWidth>0));}catch(error){throw new Error('Eager image failure: '+JSON.stringify(await publicPage.locator('img').evaluateAll(imgs=>imgs.filter(i=>i.loading!=='lazy').map(i=>({src:i.currentSrc,complete:i.complete,width:i.naturalWidth})))),{cause:error});}
+    check('Public real offer '+locale+width,!/80% off|15 qualified|Nov 16|\[Photo/.test(await publicPage.locator('body').innerText()));
+    const email=`qa-newsletter-${suffix}-${locale}-${width}@example.invalid`;newsletterEmails.push(email);await publicPage.getByRole('textbox',{name:locale==='en'?'Email address':'Email 地址',exact:true}).fill(email);
+    await publicPage.getByRole('checkbox').check();const result=waitResponse(publicPage,r=>r.url().endsWith('/api/newsletter')&&r.request().method()==='POST');
+    await publicPage.getByRole('button',{name:locale==='en'?'Request confirmation email ↗':'寄送訂閱確認信 ↗',exact:true}).click();
+    const status=(await result).status();check('Unavailable or throttled email preserves input '+locale+width,[503,429].includes(status)&&await publicPage.getByRole('textbox',{name:locale==='en'?'Email address':'Email 地址',exact:true}).inputValue()===email);
+    await publicPage.getByRole('alert').filter({hasText:'HTTP '+status}).waitFor();
+    const height=await publicPage.evaluate(()=>document.body.scrollHeight);for(let y=0;y<height;y+=850){await publicPage.evaluate(y=>scrollTo(0,y),y);await publicPage.waitForTimeout(70);}await screenshot(publicPage,'pdf-public-'+locale+'-'+width);
+  }
+  await publicContext.close();
+  for(const [key,locale] of [['mobile','zh-tw'],['desktop','en']]){
+    const zh=locale==='zh-tw',w=(a,b)=>zh?a:b,prefix=zh?'/zh-tw':'';const {context,page}=await session(key,390);
+    await context.addInitScript(()=>{window.SpeechRecognition=class {start(){window.qaSpeech=this;}stop(){this.onend?.();}abort(){this.onend?.();}};});
+    await page.goto(origin+prefix+'/dashboard/profile');
+    const panel=page.getByRole('region',{name:w('驗證框架與目標客戶假設','Validation framework and customer hypotheses')});
+    await panel.getByRole('button',{name:w('新增一個假設版本','Add a hypothesis version'),exact:true}).click();
+    await panel.getByRole('textbox',{name:w('假設描述','Hypothesis'),exact:true}).fill('Operations teams with reporting pain');await page.reload();
+    await panel.getByRole('textbox',{name:w('假設描述','Hypothesis'),exact:true}).waitFor();check('Hypothesis draft survives reload '+locale,await panel.getByRole('textbox',{name:w('假設描述','Hypothesis'),exact:true}).inputValue()==='Operations teams with reporting pain');
+    for(const [label,value] of [[w('為什麼可能','Why it may fit'),'Repeated manual work'],[w('怎麼驗證','How to test'),'Ask about actual reporting']])await panel.getByRole('textbox',{name:label,exact:true}).fill(value);
+    let response=waitResponse(page,r=>r.url().endsWith('/api/evidence')&&r.request().method()==='POST');await panel.getByRole('button',{name:w('確認並儲存假設','Confirm and save hypothesis'),exact:true}).click();assert.equal((await response).status(),200);
+    response=waitResponse(page,r=>r.url().endsWith('/api/evidence')&&r.request().method()==='POST');await panel.getByRole('button',{name:w('用這個假設驗證','Test this hypothesis'),exact:true}).click();assert.equal((await response).status(),200);
+    const noteDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    for(let i=0;i<5;i++)await db.meetingNote.create({data:{userId:users[key].id,title:'Owned QA conversation',insight:{stage:'discover',type:'Prospect',company:'QA Evidence '+i,name:'Person '+i,role:'Buyer',fit:'yes',region:'TW',industry:'saas',date:noteDate,notes:'Manual reporting is slow',answers:['','','',''],commercial:{quote:'Manual reporting is slow',willingness:'not_asked'}}}});
+    await panel.getByRole('button',{name:w('重新核對','Refresh evidence'),exact:true}).click();
+    await panel.locator('summary').filter({hasText:w('為目前假設核對對話佐證','Review conversation evidence for this hypothesis')}).click();
+    const fits=panel.getByLabel(w('是否符合目標客群','Target customer fit'),{exact:true});await fits.first().waitFor();check('Owned saved sources available '+locale,await fits.count()===5);for(const fit of await fits.all())await fit.selectOption('yes');
+    response=waitResponse(page,r=>r.url().endsWith('/api/evidence')&&r.request().method()==='POST');await panel.getByRole('button',{name:w('確認並儲存佐證關聯','Save evidence links'),exact:true}).click();assert.equal((await response).status(),200);
+    await panel.getByRole('heading',{name:zh?'你目前在第 4 階段：驗證付費意願':'Stage 4: Validate willingness to pay',exact:true}).waitFor();check('Server evidence stage '+locale,true);
+    for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Evidence profile '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'pdf-evidence-'+locale+'-'+width);}
+    await page.goto(origin+prefix+'/dashboard/matchmaking?tab=messages');await page.locator('summary').filter({hasText:w('任務、圓桌與交流 Email 提醒','Task, roundtable and connection emails')}).click();
+    const pref=page.locator('details').filter({has:page.getByRole('button',{name:w('儲存通知偏好','Save email preferences'),exact:true})});
+    check('Email categories default off '+locale,await pref.getByRole('checkbox').evaluateAll(nodes=>nodes.every(n=>!n.checked)));
+    await pref.getByRole('checkbox').first().check();response=waitResponse(page,r=>r.url().endsWith('/api/evidence')&&r.request().method()==='POST');await pref.getByRole('button',{name:w('儲存通知偏好','Save email preferences'),exact:true}).click();assert.equal((await response).status(),200);
+    const diagnosis={companyStage:'MVP',stageReason:'Owned QA evidence',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Find real customers',bottleneckConfidence:65};
+    const generated=await context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale,requestId:randomUUID(),candidateCount:5,diagnosis,answers:[{question:'Progress',answer:'Working MVP'},{question:'Bottleneck',answer:'Unverified customer demand'},{question:'Goal',answer:'Verify demand'}]}});assert.equal(generated.status(),201);const plan=(await generated.json()).data;users[key].flowActionIds=plan.actions.map(a=>a.id);
+    await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('article[data-next-step="record"]').waitFor();await closeTour(page,locale);
+    await page.locator('summary').filter({hasText:w('語音／逐字稿與 AI 草稿協助','Speech, transcript and AI drafting')}).click();const transcript=page.getByRole('textbox',{name:w('貼上會議紀錄或逐字稿','Paste meeting notes or a transcript'),exact:true});await transcript.fill('Existing transcript');
+    await page.getByRole('button',{name:w('開始語音轉寫','Start speech transcription'),exact:true}).click();await page.evaluate(()=>{window.qaSpeech.onresult({resultIndex:0,results:[{isFinal:true,0:{transcript:'Spoken words'}}]});window.qaSpeech.onerror({error:'not-allowed',message:'QA permission declined'});});
+    await page.waitForFunction(()=>[...document.querySelectorAll('textarea')].some(e=>e.value.includes('Spoken words')));check('Speech result and failure retain text '+locale,(await transcript.inputValue()).includes('Spoken words'));await page.reload();await page.locator('summary').filter({hasText:w('語音／逐字稿與 AI 草稿協助','Speech, transcript and AI drafting')}).click();check('Transcript draft survives navigation '+locale,(await transcript.inputValue()).includes('Spoken words'));
+    response=waitResponse(page,r=>r.url().endsWith('/api/action-plans/assist')&&r.request().method()==='POST');await page.getByRole('button',{name:w('產生未確認草稿 · 使用 1 次 AI 額度','Generate unconfirmed draft · uses 1 AI allowance'),exact:true}).click();check('AI failure returns safe server error '+locale,(await response).status()>=400);await page.getByRole('alert').filter({hasText:'HTTP'}).waitFor();check('AI failure retains transcript '+locale,(await transcript.inputValue()).includes('Spoken words'));
+    const attempts=[];await page.route('**/api/action-plans/assist',async route=>{attempts.push(route.request().postDataJSON());if(attempts.length===1){await db.actionPlan.update({where:{id:plan.id},data:{revision:{increment:1}}});await route.abort();}else await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'QA lost response retry verified',code:'qa-retry',requestId:'qa-safe-retry'})});});
+    const generateButton=page.getByRole('button',{name:w('產生未確認草稿 · 使用 1 次 AI 額度','Generate unconfirmed draft · uses 1 AI allowance'),exact:true});const refreshed=waitResponse(page,r=>r.url().includes('/api/action-plans/flow?')&&r.request().method()==='GET');await generateButton.click();await refreshed;await page.getByRole('alert').filter({hasText:'fetch'}).waitFor();response=waitResponse(page,r=>r.url().endsWith('/api/action-plans/assist')&&r.request().method()==='POST');await generateButton.click();assert.equal((await response).status(),503);check('Lost AI response keeps original request and revision '+locale,attempts.length===2&&JSON.stringify(attempts[0])===JSON.stringify(attempts[1]));await page.unroute('**/api/action-plans/assist');
+    for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Speech task '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'pdf-task-'+locale+'-'+width);}
+    const reportStep=zh?'03-3':'05-3',handbook=plan.actions.find(a=>a.clientKey==='nova_v2_'+reportStep);await db.actionItem.update({where:{id:handbook.id},data:{taskWorkspace:{version:2,step:reportStep,data:{kind:'document',sections:[0,1,2,3].map(i=>({id:String(i),body:((!zh&&i===0?'Conclusion: QA saved evidence is ready for review.\n':'')+'QA saved source chapter '+i+' — reviewed customer evidence.\n').repeat(5),confirmed:false}))}}}});
+    await page.goto(origin+prefix+'/task-report/'+handbook.id);await page.getByRole('img',{name:w('本報告唯讀驗證入口 QR Code',"QR code for this report's read-only verification page"),exact:true}).waitFor();if(!zh)await page.getByRole('heading',{level:1,name:'QA saved evidence is ready for review.',exact:true}).waitFor();const qr=page.getByRole('img',{name:w('本報告唯讀驗證入口 QR Code',"QR code for this report's read-only verification page"),exact:true});fs.writeFileSync(path.join(output,'report-qr-'+locale+'.png'),Buffer.from((await qr.getAttribute('src')).split(',')[1],'base64'));
+    for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Report QR layout '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'pdf-report-'+locale+'-'+width);}
+    await page.emulateMedia({media:'print'});await page.pdf({path:path.join(output,'report-'+locale+'.pdf'),format:'A4',printBackground:true});await page.emulateMedia({media:'screen'});await context.close();
+  }
+}
+
 try {
   await startServer(); await redirects();
   if (mode === 'start') {
     await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'tokens') { await tokenCore('newpaid', 'blocked', 1440, 'en', 'accept'); await tokenCore('complete', 'outcome', 390, 'zh-tw', 'decline'); await tokenCore('desktop', 'newpaid', 390, 'en', 'cancel'); await tokenCore('mobile', 'complete', 1440, 'zh-tw', 'expire'); await tokenAdminAndSearch(); }
+    if (scenario === 'pdf') { await pdfCompletion(); }
+    else if (scenario === 'tokens') { await tokenCore('newpaid', 'blocked', 1440, 'en', 'accept'); await tokenCore('complete', 'outcome', 390, 'zh-tw', 'decline'); await tokenCore('desktop', 'newpaid', 390, 'en', 'cancel'); await tokenCore('mobile', 'complete', 1440, 'zh-tw', 'expire'); await tokenAdminAndSearch(); }
     else if (scenario === 'roundtables') { await roundtableCore('investor', 'desktop', 1440, 'en', false); await roundtableCore('requester', 'mobile', 390, 'zh-tw', true); }
     else if (scenario === 'flow') { await flowCore('mobile', 390, 'zh-tw'); await flowCore('desktop', 1440, 'en'); await flowDocumentAndReview(); }
     else { await core('mobile', 390); await core('desktop', 1440); await tablet(); await states(); }
@@ -777,7 +841,7 @@ try {
       if (createdRoundtables.length) await db.roundtable.deleteMany({ where: { id: { in: createdRoundtables }, hostId: { in: created.map(u => u.id) } } });
       const removed = await db.user.deleteMany({ where: { id: { in: created.map(u => u.id) }, email: { in: created.map(u => u.email) } } });
       assert.equal(removed.count, created.length, 'Every owned fixture must be cleaned up.');
-      await db.rateCounter.deleteMany({ where: { OR: [{ key: `login-ip:${testIp}` }, ...created.flatMap(u => [{ key: { contains: u.id } }, { key: { contains: u.email } }]), ...Object.values(users).flatMap(u => (u.flowActionIds || []).map(id => ({ key: { contains: id } })))] } });
+      await db.rateCounter.deleteMany({ where: { OR: [{key:'newsletter-ip:'+createHash('sha256').update(testIp).digest('hex')},...newsletterEmails.map(email=>({key:'newsletter-email:'+createHash('sha256').update(email).digest('hex')})),{ key: `login-ip:${testIp}` }, ...created.flatMap(u => [{ key: { contains: u.id } }, { key: { contains: u.email } }]), ...Object.values(users).flatMap(u => (u.flowActionIds || []).map(id => ({ key: { contains: id } })))] } });
       report.cleanup = { createdUsers: created.length, removedUsers: removed.count, credentialsPersisted: false };
     }
   } catch (error) { report.cleanup = { failed: true }; console.error(error.message); process.exitCode = 1; }

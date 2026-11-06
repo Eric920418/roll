@@ -1,4 +1,5 @@
 "use client";
+import EvidencePreferences from "../evidence/Preferences";
 import { useCallback, useEffect, useState } from "react";
 import TokenBalance from "../TokenBalance";
 import Link from "next/link";
@@ -52,7 +53,7 @@ export default function MatchmakingWorkspace({ userId, initialTab }: { userId: s
     </div>
     {(networkError || error) && <div role="alert" className="whitespace-pre-wrap break-words rounded-xl bg-red-50 p-4 text-sm text-red-800"><p>{networkError || error}</p><button className="mt-2 min-h-11 underline" type="button" onClick={() => void (networkError ? reloadNetwork() : loadUnread())}>{zh ? "重試" : "Retry"}</button></div>}
     {MATCHMAKING_TABS.map(id => <div key={id} role="tabpanel" id={`matchmaking-panel-${id}`} aria-labelledby={`matchmaking-tab-${id}`} hidden={tab !== id}>
-      {visited.has(id) && (id === "roundtables" ? <RoundtablesPanel userId={userId} active={tab === id} /> : id === "messages" ? <div className="space-y-5"><div className="flex flex-wrap justify-end gap-3"><Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/notifications", locale)}>{zh ? "通知" : "Notifications"}</Link>{network?.portal && <Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/business-plan", locale)}>{zh ? "公司資料 PDF" : "Company information PDF"}</Link>}</div><MessagesPage key={userId} embedded active={tab === id} onUnreadChange={setUnread} /></div> : <MatchmakingPage active={tab === id} memberView={id} />)}
+      {visited.has(id) && (id === "roundtables" ? <RoundtablesPanel userId={userId} active={tab === id} /> : id === "messages" ? <div className="space-y-5"><div className="flex flex-wrap justify-end gap-3"><Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/notifications", locale)}>{zh ? "通知" : "Notifications"}</Link>{network?.portal && <Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/business-plan", locale)}>{zh ? "公司資料 PDF" : "Company information PDF"}</Link>}</div><EvidencePreferences key={"prefs:" + userId} /><MessagesPage key={userId} embedded active={tab === id} onUnreadChange={setUnread} /></div> : <MatchmakingPage active={tab === id} memberView={id} />)}
     </div>)}
   </div>;
 }

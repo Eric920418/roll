@@ -1,3 +1,4 @@
+import { evidenceStateSchema } from "@/lib/evidence/schema";
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -104,6 +105,12 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
     }
     if (input.action === "save") {
       if (input.data.kind !== current.kind) throw new PlanWriteError("表單類型與目前步驟不符 / Wrong template for the current step", 400);
+      if(input.step === "01-1" && input.data.kind === "conversation") {
+        const previous=flowStoredSchema.safeParse(action.taskWorkspace).data?.data,old=previous?.kind==="conversation"?previous.records:[];
+        const workspace=await tx.evidenceWorkspace.findUnique({where:{userId}}),state=evidenceStateSchema.parse(workspace?.data||{});let updated=false;
+        for(const r of input.data.records){const prior=old.find(v=>v.id===r.id);if((!prior || prior.fit!=null) && r.fit==null)throw new PlanWriteError("新增對話請選擇客群符合度 / Select customer fit for each new conversation",400);if(prior?.hypothesisId&&r.hypothesisId!==prior.hypothesisId)throw new PlanWriteError("原假設關聯不可覆寫 / Original hypothesis link cannot be overwritten",409);if(!prior&&state.selectedId){r.hypothesisId=state.selectedId;state.links.push({id:action.id+":"+r.id,hypothesisId:state.selectedId,fit:r.fit||"uncertain",relationship:["friend","colleague","stranger","prospect"].includes(r.relationship)?r.relationship as "friend"|"colleague"|"stranger"|"prospect":"prospect"});updated=true;}}
+        if(workspace&&updated){evidenceStateSchema.parse(state);const moved=await tx.evidenceWorkspace.updateMany({where:{userId,revision:workspace.revision},data:{data:state as Prisma.InputJsonValue,revision:{increment:1}}});if(!moved.count)throw new PlanWriteError("假設已更新，對話草稿保留 / Hypothesis changed; conversation draft retained",409);}
+      }
       const result = evaluateStep(context, input.step, input.data);
       const previous = flowStoredSchema.safeParse(action.taskWorkspace).data?.data;
       const changedPositioning = input.step === "01-2" && input.data.kind === "organize" && (previous?.kind !== "organize" || previous.values.positioning !== input.data.values.positioning);
@@ -156,11 +163,11 @@ export async function reportAccess(actionId: string, userId?: string, token?: st
   const action = await prisma.actionItem.findFirst({ where: { id: actionId, clientKey: { in: [flowKey("03-3"), flowKey("05-3")] } } });
   if (!action) throw new PlanWriteError("找不到文件 / Document not found", 404);
   const plan = await prisma.actionPlan.findUniqueOrThrow({ where: { id: action.actionPlanId }, include }), context = await flowContext(plan);
-  if (plan.userId !== userId) {
+  if (plan.userId !== userId || token) {
     const share = metadata(action.taskFinding).share;
     if (!token || !/^[a-zA-Z0-9_-]{43}$/.test(token) || !share || share.hash !== hash(token) || Date.parse(share.expires) <= Date.now() || plan.archivedAt || !action.done || share.fingerprint !== reportFingerprint(plan, context) || flowView(context).some(s => !s.ready || !s.done)) throw new PlanWriteError("分享未開啟、已更新或已失效 / Sharing is disabled, updated or expired", 404);
   }
   const stored = flowStoredSchema.safeParse(action.taskWorkspace).data;
   if (stored?.data.kind !== "document") throw new PlanWriteError("請先儲存文件 / Save the document first", 409);
-  return { step: flowStep(action)!.id, completedAt: action.completedAt?.toISOString() || null, sections: [...stored.data.sections].sort((a, b) => Number(a.id) - Number(b.id)), locale: plan.locale, title: action.title, goal: plan.goal || "", code: "NV-" + hash(plan.id).slice(0, 4).toUpperCase() + "-" + hash(plan.id).slice(4, 8).toUpperCase() };
+  return { version: reportFingerprint(plan, context).slice(0, 12), counts: { conversations: records(context).length, companies: new Set(records(context).map(r => r.company.normalize("NFKC").toLowerCase())).size, payments: paidCompanies(context).length }, shareExpires: metadata(action.taskFinding).share?.expires || null, step: flowStep(action)!.id, completedAt: action.completedAt?.toISOString() || null, sections: [...stored.data.sections].sort((a, b) => Number(a.id) - Number(b.id)), locale: plan.locale, title: action.title, goal: plan.goal || "", code: "NV-" + hash(plan.id).slice(0, 4).toUpperCase() + "-" + hash(plan.id).slice(4, 8).toUpperCase() };
 }

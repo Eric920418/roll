@@ -220,11 +220,26 @@
     "positioning": {
       "title": "從策略走到市場成果，只用一套營運系統。",
       "intro": "NOVA 把創辦人需要的軟體與真人支援串在一起，協助診斷瓶頸、選出下一步、執行市場進入工作，並接觸正確的市場關係。",
-      "software": { "title": "Software", "body": "即時 Dashboard、AI 指引、Action Plan、CRM 與可衡量的里程碑。" },
-      "guidance": { "title": "Strategic guidance", "body": "依公司階段提出建議，說清楚現在最重要的是什麼，以及原因。" },
-      "execution": { "title": "Go-to-market execution", "body": "針對驗證、銷售、募資與擴張提供可立即執行的下一步。" },
-      "access": { "title": "Market access", "body": "建立接觸台灣與亞洲客戶、夥伴及投資人的實際路徑。" },
-      "ecosystem": { "title": "Founder ecosystem", "body": "只串接目前真實存在的 Podcast、活動與直接聯絡管道。" },
+      "software": {
+        "title": "Software",
+        "body": "即時 Dashboard、AI 指引、Action Plan、CRM 與可衡量的里程碑。"
+      },
+      "guidance": {
+        "title": "Strategic guidance",
+        "body": "依公司階段提出建議，說清楚現在最重要的是什麼，以及原因。"
+      },
+      "execution": {
+        "title": "Go-to-market execution",
+        "body": "針對驗證、銷售、募資與擴張提供可立即執行的下一步。"
+      },
+      "access": {
+        "title": "Market access",
+        "body": "建立接觸台灣與亞洲客戶、夥伴及投資人的實際路徑。"
+      },
+      "ecosystem": {
+        "title": "Founder ecosystem",
+        "body": "只串接目前真實存在的 Podcast、活動與直接聯絡管道。"
+      },
       "goalTitle": "共同執行目標：六個月內取得亞洲第一張訂單。",
       "goalBody": "這是共同工作目標，不是成交保證。結果取決於產品準備度、市場條件、客戶需求與會員的執行。",
       "podcast": "Podcast",
@@ -523,7 +538,7 @@
       "firstMoveBody": "計畫已就緒，先從前置條件已完成的任務開始。",
       "ready": "可開始執行",
       "realCompletion": "查看任務不等於完成；實際完成工作後再勾選。",
-      "optionalIcp": "選填：到 Profile + ICP 更精準了解客戶",
+      "optionalIcp": "選填：到 公司檔案 更精準了解客戶",
       "optionalRoadmap": "進階選用：規劃長期目標與里程碑",
       "optionalPolaris": "選填：向 POLARIS 提問",
       "explore": "探索更多",
@@ -535,7 +550,7 @@
       "storageWarning": "瀏覽器暫存無法使用，請先保留此頁；重新整理後可能無法恢復輸入。",
       "accessHint": "目前帳號可以補充公司資料。AI 規劃需有效 Pro 權限或既有符合資格的試用授權。",
       "profileHintTitle": "幾項基本資料，讓 NOVA 更了解你的公司",
-      "profileHintBody": "先補充公司名稱、一句話介紹、公司階段及目前最需要。ICP 是選填，尚未確認的資訊不會阻止你開始。",
+      "profileHintBody": "先補充公司名稱、一句話介紹、公司階段及目前最需要。目標客戶 是選填，尚未確認的資訊不會阻止你開始。",
       "nextHintTitle": "從三個回答，得到五項下一步",
       "nextHintBody": "生成前先確認診斷，生成後從可執行任務開始。鎖住的任務需先完成前置工作；Goal roadmap 是後續選用功能。",
       "missing": "待補充資料",
@@ -675,7 +690,7 @@
       "companySize": "公司規模",
       "website": "網站",
       "country": "母國市場 / 國家",
-      "icp": "理想客戶輪廓（ICP）",
+      "icp": "目標客戶",
       "icpPlaceholder": "描述目標客戶、他們的問題與購買時機。",
       "targetMarkets": "目標市場",
       "needs": "你的需求",
@@ -770,83 +785,88 @@
         "quizCta": "開始測驗",
         "upgradeTitle": "解鎖你的進入市場工具",
         "upgradeBody": "升級 Pro，開啟你的個人化台灣落地查核清單。",
-      "upgradeCta": "查看方案",
-      "buildTitle": "把診斷轉成可執行的 Action Plan",
-      "buildBody": "讓 NOVA 判斷公司階段與當前瓶頸，再排出現在最重要的行動。",
-      "buildCta": "建立 Action Plan",
-      "actionCta": "開啟 Action Plan",
-      "blockedTitle": "先解除必要依賴",
-      "blockedBody": "有 {count} 個 Actions 正等待必要工作完成，暫時無法進入 Next 3。",
-      "blockedCta": "解除依賴",
-      "completeBody": "目前計畫中的 Actions 已全部完成，可檢視成果或生成下一版計畫。",
-      "completeCta": "檢視 Action Plan",
-      "readyTitle": "目前一切就緒",
-      "readyBody": "探索台灣百大企業情報，並持續推進你的查核清單。",
-      "readyCta": "瀏覽企業"
-    },
-    "actionSummary": {
-      "statusEyebrow": "公司目前狀態",
-      "confidence": "信心值 {value}%",
-      "stage": {
-        "label": "公司階段",
-        "empty": "尚未診斷",
-        "emptyPaidDetail": "建立 Action Plan，讓 NOVA 判斷你目前的公司階段。",
-        "emptyFreeDetail": "升級 Pro，解鎖 NOVA 公司階段診斷。",
-        "next": "下一階段：{stage}",
-        "final": "已達目前定義的最後階段"
+        "upgradeCta": "查看方案",
+        "buildTitle": "把診斷轉成可執行的 Action Plan",
+        "buildBody": "讓 NOVA 判斷公司階段與當前瓶頸，再排出現在最重要的行動。",
+        "buildCta": "建立 Action Plan",
+        "actionCta": "開啟 Action Plan",
+        "blockedTitle": "先解除必要依賴",
+        "blockedBody": "有 {count} 個 Actions 正等待必要工作完成，暫時無法進入 Next 3。",
+        "blockedCta": "解除依賴",
+        "completeBody": "目前計畫中的 Actions 已全部完成，可檢視成果或生成下一版計畫。",
+        "completeCta": "檢視 Action Plan",
+        "readyTitle": "目前一切就緒",
+        "readyBody": "探索台灣百大企業情報，並持續推進你的查核清單。",
+        "readyCta": "瀏覽企業"
       },
-      "bottleneck": {
-        "label": "目前瓶頸",
-        "empty": "尚無診斷",
-        "emptyDetail": "NOVA 尚未判斷阻礙公司進入下一階段的主要限制。"
+      "actionSummary": {
+        "statusEyebrow": "公司目前狀態",
+        "confidence": "信心值 {value}%",
+        "stage": {
+          "label": "公司階段",
+          "empty": "尚未診斷",
+          "emptyPaidDetail": "建立 Action Plan，讓 NOVA 判斷你目前的公司階段。",
+          "emptyFreeDetail": "升級 Pro，解鎖 NOVA 公司階段診斷。",
+          "next": "下一階段：{stage}",
+          "final": "已達目前定義的最後階段"
+        },
+        "bottleneck": {
+          "label": "目前瓶頸",
+          "empty": "尚無診斷",
+          "emptyDetail": "NOVA 尚未判斷阻礙公司進入下一階段的主要限制。"
+        },
+        "subscription": {
+          "label": "訂閱方案",
+          "manage": "管理帳務",
+          "upgrade": "升級 Pro",
+          "noSubscription": "目前沒有有效訂閱"
+        },
+        "next": {
+          "outcomeTitle": "待確認里程碑成果",
+          "outcomeBody": "任務已完成，請到目標規劃確認實際商業成果。",
+          "nextStageTitle": "下一個里程碑已解鎖",
+          "nextStageBody": "生成並確認下一階段五項任務，繼續推進目標。",
+          "eyebrow": "Action Plan",
+          "title": "Next 3 moves",
+          "viewAll": "查看完整 Action Plan",
+          "ready": "可執行",
+          "after": "已完成前置任務",
+          "missingDependency": "缺少前置任務 ID，請編輯此任務並建立連結",
+          "actionTime": "執行時間",
+          "score": "優先分數",
+          "priority": {
+            "Critical": "Critical",
+            "High": "High",
+            "Medium": "Medium",
+            "Low": "Low"
+          },
+          "completeEyebrow": "計畫已完成",
+          "blockedEyebrow": "需要先完成依賴",
+          "completeTitle": "目前 Actions 已全部完成",
+          "blockedTitle": "目前沒有可執行的 Action",
+          "completeBody": "查看已完成的計畫，或請 NOVA 生成下一個版本。",
+          "blockedBody": "有 {count} 個 Actions 受到必要依賴阻擋。完成或編輯依賴後，系統會重新排序。",
+          "openPlan": "開啟 Action Plan",
+          "emptyEyebrow": "尚無有效計畫",
+          "emptyTitle": "讓 NOVA 診斷你的下一步",
+          "emptyBody": "逐題回答瓶頸、實際進展與目標，共三題；確認診斷後生成五項任務。",
+          "upgrade": "升級 Pro",
+          "fewerBlocked": "另有 {count} 項任務等待前置條件。灰色卡片僅供預覽，只有可執行任務才能開始。",
+          "fewerAvailable": "此計畫目前只剩 {count} 個可執行 Actions。"
+        },
+        "progress": {
+          "eyebrow": "Action 完成率",
+          "title": "你的進度",
+          "product": "產品",
+          "sales": "銷售",
+          "fundraising": "募資",
+          "expansion": "市場拓展",
+          "aria": "{group} Action 完成率",
+          "emptyAria": "目前計畫沒有{group}類 Actions",
+          "count": "已完成 {done} / {total}",
+          "noActions": "沒有適用的 Actions"
+        }
       },
-      "subscription": {
-        "label": "訂閱方案",
-        "manage": "管理帳務",
-        "upgrade": "升級 Pro",
-        "noSubscription": "目前沒有有效訂閱"
-      },
-      "next": {
-        "outcomeTitle": "待確認里程碑成果",
-        "outcomeBody": "任務已完成，請到目標規劃確認實際商業成果。",
-        "nextStageTitle": "下一個里程碑已解鎖",
-        "nextStageBody": "生成並確認下一階段五項任務，繼續推進目標。",
-        "eyebrow": "Action Plan",
-        "title": "Next 3 moves",
-        "viewAll": "查看完整 Action Plan",
-        "ready": "可執行",
-        "after": "已完成前置任務",
-        "missingDependency": "缺少前置任務 ID，請編輯此任務並建立連結",
-        "actionTime": "執行時間",
-        "score": "優先分數",
-        "priority": { "Critical": "Critical", "High": "High", "Medium": "Medium", "Low": "Low" },
-        "completeEyebrow": "計畫已完成",
-        "blockedEyebrow": "需要先完成依賴",
-        "completeTitle": "目前 Actions 已全部完成",
-        "blockedTitle": "目前沒有可執行的 Action",
-        "completeBody": "查看已完成的計畫，或請 NOVA 生成下一個版本。",
-        "blockedBody": "有 {count} 個 Actions 受到必要依賴阻擋。完成或編輯依賴後，系統會重新排序。",
-        "openPlan": "開啟 Action Plan",
-        "emptyEyebrow": "尚無有效計畫",
-        "emptyTitle": "讓 NOVA 診斷你的下一步",
-        "emptyBody": "逐題回答瓶頸、實際進展與目標，共三題；確認診斷後生成五項任務。",
-        "upgrade": "升級 Pro",
-        "fewerBlocked": "另有 {count} 項任務等待前置條件。灰色卡片僅供預覽，只有可執行任務才能開始。",
-        "fewerAvailable": "此計畫目前只剩 {count} 個可執行 Actions。"
-      },
-      "progress": {
-        "eyebrow": "Action 完成率",
-        "title": "你的進度",
-        "product": "產品",
-        "sales": "銷售",
-        "fundraising": "募資",
-        "expansion": "市場拓展",
-        "aria": "{group} Action 完成率",
-        "emptyAria": "目前計畫沒有{group}類 Actions",
-        "count": "已完成 {done} / {total}",
-        "noActions": "沒有適用的 Actions"
-      }
-    },
       "metrics": {
         "sectionTitle": "關鍵指標",
         "companies": "追蹤企業",
@@ -953,7 +973,7 @@
       }
     },
     "profile": {
-      "title": "公司檔案 + ICP",
+      "title": "公司檔案",
       "subtitle": "NOVA 用來協助你規劃下一步的公司與客戶資料。",
       "edit": "編輯資料",
       "emptyTitle": "尚未建立公司檔案",
@@ -1083,7 +1103,13 @@
       "meetingAt": "日期",
       "meetingType": "會議類型",
       "typePlaceholder": "選擇類型",
-      "types": { "client": "客戶", "investor": "投資人", "partner": "合作夥伴", "internal": "內部", "other": "其他" },
+      "types": {
+        "client": "客戶",
+        "investor": "投資人",
+        "partner": "合作夥伴",
+        "internal": "內部",
+        "other": "其他"
+      },
       "empty": "尚無記錄，新增第一筆吧。",
       "count": "{count} 筆記錄",
       "discardChanges": "目前有尚未儲存的內容，確定放棄這些變更嗎？",
@@ -1143,7 +1169,12 @@
       "actionProgress": "任務進度",
       "confidence": "信心值 {value}%",
       "score": "優先分數",
-      "priority": { "Critical": "Critical", "High": "High", "Medium": "Medium", "Low": "Low" },
+      "priority": {
+        "Critical": "Critical",
+        "High": "High",
+        "Medium": "Medium",
+        "Low": "Low"
+      },
       "days": "天",
       "whyNow": "為何現在做",
       "details": "詳細資訊",
@@ -1205,8 +1236,8 @@
         "dependencyNotes": "依賴說明",
         "dependsOn": "依賴哪些 Actions",
         "difficulty": "難度",
-      "actionTimeMin": "執行時間最少（分鐘）",
-      "actionTimeMax": "執行時間最多（分鐘）",
+        "actionTimeMin": "執行時間最少（分鐘）",
+        "actionTimeMax": "執行時間最多（分鐘）",
         "companyStage": "公司階段",
         "stageFit": "階段符合度（1–5）",
         "stageFitReason": "階段符合原因",
@@ -1220,10 +1251,32 @@
         "outcomeTimeMax": "成果時間最多（天）",
         "estimatedTime": "預估時間"
       },
-      "urgency": { "immediate": "立即", "urgent": "緊急", "scheduled": "排定" },
-      "dependency": { "0": "無", "1": "有幫助", "2": "重要", "3": "必要" },
-      "difficulty": { "1": "非常容易", "2": "容易", "3": "中等", "4": "困難", "5": "非常困難" },
-      "outcome": { "revenue": "營收", "customers": "客戶", "product": "產品／服務", "fundraising": "募資", "expansion": "市場拓展", "custom": "自訂" },
+      "urgency": {
+        "immediate": "立即",
+        "urgent": "緊急",
+        "scheduled": "排定"
+      },
+      "dependency": {
+        "0": "無",
+        "1": "有幫助",
+        "2": "重要",
+        "3": "必要"
+      },
+      "difficulty": {
+        "1": "非常容易",
+        "2": "容易",
+        "3": "中等",
+        "4": "困難",
+        "5": "非常困難"
+      },
+      "outcome": {
+        "revenue": "營收",
+        "customers": "客戶",
+        "product": "產品／服務",
+        "fundraising": "募資",
+        "expansion": "市場拓展",
+        "custom": "自訂"
+      },
       "editor": {
         "addTitle": "新增 Action",
         "editTitle": "編輯 Action",
@@ -1255,7 +1308,10 @@
         "userAdjusted": "使用者在確認診斷時手動調整。",
         "genericError": "NOVA 無法完成 Action Plan，請再試一次。"
       },
-      "errors": { "save": "無法儲存 Action。", "delete": "無法刪除 Action。" }
+      "errors": {
+        "save": "無法儲存 Action。",
+        "delete": "無法刪除 Action。"
+      }
     },
     "feedback": {
       "title": "回報問題或建議",
@@ -1289,30 +1345,30 @@
       }
     },
     "icp": {
-      "title": "你的 ICP",
+      "title": "你的 目標客戶",
       "notProvided": "未提供",
-      "sharpen": "釐清我的 ICP",
-      "opening": "一起定義你的 ICP。",
+      "sharpen": "釐清我的 目標客戶",
+      "opening": "一起定義你的 目標客戶。",
       "unknown": "尚未確認",
-      "ask": "請 POLARIS 協助釐清我的 ICP",
-      "upgrade": "升級 Pro，請 POLARIS 協助釐清 ICP",
+      "ask": "請 POLARIS 協助釐清我的 目標客戶",
+      "upgrade": "升級 Pro，請 POLARIS 協助釐清 目標客戶",
       "edit": "編輯",
       "close": "關閉",
       "panelHint": "與 POLARIS 一起釐清理想客戶，最多三輪問題。AI 草稿只有在你確認儲存後才會更新公司檔案。",
-      "draftTitle": "POLARIS 整理的 ICP 草稿",
-      "emptyDraftTitle": "你的 ICP 尚未定義",
+      "draftTitle": "POLARIS 整理的 目標客戶 草稿",
+      "emptyDraftTitle": "你的 目標客戶 尚未定義",
       "emptyDraftHint": "還不知道也沒關係。未知欄位會保持空白，已儲存的公司檔案不會改動。可以繼續提供目前知道的資訊，或有更多資料後再編輯草稿；空白草稿不扣 AI 額度。",
       "save": "儲存到 Profile",
       "saveDraft": "儲存草稿",
       "retry": "重新生成",
       "reload": "重新載入工作區",
-      "manual": "手動編輯 ICP",
+      "manual": "手動編輯 目標客戶",
       "send": "送出",
       "answer": "你的回答",
       "analysing": "POLARIS 分析中…已提交的回答會保留。",
-      "saved": "ICP 已儲存到公司檔案。",
+      "saved": "目標客戶 已儲存到公司檔案。",
       "draftSaved": "草稿已儲存，Profile 尚未變更。",
-      "noDraft": "請先建立或編輯 ICP 草稿。",
+      "noDraft": "請先建立或編輯 目標客戶 草稿。",
       "storageWarning": "瀏覽器無法暫存。離開前請送出回答或儲存草稿。",
       "localRestored": "已恢復尚未提交的編輯，請確認後再儲存。",
       "connectionError": "無法讀取伺服器回應，請重新載入。",
@@ -1324,9 +1380,9 @@
       "primaryNeed": "目前最需要",
       "companyAge": "公司年資",
       "funding": "累計募資",
-      "editLink": "到公司檔案 + ICP 編輯 ICP",
+      "editLink": "到公司檔案 編輯 目標客戶",
       "fields": {
-        "summary": "ICP 摘要",
+        "summary": "目標客戶 摘要",
         "who": "客戶是誰",
         "stage": "客戶所處階段",
         "location": "客戶所在地",
@@ -1410,13 +1466,13 @@
       "anyTime": "不限時間",
       "ended": "已結束",
       "completeItem": "完成「{title}」",
-      "howDidItGo": "訪談進行得如何？",
+      "howDidItGo": "對話進行得如何？",
       "logIt": "填寫紀錄",
-      "logInterview": "記錄訪談",
+      "logInterview": "記錄對話",
       "details": "「{title}」的詳細內容",
       "viewDetails": "詳細內容",
-      "interviewProgress": "已訪談 {current}/{target} 間公司",
-      "interviewCount": "已訪談 {current} 間公司",
+      "interviewProgress": "已對話 {current}/{target} 間公司",
+      "interviewCount": "已對話 {current} 間公司",
       "commitments": "{count} 間公司同意付費試點",
       "commitmentHint": "計算已保存試點提案、同意回覆與原因的不同公司，並非已收款數。",
       "googleCalendar": "加入 Google 行事曆",
@@ -1500,7 +1556,10 @@
         "needs": "服務需求",
         "notes": "補充說明"
       },
-      "strategy": { "stage": "公司階段", "bottleneck": "當前瓶頸" },
+      "strategy": {
+        "stage": "公司階段",
+        "bottleneck": "當前瓶頸"
+      },
       "actionPlan": {
         "nextMoves": "Next 3 moves",
         "progress": "完成進度",
@@ -2352,7 +2411,7 @@
       "industry": "產業／專長",
       "slogan": "你的介紹",
       "companyPitch": "公司檔案的一句話介紹",
-      "icp": "公司檔案的 ICP",
+      "icp": "公司檔案的 目標客戶",
       "markets": "公司檔案的目標市場",
       "offers": "我能提供的協助",
       "looksFor": "我正在尋找的協助",
@@ -2369,9 +2428,9 @@
       "first-customers": "首批客戶"
     },
     "visibilityLabel": "卡片公開欄位",
-    "privacy": "公司摘要會向符合權限的登入會員顯示；Email、原始訪談與私人文件保持私密。只有接受聊天邀請的對象可查看照片原圖。",
-    "syncNotice": "勾選的公司介紹、ICP 與目標市場會隨正式公司檔案更新；未勾選的欄位維持隱藏。你自行填寫的介紹、可提供與正在尋找的協助，請在這裡修改。",
-    "publishRules": "創辦人須先有三家不同公司的有效客戶訪談。其他角色須填完整資料並同意公開；你可以先儲存私人草稿。",
+    "privacy": "公司摘要會向符合權限的登入會員顯示；Email、原始對話與私人文件保持私密。只有接受聊天邀請的對象可查看照片原圖。",
+    "syncNotice": "勾選的公司介紹、目標客戶 與目標市場會隨正式公司檔案更新；未勾選的欄位維持隱藏。你自行填寫的介紹、可提供與正在尋找的協助，請在這裡修改。",
+    "publishRules": "創辦人須先有三家不同公司的有效客戶對話。其他角色須填完整資料並同意公開；你可以先儲存私人草稿。",
     "visibleEditWarning": "卡片目前公開中。儲存變更會同步更新其他會員能看到的內容，請先審閱預覽。",
     "photoTitle": "你的照片",
     "sharePhoto": "在卡片顯示模糊照片",
@@ -2414,7 +2473,7 @@
     },
     "verifiedInvestor": "已驗證投資人",
     "verifiedBuyer": "已驗證買家",
-    "interviews": "已記錄客戶訪談",
+    "interviews": "已記錄客戶對話",
     "milestones": "已標記完成里程碑",
     "payingCustomers": "回報的付費客戶",
     "selfReported": "會員自述・未經獨立驗證",

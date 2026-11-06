@@ -1,3 +1,4 @@
+import { evidencePolicySchema } from "@/lib/evidence/schema";
 import { isRollonPage, validateRollonAssets } from "@/lib/cms/rollon-v10";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
@@ -24,6 +25,7 @@ export async function PUT(req: NextRequest) {
       return fail(parsed.error.issues.map((i) => i.message).join("；"), 400);
     }
     const { key, value } = parsed.data;
+    if (key === "novaEvidencePolicy" && !evidencePolicySchema.safeParse(value).success) return fail("驗證框架條件無效", 400);
     if (key.startsWith("rollonV10.")) {
       const page = key.slice("rollonV10.".length);
       if (!isRollonPage(page)) return fail("未知官網頁面", 400);

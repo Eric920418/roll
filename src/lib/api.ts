@@ -26,8 +26,7 @@ export function unauthorized() {
 export function failFromError(error: unknown, status = 500) {
   if (status >= 500) {
     const requestId = logSecurityError("api.unexpected", error);
-    const provider = error as { status?: unknown; error?: { error?: { type?: unknown; message?: unknown } } } | null;
-    if (provider?.status === 400 && provider.error?.error?.type === "invalid_request_error" && typeof provider.error.error.message === "string" && /credit balance is too low/i.test(provider.error.error.message)) {
+    if (isProviderCreditExhausted(error)) {
       return NextResponse.json({ error: `AI 供應商回報服務額度不足，平台需核對帳務設定；請聯絡支援。 / The AI provider reports unavailable credit. Platform billing needs review; contact support. 追蹤碼 / Reference: ${requestId}`, code: "ai_provider_credit_exhausted", requestId }, { status: 503, headers: { "Cache-Control": "private, no-store" } });
     }
     const unavailable = error instanceof SecurityUnavailableError;
@@ -44,3 +43,5 @@ export function rateLimited(retryAfterMs: number) {
   return NextResponse.json({ error: "請求過於頻繁，請稍後重試 / Too many attempts; try again later", code: "tooManyAttempts" },
     { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil(retryAfterMs / 1000))) } });
 }
+
+export function isProviderCreditExhausted(error:unknown) { const provider=error as {status?:unknown;error?:{error?:{type?:unknown;message?:unknown}}}|null;return provider?.status===400&&provider.error?.error?.type==='invalid_request_error'&&typeof provider.error.error.message==='string'&&/credit balance is too low/i.test(provider.error.error.message); }

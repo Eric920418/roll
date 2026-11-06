@@ -51,7 +51,7 @@ export type PublicCard = {
   id: string; displayName?: string; stage?: string; chat?: { id: string; status: string; outgoing: boolean } | null; companyName?: string; role: CardDraft["role"]; categories: CardDraft["categories"]; country?: string; industry?: string; slogan?: string;
   companyPitch?: string; icp?: string; markets?: string[]; offers?: string; looksFor?: string; stats?: CardStats;
   photo?: string; mentorCertified?: boolean; activity: ReturnType<typeof activityGroup>; verified: boolean; recommended: boolean;
-  reasons: ReturnType<typeof overlapReasons>;
+  matchReasons?: Array<{zh:string;en:string}>; reasons: ReturnType<typeof overlapReasons>;
 };
 // Build the whitelist explicitly: never spread a database member into a client response.
 export function publicCard(row: Omit<CardDraft, "displayName"> & { id: string; sourcePolicy?: number | null; revision?: number; displayName?: string | null; blurredPhoto?: string | null; lastActiveAt: Date | null; verified: boolean; recommended: boolean; mentorCertified?: boolean }, source: CardSources, stats: CardStats, viewer: Parameters<typeof overlapReasons>[0], now = new Date(), restricted = false): PublicCard {
@@ -100,5 +100,5 @@ export function matchCopy(card: PublicCard, zh: boolean) {
   const reasons = card.reasons.map(r => ({ need: zh ? "符合你公開選擇的需求類別" : "Matches a need you selected", industry: zh ? "你們公開的產業相同" : "You share a public industry", market: zh ? "你們公開的目標市場有交集" : "Your public target markets overlap" })[r]);
   const name = card.displayName || card.companyName || (zh ? "[對方姓名]" : "[Name]");
   const need = card.role === "investor" ? (zh ? "詢問關注的領域，確認是否適合進一步交流" : "Ask about their focus and whether an introduction is relevant") : (zh ? "先確認需求與交流意願，再約一次簡短對話" : "Confirm mutual relevance before arranging a short conversation");
-  return { reasons, next: need, draft: zh ? `你好 ${name}，我在 NOVA 看到你的公開卡片。${card.companyPitch || card.slogan ? `你提到「${card.companyPitch || card.slogan}」，` : ""}想了解我們是否有適合交流的地方。方便先聊聊你的方向與需求嗎？` : `Hi ${name}, I found your public card on NOVA.${card.companyPitch || card.slogan ? ` You mentioned “${card.companyPitch || card.slogan}”.` : ""} I'd like to see whether an exchange would be useful. Would you be open to sharing your focus and what you are looking for?` };
+  return { reasons: card.matchReasons?.length ? card.matchReasons.map(r => zh ? r.zh : r.en) : reasons, next: need, draft: zh ? `你好 ${name}，我在 NOVA 看到你的公開卡片。${card.companyPitch || card.slogan ? `你提到「${card.companyPitch || card.slogan}」，` : ""}想了解我們是否有適合交流的地方。方便先聊聊你的方向與需求嗎？` : `Hi ${name}, I found your public card on NOVA.${card.companyPitch || card.slogan ? ` You mentioned “${card.companyPitch || card.slogan}”.` : ""} I'd like to see whether an exchange would be useful. Would you be open to sharing your focus and what you are looking for?` };
 }

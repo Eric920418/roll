@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import ConversationEditor from "./ConversationEditor";
 import { CHAPTERS, ORGANIZE_FIELDS, emptyRecord, emptyContact, words, type FlowData, type StepId } from "@/lib/action-plan/flow/catalog";
 import type { FlowView } from "@/lib/action-plan/flow/service";
 
@@ -7,7 +8,7 @@ export const button = "inline-flex min-h-11 items-center justify-center rounded-
 const field = "mt-1 min-h-11 w-full min-w-0 rounded-xl border border-dark/20 bg-white px-3 py-2 text-sm focus-visible:outline-2";
 type Props = { step: StepId; data: FlowData; view: FlowView; locale: string; disabled?: boolean; onChange(data: FlowData): void };
 export function TextField({ label, value, onChange, multiline = false, type = "text" }: { label: string; value: string; onChange(value: string): void; multiline?: boolean; type?: string }) {
-  return <label className="block min-w-0 text-sm">{label}{multiline ? <textarea aria-label={label} className={field} rows={3} maxLength={4000} value={value} onChange={e => onChange(e.target.value)} /> : <input aria-label={label} className={field} type={type} maxLength={4000} value={value} onChange={e => onChange(e.target.value)} />}</label>;
+  return <label className="block min-w-0 text-sm">{label}{multiline ? <textarea aria-label={label} className={field} rows={3} maxLength={4000} value={value} onChange={e => onChange(e.target.value)} /> : <input aria-label={label} className={field} type={type} step={type === "number" ? "any" : undefined} maxLength={4000} value={value} onChange={e => onChange(e.target.value)} />}</label>;
 }
 function Choice({ label, value, options, onChange }: { label: string; value: string; options: Array<[string, string]>; onChange(value: string): void }) {
   return <label className="block min-w-0 text-sm">{label}<select aria-label={label} className={field} value={value} onChange={e => onChange(e.target.value)}>{options.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>;
@@ -22,15 +23,8 @@ export default function Templates({ step, data, view, locale, disabled, onChange
     {data.kind === "conversation" && <>
       <div className="space-y-3">{data.records.map((row, index) => <details key={row.id} open={editing === row.id} className="min-w-0 rounded-xl border border-dark/15 p-4">
         <summary className="min-h-11 cursor-pointer break-words py-2 font-semibold" onClick={e => { e.preventDefault(); setEditing(editing === row.id ? "" : row.id); }}>{index + 1}. {row.company || w("新增對話", "New conversation")} · {row.name}</summary>
-        <div className="mt-3 space-y-4"><div className="grid gap-4 sm:grid-cols-2">
-          {(["company", "name", ...(step === "01-1" ? ["relationship"] : []), "date"] as const).map(key => <TextField key={key} label={w(({ company: "公司", name: "對象姓名", relationship: "你與對方的關係", date: "對話日期" } as Record<string, string>)[key], ({ company: "Company", name: "Person", relationship: "Your relationship", date: "Conversation date" } as Record<string, string>)[key])} value={row[key as keyof typeof row]} type={key === "date" ? "date" : "text"} onChange={value => onChange({ ...data, records: data.records.map(r => r.id === row.id ? { ...r, [key]: value } : r) })} />)}
-        </div>
-          {step === "01-1" ? <>
-            <TextField multiline label={w("痛點與原話", "Pain and customer wording")} value={row.pain} onChange={pain => onChange({ ...data, records: data.records.map(r => r.id === row.id ? { ...r, pain } : r) })} />
-            <Choice label={w("痛點嚴重程度", "Pain severity")} value={row.severity} options={[["", w("請選擇", "Choose")], ["low", w("低", "Low")], ["medium", w("中", "Medium")], ["high", w("高", "High")]]} onChange={value => onChange({ ...data, records: data.records.map(r => r.id === row.id ? { ...r, severity: value as typeof row.severity } : r) })} />
-            <TextField multiline label={w("目前的解決方式", "Current solution")} value={row.solution} onChange={solution => onChange({ ...data, records: data.records.map(r => r.id === row.id ? { ...r, solution } : r) })} />
-            <Choice label={w("付費意願", "Willingness to pay")} value={row.wtp} options={[["", w("請選擇", "Choose")], ["not_asked", w("尚未詢問（不計完成）", "Not asked (incomplete)")], ["willing", w("願意", "Willing")], ["considering", w("考慮中", "Considering")], ["declined", w("不願意", "Declined")]]} onChange={value => onChange({ ...data, records: data.records.map(r => r.id === row.id ? { ...r, wtp: value as typeof row.wtp } : r) })} />
-          </> : (["reason", "missing", "referral"] as const).map(key => <TextField key={key} multiline label={w(({ reason: "留下或續約的原因", missing: "還缺什麼（沒有也請註明）", referral: "會推薦誰（不推薦也請註明）" })[key], ({ reason: "Reason to stay or renew", missing: "What is missing (state none if applicable)", referral: "Who they would refer (state none if applicable)" })[key])} value={row[key]} onChange={value => onChange({ ...data, records: data.records.map(r => r.id === row.id ? { ...r, [key]: value } : r) })} />)}
+        <div className="mt-3 space-y-4">
+          {step === "01-1" ? <ConversationEditor row={row} locale={locale} guided={!view.steps.find(s=>s.id===step)?.saved || !view.leads.some(l=>l.id===row.id)} onChange={value=>onChange({...data,records:data.records.map(r=>r.id===row.id?value:r)})} /> : <><div className="grid gap-4 sm:grid-cols-2">{(["company","name","date"] as const).map(key=><TextField key={key} label={w(({company:"公司",name:"對象姓名",date:"對話日期"})[key],({company:"Company",name:"Person",date:"Conversation date"})[key])} value={row[key]} type={key==="date"?"date":"text"} onChange={value=>onChange({...data,records:data.records.map(r=>r.id===row.id?{...r,[key]:value}:r)})}/>)}</div>{(["reason","missing","referral"] as const).map(key=><TextField key={key} multiline label={w(({reason:"留下或續約的原因",missing:"還缺什麼（沒有也請註明）",referral:"會推薦誰（不推薦也請註明）"})[key],({reason:"Reason to stay or renew",missing:"What is missing (state none if applicable)",referral:"Who they would refer (state none if applicable)"})[key])} value={row[key]} onChange={value=>onChange({...data,records:data.records.map(r=>r.id===row.id?{...r,[key]:value}:r)})}/>)}</>}
           <button type="button" className={button} onClick={() => onChange({ ...data, records: data.records.filter(r => r.id !== row.id) })}>{w("移除這筆草稿", "Remove draft record")}</button>
         </div>
       </details>)}</div>

@@ -1,3 +1,5 @@
+import { evidenceEmailAllowed,evidenceToken } from "@/lib/evidence/reminders";
+import type { EvidenceCategory } from "@/lib/evidence/reminders";
 import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -8,6 +10,11 @@ import { conditionLabel, networkEnabled, visitorCountLabel, weekDueAt, weekKey }
 import { watchStillValid } from "./watches";
 type DB = Prisma.TransactionClient;
 export async function queueNotification(tx: DB, userId: string, eventKey: string, kind: string, payload: Prisma.InputJsonObject, email = false) {
+  if(["invitation","message","connection_accepted"].includes(kind)) {
+    const pref=await tx.evidenceWorkspace.findUnique({where:{userId}});
+    const state=(await import("@/lib/evidence/schema")).evidenceStateSchema.parse(pref?.data||{});
+    if(state.preferences.connection){email=true;payload={...payload,category:"connection",preferenceVersion:state.preferenceVersion};}
+  }
   const row = await tx.memberNotification.upsert({ where: { eventKey }, create: { userId, eventKey, kind, payload }, update: {} });
   if (email) await tx.memberNotificationDelivery.upsert({ where: { notificationId: row.id }, create: { notificationId: row.id }, update: {} });
   return row;
@@ -42,7 +49,7 @@ export async function unsubscribe(token: string) {
   return { saved: true };
 }
 const escape = (v: string) => v.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-export async function runNotifications(now = new Date()) {
+export async function runNotifications(now = new Date(), budgetMs = 240000) {
   const db = prisma as unknown as DB;
   if (!networkEnabled()) return { disabled: true, accepted: 0, failed: 0 };
   const previousWeek = weekKey(new Date(now.getTime() - 7 * 86400000));
@@ -61,7 +68,7 @@ export async function runNotifications(now = new Date()) {
   const due = await db.memberNotificationDelivery.findMany({ where: { ...(testMode ? { notification: { userId: testUser } } : {}), status: { in: ["pending", "processing"] }, nextAttemptAt: { lte: now } }, orderBy: { nextAttemptAt: "asc" }, take: 50, include: { notification: { include: { user: { select: { email: true } } } } } });
   let accepted = 0, failed = 0; const startedAt = Date.now();
   for (const row of due) {
-    if (Date.now() - startedAt > 240000) break;
+    if (Date.now() - startedAt > budgetMs) break;
     const leaseToken = randomUUID();
     if (!(await db.memberNotificationDelivery.updateMany({ where: { id: row.id, status: { in: ["pending", "processing"] }, OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }] }, data: { status: "processing", leaseToken, leaseUntil: new Date(now.getTime() + 300000) } })).count) continue;
     const finish = (data: Prisma.MemberNotificationDeliveryUpdateManyMutationInput) => db.memberNotificationDelivery.updateMany({ where: { id: row.id, leaseToken, status: "processing" }, data: { ...data, leaseToken: null, leaseUntil: null } });
@@ -69,19 +76,30 @@ export async function runNotifications(now = new Date()) {
       if (row.attempts >= 3 || now.getTime() - row.createdAt.getTime() >= 86400000) { await finish({ status: "expired" }); continue; }
       const preferences = await db.memberNotificationPreference.upsert({ where: { userId: row.notification.userId }, create: { userId: row.notification.userId }, update: {} });
       const payload = row.notification.payload as Record<string, unknown>, watch = row.notification.kind === "watch";
+      const evidence = row.notification.kind === "evidence" || ["invitation","message","connection_accepted"].includes(row.notification.kind);
+      const category = (evidence ? String(payload.category || "connection") : "weekly") as EvidenceCategory;
+      const evidencePreference = evidence ? await evidenceEmailAllowed(row.notification.userId,category,Number(payload.preferenceVersion)) : null;
       const eligible = async () => {
+        if(evidence) {
+          if(!(await evidenceEmailAllowed(row.notification.userId,category,Number(payload.preferenceVersion))).enabled)return false;
+          if(category==="connection"){const connection=await db.networkConnection.findFirst({where:{id:String(payload.connectionId),OR:[{senderId:row.notification.userId},{recipientId:row.notification.userId}]}});return Boolean(connection && connection.status!=="blocked" && (row.notification.kind!=="invitation"||connection.status==="pending"));}
+          if(category==="roundtable"){const registration=await db.roundtableRegistration.findFirst({where:{id:String(payload.registrationId),userId:row.notification.userId,status:"confirmed",roundtable:{status:"scheduled",startsAt:{gt:now},host:{mentorCertification:{status:"approved"}}}}});return Boolean(registration);}
+          if(category==="task"){const action=await db.actionItem.findFirst({where:{id:String(payload.actionId),done:false,actionPlan:{id:String(payload.planId),userId:row.notification.userId,activeKey:row.notification.userId,archivedAt:null}}});if(!action)return false;if(payload.contactId){const saved=(await import("@/lib/action-plan/flow/catalog")).flowStoredSchema.safeParse(action.taskWorkspace).data;return Boolean(saved?.data.kind==="outreach"&&saved.data.contacts.some(c=>c.id===payload.contactId&&c.status==="sent"&&c.date===payload.contactDate));}return true;}
+          return true;
+        }
         const current = await db.memberNotificationPreference.findUnique({ where: { userId: row.notification.userId } });
         return current && (watch ? current.watchEmail && await watchStillValid(db, String(payload.watchId)) : current.weeklyEmail);
       };
       if (!await eligible()) { await finish({ status: "cancelled" }); continue; }
-      const zh = preferences.locale === "zh-tw", origin = process.env.NEXT_PUBLIC_APP_URL;
+      const zh = (evidencePreference?.state.preferences.locale || preferences.locale) === "zh-tw", origin = process.env.NEXT_PUBLIC_APP_URL;
       const viewers = visitorCountLabel(payload, zh);
-      if (!watch && !viewers) { await finish({ status: "cancelled" }); continue; }
+      if (!watch && !evidence && !viewers) { await finish({ status: "cancelled" }); continue; }
       if (!origin || new URL(origin).protocol !== "https:") throw new Error("通知需要正式 HTTPS 網址 / HTTPS app origin required");
-      const token = notificationToken(row.notification.userId, preferences.version, watch ? "watch" : "weekly");
-      const optout = new URL(`${zh ? "/zh-tw" : ""}/network/unsubscribe?token=${encodeURIComponent(token)}`, origin).href, oneClick = new URL(`/api/notifications/unsubscribe?token=${encodeURIComponent(token)}`, origin).href;
-      const title = watch ? `${payload.company}: ${conditionLabel(String(payload.condition), zh)}` : zh ? `本週有 ${viewers}看了你的頁面` : `${viewers} viewed your page this week`;
-      const href = new URL(`${zh ? "/zh-tw" : ""}/dashboard/notifications`, origin).href;
+      const token = evidence ? evidenceToken(row.notification.userId,evidencePreference!.state.preferenceVersion,category) : notificationToken(row.notification.userId, preferences.version, watch ? "watch" : "weekly");
+      const optout = new URL(`${zh ? "/zh-tw" : ""}/${evidence ? "evidence" : "network"}/unsubscribe?token=${encodeURIComponent(token)}`, origin).href, oneClick = new URL(`/api/${evidence ? "evidence" : "notifications"}/unsubscribe?token=${encodeURIComponent(token)}`, origin).href;
+      const genericConnection = row.notification.kind === "invitation" ? (zh ? "你有新的交流邀請" : "A new connection invitation") : row.notification.kind === "message" ? (zh ? "你有新的訊息" : "You have a new message") : (zh ? "交流邀請已接受" : "Your connection invitation was accepted");
+      const title = evidence ? (row.notification.kind === "evidence" ? String(zh ? payload.titleZh : payload.titleEn) : genericConnection) : watch ? `${payload.company}: ${conditionLabel(String(payload.condition), zh)}` : zh ? `本週有 ${viewers}看了你的頁面` : `${viewers} viewed your page this week`;
+      const href = new URL(`${zh ? "/zh-tw" : ""}/dashboard/${evidence ? category === "connection" ? "matchmaking?tab=messages" : category === "roundtable" ? "matchmaking?tab=roundtables" : "agenda" : "notifications"}`, origin).href;
       const draftEmail = { from: process.env.RESEND_FROM_EMAIL, to: [row.notification.user.email], subject: `NOVA: ${title}`, text: `${title}\n${href}\nUnsubscribe: ${optout}`, html: `<div style="font-family:sans-serif;max-width:560px;margin:auto"><img alt="NOVA" width="240" src="${escape(new URL("/nova/logo-metal.png", origin).href)}"/><h1>${escape(title)}</h1><p><a href="${escape(href)}">${zh ? "查看 NOVA" : "Open NOVA"}</a></p><a href="${escape(optout)}">${zh ? "退訂此類通知" : "Unsubscribe"}</a></div>`, headers: { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } };
       const email = row.payload || (testMode ? { ...draftEmail, to: [testTo!], subject: `[NOVA TEST] ${draftEmail.subject}` } : draftEmail);
       if (testMode && JSON.stringify((email as typeof draftEmail).to) !== JSON.stringify([testTo])) { await finish({ status: "cancelled", lastError: "Test recipient changed; cancelled" }); continue; }

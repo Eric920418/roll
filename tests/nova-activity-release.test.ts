@@ -80,7 +80,7 @@ test("Legacy messages preserve encoded connection IDs; old prospect links reach 
 test("Action map starts closed, claims each real transition once and isolates members and plans", () => {
   const saved = new Map<string, string>(), details = { open: false }, effects: Array<() => unknown> = [];
   const MapComponent = load<{ default(p: object): ReactNode }>("src/components/dashboard/ActionMap.tsx", {
-    react: { useRef: () => ({ current: details }), useState: (v: unknown) => [v, () => {}], useEffect: (fn: () => unknown) => effects.push(fn) }, "next-intl": intl,
+    react: { useRef: () => ({ current: details }), useState: (v: unknown) => [v, () => {}], useEffect: (fn: () => unknown) => effects.push(fn) }, "./ReportDraft": {default:()=>null}, "../evidence/Preferences": {default:()=>null}, "next-intl": intl,
   }, { window: { location: { hash: "" }, addEventListener() {}, removeEventListener() {} }, localStorage: { getItem: (key: string) => saved.get(key), setItem: (key: string, value: string) => saved.set(key, value) }, setTimeout: (fn: () => void) => { fn(); return 1; }, clearTimeout() {} });
   function render(userId: string, id: string, event: string | null) { effects.length = 0; MapComponent.default({ userId, plan: plan({ id }), event, children: null }); effects.forEach(fn => fn()); }
   render("one", "p1", null); assert.equal(details.open, false);
@@ -103,7 +103,7 @@ test("Switching tabs retains the mounted inbox, marks it inactive and supports k
   const Inbox = () => null;
   const workspace = load<{ default(p: object): ReactNode }>("src/components/dashboard/matchmaking/MatchmakingWorkspace.tsx", {
     react: { useCallback: (fn: unknown) => fn, useEffect() {}, useState: (initial: unknown) => { const i = cursor++; if (!(i in state)) state[i] = typeof initial === "function" ? initial() : initial; return [state[i], (value: unknown) => { state[i] = typeof value === "function" ? value(state[i]) : value; }]; } },
-    "next-intl": intl, "next/link": { default: "a" }, "./MatchmakingPage": { default: () => null }, "./RoundtablesPanel": { default: () => null },
+    "./ReportDraft": {default:()=>null}, "../evidence/Preferences": {default:()=>null}, "next-intl": intl, "next/link": { default: "a" }, "./MatchmakingPage": { default: () => null }, "./RoundtablesPanel": { default: () => null },
     "../TokenBalance": { default: () => null },
     "../network/NetworkPanels": { MessagesPage: Inbox, useNetwork: () => ({ value: { enabled: false } }) },
     "@/lib/member-fetch": {}, "@/lib/dashboard/home": { MATCHMAKING_TABS, matchmakingTab }, "@/lib/routes": { pathForLocale: (path: string) => path },
@@ -122,11 +122,12 @@ test("Inactive roundtable panel starts no requests; visible panel loads actual s
   const calls: string[] = [], effects: Array<() => unknown> = [];
   const component = load<{ default(p: object): ReactNode }>("src/components/dashboard/matchmaking/RoundtablesPanel.tsx", {
     react: { useCallback: (fn: unknown) => fn, useRef: (value: unknown) => ({ current: value }), useEffect: (fn: () => unknown) => effects.push(fn), useState: (value: unknown) => [value, () => {}] },
-    "next-intl": intl, "next/link": { default: "a" },
+    "./ReportDraft": {default:()=>null}, "../evidence/Preferences": {default:()=>null}, "next-intl": intl, "next/link": { default: "a" },
     "@/lib/member-fetch": { memberFetch: async (path: string) => { calls.push(path); return { sessions: [] }; } },
     "@/lib/routes": { pathForLocale: (path: string) => path }, "@/lib/roundtables/schema": { INDUSTRIES: [], LANGUAGES: [] },
     "@/lib/action-plan/flow/catalog": { STEPS: [] }, "@/lib/member-options": {},
-    "../flow/Templates": {}, "../roundtables/Forms": {},
+    "../flow/Templates": {}, "../roundtables/Preparation": { AutoGroup: () => null, Preparation: () => null, SessionCalendar: () => null, SessionFeedback: () => null },
+    "../roundtables/Forms": {},
   }, { window: { location: { href: "https://nova.test/dashboard/matchmaking?tab=roundtables" } }, setTimeout, clearTimeout, AbortController });
   component.default({ userId: "owner", active: false }); effects.splice(0).forEach(fn => fn());
   await new Promise(r => setTimeout(r, 10)); assert.equal(calls.length, 0);
@@ -140,7 +141,7 @@ test("An inactive inbox starts no requests or polling; activating it resumes rea
   const network = { enabled: true, network: true, invite: true, portal: false };
   const component = load<{ MessagesPage(p: object): ReactNode }>("src/components/dashboard/network/NetworkPanels.tsx", {
     react: { useCallback: (fn: unknown) => fn, useRef: (value: unknown) => ({ current: value }), useEffect: (fn: () => unknown) => effects.push(fn), useState: (value: unknown) => [cursor++ === 0 ? network : value, () => {}] },
-    "next-intl": intl, "next/navigation": { useSearchParams: () => ({ get: () => null }) }, "next/link": { default: "a" },
+    "./ReportDraft": {default:()=>null}, "../evidence/Preferences": {default:()=>null}, "next-intl": intl, "next/navigation": { useSearchParams: () => ({ get: () => null }) }, "next/link": { default: "a" },
     "./ViewerOverview": { default: () => null }, "../matchmaking/CardView": { PrivatePhoto: () => null },
     "@/lib/routes": { pathForLocale: (path: string) => path }, "@/lib/network/policy": {},
     "@/lib/member-fetch": { memberFetch: async (path: string) => { calls.push(path); return path.endsWith("connections") ? [] : path.endsWith("features") ? network : { workspaces: [] }; } },
@@ -166,7 +167,7 @@ test("Home renders one primary task in both languages with locale-correct destin
     "@/lib/dashboard/home": { homeNextStep }, "@/lib/dashboard/next-steps": { actionProgress: () => 0 },
     "@/lib/cms/content": { getEvents: async () => [] },
     "@/lib/routes": { pathForLocale: (path: string, locale: string) => locale === "zh-tw" ? `/zh-tw${path}` : path },
-    ...Object.fromEntries(["PlanRefresh", "home/FounderRecommendations", "matchmaking/RoundtablesPanel", "home/UpcomingEventsRail"].map(name => [`@/components/dashboard/${name}`, { default: () => null }])),
+    ...Object.fromEntries(["PlanRefresh", "evidence/EvidencePanel", "home/FounderRecommendations", "matchmaking/RoundtablesPanel", "home/UpcomingEventsRail"].map(name => [`@/components/dashboard/${name}`, { default: () => null }])),
   });
   for (const locale of ["en", "zh-tw"]) {
     const tree = nodes(await page.default({ params: Promise.resolve({ locale }) }));

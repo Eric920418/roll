@@ -8,7 +8,7 @@ export type FlowContext = { actions: FlowAction[]; proofs: FlowProof[]; locale: 
 export type Confirmation = { version: string; leadId: string; statement: string; answer: "yes" | "no"; at: string };
 export function storedData(action?: FlowAction) { return flowStoredSchema.safeParse(action?.taskWorkspace).data?.data; }
 export function dataAt(context: FlowContext, step: StepId) { return storedData(context.actions.find(a => flowStep(a)?.id === step)) || emptyFlowData(STEPS.find(s => s.id === step)!.kind); }
-export function records(context: FlowContext) { const data = dataAt(context, "01-1"); return data.kind === "conversation" ? data.records : []; }
+export function records(context: FlowContext) { const data = dataAt(context, "01-1"); return data.kind === "conversation" ? data.records.filter(r => r.fit == null || ["yes","possible"].includes(r.fit)) : []; }
 export function criteria(context: FlowContext) { const data = dataAt(context, "01-3"); return data.kind === "organize" ? data.criteria : []; }
 export function score(context: FlowContext, matches: string[]) {
   const usable = criteria(context).filter(c => c.confirmed && new Set(c.sources).size >= 3);
@@ -71,7 +71,7 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
     require(unique(data.records.map(r => r.id)) && unique(data.records.map(r => companyKey(r.company) + "|" + companyKey(r.name))), "對象不能重複", "Conversation participants must be distinct");
     if (step === "01-1") {
       target = 10;
-      current = new Set(data.records.filter(r => r.company && r.name && r.relationship && r.pain && r.severity && r.solution && r.wtp && r.wtp !== "not_asked" && dateValid(r.date)).map(r => companyKey(r.company) + "|" + companyKey(r.name))).size;
+      current = new Set(data.records.filter(r => (r.fit == null || ["yes","possible"].includes(r.fit)) && r.company && r.name && r.relationship && r.pain && r.severity && r.solution && r.wtp && r.wtp !== "not_asked" && dateValid(r.date)).map(r => companyKey(r.company) + "|" + companyKey(r.name))).size;
       require(data.market, "請選擇原市場", "Choose the original market");
     } else {
       target = 5; const paid = new Set(paidCompanies(context).map(p => companyKey(p.company)));
@@ -198,13 +198,13 @@ export function seedData(context: FlowContext, step: StepId): FlowData {
       { label: w("目前已有替代做法", "An existing workaround"), sources: first.filter(r => r.solution).map(r => r.id) },
       { label: first[0]?.pain || w("待補充的需求條件", "A demand criterion to complete"), sources: first.filter(r => r.pain === first[0]?.pain).map(r => r.id) },
     ].map((c, i) => ({ id: "criterion_" + i, ...c, weight: 25, confirmed: false }));
-    if (step === "01-4") data.tiers = first.map(r => ({ leadId: r.id, matches: [], override: "", reason: "", confirmed: false }));
+    if (step === "01-4") data.tiers = first.map(r => ({ leadId: r.id, matches: criteria(context).filter(c => c.sources.includes(r.id)).map(c => c.id), override: "", reason: "", confirmed: false }));
     if (step === "02-3") { const proof = approvedProofs(context)[0], proposals = dataAt(context, "02-1"); data.values = { price: proof ? proof.currency + " " + proof.amount : "", scope: proposals.kind === "outreach" ? proposals.contacts.find(c => c.status !== "draft")?.offer || "" : "", terms: "" }; }
     if (step === "04-3") data.values = { currency: approvedProofs(context, true)[0]?.currency || "", spend: "" };
     if (step === "05-1") data.values = { target: "", conversion: "" };
   }
   if (data.kind === "outreach" && ["02-1", "04-1"].includes(step)) {
-    data.contacts = first.filter(r => tiers(context).some(t => t.leadId === r.id && t.tier === "A")).map(r => ({ ...emptyContact("proposal_" + r.id), company: r.company, name: r.name, leadId: r.id }));
+    data.contacts = first.filter(r => tiers(context).some(t => t.leadId === r.id && t.tier === "A")).map(r => ({ ...emptyContact("proposal_" + r.id), company: r.company, name: r.name, leadId: r.id, offer: w("您好，您提到「" + r.pain + "」，目前以「" + r.solution + "」處理。我們想邀請您測試一個小範圍試點。價格：[價格與幣別]；範圍：[交付範圍]；期間：[實際期間]；成功標準：[可衡量成果]。方便確認是否符合您的需求嗎？", "Hello, you mentioned “" + r.pain + "” and currently use “" + r.solution + "”. We would like to propose a limited pilot. Price: [price and currency]; scope: [deliverables]; duration: [actual period]; success: [measurable outcome]. Would this fit your needs?") }));
     const original = dataAt(context, "01-1"); data.market = original.kind === "conversation" ? original.market : "";
   }
   if (data.kind === "conversation" && step === "04-2") data.records = paidCompanies(context).map((p, i) => ({ ...emptyRecord("review_" + i), company: p.company, name: p.name }));

@@ -79,6 +79,7 @@ export async function changeConnection(userId: string, id: string, input: z.infe
     if (input.action === "read") {
       const latest = await tx.networkMessage.findFirst({ where: { connectionId: id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
       if (latest) await tx.networkConnection.update({ where: { id }, data: row.senderId === userId ? { senderReadAt: latest.createdAt } : { recipientReadAt: latest.createdAt } });
+      await tx.memberNotification.updateMany({where:{userId,kind:"message",payload:{path:["connectionId"],equals:id},readAt:null},data:{readAt:new Date()}});
       return { saved: true };
     }
     const fee = await resourceFee(tx, "invite", id);
@@ -98,6 +99,7 @@ export async function changeConnection(userId: string, id: string, input: z.infe
       const opening = (fee.metadata as { opening?: string }).opening;
       if (status === "accepted" && opening) await tx.networkMessage.create({ data: { connectionId: id, senderId: row.senderId, requestId: `invite:${fee.id}`, body: opening } });
     }
+    if (status === "accepted") await queueNotification(tx,row.senderId,`accepted:${id}`,"connection_accepted",{connectionId:id});
     if (status === "blocked") {
       await tx.networkShare.updateMany({ where: { connectionId: id }, data: { revokedAt: new Date(), revision: { increment: 1 } } });
       await tx.investorWatch.updateMany({ where: { connectionId: id }, data: { status: "paused" } });
@@ -122,6 +124,7 @@ export async function sendMessage(userId: string, id: string, input: z.infer<typ
     if (row.status !== "accepted") throw new MemberError("聊天尚未接受或已封鎖 / Chat is pending or blocked", 403);
     const saved = await tx.networkMessage.create({ data: { connectionId: id, senderId: userId, ...input } });
     await tx.networkConnection.update({ where: { id }, data: { updatedAt: new Date() } });
+    await queueNotification(tx,row.senderId === userId ? row.recipientId : row.senderId,`message:${saved.id}`,"message",{connectionId:id,messageId:saved.id});
     return { id: saved.id };
   });
 }

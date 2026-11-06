@@ -12,6 +12,7 @@ import { actionProgress } from "@/lib/dashboard/next-steps";
 import { getEvents } from "@/lib/cms/content";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
+import EvidencePanel from "@/components/dashboard/evidence/EvidencePanel";
 import PlanRefresh from "@/components/dashboard/PlanRefresh";
 import FounderRecommendations from "@/components/dashboard/home/FounderRecommendations";
 import RoundtablesPanel from "@/components/dashboard/matchmaking/RoundtablesPanel";
@@ -73,6 +74,7 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
       <div className="mt-5 max-w-3xl border-t border-white/20 pt-5"><p className="text-xs font-semibold text-white/60">{next.action ? (zh ? "完成標準" : "COMPLETION CRITERIA") : (zh ? "接下來" : "WHAT'S NEXT")}</p><p className="mt-2 whitespace-pre-wrap text-base leading-7 text-white/85">{next.action?.expectedOutcome.text || descriptions[next.kind]}</p>{next.action?.metric?.target != null && <p className="mt-3 text-sm tabular-nums">{zh ? "目前進度" : "Progress"} · {next.action.metric.current ?? 0} / {next.action.metric.target}</p>}{next.kind === "conversation" && <p className="mt-3 text-sm">{zh ? "已記錄" : "Recorded"} {discovery?.total} / {discovery?.target} {zh ? "家公司的有效對話" : "valid company conversations"}</p>}</div>
       <Link href={pathForLocale(next.href, l)} className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">{labels[next.kind]} →</Link>
     </section>
+    <EvidencePanel userId={account.id} compact />
     <FounderRecommendations />
     <div className="grid min-w-0 gap-5 lg:grid-cols-[1.4fr_1fr]"><RoundtablesPanel userId={account.id} compact /><section className="flex flex-col justify-between rounded-2xl border border-dark/15 bg-white p-6 sm:p-8"><div><p className="text-xs font-semibold tracking-widest text-dark/55">{zh ? "讓交流帶來行動" : "MAKE CONNECTIONS COUNT"}</p><h2 className="mt-6 text-2xl font-semibold">{zh ? "接續你的對話" : "Keep the conversation going"}</h2><p className="mt-3 text-base leading-7 text-dark/70">{zh ? "查看交流邀請與訊息，和適合的人一起推進下一步。" : "Review invitations and messages, and take the next step with the right people."}</p></div><Link href={pathForLocale("/dashboard/matchmaking?tab=messages", l)} className="mt-6 inline-flex min-h-11 w-fit items-center font-semibold underline underline-offset-4">{zh ? "前往訊息" : "Open messages"} →</Link></section></div>
     <details className="rounded-2xl border border-dark/10 bg-white px-5 py-2"><summary className="flex min-h-11 cursor-pointer items-center font-semibold">{zh ? "近期活動" : "Community events"}</summary><div className="pb-3"><UpcomingEventsRail locale={l} events={events.slice(0, 4).map(({ id, date, title, location }) => ({ id, date, title, location }))} /></div></details>

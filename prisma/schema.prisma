@@ -142,6 +142,8 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  evidenceWorkspace EvidenceWorkspace?
+  roundtableMatches RoundtableMatchRequest[]
   mentorCertification MentorCertification?
   hostedRoundtables Roundtable[]
   roundtableRegistrations RoundtableRegistration[]
@@ -1506,6 +1508,8 @@ model MentorCertification {
 }
 
 model Roundtable {
+  seriesId String?
+  frameworkStages Int[] @default([])
   id String @id @default(cuid())
   hostId String?
   host User? @relation(fields: [hostId], references: [id], onDelete: SetNull)
@@ -1534,6 +1538,9 @@ model Roundtable {
 }
 
 model RoundtableRegistration {
+  preparation Json?
+  feedback Json?
+  revision Int @default(0)
   id String @id @default(cuid())
   roundtableId String
   roundtable Roundtable @relation(fields: [roundtableId], references: [id], onDelete: Cascade)
@@ -1599,4 +1606,62 @@ model TokenLedger {
   reason String
   createdAt DateTime @default(now())
   @@index([userId, createdAt, id])
+}
+
+/// Versioned hypothesis selection and source links. Original conversations remain unchanged.
+model EvidenceWorkspace {
+  analysis Json?
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data Json @default("{}")
+  revision Int @default(0)
+  lastRequestId String?
+  lastRequestHash String?
+  updatedAt DateTime @updatedAt
+}
+
+model RoundtableMatchRequest {
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  requestId String
+  requestHash String
+  sessionId String
+  createdAt DateTime @default(now())
+  @@id([userId,requestId])
+}
+
+/// Anonymous newsletter subscriptions require verified email ownership.
+model NewsletterSubscriber {
+  nextDigestAt DateTime?
+  id String @id @default(cuid())
+  email String @unique
+  locale String
+  timeZone String @default("Asia/Taipei")
+  status String @default("pending")
+  version Int @default(1)
+  consentAt DateTime @default(now())
+  confirmedAt DateTime?
+  verificationExpiresAt DateTime
+  deliveries NewsletterDelivery[]
+  @@index([status,nextDigestAt])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model NewsletterDelivery {
+  id String @id @default(cuid())
+  subscriberId String
+  subscriber NewsletterSubscriber @relation(fields:[subscriberId],references:[id],onDelete:Cascade)
+  eventKey String @unique
+  category String
+  payload Json
+  status String @default("pending")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseToken String?
+  leaseUntil DateTime?
+  providerId String?
+  acceptedAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  @@index([status,nextAttemptAt])
 }
