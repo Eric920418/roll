@@ -2450,3 +2450,13 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 
 - 驗收：`pnpm test` 449/449、0 skip；`pnpm lint` 0 errors／14 個既有 warnings；`pnpm build` 通過。本機隔離帳號實際走完八題、確認摘要、儲存及重新載入；價格與原始四題／筆記完整保留。兩家不同公司帳號顯示還差一家；商機媒合「投資人社群」頁籤與學習資源題名確認。中英文元件測試通過，尚未完成實際手機窄螢幕畫面驗收。
 - 正式 CMS 只更新中英文 `Product.metaTitle` 與 `Product.hero.tagline`；前後逐鍵比較確認其餘後台文案未變。會員、權限、試用、訪談及積分資料沒有更改；測試訪談僅存於本機隔離資料庫。
+
+## 2026-11-07 資安再檢查與修補
+
+以已提交的 main 及當前程式碼重新檢查登入、Origin、限流、JWT 撤銷、第三方錯誤、內容路徑與 webhook 邊界，未重現新的可利用原始碼漏洞。`pnpm audit --prod` 原有 2 critical、6 high、4 moderate、2 low 個依賴告警，其中 Next.js 16.3.8 受已公告問題影響；告警數並非本站可利用漏洞數。
+
+已將 Next.js、@next/mdx、eslint-config-next、@next/bundle-analyzer 升至 16.4.5，zod 升至 4.6.7；用限於父套件的 pnpm override 將 @vercel/blob 的 undici 升至 6.29.1、ajv 的 fast-uri 升至 3.1.9、@vercel/cli-config 的 zod 升至 4.6.7。同步更新鎖定檔。這涵蓋 Next.js 圖片最佳化與 use cache 公告的修補版本；沒有用忽略清單壓掉正式執行告警。
+
+驗收：`pnpm audit --prod` 0 告警；完整 `pnpm audit` 剩 1 個 moderate，為 ESLint／TypeScript 開發工具鏈的 minimatch 10.2.6 globparts DoS 公告，修補版 11.0.1 屬跨 major，尚未強制覆寫工具鏈。`pnpm test` 303 通過、0 失敗、23 項因未提供隔離資料庫連線而略過。使用只含已提交 main 與本次修補的暫存目錄，在既有本機隔離 QA PostgreSQL 進行 production build 通過；lint 0 errors、14 個既有 warnings。原工作區同期有未提交帳務草稿，當中 `src/lib/billing/commerce.ts` 型別錯誤及 `src/components/admin/CommerceSettings.tsx` lint 錯誤，使原工作區 build／lint 不能通過；那些檔案不屬本次提交。
+
+本次沒有修改資料庫結構或既有資料，也沒有手動部署；未做新的全站動態滲透測試。前端應顯示安全的完整操作錯誤與 requestId；第三方原始例外若含 token、連線字串或個資，仍不可直接顯示。
