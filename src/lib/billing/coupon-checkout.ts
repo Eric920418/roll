@@ -1,3 +1,4 @@
+import { assertCurrentCouponPrice } from "./commerce";
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma, type BillingCouponCheckout } from "@prisma/client";
@@ -64,6 +65,7 @@ export async function checkoutWithCoupon(input: Input) {
       if (pending.leaseUntil && pending.leaseUntil > new Date()) throw new CouponError("付款請求處理中，請稍後重試 / Checkout is processing; retry shortly", "coupon_pending", 409);
       return tx.billingCouponCheckout.update({ where: { id: pending.id }, data: { leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });
     }
+    await assertCurrentCouponPrice(input.plan as "pro" | "business", input.interval);
     const quote = couponQuote(normalized.code, input.plan, input.interval), paypalPlanId = couponPaypalPlanId(input.plan, input.interval);
     const request = { planId: paypalPlanId, email: input.email, requestId: randomUUID(), returnUrl: input.returnUrl, cancelUrl: input.cancelUrl };
     return tx.billingCouponCheckout.create({ data: { userId: input.userId, requestId: input.requestId, payloadHash, campaign: quote.campaign, code: quote.code, plan: input.plan, billingInterval: input.interval, regularAmountMinor: quote.regularAmountMinor, firstAmountMinor: quote.firstAmountMinor, paypalPlanId, request, createdAt: new Date(), leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });

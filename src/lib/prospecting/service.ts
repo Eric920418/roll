@@ -1,3 +1,4 @@
+import { tokenQuote } from "@/lib/billing/commerce";
 import "server-only";
 import { grantTokens, reserveTokens, resourceFee, tokenSnapshot } from "@/lib/tokens/service";
 import { expireTokens } from "@/lib/tokens/expiry";
@@ -66,8 +67,10 @@ export async function prospectSnapshot(userId: string, cursor?: string) {
   const suggested = audienceDescription(readIcp(context.profile?.icpDetails)) || context.profile?.icp?.slice(0, 4000) || "";
   const values = workspace || { revision: 0, country: "TW", description: suggested };
   const delivered = usage._sum.deliveredCount || 0, reserved = usage._sum.reservedCount || 0;
-  return { tokens: { available: tokens.available, reserved: tokens.reserved }, enabled: configured(), access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
-    quota: { period: utcPeriod(), limit: 10, delivered, reserved, remaining: Math.max(0, 10 - delivered - reserved) },
+  const gift = rights.poc ? await prisma.tokenLedger.findUnique({ where: { eventKey: `poc:${userId}` } }) : null;
+  const pricing = { ...tokens.pricing, searchFee: gift?.availableDelta || tokens.pricing.searchFee };
+  return { pricing, tokens: { available: tokens.available, reserved: tokens.reserved }, enabled: configured(), access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
+    quota: { period: utcPeriod(), limit: pricing.monthlyCompanies, delivered, reserved, remaining: Math.max(0, pricing.monthlyCompanies - delivered - reserved) },
     pending: pending ? orderView(pending, context.names, values) : null, orders: await Promise.all(orders.slice(0, 20).map(async o => ({ ...orderView(o, context.names, values), tokenFee: await feeView(o.id) }))), nextCursor: orders.length > 20 ? orders[19].id : null };
 }
 export async function getProspectOrder(userId: string, id: string) {
@@ -86,7 +89,8 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     await lockMember(tx, userId);
     const replay = await tx.prospectingOrder.findUnique({ where: { userId_requestId: { userId, requestId: input.requestId } } });
     if (replay) { if (replay.payloadHash !== payloadHash) throw new ProspectingError("同一次提交已使用不同內容；請比較最新版 / Request ID already used with different content", 409, "idempotency_conflict"); return { id: replay.id, status: replay.status }; }
-    if (input.pricingVersion !== 1 || input.count !== 5) throw new ProspectingError("新搜尋固定五家公司／20 Token，請重新載入並確認費用 / New searches require five companies / 20 Token; reload and confirm the fee", 400, "pricing_confirmation_required");
+    const pricing = await tokenQuote(tx);
+    if (input.pricingVersion !== pricing.version || input.count !== 5) throw new ProspectingError(`新搜尋固定五家公司，請重新載入確認報價 / New searches require five companies; reload and confirm current pricing`, input.pricingVersion && input.pricingVersion !== pricing.version ? 409 : 400, "pricing_confirmation_required");
     if (!configured()) throw new ProspectingError("公司搜尋尚未開放，已存名單仍可查看 / Company search is not configured; saved lists remain readable", 503, "not_configured");
     const rights = await eligibility(userId, tx);
     if (!rights.canSearch) throw new ProspectingError(rights.activeTrial && !rights.claimed ? "完成三家有效訪談後可領一次五家公司 / Complete three valid company interviews for one five-company POC" : "需要 NOVA 或有效既有權益；一般試用 POC 每帳號一次 / NOVA or valid existing entitlement required; trial POC is once per account", 403, "access_required");
@@ -96,15 +100,15 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     const workspace = await tx.prospectingWorkspace.findUnique({ where: { userId } });
     if ((workspace?.revision || 0) !== input.revision) throw new ProspectingError("另一頁已更新搜尋條件，輸入保留；請載入並比對 / Search criteria changed in another tab; reload and compare", 409, "version_conflict");
     const period = utcPeriod(), monthly = await tx.prospectingOrder.aggregate({ where: { userId, period }, _sum: { reservedCount: true, deliveredCount: true } });
-    if ((monthly._sum.reservedCount || 0) + (monthly._sum.deliveredCount || 0) + input.count > 10) throw new ProspectingError("本月交付與預留量已達上限，請選較小批次或下個 UTC 月再試 / Monthly delivered and reserved limit reached; choose a smaller batch or retry next UTC month", 429, "member_quota");
+    if ((monthly._sum.reservedCount || 0) + (monthly._sum.deliveredCount || 0) + input.count > pricing.monthlyCompanies) throw new ProspectingError("本月交付與預留量已達上限，請選較小批次或下個 UTC 月再試 / Monthly delivered and reserved limit reached; choose a smaller batch or retry next UTC month", 429, "member_quota");
     const context = await exclusions(userId, tx, true), definition = { description: input.description, countries: [input.country], industries: [], exclude_domains: context.domains, contact_requirement: "email_or_contact_page" };
     const audienceHash = hash(definition), sameAudience = workspace?.audienceHash === audienceHash && workspace.omradeIcpId && workspace.omradeIcpVersion;
     await tx.prospectingWorkspace.upsert({ where: { userId }, create: { userId, country: input.country, description: input.description, revision: 1 }, update: { country: input.country, description: input.description, revision: { increment: 1 } } });
     const order = await tx.prospectingOrder.create({ data: { userId, requestId: input.requestId, payloadHash, country: input.country, description: input.description, count: input.count, poc: rights.poc, period, reservedCount: input.count,
       audienceRequest: json({ name: "NOVA confirmed buyer criteria", definition }), audienceKey: randomUUID(), audienceParentId: workspace?.omradeIcpId || null,
       omradeIcpId: sameAudience ? workspace!.omradeIcpId : null, omradeIcpVersion: sameAudience ? workspace!.omradeIcpVersion : null, orderKey: randomUUID() } });
-    if (rights.poc) await grantTokens(tx, userId, 20, `poc:${userId}`, "一次公司搜尋 POC 贈額 / One-time search POC grant");
-    await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash, kind: "search", resourceId: order.id, expiresAt: new Date(Date.now() + 86400000), metadata: { exclusions: context.names } });
+    if (rights.poc && !await tx.tokenLedger.findUnique({ where: { eventKey: `poc:${userId}` } })) await grantTokens(tx, userId, pricing.searchFee, `poc:${userId}`, "一次公司搜尋 POC 贈額 / One-time search POC grant");
+    await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash, kind: "search", poc: rights.poc, resourceId: order.id, expiresAt: new Date(Date.now() + 86400000), metadata: { exclusions: context.names } });
     return { id: order.id, status: order.status };
   }, { timeout: 15000 });
 }

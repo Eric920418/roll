@@ -1,3 +1,4 @@
+import { tokenQuote } from "@/lib/billing/commerce";
 import "server-only";
 import { reserveTokens, resourceFee, settleTokens, tokenHash } from "@/lib/tokens/service";
 import { expireTokens } from "@/lib/tokens/expiry";
@@ -43,8 +44,10 @@ export async function invite(userId: string, input: z.infer<typeof inviteSchema>
     if (row?.status === "blocked") throw new MemberError("此連結無法接受邀請 / Connection unavailable", 403);
     if (row?.status === "declined" && Date.now() - row.updatedAt.getTime() < 7 * DAY_MS) throw new MemberError("邀請已拒絕，七天後可再試 / Invitation declined; retry after seven days", 409);
     if (!row || ["declined", "expired", "cancelled"].includes(row.status)) {
-      if (!input.requestId || !input.opening || input.pricingVersion !== 1) throw new MemberError("請重新載入，確認開場訊息及 5 Token 費用後送出 / Reload and confirm your opening message and 5 Token fee", 400);
-      if (!(await checkRateLimit(`network-invite:${userId}`, 20, DAY_MS, false, tx)).ok) throw new MemberError("今日邀請上限為 20 次 / Daily limit: 20 invitations", 429);
+      const pricing = await tokenQuote(tx);
+      if (!input.requestId || !input.opening) throw new MemberError("請確認開場訊息與費用 / Confirm your opening message and fee", 400);
+      if (input.pricingVersion !== pricing.version) throw new MemberError(`報價已更新，請重新載入並確認 ${pricing.inviteFee} Token 費用 / Pricing changed; reload and confirm the ${pricing.inviteFee} Token fee`, input.pricingVersion ? 409 : 400);
+      if (!(await checkRateLimit(`network-invite:${userId}`, pricing.dailyInvites, DAY_MS, false, tx)).ok) throw new MemberError(`今日邀請上限為 ${pricing.dailyInvites} 次 / Daily limit: ${pricing.dailyInvites} invitations`, 429);
       row = row ? await tx.networkConnection.update({ where: { id: row.id }, data: { senderId: userId, recipientId: target.userId, status: "pending", revision: { increment: 1 } } }) : await tx.networkConnection.create({ data: { pairKey: key, senderId: userId, recipientId: target.userId } });
       await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash: tokenHash(input), kind: "invite", resourceId: row.id, resourceVersion: row.revision, expiresAt: new Date(Date.now() + 7 * DAY_MS), metadata: { opening: input.opening } });
       await queueNotification(tx, target.userId, `invite:${row.id}:${row.revision}`, "invitation", { connectionId: row.id });
@@ -106,7 +109,7 @@ export async function changeConnection(userId: string, id: string, input: z.infe
     }
     return { saved: true };
   });
-  if ("expired" in result) throw new MemberError("邀請已逾七日，5 Token 已退回 / Invitation expired after seven days; 5 Token returned", 409);
+  if ("expired" in result) throw new MemberError("邀請已逾七日，原預扣 Token 已退回 / Invitation expired after seven days; original Token hold returned", 409);
   return result;
 }
 export async function messages(userId: string, id: string, cursor?: string) {

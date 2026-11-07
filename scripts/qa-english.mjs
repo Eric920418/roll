@@ -17,7 +17,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -29,7 +29,7 @@ const report = { mode, scenario, checks: [], screenshots: [], browserErrors: [],
 const users = {}, created = [], contexts = [], newsletterEmails=[];
 const password = randomBytes(24).toString('base64url'), authSecret = randomBytes(32).toString('hex');
 const suffix = randomUUID(), testIp = `192.0.2.${1 + randomBytes(1)[0] % 253}`;
-let server, browser;
+let server, browser, commerceOwned = false;
 const serverLog = fs.createWriteStream(path.join(output, 'server.log'));
 const check = (name, value) => { assert(value, name); report.checks.push(name); console.log(`PASS ${name}`); };
 
@@ -39,7 +39,7 @@ async function startServer() {
     const timer = setTimeout(() => reject(new Error('QA server startup timed out.')), 60000);
     server = spawn(process.execPath, [require.resolve('next/dist/bin/next'), mode, '--hostname', hostname, '--port', String(port)], {
       cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: scenario === 'tokens' ? 'qa-disabled' : '', OMRADE_ENABLED: scenario === 'tokens' ? 'true' : 'false', OMRADE_WORKER_ENABLED: scenario === 'tokens' ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '' },
+      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: ['tokens','commerce'].includes(scenario) ? 'qa-disabled' : '', OMRADE_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', OMRADE_WORKER_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '' },
     });
     server.stdout.on('data', chunk => { serverLog.write(chunk); startup += chunk; if (startup.includes('Ready in')) { clearTimeout(timer); resolve(); } });
     server.stderr.on('data', chunk => serverLog.write(chunk));
@@ -824,11 +824,45 @@ async function pdfCompletion() {
   }
 }
 
+
+async function commerceSettingsQA() {
+  assert.equal(await db.setting.count({where:{key:{startsWith:'novaCommerce.'}}}),0,'Commerce QA requires an empty isolated policy namespace');commerceOwned=true;
+  const context=await browser.newContext({viewport:{width:1440,height:1000}});contexts.push(context);
+  const token=await new SignJWT({email:'qa-admin@example.invalid',role:'admin'}).setProtectedHeader({alg:'HS256'}).setIssuedAt().setExpirationTime('1h').sign(new TextEncoder().encode(authSecret));
+  await context.addCookies([{name:'admin_session',value:token,url:origin,httpOnly:true,sameSite:'Lax'}]);
+  const page=await context.newPage(),other=await context.newPage();for(const target of [page,other])target.on('pageerror',error=>report.browserErrors.push(error.message));
+  await page.goto(origin+'/admin/billing');await other.goto(origin+'/admin/billing');await page.getByRole('heading',{level:1,name:'價格與 Token 政策',exact:true}).waitFor();
+  for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Commerce admin responsive '+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'commerce-admin-'+width);}
+  await page.getByLabel('交流邀請預扣 Token',{exact:true}).fill('9');await page.getByLabel('搜尋五家公司預扣 Token',{exact:true}).fill('25');await page.getByLabel('每月方案贈額（下個 UTC 月）',{exact:true}).fill('220');await page.getByLabel('每會員每 UTC 月搜尋公司上限',{exact:true}).fill('15');
+  await page.getByRole('button',{name:'新增加購包',exact:true}).click();await page.getByLabel('最終售價',{exact:true}).fill('10');
+  let response=waitResponse(page,r=>r.url().endsWith('/api/admin/billing/settings')&&r.request().method()==='POST');await page.getByRole('button',{name:'儲存草稿',exact:true}).click();assert.equal((await response).status(),200);await page.getByRole('status').filter({hasText:'草稿已保存'}).waitFor();
+  const member=await session('desktop',390);check('Members cannot read pricing drafts',(await member.context.request.get(origin+'/api/admin/billing/settings')).status()===401);
+  let data=(await (await member.context.request.get(origin+'/api/tokens')).json()).data;check('Saved draft has no billing effect',data.pricing.inviteFee===5&&data.pricing.searchFee===20&&data.available===150);
+  await other.getByLabel('每月方案贈額（下個 UTC 月）',{exact:true}).fill('333');response=waitResponse(other,r=>r.url().endsWith('/api/admin/billing/settings')&&r.request().method()==='POST');await other.getByRole('button',{name:'儲存草稿',exact:true}).click();assert.equal((await response).status(),409);await other.getByRole('alert').filter({hasText:'HTTP 409'}).waitFor();check('Stale editor keeps input',await other.getByLabel('每月方案贈額（下個 UTC 月）',{exact:true}).inputValue()==='333');
+  await other.getByRole('button',{name:'讀取最新設定並保留輸入',exact:true}).click();await other.getByRole('status').filter({hasText:'已讀取最新設定'}).waitFor();await other.getByRole('button',{name:'採用伺服器草稿',exact:true}).click();check('Explicit conflict comparison adopts latest draft',await other.getByLabel('交流邀請預扣 Token',{exact:true}).inputValue()==='9');
+  response=waitResponse(page,r=>r.url().endsWith('/api/admin/billing/settings')&&r.request().method()==='POST');await page.getByRole('button',{name:'發布已儲存設定',exact:true}).click();assert.equal((await response).status(),200);await page.getByRole('status').filter({hasText:'已發布第 2 版'}).waitFor();
+  data=(await (await member.context.request.get(origin+'/api/tokens')).json()).data;check('Published Token quote reaches member API',data.pricing.version===2&&data.pricing.inviteFee===9&&data.pricing.searchFee===25);check('Monthly grant stays 150 with 220 scheduled',data.monthlyGrant===150&&data.pricing.nextMonthlyGrant===220&&data.available===150);
+  const prospect=(await (await member.context.request.get(origin+'/api/prospects')).json()).data;check('Published search quota reaches member API',prospect.quota.limit===15&&prospect.pricing.searchFee===25);
+  for(const locale of ['en','zh-tw']){const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'';await member.page.goto(origin+prefix+'/product');await member.page.locator('#pricing').getByText(zh?'搜尋每 5 家 25 Token':'Search five companies for 25 Token',{exact:false}).waitFor();for(const width of [390,768,1440]){await member.page.setViewportSize({width,height:1000});check('Published public pricing '+locale+width,await member.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(member.page,'commerce-public-'+locale+'-'+width);}}
+  const card=await db.matchmakingProfile.findUniqueOrThrow({where:{userId:users.newpaid.id}});await member.page.goto(origin+'/dashboard/matchmaking/'+card.id);await member.page.getByRole('button',{name:'Request to chat · hold 9 Token',exact:true}).waitFor();check('Member invitation displays published fee',true);
+  await member.page.goto(origin+'/dashboard/account#plan');check('Billing page stays available after token-only policy publish',await member.page.getByRole('heading',{level:1}).count()===1);response=waitResponse(member.page,r=>r.url().endsWith('/api/billing/subscribe')&&r.request().method()==='POST');await member.page.getByTestId('subscribe-pro').click();assert.equal((await response).status(),503);await member.page.getByRole('alert').filter({hasText:'HTTP 503'}).waitFor();check('Unavailable PayPal checkout shows full HTTP error',true);
+  const generated=await member.context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale:'en',requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:'Private pricing QA',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Verify pricing without provider calls',bottleneckConfidence:65},answers:[{question:'Progress',answer:'Private prototype'},{question:'Bottleneck',answer:'Customer research'},{question:'Goal',answer:'Verify pricing settings'}]}});assert.equal(generated.status(),201);const plan=(await generated.json()).data;users.desktop.flowActionIds=plan.actions.map(a=>a.id);await member.page.goto(origin+'/dashboard/agenda');await closeTour(member.page,'en');await member.page.locator('#prospects > summary').click();const search=member.page.getByRole('region',{name:'Find new companies',exact:true});const find=search.getByRole('button',{name:'Find 5 new companies · hold 25 Token',exact:true});await find.waitFor();check('Task search shows published fee and quota',(await search.innerText()).includes('0/15'));
+  await search.getByRole('textbox',{name:'Target buyer description',exact:true}).fill('Private QA buyer criteria without supplier submission');await search.getByRole('checkbox').check();response=waitResponse(member.page,r=>r.url().endsWith('/api/prospects/orders')&&r.request().method()==='POST');await find.click();const created=await response;assert.equal(created.status(),202);check('Task search sends the published quote version',created.request().postDataJSON().pricingVersion===2);const orderId=(await created.json()).data.id,fee=await db.tokenReservation.findFirstOrThrow({where:{resourceId:orderId}}),wallet=await db.tokenWallet.findUniqueOrThrow({where:{userId:users.desktop.id}});check('Task search reserves the configured amount once',fee.amount===25&&wallet.available===125&&wallet.reserved===25);const local=await db.prospectingOrder.findUniqueOrThrow({where:{id:orderId}});check('Pricing QA never submits to the supplier',local.providerOrderId===null&&local.submittedAt===null);
+  await member.page.goto(origin+'/zh-tw/dashboard/agenda');await closeTour(member.page,'zh-tw');await member.page.locator('#prospects > summary').click();const chineseSearch=member.page.getByRole('region',{name:'找新公司',exact:true});await chineseSearch.getByRole('button',{name:'搜尋 5 家新公司 · 預扣 25 Token',exact:true}).waitFor();check('Chinese task search shows published fee and quota',(await chineseSearch.innerText()).includes('0/15'));
+  // Simulate a lost acknowledgement after the server saves, then retry the same request.
+  await page.getByLabel('交流邀請預扣 Token',{exact:true}).fill('11');const requests=[];await page.route('**/api/admin/billing/settings',async route=>{if(route.request().method()!=='POST')return route.continue();requests.push(route.request().postDataJSON());if(requests.length===1){const saved=await route.fetch();assert.equal(saved.status(),200);await route.abort();}else await route.continue();});
+  await page.getByRole('button',{name:'儲存草稿',exact:true}).click();await page.getByRole('alert').filter({hasText:'fetch'}).waitFor();check('Lost save acknowledgement keeps editor input',await page.getByLabel('交流邀請預扣 Token',{exact:true}).inputValue()==='11');response=waitResponse(page,r=>r.url().endsWith('/api/admin/billing/settings')&&r.request().method()==='POST');await page.getByRole('button',{name:'儲存草稿',exact:true}).click();assert.equal((await response).status(),200);check('Lost save retries the same request',requests.length===2&&JSON.stringify(requests[0])===JSON.stringify(requests[1]));await page.unroute('**/api/admin/billing/settings');
+  await page.getByLabel('SPARK 每月（USD）',{exact:true}).fill('59');response=waitResponse(page,r=>r.url().endsWith('/api/admin/billing/settings')&&r.request().method()==='POST');await page.getByRole('button',{name:'儲存草稿',exact:true}).click();assert.equal((await response).status(),200);response=waitResponse(page,r=>r.url().endsWith('/api/admin/billing/settings')&&r.request().method()==='POST');await page.getByRole('button',{name:'發布已儲存設定',exact:true}).click();assert.equal((await response).status(),409);await page.getByRole('alert').filter({hasText:'HTTP 409'}).waitFor();check('Unprepared PayPal price cannot publish',await page.getByLabel('SPARK 每月（USD）',{exact:true}).inputValue()==='59');
+  const current=(await (await context.request.get(origin+'/api/admin/billing/settings')).json()).data;check('Failed price publish preserves live price and cash off',current.live.policy.subscriptions.pro.month.amountMinor===4900&&current.live.policy.cashCheckoutEnabled===false&&current.live.policy.tokens.inviteFee===9);check('History records exact published policy',current.history.some(h=>h.version===2&&h.policy.tokens.searchFee===25));
+  await context.close();await member.context.close();
+}
+
 try {
   await startServer(); await redirects();
   if (mode === 'start') {
     await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'pdf') { await pdfCompletion(); }
+    if (scenario === 'commerce') { await commerceSettingsQA(); }
+    else if (scenario === 'pdf') { await pdfCompletion(); }
     else if (scenario === 'tokens') { await tokenCore('newpaid', 'blocked', 1440, 'en', 'accept'); await tokenCore('complete', 'outcome', 390, 'zh-tw', 'decline'); await tokenCore('desktop', 'newpaid', 390, 'en', 'cancel'); await tokenCore('mobile', 'complete', 1440, 'zh-tw', 'expire'); await tokenAdminAndSearch(); }
     else if (scenario === 'roundtables') { await roundtableCore('investor', 'desktop', 1440, 'en', false); await roundtableCore('requester', 'mobile', 390, 'zh-tw', true); }
     else if (scenario === 'flow') { await flowCore('mobile', 390, 'zh-tw'); await flowCore('desktop', 1440, 'en'); await flowDocumentAndReview(); }
@@ -850,6 +884,7 @@ try {
       report.cleanup = { createdUsers: created.length, removedUsers: removed.count, credentialsPersisted: false };
     }
   } catch (error) { report.cleanup = { failed: true }; console.error(error.message); process.exitCode = 1; }
+  if (commerceOwned) await db.setting.deleteMany({where:{key:{startsWith:'novaCommerce.'}}});
   await db.$disconnect();
   if (server && server.exitCode === null) { server.kill('SIGTERM'); await new Promise(resolve => server.once('exit', resolve)); }
   serverLog.end();

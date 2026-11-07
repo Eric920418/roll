@@ -1,13 +1,15 @@
+import { activeBillingCatalog, resolveBillingPlan } from "@/lib/billing/commerce";
+import { assertRegularPlan } from "@/lib/billing/commerce-policy";
+import { memberError } from "@/lib/member-http";
 import { browserMutationGuard } from "@/lib/security/http";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import { getCurrentAccount } from "@/lib/auth/account";
-import { ok, unauthorized, failFromError } from "@/lib/api";
+import { ok, unauthorized } from "@/lib/api";
 import {
   PLAN_KEYS,
   PLAN_CONFIG,
-  billingFromPaypalPlanId,
   billingVariantFor,
   paypalPlanIdFor,
   paypalPlanEnvFor,
@@ -16,6 +18,7 @@ import {
 } from "@/lib/billing/plans";
 import {
   createSubscription,
+  getBillingPlan,
   getSubscription,
   isPaypalConfigured,
   reviseSubscription,
@@ -75,6 +78,21 @@ export async function POST(req: NextRequest) {
         503,
       );
     }
+    const existingRequest = await prisma.subscription.findUnique({
+      where: { checkoutRequestId: requestId },
+    });
+    if (existingRequest) {
+      if (existingRequest.userId !== session.uid) return bad("checkoutConflict", "Checkout request belongs to another account.", 409);
+      if (existingRequest.plan !== plan || existingRequest.billingInterval && existingRequest.billingInterval !== interval) return bad("checkoutConflict", "結帳請求已用於不同方案 / Checkout request was used for a different plan", 409);
+      const remote = await getSubscription(existingRequest.paypalSubscriptionId);
+      const approveUrl = remote.links?.find((link) => link.rel === "approve")?.href;
+      if (!approveUrl) return bad("checkoutAlreadyProcessed", "This checkout has already been processed. Refresh billing to see the latest status.", 409);
+      return ok({ approveUrl, flow: "existing" });
+    }
+
+    const prices = await activeBillingCatalog();
+    const pendingCoupon = body?.couponCode !== undefined ? await prisma.billingCouponCheckout.findUnique({ where: { requestId } }) : null;
+    if (!pendingCoupon && (body?.pricingVersion ?? 1) !== prices.version) return bad("pricing_changed", "價格已更新，請重新整理並確認新價格；尚未建立付款 / Pricing changed; reload and confirm the new price. No checkout created", 409);
     if (body?.couponCode !== undefined) {
       if (account.rollonMember) return bad("coupon_existing_access", "目前帳號已有專屬權益，請聯絡客服確認升級 / This account already has special access; contact support before upgrading", 409);
       if (typeof body.couponCode !== "string" || !/^[A-Za-z0-9-]{3,32}$/.test(body.couponCode.trim())) return bad("coupon_invalid", "折扣碼格式無效 / Invalid discount code format", 400);
@@ -82,8 +100,8 @@ export async function POST(req: NextRequest) {
       const result = await (await import("@/lib/billing/coupon-checkout")).checkoutWithCoupon({ userId: session.uid, email: session.email, requestId, code: body.couponCode, plan, interval, returnUrl: `${origin}${pathForLocale("/dashboard/billing/return", locale)}`, cancelUrl: `${origin}${pathForLocale("/dashboard/billing", locale)}?cancelled=1` });
       return ok(result);
     }
-    const variant = billingVariantFor(plan, interval);
-    const paypalPlanId = paypalPlanIdFor(plan, interval);
+    const variant = billingVariantFor(plan, interval, prices.catalog);
+    const paypalPlanId = paypalPlanIdFor(plan, interval, prices.catalog);
     if (!paypalPlanId) {
       return bad(
         "paypalNotConfigured",
@@ -92,15 +110,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingRequest = await prisma.subscription.findUnique({
-      where: { checkoutRequestId: requestId },
-    });
-    if (existingRequest) {
-      if (existingRequest.userId !== session.uid) return bad("checkoutConflict", "Checkout request belongs to another account.", 409);
-      const remote = await getSubscription(existingRequest.paypalSubscriptionId);
-      const approveUrl = remote.links?.find((link) => link.rel === "approve")?.href;
-      if (!approveUrl) return bad("checkoutAlreadyProcessed", "This checkout has already been processed. Refresh billing to see the latest status.", 409);
-      return ok({ approveUrl, flow: "existing" });
+    if (prices.version > 1 && variant) {
+      try { assertRegularPlan(await getBillingPlan(paypalPlanId), plan, interval, variant.amountMinor); }
+      catch { return bad("paypal_price_mismatch", "PayPal 方案與顯示價格不符，已停止付款 / PayPal does not match the quoted price; checkout stopped", 503); }
     }
 
     const existingActive = await prisma.subscription.findFirst({
@@ -119,7 +131,7 @@ export async function POST(req: NextRequest) {
     const cancelUrl = `${appUrl}${pathForLocale("/dashboard/billing", locale)}?cancelled=1`;
 
     if (existingActive) {
-      const current = billingFromPaypalPlanId(existingActive.paypalPlanId);
+      const current = await resolveBillingPlan(existingActive.paypalPlanId);
       if (
         current &&
         !current.legacy &&
@@ -204,6 +216,6 @@ export async function POST(req: NextRequest) {
     return ok({ approveUrl: sub.approveUrl, flow: "new" });
   } catch (error) {
     if (error instanceof CouponError) return bad(error.code, error.message, error.status);
-    return failFromError(error);
+    return memberError(error);
   }
 }

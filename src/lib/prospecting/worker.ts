@@ -46,11 +46,11 @@ async function completeCheck(order: ProspectingOrder, token: string) {
     const context = await exclusions(order.userId, tx), fee = await resourceFee(tx, "search", order.id);
     const frozen = (fee?.metadata as { exclusions?: string[] } | undefined)?.exclusions;
     const eligible = uniqueProspects(companies, frozen || context.names);
-    if (fee) await settleTokens(tx, fee.id, eligible.length === order.count ? "capture" : "refund", eligible.length === order.count ? "五家新公司已核對交付 / Five new companies verified and delivered" : "合格交付不足，20 Token 退回 / Insufficient verified delivery; 20 Token returned");
+    if (fee) await settleTokens(tx, fee.id, eligible.length === order.count ? "capture" : "refund", eligible.length === order.count ? "五家新公司已核對交付 / Five new companies verified and delivered" : "合格交付不足，原預扣 Token 退回 / Insufficient verified delivery; original Token hold returned");
     if (eligible.length < companies.length) rejections.known_or_duplicate = companies.length - eligible.length;
     const grant = await tx.prospectingTrialGrant.findUnique({ where: { userId: order.userId } });
     if (order.poc && eligible.length && (!fee || eligible.length === order.count) && !grant) await tx.prospectingTrialGrant.create({ data: { userId: order.userId, orderId: order.id } });
-    await tx.prospectingOrder.update({ where: { id: order.id }, data: { result: json(eligible), rejections, checkedAt: new Date(), status: "completed", leaseToken: null, leaseUntil: null, failureCode: fee && eligible.length < order.count ? "delivery_refunded" : null, failureMessage: fee && eligible.length < order.count ? "合格公司不足，20 Token 已退回；可用相同餘額重新搜尋 / Insufficient verified companies; 20 Token returned for a replacement search" : null } });
+    await tx.prospectingOrder.update({ where: { id: order.id }, data: { result: json(eligible), rejections, checkedAt: new Date(), status: "completed", leaseToken: null, leaseUntil: null, failureCode: fee && eligible.length < order.count ? "delivery_refunded" : null, failureMessage: fee && eligible.length < order.count ? "合格公司不足，原預扣 Token 已退回；重新搜尋前請核對報價 / Insufficient verified companies; original Token hold returned. Check pricing before a replacement search" : null } });
     return eligible.length;
   }, { timeout: 15000 });
 }

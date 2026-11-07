@@ -1,3 +1,4 @@
+import { activeBillingCatalog } from "@/lib/billing/commerce";
 import { getTranslations } from "next-intl/server";
 import BillingPanel from "@/components/dashboard/BillingPanel";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -22,6 +23,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   const account = await getCurrentAccount();
   if (!account) return null; // layout 已 redirect
 
+  const prices = await activeBillingCatalog();
   const effectivePlan = getEffectivePlan(account);
   const status = account.subscriptionStatus;
 
@@ -95,6 +97,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
 
       <BillingPanel
         locale={l}
+        prices={prices}
         currentPlan={effectivePlan}
         statusLabel={statusLabel}
         renewsLabel={renewsLabel}

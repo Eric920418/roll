@@ -1,5 +1,5 @@
-// 方案與實際收款金額的單一事實來源。公開定價、Billing UI、PayPal 建立與 webhook
-// 全部從這裡取值，避免畫面與真正扣款金額分離。
+// 預設方案與舊 PayPal 方案辨識。已發布價格由 commerce 注入 catalog；
+// 歷史辨識保留預設值，避免改價重寫舊訂閱。
 
 export const PLAN_KEYS = ["free", "pro", "business", "enterprise"] as const;
 export type PlanKey = (typeof PLAN_KEYS)[number];
@@ -19,6 +19,7 @@ export type BillingVariant = {
   amountMinor: number;
   currency: "USD";
   paypalPlanIdEnv: string;
+  paypalPlanId?: string;
 };
 
 export interface PlanConfig {
@@ -90,18 +91,19 @@ export function planAtLeast(userPlan: PlanKey, min: PlanKey): boolean {
 export function billingVariantFor(
   plan: PlanKey,
   interval: BillingInterval,
+  catalog = PLAN_CONFIG,
 ): BillingVariant | null {
-  return PLAN_CONFIG[plan].variants?.[interval] ?? null;
+  return catalog[plan].variants?.[interval] ?? null;
 }
 
-export function priceLabel(plan: PlanKey, interval: BillingInterval): string | null {
-  const variant = billingVariantFor(plan, interval);
+export function priceLabel(plan: PlanKey, interval: BillingInterval, catalog = PLAN_CONFIG): string | null {
+  const variant = billingVariantFor(plan, interval, catalog);
   if (!variant) return null;
   return `USD ${(variant.amountMinor / 100).toLocaleString("en-US")}`;
 }
 
-export function monthlyEquivalentLabel(plan: PlanKey): string | null {
-  const annual = billingVariantFor(plan, "year");
+export function monthlyEquivalentLabel(plan: PlanKey, catalog = PLAN_CONFIG): string | null {
+  const annual = billingVariantFor(plan, "year", catalog);
   if (!annual) return null;
   return `USD ${(annual.amountMinor / 100 / 12).toLocaleString("en-US")}`;
 }
@@ -114,8 +116,11 @@ export function monthlyPriceLabel(plan: PlanKey): string | null {
 export function paypalPlanIdFor(
   plan: PlanKey,
   interval: BillingInterval = "month",
+  catalog = PLAN_CONFIG,
 ): string | null {
-  const envName = billingVariantFor(plan, interval)?.paypalPlanIdEnv;
+  const variant = billingVariantFor(plan, interval, catalog);
+  if (variant?.paypalPlanId) return variant.paypalPlanId;
+  const envName = variant?.paypalPlanIdEnv;
   return envName ? process.env[envName] ?? null : null;
 }
 

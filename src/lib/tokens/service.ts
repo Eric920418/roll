@@ -1,4 +1,5 @@
 import "server-only";
+import { tokenQuote } from "@/lib/billing/commerce";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -33,17 +34,27 @@ export async function grantTokens(tx: DB, userId: string, amount: number, key: s
 }
 export async function monthlyTokens(tx: DB, userId: string) {
   await lockWallet(tx, userId);
-  if ((await networkAccount(userId, tx)).effectivePlan !== "free") await grantTokens(tx, userId, 150, `monthly:${userId}:${new Date().toISOString().slice(0, 7)}`, "每月方案贈額 / Monthly plan grant");
+  const key = `monthly:${userId}:${new Date().toISOString().slice(0, 7)}`;
+  const reason = "每月方案贈額 / Monthly plan grant", prior = await tx.tokenLedger.findUnique({ where: { eventKey: key } });
+  if (prior) {
+    if (prior.userId !== userId || prior.kind !== "grant" || prior.availableDelta < 0 || prior.availableDelta > 1000000 || prior.reservedDelta !== 0 || prior.reservationId !== null || prior.reason !== reason) throw new TokenError("月贈額紀錄不一致，請聯絡管理員 / Monthly grant record mismatch; contact an administrator", 409);
+    return;
+  }
+  if ((await networkAccount(userId, tx)).effectivePlan !== "free") { const quote = await tokenQuote(tx); await entry(tx, userId, key, "grant", quote.monthlyGrant, 0, reason); }
 }
-export async function reserveTokens(tx: DB, input: { userId: string; requestId: string; payloadHash: string; kind: "invite" | "search"; resourceId: string; resourceVersion?: number; expiresAt: Date; metadata?: Prisma.InputJsonValue }) {
+export async function reserveTokens(tx: DB, input: { userId: string; requestId: string; payloadHash: string; kind: "invite" | "search"; resourceId: string; resourceVersion?: number; expiresAt: Date; metadata?: Prisma.InputJsonValue; poc?: boolean }) {
   await monthlyTokens(tx, input.userId);
   const previous = await tx.tokenReservation.findUnique({ where: { userId_requestId: { userId: input.userId, requestId: input.requestId } } });
   if (previous) {
     if (previous.payloadHash !== input.payloadHash || previous.kind !== input.kind || previous.resourceId !== input.resourceId || previous.resourceVersion !== (input.resourceVersion || 0)) throw new TokenError("同一次提交已使用不同內容 / Request ID already used with different content", 409);
     return previous;
   }
-  const amount = input.kind === "invite" ? 5 : 20;
-  const reservation = await tx.tokenReservation.create({ data: { ...input, amount } });
+  const quote = await tokenQuote(tx);
+  const gift = input.kind === "search" && input.poc ? await tx.tokenLedger.findUnique({ where: { eventKey: `poc:${input.userId}` } }) : null;
+  const amount = input.kind === "invite" ? quote.inviteFee : gift?.availableDelta || quote.searchFee;
+  const { metadata, ...data } = input;
+  delete data.poc;
+  const reservation = await tx.tokenReservation.create({ data: { ...data, amount, metadata: { ...(metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {}), pricing: { version: quote.version, amount } } } });
   await entry(tx, input.userId, `reserve:${reservation.id}`, "reserve", -amount, amount, input.kind === "invite" ? "交流邀請預扣 / Invitation hold" : "五家公司搜尋預扣 / Five-company search hold", reservation.id);
   return reservation;
 }
@@ -71,6 +82,7 @@ export async function tokenSnapshot(userId: string, cursor?: string) {
     if (cursor && !await tx.tokenLedger.findFirst({ where: { id: cursor, userId } })) throw new TokenError("無效帳本頁次 / Invalid ledger cursor", 400);
     const wallet = await tx.tokenWallet.findUniqueOrThrow({ where: { userId } });
     const rows = await tx.tokenLedger.findMany({ where: { userId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 51, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), select: { id: true, kind: true, availableDelta: true, reservedDelta: true, reason: true, createdAt: true, reservationId: true } });
-    return { available: wallet.available, reserved: wallet.reserved, monthlyGrant: 150, period: new Date().toISOString().slice(0, 7), ledger: rows.slice(0, 50), nextCursor: rows.length > 50 ? rows[49].id : null };
+    const pricing = await tokenQuote(tx);
+    return { available: wallet.available, reserved: wallet.reserved, monthlyGrant: pricing.monthlyGrant, pricing, period: new Date().toISOString().slice(0, 7), ledger: rows.slice(0, 50), nextCursor: rows.length > 50 ? rows[49].id : null };
   }, { timeout: 15000 });
 }

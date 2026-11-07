@@ -162,6 +162,7 @@ test("beta and rollon Pro checkout are rejected before calling PayPal or writing
     "@/lib/auth/guard": { getUserSession: async () => ({ uid: "existing" }) },
     "@/lib/auth/account": { getCurrentAccount: async () => current },
     "@/lib/api": {}, "@/lib/billing/plans": plans,
+    "@/lib/billing/commerce": {}, "@/lib/billing/commerce-policy": {}, "@/lib/member-http": {},
     "@/lib/billing/paypal": {}, "@/lib/billing/config": {}, "@/lib/routes": {},
   });
   const response = await route.POST({ url: "https://example.test/api/test", headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), json: () => { throw new Error("Checkout must stop before parsing"); } });

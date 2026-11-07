@@ -330,6 +330,7 @@ test("Billing overview loads reward allowance even when the effective plan is Fr
   const usage = { included: 0, used: 0, remaining: 0, bonusRemaining: 0, rewardRemaining: 10, resetsAt: null };
   let calls = 0;
   const overview = load<{ default(props: object): Promise<unknown> }>("src/components/dashboard/BillingOverview.tsx", {
+    "@/lib/billing/commerce": { activeBillingCatalog: async () => ({ version: 1, catalog: {} }) },
     "next-intl/server": { getTranslations: async () => (key: string) => key },
     "@/components/dashboard/BillingPanel": { default: () => null },
     "@/lib/auth/account": { getCurrentAccount: async () => ({ id: "free-member", subscriptionStatus: "APPROVAL_PENDING" }) },

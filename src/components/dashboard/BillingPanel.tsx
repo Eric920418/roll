@@ -32,6 +32,7 @@ const BILLING_ERROR_CODES = [
 
 export default function BillingPanel({
   locale,
+  prices,
   currentPlan,
   statusLabel,
   renewsLabel,
@@ -45,6 +46,7 @@ export default function BillingPanel({
   rollonMember = false,
 }: {
   locale: Locale;
+  prices: { version: number; catalog: typeof import("@/lib/billing/plans").PLAN_CONFIG };
   currentPlan: string;
   statusLabel: string;
   renewsLabel?: string;
@@ -105,6 +107,7 @@ export default function BillingPanel({
           plan,
           interval,
           locale,
+          pricingVersion: prices.version,
           requestId: checkoutAttempt.current.id,
           ...(coupon ? { couponCode: coupon.code } : {}),
         }),
@@ -114,7 +117,7 @@ export default function BillingPanel({
       try { json = JSON.parse(text); } catch { throw new Error(`HTTP ${res.status}: ${text || res.statusText}`); }
       if (!res.ok) {
         if (["coupon_checkout_closed", "coupon_provider_rejected", "coupon_not_configured", "coupon_plan_mismatch"].includes(json.code)) checkoutAttempt.current = null;
-        throw new Error([resolveErr(json.code, json.error), json.code].filter(Boolean).join("\n"));
+        throw new Error([`HTTP ${res.status}`, resolveErr(json.code, json.error), json.code, json.requestId].filter(Boolean).join("\n"));
       }
       // 導向 PayPal 核准頁
       window.location.assign(json.data.approveUrl);
@@ -292,7 +295,7 @@ export default function BillingPanel({
           {PAID_PLANS.map((plan) => {
             const isCurrent =
               hasActiveSub && plan === currentPlan && interval === currentInterval;
-            const variant = billingVariantFor(plan, interval);
+            const variant = billingVariantFor(plan, interval, prices.catalog);
             const discount = coupon?.quotes.find(quote => quote.plan === plan && quote.interval === interval);
             if (!variant) return null;
             return (
@@ -311,16 +314,16 @@ export default function BillingPanel({
                 <p className="mt-1 text-sm text-dark/70">
                   <span className="text-xl font-bold text-dark">
                     {discount ? `USD ${(discount.firstAmountMinor / 100).toFixed(2)}` : interval === "month"
-                      ? priceLabel(plan, "month")
-                      : monthlyEquivalentLabel(plan)}
+                      ? priceLabel(plan, "month", prices.catalog)
+                      : monthlyEquivalentLabel(plan, prices.catalog)}
                   </span>{" "}
                   {discount && interval === "year" ? (zh ? "／首年" : "/ first year") : t("perMonth")}
                 </p>
-                {discount && <p className="mt-2 text-sm"><del className="mr-2">{priceLabel(plan, interval)}</del>{zh ? `${interval === "year" ? "首年一次收款" : "僅首月"}；下${interval === "year" ? "年" : "月"}起 ${priceLabel(plan, interval)}／${interval === "year" ? "年" : "月"}，自動續訂。` : `${interval === "year" ? "First year charged once" : "First month only"}; then ${priceLabel(plan, interval)} / ${interval}, automatically renewed.`}</p>}
+                {discount && <p className="mt-2 text-sm"><del className="mr-2">{priceLabel(plan, interval, prices.catalog)}</del>{zh ? `${interval === "year" ? "首年一次收款" : "僅首月"}；下${interval === "year" ? "年" : "月"}起 ${priceLabel(plan, interval, prices.catalog)}／${interval === "year" ? "年" : "月"}，自動續訂。` : `${interval === "year" ? "First year charged once" : "First month only"}; then ${priceLabel(plan, interval, prices.catalog)} / ${interval}, automatically renewed.`}</p>}
                 {interval === "year" && !discount && (
                   <p className="mt-2 text-xs leading-5 text-dark/55">
                     {t("annualCharge", {
-                      total: priceLabel(plan, "year")!,
+                      total: priceLabel(plan, "year", prices.catalog)!,
                     })}
                   </p>
                 )}
@@ -333,6 +336,7 @@ export default function BillingPanel({
                 <ul className="my-3 space-y-2 text-sm">{catalog[plan].features.map(f => <li key={f}>✓ {f}</li>)}</ul>
                 <button
                   type="button"
+                  data-testid={`subscribe-${plan}`}
                   onClick={() => subscribe(plan)}
                   disabled={busy !== null || isCurrent || Boolean(couponText.trim() && !coupon)}
                   className={`mt-5 rounded-xl px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-60 font-[family-name:var(--font-heading)] ${

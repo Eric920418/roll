@@ -33,13 +33,13 @@ export function PrivatePhoto({ url, alt }: { url: string; alt: string }) {
   </div>;
 }
 const actionButton = "inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-dark/20 bg-black px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
-export function CardChatAction({ card, network }: { card: PublicCard; network: { enabled: boolean; invite: boolean } | null }) {
+export function CardChatAction({ card, network }: { card: PublicCard; network: { enabled: boolean; invite: boolean; pricing?: { inviteFee: number } } | null }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw";
   const connection = card.chat;
   if (!network?.enabled) return null;
   if (connection?.status === "blocked") return <p className="text-sm">{zh ? "此連結無法聊天" : "Chat unavailable"}</p>;
   if (connection?.status === "accepted" || connection?.status === "pending") return <Link className={actionButton} href={pathForLocale(`/dashboard/messages?connection=${connection.id}`, locale)}>{connection.status === "accepted" ? (zh ? "開啟聊天" : "Open chat") : (zh ? "查看邀請" : "View invitation")}</Link>;
-  return <Link className={actionButton} href={pathForLocale(network.invite ? `/dashboard/matchmaking/${card.id}` : "/dashboard/account#plan", locale)}>{network.invite ? (zh ? "提出交流 · 5 Token" : "Request to chat · 5 Token") : (zh ? "查看 NOVA 方案" : "View NOVA plans")}</Link>;
+  return <Link className={actionButton} href={pathForLocale(network.invite ? `/dashboard/matchmaking/${card.id}` : "/dashboard/account#plan", locale)}>{network.invite ? (zh ? `提出交流${network.pricing ? ` · ${network.pricing.inviteFee} Token` : ""}` : `Request to chat${network.pricing ? ` · ${network.pricing.inviteFee} Token` : ""}`) : (zh ? "查看 NOVA 方案" : "View NOVA plans")}</Link>;
 }
 export default function CardView({ card, detail = false }: { card: PublicCard; detail?: boolean }) {
   const t = useTranslations("Matchmaking"), locale = useLocale(), zh = locale === "zh-tw";

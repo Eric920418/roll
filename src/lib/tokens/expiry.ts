@@ -25,7 +25,7 @@ export async function expireTokens(userId?: string) {
         const fresh = await tx.tokenReservation.findUniqueOrThrow({ where: { id: hold.id } });
         if (fresh.status !== "reserved" || !order || order.status === "completed" || order.leaseUntil && order.leaseUntil > new Date()) return false;
         if (!order.submittedAt && !order.providerOrderId) {
-          await tx.prospectingOrder.update({ where: { id: order.id }, data: { status: "failed", reservedCount: 0, failureCode: "hold_expired", failureMessage: "搜尋未送出且預扣已逾期，20 Token 已退回 / Search was not submitted; expired 20 Token hold released" } });
+          await tx.prospectingOrder.update({ where: { id: order.id }, data: { status: "failed", reservedCount: 0, failureCode: "hold_expired", failureMessage: "搜尋未送出且預扣已逾期，原 Token 預扣已退回 / Search was not submitted; original expired Token hold released" } });
           await settleTokens(tx, hold.id, "refund", "未送出搜尋逾期 / Unsubmitted search expired"); return true;
         }
       }

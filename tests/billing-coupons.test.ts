@@ -163,6 +163,7 @@ test("Coupon APIs require sign-in/admin, same-origin writes, and reject client-s
     "@/lib/auth/account": { getCurrentAccount: async () => member ? { id: "member", email: "member@example.invalid" } : null },
     "@/lib/auth/guard": { requireAdmin: async () => admin ? { email: "admin@example.invalid" } : null },
     "@/lib/rate-limit": { MINUTE_MS: 60000, checkRateLimit: async () => ({ ok: true }) },
+    "@/lib/billing/commerce": { activeBillingCatalog: async () => ({ version: 1, catalog: plans.PLAN_CONFIG }) },
     "@/lib/billing/coupon-checkout": { assertCouponEligibility: async () => {} },
     "@/lib/billing/coupon-setup": { couponSetupStatus: async () => ({ enabled: false }), prepareCouponPlan: async () => { prepared++; return { id: "P-TEST" }; } },
   }, env);

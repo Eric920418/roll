@@ -1,6 +1,7 @@
+import { resolveBillingPlan } from "@/lib/billing/commerce";
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { billingFromPaypalPlanId, type PlanKey } from "@/lib/billing/plans";
+import { type PlanKey } from "@/lib/billing/plans";
 import {
   getSubscription,
   type PaypalSubscription,
@@ -17,7 +18,7 @@ export async function reconcileFromPaypal(
     where: { paypalSubscriptionId: paypalSub.id },
   });
 
-  const match = billingFromPaypalPlanId(paypalSub.plan_id);
+  const match = await resolveBillingPlan(paypalSub.plan_id);
   const plan: PlanKey | null = match?.plan ?? (local?.plan as PlanKey | undefined) ?? null;
 
   const status = paypalSub.status;

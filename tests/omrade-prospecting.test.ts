@@ -40,7 +40,9 @@ test("Legacy discovery search forwards the explicit Token price acknowledgement 
   const body = legacy.prospectInputSchema.parse({ ...common, pricingVersion: 1 });
   await legacy.generateProspects({ id: "member" } as never, body);
   assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ userId: "member", value: { requestId: body.requestId, pricingVersion: 1, revision: 4, country: "TW", description: body.description, count: 5 } }]);
-  assert(!legacy.prospectInputSchema.safeParse({ ...common, pricingVersion: 99 }).success);
+  assert(legacy.prospectInputSchema.safeParse({ ...common, pricingVersion: 99 }).success);
+  assert(!legacy.prospectInputSchema.safeParse({ ...common, pricingVersion: 0 }).success);
+  assert(!legacy.prospectInputSchema.safeParse({ ...common, pricingVersion: 1.5 }).success);
   assert(!legacy.prospectInputSchema.safeParse({ ...common, amount: 0 }).success);
 });
 test("Public email needs official HTML; shared inboxes, possible matches, private URLs and genuine contact pages are distinguished", async () => {

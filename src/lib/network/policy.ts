@@ -3,7 +3,7 @@ export const networkEnabled = () => process.env.MEMBER_NETWORK_ENABLED === "true
 export const CONDITIONS = ["interviews_5", "interviews_10", "interviews_complete", "first_paid_customer", "fundraising_open"] as const;
 export const SECTIONS = ["signals", "profile", "strategy", "actionPlan", "kpis", "milestones", "updates", "businessPlan"] as const;
 export const scope = z.object({ planId: z.string().min(1).max(200).optional(), journeyId: z.string().min(1).max(200).optional() }).strict().refine(v => Number(Boolean(v.planId)) + Number(Boolean(v.journeyId)) === 1);
-export const inviteSchema = z.object({ profileId: z.string().min(1).max(200), requestId: z.uuid().optional(), pricingVersion: z.literal(1).optional(), opening: z.string().trim().min(1).max(4000).optional(), conditions: z.array(z.enum(CONDITIONS)).max(5).default([]) }).strict();
+export const inviteSchema = z.object({ profileId: z.string().min(1).max(200), requestId: z.uuid().optional(), pricingVersion: z.number().int().positive().optional(), opening: z.string().trim().min(1).max(4000).optional(), conditions: z.array(z.enum(CONDITIONS)).max(5).default([]) }).strict();
 export const connectionSchema = z.object({ action: z.enum(["accept", "decline", "block", "read", "cancel"]), revision: z.number().int().positive() }).strict();
 export const messageSchema = z.object({ requestId: z.uuid(), body: z.string().trim().min(1).max(4000) }).strict();
 export const shareSchema = z.object({ revision: z.number().int().nonnegative(), sections: z.array(z.enum(SECTIONS)).max(8), scope: scope.optional() }).strict().refine(v => !v.sections.includes("signals") || Boolean(v.scope), "觀察通知需要選擇工作區 / Select a workspace for progress sharing");
