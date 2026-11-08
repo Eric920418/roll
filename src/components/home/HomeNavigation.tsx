@@ -1,5 +1,6 @@
 "use client";
 
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
@@ -8,7 +9,7 @@ import type { Locale } from "@/i18n/routing";
 import { SERVICE_SLUGS, pathForLocale } from "@/lib/routes";
 import styles from "./home.module.css";
 
-export default function HomeNavigation({ locale, current = "home" }: { locale: Locale; current?: "home" | "approach" | "cases" | "taiwan" | "about" | "services" | "insights" }) {
+export default function HomeNavigation({ locale, current = "home" }: { locale: Locale; current?: "home" | "approach" | "cases" | "taiwan" | "about" | "services" | "insights" | "report" }) {
   const t = useTranslations("HomeV10.nav");
   const services = useTranslations("HomeV10.serviceMenu");
   const [open, setOpen] = useState(false);
@@ -21,7 +22,7 @@ export default function HomeNavigation({ locale, current = "home" }: { locale: L
     { key: "about", href: pathForLocale("/about", locale) },
   ] as const;
 
-  const pagePath = current === "home" ? "/" : `/${current}`;
+  const pagePath = current === "home" ? "/" : current === "report" ? "/taiwan-market-report" : `/${current}`;
   const serviceMenu = (
     <details className={styles.servicesMenu} onKeyDown={(event) => {
       if (event.key === "Escape") {
@@ -66,7 +67,7 @@ export default function HomeNavigation({ locale, current = "home" }: { locale: L
           ))}
           {serviceMenu}
           <Link href={pathForLocale("/product", locale)}>NOVA AI</Link>
-          <a href="#contact" className={`${styles.button} ${styles.navBook}`}>{t("book")}</a>
+          <a href={MEETING_URL} target="_blank" rel="noopener noreferrer" className={`${styles.button} ${styles.navBook}`}>{meetingLabel(locale)}</a>
         </nav>
         <button ref={toggle} type="button" className={styles.menuToggle} aria-expanded={open} aria-controls="home-mobile-nav" aria-label={open ? t("close") : t("open")} onClick={() => setOpen(!open)}>
           {open ? <XMarkIcon aria-hidden="true" /> : <Bars3Icon aria-hidden="true" />}
@@ -78,7 +79,7 @@ export default function HomeNavigation({ locale, current = "home" }: { locale: L
             ))}
             {serviceMenu}
             <Link href={pathForLocale("/product", locale)} onClick={() => setOpen(false)}>NOVA AI</Link>
-            <a href="#contact" onClick={() => setOpen(false)}>{t("book")}</a>
+            <a href={MEETING_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>{meetingLabel(locale)}</a>
             <div className={styles.mobileLanguages}>
               <Link href={pathForLocale(pagePath, "en")} lang="en" hrefLang="en" aria-current={locale === "en" ? "page" : undefined}>EN</Link>
               <Link href={pathForLocale(pagePath, "zh-tw")} lang="zh-TW" hrefLang="zh-TW" aria-current={locale === "zh-tw" ? "page" : undefined}>繁中</Link>

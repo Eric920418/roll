@@ -1,7 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import Link from "next/link";
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
+import { REPORT_PAGE } from "@/lib/reports/catalog";
+import { pathForLocale } from "@/lib/routes";
+import type { Locale } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import NovaLogo from "@/components/brand/NovaLogo";
 import ScrollReveal from "@/components/ui/ScrollReveal";
@@ -23,34 +27,6 @@ export default function FooterClient({
   const t = useTranslations("Footer");
   const Reveal = brand === "nova" ? "div" : ScrollReveal;
   const locale = useLocale();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [company, setCompany] = useState(""); // honeypot
-  const [status, setStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("sending");
-    setErrorMsg("");
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, message, company, locale }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error([json.error || t("error"), `HTTP ${res.status}`,json.code,json.requestId].filter(Boolean).join(" · "));
-      setStatus("ok");
-      setName("");
-      setEmail("");
-      setMessage("");
-    } catch (err) {
-      setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : t("error"));
-    }
-  }
 
   return (
     <footer
@@ -136,84 +112,14 @@ export default function FooterClient({
           <Reveal {...(brand === "nova" ? {} : {direction: "right" as const})}>
             <div>
               <h3 className="text-xs uppercase tracking-[0.3em] text-white/50 mb-10 font-[family-name:var(--font-heading)]">
-                {t("contactUs")}
+                {meetingLabel(locale)}
               </h3>
-              <form className="space-y-8" onSubmit={handleSubmit}>
-                <div className="group relative">
-                  <input
-                    type="text"
-                    placeholder={t("name")} aria-label={t("name")}
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="min-h-11 w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 font-[family-name:var(--font-heading)]"
-                  />
-                  <div className="absolute bottom-0 left-0 h-px w-0 bg-white group-focus-within:w-full transition-all duration-500" />
-                </div>
-                <div className="group relative">
-                  <input
-                    type="email"
-                    placeholder={t("email")} aria-label={t("email")}
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="min-h-11 w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 font-[family-name:var(--font-heading)]"
-                  />
-                  <div className="absolute bottom-0 left-0 h-px w-0 bg-white group-focus-within:w-full transition-all duration-500" />
-                </div>
-                <div className="group relative">
-                  <textarea
-                    placeholder={t("message")} aria-label={t("message")}
-                    rows={3}
-                    required
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="min-h-11 w-full bg-transparent border-b border-white/20 pb-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/80 transition-all duration-500 resize-none font-[family-name:var(--font-heading)]"
-                  />
-                  <div className="absolute bottom-0 left-0 h-px w-0 bg-white group-focus-within:w-full transition-all duration-500" />
-                </div>
-
-                {/* honeypot：視覺隱藏，給機器人填 */}
-                <input
-                  type="text"
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  className="absolute left-[-9999px] w-px h-px opacity-0"
-                />
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={status === "sending"}
-                    className="group/btn relative overflow-hidden border border-white/30 text-white text-xs uppercase tracking-[0.25em] py-4 px-10 font-[family-name:var(--font-heading)] transition-all duration-500 hover:border-white/60 hover:tracking-[0.35em] disabled:opacity-50"
-                  >
-                    <span
-                      className={`relative z-10 transition-colors duration-500 ${
-                        brand === "nova"
-                          ? "group-hover/btn:text-primary"
-                          : "group-hover/btn:text-[#2b1326]"
-                      }`}
-                    >
-                      {status === "sending" ? t("sending") : t("send")}
-                    </span>
-                    <div className="absolute inset-0 bg-white translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500 ease-out" />
-                  </button>
-                </div>
-
-                {status === "ok" && (
-                  <p className="text-sm text-green-400">{t("success")}</p>
-                )}
-                {status === "error" && (
-                  <p className="text-sm text-red-400 whitespace-pre-wrap">{errorMsg}</p>
-                )}
-              </form>
+              <a href={MEETING_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded border border-white/60 px-5 py-3 text-sm font-semibold">{meetingLabel(locale)} ↗</a>
             </div>
           </Reveal>
         </div>
 
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 bg-[#4a101d] p-5 text-sm text-[#ead6ad]"><Link className="inline-flex min-h-11 items-center underline underline-offset-4" href={pathForLocale(REPORT_PAGE, locale as Locale)}>{locale === "zh-tw" ? "下載 2026 第四季台灣市場進入報告" : "Download our Q4 2026 Taiwan Market Report"} →</Link><span className="text-xs text-white">From visions to big impacts</span></div>
         {/* Copyright */}
         <div className="mt-8 pt-6 md:mt-16 md:pt-8 border-t border-white/10 text-center text-white/40 text-sm">
           <p>{t("copyright")}</p>

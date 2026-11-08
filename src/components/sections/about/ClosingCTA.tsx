@@ -1,14 +1,13 @@
 "use client";
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
 
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import type { Locale } from "@/i18n/routing";
-import { pathForLocale } from "@/lib/routes";
 
 export default function AboutClosingCTA() {
   const t = useTranslations("AboutPage.closing");
   const locale = useLocale() as Locale;
-  const contactHref = `${pathForLocale("/", locale)}#contact`;
 
   // 把標題尾端的「.」獨立出來上 brand red — ROLL ON. 的 dot 是品牌記號
   const rawTitle = t("title");
@@ -34,18 +33,18 @@ export default function AboutClosingCTA() {
             {t("body")}
           </p>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
             <a
-              href={contactHref}
+              href={MEETING_URL} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center bg-primary text-white px-5 md:px-6 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-semibold uppercase tracking-[0.16em] font-[family-name:var(--font-heading)] hover:bg-primary-dark transition-colors duration-300"
-              aria-label={t("cta")}
+              aria-label={meetingLabel(locale)}
             >
-              {t("cta")}
+              {meetingLabel(locale)}
             </a>
             <a
-              href={contactHref}
-              className="group inline-flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full bg-primary text-white hover:bg-primary-dark transition-colors duration-300"
-              aria-label={t("cta")}
+              href={MEETING_URL} target="_blank" rel="noopener noreferrer"
+              className="group inline-flex items-center justify-center w-11 h-11 shrink-0 md:w-11 md:h-11 rounded-full bg-primary text-white hover:bg-primary-dark transition-colors duration-300"
+              aria-label={meetingLabel(locale)}
             >
               <span
                 aria-hidden="true"

@@ -1,3 +1,5 @@
+import ReportSection from "@/components/reports/ReportSection";
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
 import { getRollonAssets } from "@/lib/cms/rollon-content";
 import Image from "next/image";
 import Link from "next/link";
@@ -39,7 +41,7 @@ export default async function HomeV10({ locale }: { locale: Locale }) {
               <p className={styles.heroSubtitle}>{t("hero.subtitle")}</p>
               <p className={styles.heroDescription}>{t("hero.description")}</p>
               <div className={styles.heroActions}>
-                <a href="#contact" className={styles.button}>{t("nav.book")}</a>
+                <a href={MEETING_URL} target="_blank" rel="noopener noreferrer" className={styles.button}>{meetingLabel(locale)}</a>
                 <Link href={pathForLocale("/cases", locale)} className={`${styles.button} ${styles.outlineButton}`}>{t("hero.work")}</Link>
               </div>
             </div>
@@ -111,11 +113,13 @@ export default async function HomeV10({ locale }: { locale: Locale }) {
             </div>
           </section>
 
+          <ReportSection locale={locale} />
+
           <section className={styles.belief} aria-labelledby="belief-title">
             <div className={styles.container}>
               <p className={styles.eyebrow}>{t("belief.eyebrow")}</p>
               <h2 id="belief-title">{t("belief.title")}</h2>
-              <a href="#contact" className={`${styles.button} ${styles.redButton}`}>{t("nav.book")}</a>
+              <a href={MEETING_URL} target="_blank" rel="noopener noreferrer" className={`${styles.button} ${styles.redButton}`}>{meetingLabel(locale)}</a>
             </div>
           </section>
         </main>

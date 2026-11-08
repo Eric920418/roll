@@ -8,7 +8,7 @@ import type { Locale } from "@/i18n/routing";
 import s from "./landing.module.css";
 export default function ProductNav() {
   const locale = useLocale() as Locale, zh = locale === "zh-tw", [open, setOpen] = useState(false);
-  const links = [["how", zh ? "如何使用" : "What we do"], ["cases", zh ? "實務案例" : "Case studies"], ["community", zh ? "社群與節目" : "Community"], ["pricing", zh ? "方案價格" : "Pricing"]];
+  const links = [["how", zh ? "如何使用" : "What we do"], ["team", zh ? "團隊" : "Team"], ["community", zh ? "社群與節目" : "Community"], ["pricing", zh ? "方案價格" : "Pricing"]];
   return <header className={s.nav}>
     <a className={s.brand} href={pathForLocale("/product", locale)} aria-label="NOVA AI"><NovaLogo variant="black" priority className="h-auto w-28" /><span>BY ROLL ON</span></a>
     <button type="button" className={s.menuButton} aria-expanded={open} aria-controls="nova-navigation" onClick={() => setOpen(!open)}>{zh ? "選單" : "Menu"} {open ? "−" : "+"}</button>

@@ -1,10 +1,10 @@
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
 import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import { getVideos, getSetting } from "@/lib/cms/content";
 import { pick } from "@/lib/cms/i18n";
 import type { Locale } from "@/i18n/routing";
-import { pathForLocale } from "@/lib/routes";
 
 export default async function GoldenTicket() {
   const locale = (await getLocale()) as Locale;
@@ -99,7 +99,7 @@ export default async function GoldenTicket() {
               <p className="mt-3 text-sm leading-6 text-white/60">{t("ecosystemBody")}</p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <a href="#events" className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-primary">{t("events")}</a>
-                <a href={`${pathForLocale("/", locale)}#contact`} className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{t("contact")}</a>
+                <a href={MEETING_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{meetingLabel(locale)}</a>
               </div>
             </div>
           </ScrollReveal>

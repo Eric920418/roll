@@ -1,3 +1,4 @@
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
 import { getLocale, getTranslations } from "next-intl/server";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
@@ -7,7 +8,6 @@ const pillars = ["software", "guidance", "execution", "access"] as const;
 export default async function NovaValuePillars() {
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("Product.positioning");
-  const home = pathForLocale("/", locale);
   return (
     <section className="bg-white px-5 py-20 md:px-8 md:py-28">
       <div className="mx-auto max-w-6xl">
@@ -30,7 +30,7 @@ export default async function NovaValuePillars() {
           <div className="mt-5 flex flex-wrap gap-3 md:mt-0">
             <a href="https://www.youtube.com/@GOLDENTICKET-rollon" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-primary">{t("podcast")}</a>
             <a href={pathForLocale("/cases#ecosystem", locale)} className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{t("events")}</a>
-            <a href={`${home}#contact`} className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{t("contact")}</a>
+            <a href={MEETING_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-white/30 px-4 py-2 text-sm font-bold text-white">{meetingLabel(locale)}</a>
           </div>
         </div>
       </div>

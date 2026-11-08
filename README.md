@@ -2472,3 +2472,39 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 驗收：`pnpm audit --prod` 0 告警；完整 `pnpm audit` 剩 1 個 moderate，為 ESLint／TypeScript 開發工具鏈的 minimatch 10.2.6 globparts DoS 公告，修補版 11.0.1 屬跨 major，尚未強制覆寫工具鏈。`pnpm test` 303 通過、0 失敗、23 項因未提供隔離資料庫連線而略過。使用只含已提交 main 與本次修補的暫存目錄，在既有本機隔離 QA PostgreSQL 進行 production build 通過；lint 0 errors、14 個既有 warnings。原工作區同期有未提交帳務草稿，當中 `src/lib/billing/commerce.ts` 型別錯誤及 `src/components/admin/CommerceSettings.tsx` lint 錯誤，使原工作區 build／lint 不能通過；那些檔案不屬本次提交。
 
 本次沒有修改資料庫結構或既有資料，也沒有手動部署；未做新的全站動態滲透測試。前端應顯示安全的完整操作錯誤與 requestId；第三方原始例外若含 token、連線字串或個資，仍不可直接顯示。
+
+## 2026-11-08：市場報告、預約與 NOVA 公開頁更新
+
+- 新增首頁 `#report` 與中英文 `/taiwan-market-report` 共用報告表單；兩份 Q4 2026 PDF 原檔保留，報告語言可選，電子報預設不勾選。PDF 為公開免費資料，不是登入或付費下載牆。
+- 新增 MarketReportRequest／MarketReportDelivery，`POST /api/reports/requests` 驗證固定報告、國家／產業、UUID 與輸入；真實公司與 website 防機器人欄位分開。管理員名單透過 `/api/admin/reports/requests` 分頁查詢。
+- `REPORT_EMAIL_ENABLED=true` 且既有 Resend 設定完整才接受寄送。報告附件與 Vivian 通知獨立 outbox，立即嘗試並由既有會員通知 cron 每 15 分鐘補寄；租約／固定冪等鍵，最多三次、24 小時停止，accepted 不代表 delivered。報告只寄所選語言，Vivian 通知寄至 vivian.lee@roll-grp.com。
+- 明確勾選才接入現有電子報確認／退訂；訂閱失敗不回滾報告。公開網站預約統一 Calendly；NOVA 案例素材移除展示、團隊重新排序、價格卡共用對齊軌道；原聯絡 API／候補用途、會員權益與計費資料保留。
+- Schema 只新增兩表；上線前審核差異、隔離 DB 測試及指定信箱驗收，不使用 reset 或 accept-data-loss。實作與驗收結果持續補記於此。
+
+- 報告版面採原封面與三項附期間數據；英文／繁中分享頁及首頁共用 ReportSection。後台聯絡訊息以 `?tab=reports` 顯示報告名單、兩封信狀態及訂閱結果；原聯絡名單與操作保留。公司與 Email 驗證失敗會保留輸入；訂閱失敗可只重試訂閱。
+
+- 公開頁尾以 Calendly 取代聯絡表單並保留 `#contact`、Email／地址與社群；所有公開預約入口共用固定 URL 及中英文標籤。NOVA 撤下案例展示但不刪原素材，團隊依本次名單排序、專屬職稱不覆寫 About 原資料；Eric 暫無照片，近期新增的 pilot／社群活動資訊保留。Pricing 使用七列 subgrid，動態價格／優惠介面不變。
+
+- 新版案例與團隊回歸測試核對案例照片／展示不再輸出、Vivian → Eric → Vincent → Iris、指定職稱與 Calendly。同步保留近期其他提交的 pilot／11 月活動及社群區。
+
+- 新增隔離報告測試：個人 Email／公司與防機器人欄位、固定附件語言、PDF 雜湊不變、並行冪等、寫入回滾、兩收件者獨立重試、24 小時／三次限制、訂閱失敗不影響報告與後台權限。每個會員通知排程階段依剩餘時間分配報告預算，避免新工作把既有通知擠出函式上限。
+
+- 後台訂閱顯示區分已在訂閱與新確認信排送，避免對既有訂閱者誤提示重新確認；報告寄信失敗資訊僅存安全狀態，不回傳供應商原始憑證／錯誤本文。
+
+- 新增報告測試的附件型別核對，確保只有報告信帶 PDF、內部通知不帶附件；既有寄件地址僅改顯示名稱，未更換金鑰或擴大寄件網域。
+
+- 表單明示由 Roll On 團隊處理申請、訂閱選填；原檔雜湊測試只讀版本庫 PDF，不依賴開發者 Downloads 路徑，其他環境可重跑。
+
+- 桌面實際畫面檢查發現獨立報告頁需套用官網字型與 CSS 變數容器，已補齊酒紅導覽及品牌外框，避免共享導覽在獨立頁失去間距。
+
+- 實際裝置驗收找到瀏覽器預設字級 20px 會讓 Tailwind rem 斷點延後，768px 仍只顯示一欄。價格卡斷點改用明確 640px／1280px：390px 單欄、768px 兩欄、1440px 四欄，同時維持字級放大與內容自然增高。
+
+- 申請完成頁提供所選語言 PDF 備援下載；寄送 pending／accepted／failed 分開呈現，補寄停止時明示，不誤稱仍會補寄，安全錯誤完整顯示。
+
+- 英文長版預約文案會使 ROLL ON 按鈕換行；已移除價格卡按鈕的 auto 上邊距，改為填滿共用列，讓不同文案長度的按鈕頂部與底部都對齊。
+
+- 「只重試訂閱」沿用原報告請求與識別碼，讓後台訂閱狀態同步更新；已接受的兩封信不重寄，不產生第二筆申請。
+
+- 次要公開 CTA 容器允許長版中英文預約文字換行，箭頭按鈕保留至少 44px，不以縮小字體或裁切文字處理。
+
+驗收進度：隔離 PostgreSQL 全套 `pnpm test` 542/542、0 skip；`pnpm lint` 0 errors／14 個既有 warnings；`pnpm build` 通過。實測報告中英文、503 保留輸入與鍵盤送出、390px 無水平溢位、768px 價格兩欄／1440px 四欄，價格及按鈕共用列對齊；英文長按鈕同高。正式 schema 與差異逐項比對後交易套用，僅新增兩表／索引／外鍵，會員前後均 23 筆。Vercel Production 已設定 `REPORT_EMAIL_ENABLED=true`，待此提交部署生效後驗收實寄；Resend 金鑰及既有會員偏好未修改。Next.js 開發工具自動將 AGENTS 規則標題改為二級，保留產生內容。

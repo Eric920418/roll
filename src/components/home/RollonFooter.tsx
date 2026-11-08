@@ -4,7 +4,8 @@ import type { Locale } from "@/i18n/routing";
 import { INSIGHT_SLUGS, pathForLocale } from "@/lib/routes";
 import { getSetting } from "@/lib/cms/content";
 import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
-import HomeContactForm from "./HomeContactForm";
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
+import { REPORT_PAGE } from "@/lib/reports/catalog";
 import styles from "./home.module.css";
 
 export default async function RollonFooter({ locale, path = "/" }: { locale: Locale; path?: string }) {
@@ -28,7 +29,7 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
         <div className={styles.container}>
           <div className={styles.contactGrid}>
             <div>
-              <h2 className={styles.contactTitle}>{t("contact.title")}</h2>
+              <h2 className={styles.contactTitle}>{meetingLabel(locale)}</h2>
               <p className={styles.meetingNote}>{t("contact.meetingNote")}</p>
               <address className={styles.contactDetails}>
                 {email && <a className={styles.contactEmail} href={`mailto:${email}`}>{email}</a>}
@@ -36,7 +37,7 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
               </address>
               {contactError && <p role="alert" className={styles.formError}>{contactError}</p>}
             </div>
-            <HomeContactForm locale={locale} labels={{ name: t("contact.name"), email: t("contact.email"), message: t("contact.message"), send: t("contact.send"), sending: t("contact.sending"), success: t("contact.success"), error: t("contact.error") }} />
+            <div><a href={MEETING_URL} target="_blank" rel="noopener noreferrer" className={styles.button}>{meetingLabel(locale)} ↗</a></div>
           </div>
           <div className={styles.footerResources}>
             <nav aria-label={t("footer.insights")}>
@@ -48,6 +49,7 @@ export default async function RollonFooter({ locale, path = "/" }: { locale: Loc
               {socialLinks.map(({ label, href }) => <a key={label} href={href} target="_blank" rel="noopener noreferrer">{label} ↗</a>)}
             </nav>}
           </div>
+          <div className={styles.reportFooter}><Link href={pathForLocale(REPORT_PAGE, locale)}>{locale === "zh-tw" ? "下載 2026 第四季台灣市場進入報告" : "Download our Q4 2026 Taiwan Market Report"} →</Link><span>From visions to big impacts</span></div>
           <div className={styles.footerBottom}>
             <div className={styles.footerBrand}>
               <Link href={pathForLocale("/", locale)} className={styles.wordmark}>ROLL ON.</Link>

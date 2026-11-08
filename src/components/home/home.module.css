@@ -207,3 +207,5 @@
 
 .footerProducts { display: flex; align-items: center; flex-wrap: wrap; gap: calc(24 * var(--home-unit)); }
 .footerProducts a { text-decoration: underline; text-underline-offset: 4px; }
+
+.reportFooter{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:35px;padding:24px;background:#4a101d;color:#ead6ad;font-size:13px}.reportFooter a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline;text-underline-offset:4px}.reportFooter span{font-size:11px;color:#fff}

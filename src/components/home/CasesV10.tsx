@@ -1,3 +1,4 @@
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
 import { getRollonAssets } from "@/lib/cms/rollon-content";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
@@ -40,7 +41,7 @@ export default async function CasesV10({ locale }: { locale: Locale }) {
     <section id="medix" className={`${s.section} ${s.red} ${s.medix}`}><div className={base.container}>
       <SectionHeading eyebrow={t("medix.eyebrow")} title={t("medix.title")} />
       <div className={s.medixSummary}>
-        <div className={s.medixCopy}>{(["challenge","work","result"] as const).map(key=><div key={key}><h3 className={base.eyebrow}>{t(`medix.${key}Label`)}</h3><p>{t(`medix.${key}`)}</p></div>)}<a className={base.button} href="#contact">{t("medix.cta")}</a></div>
+        <div className={s.medixCopy}>{(["challenge","work","result"] as const).map(key=><div key={key}><h3 className={base.eyebrow}>{t(`medix.${key}Label`)}</h3><p>{t(`medix.${key}`)}</p></div>)}<a className={base.button} href={MEETING_URL} target="_blank" rel="noopener noreferrer">{meetingLabel(locale)}</a></div>
         <div className={s.medixMetrics}><div className={s.medixMetricRow}><div><p>{t("medix.fundingValue")}</p><p>{t("medix.funding")}</p></div><div><p>{t("medix.countriesValue")}</p><p>{t("medix.countries")}</p></div></div>
           <div className={s.markets}><h3 className={base.eyebrow}>{t("medix.markets")}</h3><ul>{[1,2,3,4,5].map(i=><li key={i}>{t(`medix.marketNames.${i}`)}</li>)}</ul></div>
         </div>

@@ -1,14 +1,13 @@
 "use client";
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
 
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import type { Locale } from "@/i18n/routing";
-import { pathForLocale } from "@/lib/routes";
 
 export default function JoinCTA() {
   const t = useTranslations("ESG.cta");
   const locale = useLocale() as Locale;
-  const contactHref = `${pathForLocale("/", locale)}#contact`;
 
   return (
     <section className="bg-white pt-10 md:pt-14 pb-20 md:pb-28">
@@ -28,18 +27,18 @@ export default function JoinCTA() {
           </h2>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3 self-start md:self-auto">
           <a
-            href={contactHref}
+            href={MEETING_URL} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center bg-primary text-white px-8 md:px-10 py-3 md:py-3.5 rounded-full text-sm md:text-base font-semibold uppercase tracking-[0.18em] font-[family-name:var(--font-heading)] hover:bg-primary-dark transition-colors duration-300"
-            aria-label={t("button")}
+            aria-label={meetingLabel(locale)}
           >
-            {t("button")}
+            {meetingLabel(locale)}
           </a>
           <a
-            href={contactHref}
-            className="group inline-flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-full border border-primary text-primary hover:bg-primary hover:text-white transition-colors duration-300"
-            aria-label={t("button")}
+            href={MEETING_URL} target="_blank" rel="noopener noreferrer"
+            className="group inline-flex items-center justify-center w-11 h-11 shrink-0 md:w-12 md:h-12 rounded-full border border-primary text-primary hover:bg-primary hover:text-white transition-colors duration-300"
+            aria-label={meetingLabel(locale)}
           >
             <span
               aria-hidden="true"

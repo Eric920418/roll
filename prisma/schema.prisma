@@ -1665,3 +1665,43 @@ model NewsletterDelivery {
   createdAt DateTime @default(now())
   @@index([status,nextAttemptAt])
 }
+
+model MarketReportRequest {
+  id String @id @default(uuid())
+  requestId String @unique
+  requestHash String
+  reportId String
+  name String
+  email String
+  company String
+  country String
+  industry String
+  reportLanguage String
+  locale String
+  subscribe Boolean @default(false)
+  timeZone String
+  newsletterStatus String @default("not_requested")
+  newsletterError String?
+  createdAt DateTime @default(now())
+  deliveries MarketReportDelivery[]
+  @@index([createdAt])
+}
+
+model MarketReportDelivery {
+  id String @id @default(uuid())
+  requestId String
+  request MarketReportRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  kind String
+  payload Json
+  status String @default("pending")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseToken String?
+  leaseUntil DateTime?
+  providerId String?
+  acceptedAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  @@unique([requestId, kind])
+  @@index([status, nextAttemptAt])
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MEETING_URL, meetingLabel } from "@/lib/public-contact";
 import type { Frontmatter } from "@/lib/mdx";
 import type { Locale } from "@/i18n/routing";
 import {
@@ -12,10 +13,10 @@ import JsonLd from "./JsonLd";
 import { pathForLocale } from "@/lib/routes";
 
 const CTA_COPY: Record<Locale, { label: string; href: string }> = {
-  en: { label: "Talk to ROLL ON. →", href: "mailto:Vivian.lee@roll-grp.com" },
+  en: { label: meetingLabel("en"), href: MEETING_URL },
   "zh-tw": {
-    label: "和 ROLL ON. 聊聊 →",
-    href: "mailto:Vivian.lee@roll-grp.com",
+    label: meetingLabel("zh-tw"),
+    href: MEETING_URL,
   },
 };
 
@@ -103,7 +104,7 @@ export default function ContentPage({
 
         <section className="mt-16 border-t border-dark/10 pt-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <a
-            href={CTA_COPY[locale].href}
+            href={CTA_COPY[locale].href} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded font-semibold hover:bg-primary-dark transition-colors"
           >
             {CTA_COPY[locale].label}
