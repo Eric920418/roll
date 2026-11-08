@@ -71,3 +71,26 @@ test("Report transactions, independent delivery retries, newsletter choice and p
     await t.test("Admin endpoint rejects anonymous reads and omits payload and idempotency hashes",async()=>{assert.equal((await list.GET(new Request("https://rollon.com.tw/api/admin/reports/requests"))).status,401);admin=true;const response=await list.GET(new Request("https://rollon.com.tw/api/admin/reports/requests"));assert.equal(response.status,200);const text=await response.text();assert(!text.includes("payload")&&!text.includes("requestHash")&&!text.includes("report-secret"));});
   } finally {const rows=await db.marketReportRequest.findMany({where:{requestId:{in:ids}},select:{id:true}});await db.marketReportDelivery.deleteMany({where:{requestId:{in:rows.map(r=>r.id)}}});await db.marketReportRequest.deleteMany({where:{requestId:{in:ids}}});await db.$disconnect();}
 });
+
+test("Report form preserves failed input and reuses the same submission when retrying delivery or newsletter", async () => {
+  type Element = { type: unknown; props: Record<string, unknown> };
+  const all = (v: unknown): Element[] => Array.isArray(v) ? v.flatMap(all) : v && typeof v === "object" && "props" in v ? [v as Element, ...all((v as Element).props.children)] : [];
+  const states: unknown[] = [], refs: { current: unknown }[] = [], bodies: { requestId: string; company: string; website: string }[] = [];
+  let state = 0, ref = 0;
+  const formModule = { exports: {} as { default: (props: object) => Element } };
+  class Form { constructor(private values: Record<string, string>) {} get(key: string) { return this.values[key] || null; } }
+  runInNewContext(ts.transpileModule(readFileSync("src/components/reports/ReportSection.tsx","utf8"), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText, {
+    module: formModule, exports:formModule.exports, FormData:Form, crypto:{randomUUID}, Intl, Error, JSON,
+    fetch:async(_url:string, init:RequestInit)=>{bodies.push(JSON.parse(String(init.body)));return bodies.length===1?Response.json({error:"Service unavailable; input retained"},{status:503}):Response.json({data:{received:true,delivery:"accepted",newsletterStatus:bodies.length===2?"failed":"queued",newsletterError:bodies.length===2?"Retry newsletter only":null}});},
+    require:(id:string)=>id==="react"?{useState:(initial:unknown)=>{const i=state++;if(!(i in states))states[i]=i===0?"TW":initial;return [states[i],(value:unknown)=>{states[i]=typeof value==="function"?(value as (old:unknown)=>unknown)(states[i]):value;}];},useRef:(initial:unknown)=>{const i=ref++;refs[i]??={current:initial};return refs[i];}}:id==="next/image"?{default:"img"}:id==="@/components/ui/CountrySelect"?{default:"CountrySelect"}:id==="@/lib/member-options"?native("../src/lib/member-options"):id==="@/lib/cms/admin-response"?native("../src/lib/cms/admin-response"):id==="@/lib/reports/catalog"?native("../src/lib/reports/catalog"):id==="./report.module.css"?{default:new Proxy({},{get:(_,key)=>String(key)})}:native(id),
+  });
+  const render=()=>{state=0;ref=0;return formModule.exports.default({locale:"en"});};
+  const values={name:"QA",email:"reader@gmail.com",company:"Real company",industry:"saas",subscribe:"on",website:""};
+  async function submit() {const form=all(render()).find(v=>v.type==="form")!;await (form.props.onSubmit as (event:object)=>Promise<void>)({preventDefault(){},currentTarget:values});}
+  await submit();assert(all(render()).some(v=>v.type==="form"),"Service errors keep the original form mounted");assert(String(states[3]).includes("503"));
+  await submit();assert.equal(bodies[0].requestId,bodies[1].requestId);assert.equal(bodies[1].company,"Real company");assert.equal(bodies[1].website,"");
+  const retry=all(render()).find(v=>v.type==="button"&&v.props.children==="Retry newsletter subscription only")!;
+  assert(retry);await (retry.props.onClick as ()=>Promise<void>)();await new Promise<void>(resolve=>setImmediate(resolve));
+  assert.equal(bodies[2].requestId,bodies[1].requestId);assert.deepEqual(bodies[2],bodies[1]);
+  assert.equal((states[4] as {newsletterStatus:string}).newsletterStatus,"queued");
+});
