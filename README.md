@@ -2515,4 +2515,6 @@ Deal 以會員／工作區／正規化公司產生固定 ID；交易鎖、reques
 
 - 補測實際表單控制流程：503 時表單不卸載、重試沿用 UUID，訂閱失敗後只重試原申請且保留真實公司欄位，不重建名單或改報告語言。
 
-最終驗收更新：全套隔離測試 544/544、0 skip；報告專項 10/10，型別檢查通過。正式兩筆 QA 申請共四封信 accepted／attempts=1，兩份公開 PDF 下載雜湊與原檔相同；匿名後台 API=401、缺 Origin 提交=403。既有排程已接受測試訂閱確認信，實際確認 POST 變為 active；GET 退訂仍維持 active，確認 POST 後為 unsubscribed，測試地址不會留在每週寄送名單。此地址事前沒有電子報紀錄，沒有覆寫既有訂閱選擇。使用者登入後，已實際驗收正式後台報告分頁：兩筆申請、報告與內部通知各自的 accepted 狀態及「已退訂」均正確顯示。Resend 登入頁已切到前景，實際 Delivered 仍待使用者登入核對，不能以 accepted 代替送達。
+最終驗收更新：全套隔離測試 544/544、0 skip；報告專項 10/10，型別檢查通過。正式兩筆 QA 申請共四封信 accepted／attempts=1，兩份公開 PDF 下載雜湊與原檔相同；匿名後台 API=401、缺 Origin 提交=403。既有排程已接受測試訂閱確認信，實際確認 POST 變為 active；GET 退訂仍維持 active，確認 POST 後為 unsubscribed，測試地址不會留在每週寄送名單。此地址事前沒有電子報紀錄，沒有覆寫既有訂閱選擇。使用者登入後，已實際驗收正式後台報告分頁：兩筆申請、報告與內部通知各自的 accepted 狀態及「已退訂」均正確顯示。
+
+2026-11-08 已在使用者登入的 Resend 寄送清單逐筆核對指定測試信箱 vivian.lee@roll-grp.com，五封均顯示 Delivered：[英文報告](https://resend.com/emails/01a1bb7a-1e83-72b4-b913-bfbd4d6987a3)、[繁中報告](https://resend.com/emails/01a1bb7a-68ba-767b-92ba-a653e48e5a9c)、[英文申請內部通知](https://resend.com/emails/01a1bb7a-1b23-78ca-87a8-76257fc74e6e)、[繁中申請內部通知](https://resend.com/emails/01a1bb7a-650b-745e-ba07-8b42486c6ea4)、[訂閱確認信](https://resend.com/emails/01a1bb83-78e3-7e81-a31a-e424c3a6d556)。僅讀取既有紀錄，沒有重寄；Delivered 代表收件郵件伺服器已接受，未檢查真人信箱分類或閱讀狀態。
