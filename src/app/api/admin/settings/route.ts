@@ -25,6 +25,7 @@ export async function PUT(req: NextRequest) {
       return fail(parsed.error.issues.map((i) => i.message).join("；"), 400);
     }
     const { key, value } = parsed.data;
+    if (key === "billing.nova60.codes") return fail("優惠代碼請使用優惠碼管理入口", 409);
     if (key.startsWith("novaCommerce.")) return fail("價格與 Token 設定請使用版本化價格管理入口", 409);
     if (key === "novaEvidencePolicy" && !evidencePolicySchema.safeParse(value).success) return fail("驗證框架條件無效", 400);
     if (key.startsWith("rollonV10.")) {

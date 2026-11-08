@@ -41,6 +41,17 @@ test("NOVA60 uses 40% first-period prices, exact Taipei November boundaries, and
   const disabled = loader({}, { ...env, BILLING_NOVA60_ENABLED: "false" })<typeof import("../src/lib/billing/coupons")>("src/lib/billing/coupons.ts");
   assert.throws(() => disabled.couponQuote("NOVA60", "pro", "month"), /not available|未開放/);
 });
+test("Meet Taipei and custom aliases preserve the campaign and first-period-only terms", () => {
+  const original = coupon.couponQuote("NOVA60", "pro", "month");
+  const meet = coupon.couponQuote(" meettaipei60 ", "pro", "month");
+  assert.equal(meet.code, "MEETTAIPEI60"); assert.equal(meet.campaign, original.campaign);
+  assert.equal(meet.firstAmountMinor, 1960); assert.equal(meet.regularAmountMinor, 4900);
+  const codes = { NOVA60: true, MEETTAIPEI60: false, EVENT60: true };
+  assert.throws(() => coupon.couponQuote("MEETTAIPEI60", "pro", "month", new Date(instant), codes), /無效|Invalid/);
+  assert.equal(coupon.couponQuote("event60", "business", "year", new Date(instant), codes).code, "EVENT60");
+  assert.throws(() => coupon.couponQuote("toString", "pro", "month"), /無效|Invalid/);
+  assert.throws(() => coupon.couponQuote("MEETTAIPEI60", "pro", "month", new Date("2026-11-30T16:00:00Z")), /November|11/);
+});
 test("Unexpected price, currency, duration, setup fee, tax, quantity or product fails closed", () => {
   const q = coupon.couponQuote("NOVA60", "pro", "month"), body = coupon.couponPlanBody("PRODUCT", q);
   for (const mutate of [(v: typeof body) => v.billing_cycles[0].pricing_scheme.fixed_price.value = "49.00", (v: typeof body) => v.billing_cycles[0].total_cycles = 2, (v: typeof body) => v.product_id = "OTHER", (v: typeof body) => v.billing_cycles[1].pricing_scheme.fixed_price.currency_code = "TWD"]) { const v = structuredClone(body); mutate(v); assert.throws(() => coupon.assertCouponPlan(v, q, "PRODUCT"), /does not match|不一致/); }
@@ -75,6 +86,26 @@ test("Coupon checkout transactions preserve receipts, idempotency, eligibility a
   const input = (u: { id: string; email: string }) => ({ userId: u.id, email: u.email, requestId: randomUUID(), code: "NOVA60", plan: "pro" as const, interval: "month" as const, returnUrl: "https://rollon.com.tw/dashboard/billing/return", cancelUrl: "https://rollon.com.tw/dashboard/billing?cancelled=1" });
   const clean = async (id: string) => { await db.user.delete({ where: { id } }); };
   try {
+    await t.test("Admin codes merge concurrent additions; disable blocks new checkout but retains old receipts and shared eligibility", async () => {
+      const codes = load<typeof import("../src/lib/billing/coupon-codes")>("src/lib/billing/coupon-codes.ts");
+      assert.equal(await db.setting.findUnique({ where: { key: codes.couponCodesKey } }), null);
+      const u = await user(), other = await user();
+      try {
+        await Promise.all([codes.saveCouponCode({ code: "event60", enabled: true }), codes.saveCouponCode({ code: "PARTNER60", enabled: true })]);
+        const saved = await codes.readCouponCodes(); assert.equal(saved.EVENT60, true); assert.equal(saved.PARTNER60, true);
+        await assert.rejects(codes.saveCouponCode({ code: "bad code", enabled: true }), /代碼/);
+        const request = { ...input(u), code: "MEETTAIPEI60" }; const first = await service.checkoutWithCoupon(request);
+        const checkout = await db.billingCouponCheckout.findFirstOrThrow({ where: { userId: u.id } });
+        assert.equal(checkout.code, "MEETTAIPEI60"); assert.equal(checkout.campaign, "november-2026");
+        await codes.saveCouponCode({ code: "MEETTAIPEI60", enabled: false });
+        const before = posts;
+        assert.equal((await service.checkoutWithCoupon(request)).approveUrl, first.approveUrl);
+        await assert.rejects(service.checkoutWithCoupon({ ...input(other), code: "MEETTAIPEI60" }), /無效|Invalid/); assert.equal(posts, before);
+        const remote = [...receipts.values()].find(r => r.id === checkout.paypalSubscriptionId)!; remote.status = "ACTIVE";
+        await reconcile.reconcileFromPaypal(remote);
+        await assert.rejects(service.checkoutWithCoupon({ ...input(u), code: "EVENT60" }), /already used|已使用/);
+      } finally { await db.setting.deleteMany({ where: { key: codes.couponCodesKey } }); await clean(u.id); await clean(other.id); }
+    });
     await t.test("Parallel multi-tab submissions and changed content never create duplicate discounted subscriptions", async () => {
       const u = await user(), body = input(u), before = posts;
       const results = await Promise.allSettled([service.checkoutWithCoupon(body), service.checkoutWithCoupon(body)]); assert(results.some(r => r.status === "fulfilled"));
@@ -157,13 +188,15 @@ test("Coupon checkout transactions preserve receipts, idempotency, eligibility a
 });
 
 test("Coupon APIs require sign-in/admin, same-origin writes, and reject client-supplied prices", async () => {
-  let member = false, admin = false, prepared = 0;
+  let member = false, admin = false, prepared = 0, savedCodes = 0;
+  const codesModule = loader({ "@/lib/prisma": { prisma: {} } }, env)<typeof import("../src/lib/billing/coupon-codes")>("src/lib/billing/coupon-codes.ts");
   const load = loader({
     "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
     "@/lib/auth/account": { getCurrentAccount: async () => member ? { id: "member", email: "member@example.invalid" } : null },
     "@/lib/auth/guard": { requireAdmin: async () => admin ? { email: "admin@example.invalid" } : null },
     "@/lib/rate-limit": { MINUTE_MS: 60000, checkRateLimit: async () => ({ ok: true }) },
     "@/lib/billing/commerce": { activeBillingCatalog: async () => ({ version: 1, catalog: plans.PLAN_CONFIG }) },
+    "@/lib/billing/coupon-codes": { couponCodeInput: codesModule.couponCodeInput, readCouponCodes: async () => coupon.DEFAULT_COUPON_CODES, saveCouponCode: async () => { savedCodes++; } },
     "@/lib/billing/coupon-checkout": { assertCouponEligibility: async () => {} },
     "@/lib/billing/coupon-setup": { couponSetupStatus: async () => ({ enabled: false }), prepareCouponPlan: async () => { prepared++; return { id: "P-TEST" }; } },
   }, env);
@@ -175,7 +208,12 @@ test("Coupon APIs require sign-in/admin, same-origin writes, and reject client-s
   assert.equal((await quote.POST(req({ code: "NOVA60", interval: "year", firstAmountMinor: 1 }) as never)).status, 400);
   const valid = await quote.POST(req({ code: "nova60", interval: "year" }) as never); assert.equal(valid.status, 200); assert.equal((await valid.json()).data.quotes[0].firstAmountMinor, 18720);
   assert.equal((await setup.GET()).status, 401); assert.equal((await setup.POST(req({ plan: "pro", interval: "month" }) as never)).status, 401);
+  assert.equal((await setup.PATCH(req({ code: "TEST60", enabled: true }) as never)).status, 401);
   admin = true;
+  assert.equal((await setup.PATCH(req({ code: "TEST60", enabled: true }, "https://evil.example") as never)).status, 403);
+  assert.equal((await setup.PATCH(req({ code: "BAD CODE", enabled: true }) as never)).status, 400);
+  assert.equal((await setup.PATCH(req({ code: "TEST60", enabled: true, percentOff: 100 }) as never)).status, 400);
+  assert.equal((await setup.PATCH(req({ code: "TEST60", enabled: true }) as never)).status, 200); assert.equal(savedCodes, 1);
   assert.equal((await setup.POST(req({ plan: "enterprise", interval: "month" }) as never)).status, 400);
   assert.equal((await setup.POST(req({ plan: "pro", interval: "month", amount: 1 }) as never)).status, 400);
   assert.equal((await setup.POST(req({ plan: "pro", interval: "month" }) as never)).status, 200); assert.equal(prepared, 1);

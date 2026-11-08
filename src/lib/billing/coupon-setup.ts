@@ -1,3 +1,4 @@
+import { readCouponCodes } from "./coupon-codes";
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getPaypalEnvironment } from "./config";
@@ -11,7 +12,7 @@ const settingKey = () => `billing.nova60.paypalPlans.${getPaypalEnvironment()}`;
 export async function couponSetupStatus() {
   const value = await prisma.setting.findUnique({ where: { key: settingKey() } });
   const saved = value ? savedPlans.parse(value.value) : {};
-  return { environment: getPaypalEnvironment(), enabled: process.env.BILLING_NOVA60_ENABLED === "true", plans: (["pro", "business"] as const).flatMap(plan => (["month", "year"] as const).map(interval => {
+  return { codes: await readCouponCodes(), environment: getPaypalEnvironment(), enabled: process.env.BILLING_NOVA60_ENABLED === "true", plans: (["pro", "business"] as const).flatMap(plan => (["month", "year"] as const).map(interval => {
     const env = novemberPaypalPlanEnvFor(plan, interval)!;
     return { ...couponTerms(plan, interval), env, preparedId: saved[env] || null, configuredId: process.env[env] || null };
   })) };

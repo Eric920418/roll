@@ -17,7 +17,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -29,7 +29,7 @@ const report = { mode, scenario, checks: [], screenshots: [], browserErrors: [],
 const users = {}, created = [], contexts = [], newsletterEmails=[];
 const password = randomBytes(24).toString('base64url'), authSecret = randomBytes(32).toString('hex');
 const suffix = randomUUID(), testIp = `192.0.2.${1 + randomBytes(1)[0] % 253}`;
-let server, browser, commerceOwned = false;
+let server, browser, commerceOwned = false, couponCodesOwned = false;
 const serverLog = fs.createWriteStream(path.join(output, 'server.log'));
 const check = (name, value) => { assert(value, name); report.checks.push(name); console.log(`PASS ${name}`); };
 
@@ -39,7 +39,7 @@ async function startServer() {
     const timer = setTimeout(() => reject(new Error('QA server startup timed out.')), 60000);
     server = spawn(process.execPath, [require.resolve('next/dist/bin/next'), mode, '--hostname', hostname, '--port', String(port)], {
       cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: ['tokens','commerce'].includes(scenario) ? 'qa-disabled' : '', OMRADE_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', OMRADE_WORKER_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '' },
+      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: ['tokens','commerce'].includes(scenario) ? 'qa-disabled' : '', OMRADE_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', OMRADE_WORKER_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '', ...(scenario === 'coupons' ? { BILLING_NOVA60_ENABLED: 'true', ...Object.fromEntries(['PRO','BUSINESS'].flatMap(p=>['MONTHLY','YEARLY'].map(i=>[`PAYPAL_PLAN_ID_NOVA60_${p}_${i}_USD`,`P-QA${p}${i}`]))) } : {}) },
     });
     server.stdout.on('data', chunk => { serverLog.write(chunk); startup += chunk; if (startup.includes('Ready in')) { clearTimeout(timer); resolve(); } });
     server.stderr.on('data', chunk => serverLog.write(chunk));
@@ -825,6 +825,27 @@ async function pdfCompletion() {
 }
 
 
+async function couponCodesQA() {
+  const key='billing.nova60.codes';assert.equal(await db.setting.findUnique({where:{key}}),null);couponCodesOwned=true;
+  const context=await browser.newContext({viewport:{width:1440,height:1000}});contexts.push(context);
+  const token=await new SignJWT({email:'qa-admin@example.invalid',role:'admin'}).setProtectedHeader({alg:'HS256'}).setIssuedAt().setExpirationTime('1h').sign(new TextEncoder().encode(authSecret));
+  await context.addCookies([{name:'admin_session',value:token,url:origin,httpOnly:true,sameSite:'Lax'}]);
+  const page=await context.newPage();page.on('pageerror',error=>report.browserErrors.push(error.message));
+  await page.goto(origin+'/admin/settings');await page.getByRole('heading',{name:'11 月優惠代碼管理 · 首期 60% OFF'}).waitFor();
+  for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Coupon admin responsive '+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'coupons-admin-'+width);}
+  await page.getByLabel('新增優惠代碼',{exact:true}).fill('event60');await page.getByRole('button',{name:'新增並啟用',exact:true}).click();await page.getByRole('status').filter({hasText:'EVENT60 已啟用'}).waitFor();
+  check('Admin saves normalized code',(await db.setting.findUniqueOrThrow({where:{key}})).value.EVENT60===true);
+  await page.getByRole('button',{name:'停用 EVENT60',exact:true}).click();await page.getByRole('button',{name:'啟用 EVENT60',exact:true}).waitFor();
+  check('Admin disables code',(await db.setting.findUniqueOrThrow({where:{key}})).value.EVENT60===false);
+  const member=await session('desktop',390);
+  check('Member cannot manage codes',(await member.context.request.patch(origin+'/api/admin/billing/coupon',{headers:{origin},data:{code:'DENIED60',enabled:true}})).status()===401);
+  check('Cross-origin admin write denied',(await context.request.patch(origin+'/api/admin/billing/coupon',{headers:{origin:'https://evil.example'},data:{code:'DENIED60',enabled:true}})).status()===403);
+  const quote=await member.context.request.post(origin+'/api/billing/coupon',{headers:{origin},data:{code:' meettaipei60 ',interval:'month'}});
+  check('Meet Taipei quote accepted',quote.status()===200);const body=await quote.json();check('Meet Taipei quote keeps code and first-period price',body.data.code==='MEETTAIPEI60'&&body.data.quotes[0].firstAmountMinor===1960);
+  const denied=await member.context.request.post(origin+'/api/billing/coupon',{headers:{origin},data:{code:'EVENT60',interval:'month'}});check('Disabled code rejected',denied.status()===400);
+  await page.getByRole('button',{name:'啟用 EVENT60',exact:true}).click();await page.getByRole('button',{name:'停用 EVENT60',exact:true}).waitFor();check('Admin re-enables code',(await db.setting.findUniqueOrThrow({where:{key}})).value.EVENT60===true);
+}
+
 async function commerceSettingsQA() {
   assert.equal(await db.setting.count({where:{key:{startsWith:'novaCommerce.'}}}),0,'Commerce QA requires an empty isolated policy namespace');commerceOwned=true;
   const context=await browser.newContext({viewport:{width:1440,height:1000}});contexts.push(context);
@@ -861,7 +882,8 @@ try {
   await startServer(); await redirects();
   if (mode === 'start') {
     await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'commerce') { await commerceSettingsQA(); }
+    if (scenario === 'coupons') { await couponCodesQA(); }
+    else if (scenario === 'commerce') { await commerceSettingsQA(); }
     else if (scenario === 'pdf') { await pdfCompletion(); }
     else if (scenario === 'tokens') { await tokenCore('newpaid', 'blocked', 1440, 'en', 'accept'); await tokenCore('complete', 'outcome', 390, 'zh-tw', 'decline'); await tokenCore('desktop', 'newpaid', 390, 'en', 'cancel'); await tokenCore('mobile', 'complete', 1440, 'zh-tw', 'expire'); await tokenAdminAndSearch(); }
     else if (scenario === 'roundtables') { await roundtableCore('investor', 'desktop', 1440, 'en', false); await roundtableCore('requester', 'mobile', 390, 'zh-tw', true); }
@@ -884,6 +906,7 @@ try {
       report.cleanup = { createdUsers: created.length, removedUsers: removed.count, credentialsPersisted: false };
     }
   } catch (error) { report.cleanup = { failed: true }; console.error(error.message); process.exitCode = 1; }
+  if (couponCodesOwned) await db.setting.deleteMany({where:{key:'billing.nova60.codes'}});
   if (commerceOwned) await db.setting.deleteMany({where:{key:{startsWith:'novaCommerce.'}}});
   await db.$disconnect();
   if (server && server.exitCode === null) { server.kill('SIGTERM'); await new Promise(resolve => server.once('exit', resolve)); }

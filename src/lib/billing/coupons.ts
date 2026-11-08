@@ -1,6 +1,7 @@
 import { billingVariantFor, novemberPaypalPlanEnvFor, type BillingInterval, type PlanKey } from "./plans";
 
 export const NOVEMBER_COUPON = { code: "NOVA60", campaign: "november-2026", percentOff: 60, startsAt: "2026-10-31T16:00:00.000Z", endsAt: "2026-11-30T16:00:00.000Z" } as const;
+export const DEFAULT_COUPON_CODES: Record<string, boolean> = { NOVA60: true, MEETTAIPEI60: true };
 export class CouponError extends Error {
   constructor(message: string, public code: string, public status = 400) { super(message); }
 }
@@ -9,11 +10,12 @@ export function couponTerms(plan: PlanKey, interval: BillingInterval) {
   if (!variant || !["pro", "business"].includes(plan)) throw new CouponError("折扣僅適用 SPARK／NOVA 新購訂閱 / Discount applies to new SPARK / NOVA subscriptions", "coupon_plan");
   return { ...NOVEMBER_COUPON, plan, interval, currency: variant.currency, regularAmountMinor: variant.amountMinor, firstAmountMinor: Math.round(variant.amountMinor * 40 / 100) };
 }
-export function couponQuote(code: string, plan: PlanKey, interval: BillingInterval, now = new Date()) {
-  if (code.trim().toUpperCase() !== NOVEMBER_COUPON.code) throw new CouponError("折扣碼無效 / Invalid discount code", "coupon_invalid");
+export function couponQuote(code: string, plan: PlanKey, interval: BillingInterval, now = new Date(), codes: Record<string, boolean> = DEFAULT_COUPON_CODES) {
+  const normalized = code.trim().toUpperCase();
+  if (!Object.hasOwn(codes, normalized) || codes[normalized] !== true) throw new CouponError("折扣碼無效 / Invalid discount code", "coupon_invalid");
   if (process.env.BILLING_NOVA60_ENABLED !== "true") throw new CouponError("折扣活動尚未開放 / Discount promotion is not available", "coupon_disabled", 503);
   if (now < new Date(NOVEMBER_COUPON.startsAt) || now >= new Date(NOVEMBER_COUPON.endsAt)) throw new CouponError("折扣碼僅於 2026 年 11 月有效（台北時間）/ Discount code is valid only in November 2026 (Taipei time)", "coupon_expired");
-  return couponTerms(plan, interval);
+  return { ...couponTerms(plan, interval), code: normalized };
 }
 export type CouponQuote = ReturnType<typeof couponQuote>;
 export function couponPaypalPlanId(plan: PlanKey, interval: BillingInterval) {

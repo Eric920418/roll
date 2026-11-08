@@ -1,3 +1,4 @@
+import { readCouponCodes } from "./coupon-codes";
 import { assertCurrentCouponPrice } from "./commerce";
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
@@ -66,7 +67,7 @@ export async function checkoutWithCoupon(input: Input) {
       return tx.billingCouponCheckout.update({ where: { id: pending.id }, data: { leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });
     }
     await assertCurrentCouponPrice(input.plan as "pro" | "business", input.interval);
-    const quote = couponQuote(normalized.code, input.plan, input.interval), paypalPlanId = couponPaypalPlanId(input.plan, input.interval);
+    const quote = couponQuote(normalized.code, input.plan, input.interval, new Date(), await readCouponCodes(tx)), paypalPlanId = couponPaypalPlanId(input.plan, input.interval);
     const request = { planId: paypalPlanId, email: input.email, requestId: randomUUID(), returnUrl: input.returnUrl, cancelUrl: input.cancelUrl };
     return tx.billingCouponCheckout.create({ data: { userId: input.userId, requestId: input.requestId, payloadHash, campaign: quote.campaign, code: quote.code, plan: input.plan, billingInterval: input.interval, regularAmountMinor: quote.regularAmountMinor, firstAmountMinor: quote.firstAmountMinor, paypalPlanId, request, createdAt: new Date(), leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });
   }, { timeout: 15000 });
