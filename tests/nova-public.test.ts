@@ -30,8 +30,13 @@ for (const locale of ['en', 'zh-tw'] as const)
         const html = renderToStaticMarkup(await load(locale)({ locale, pricing: 'Actual pricing' }));
         assert.equal((html.match(/<h1/g) || []).length, 1);
         assert(html.includes(routes.pathForLocale('/signup', locale)));
-        assert(html.includes('Published ROLL ON case'));
-        assert(html.includes('Actual pricing'));assert(html.includes('Published team session'));assert(!html.includes('Undated placeholder'));
+        for (const name of ['Quibi', 'Zappos', 'Dropbox', 'Inside NOVA AI']) assert(html.includes(name));
+        assert(html.indexOf('Vivian Lee') < html.indexOf('<h3>Eric</h3>'));
+        assert(html.indexOf('<h3>Eric</h3>') < html.indexOf(locale === 'en' ? '<h3>Mentor</h3>' : '<h3>導師</h3>'));
+        assert(html.includes('Taiwan Startup Hub') && html.includes('Ark Project'));
+        assert(html.includes('dateTime="2026-11-16"') || html.includes('datetime="2026-11-16"'));
+        assert.equal((html.match(/<h3>Coming soon<\/h3>/g) || []).length, 2);
+        assert(html.includes('Actual pricing'));assert(!html.includes('Published team session'));assert(!html.includes('Undated placeholder'));
         assert(!/Nov 16|15 qualified|80% off|\[Photo|Real founder quote/.test(html));
         const error = renderToStaticMarkup(await load(locale, true)({ locale, pricing: '' }));
         assert(error.includes('trace-qa'));
