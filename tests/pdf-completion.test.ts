@@ -105,9 +105,13 @@ test('PDF completion in isolated PostgreSQL: ownership, hypotheses, semantic AI,
             await save({ action: 'save', links: view.sources.map(s => ({ id: s.id, hypothesisId: 'h1', fit: 'yes', relationship: 'prospect' })) });
             assert.equal(view.result.stage, 4);
             assert.equal(view.result.findings[0].count, 5);
+            assert.equal(view.weekly.conversations, 5);
+            assert.equal(view.weekly.findings, 1, 'Weekly raw pain count is distinct from conversation count');
+            assert.equal(view.weekly.commitments, 0, 'Willingness alone is not a paid commitment');
             await save({ action: 'save', hypothesis: hypothesis('h2') });
             await save({ action: 'select', selectedId: 'h2' });
             assert.equal(view.result.stage, 2);
+            assert.equal(view.weekly.conversations, 0, 'A different hypothesis cannot inherit another cycle’s conversations');
             assert.equal(view.state.selections.length, 2);
             assert.equal(await db.meetingNote.count({ where: { userId: owner.id } }), 5);
             await save({ action: 'select', selectedId: 'h1' });

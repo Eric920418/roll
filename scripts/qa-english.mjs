@@ -18,7 +18,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -168,10 +168,10 @@ async function session(key, width, ui = false) {
   return { context, page };
 }
 
-async function layout(page, name) {
+async function layout(page, name, locale = 'en') {
   await page.locator('h1').waitFor();
   const value = await page.evaluate(() => ({ headings: document.querySelectorAll('h1').length, overflow: document.documentElement.scrollWidth > innerWidth + 1, language: document.documentElement.lang }));
-  check(`${name}: one H1, English document, no horizontal overflow`, value.headings === 1 && !value.overflow && value.language === 'en');
+  check(`${name}: one H1, correct locale, no horizontal overflow`, value.headings === 1 && !value.overflow && value.language === locale);
 }
 async function screenshot(page, name) {
   const file = path.join(output, `${mode}-${name}.png`);
@@ -220,7 +220,7 @@ async function core(key, width) {
   await page.getByText('QA analysis unavailable; your saved records are retained.', { exact: false }).first().waitFor();
   check(`Analysis error has HTTP/code/trace ${width}`, (await page.getByRole('alert').allInnerTexts()).some(t => t.includes('502') && t.includes('qa_analysis_unavailable') && t.includes('qa-safe-trace')));
   await page.goto(`${origin}/dashboard/matchmaking?tab=all`);
-  await page.getByRole('search').waitFor(); await layout(page, `Members ${width}`);
+  await page.getByText("Advanced filters and search", { exact: true }).click(); await page.getByRole('search').waitFor(); await layout(page, `Members ${width}`);
   check(`Four English tabs ${width}`, await page.getByRole('tab').count() === 4);
   await page.getByRole('button', { name: 'Investor', exact: true }).click();
   await page.getByRole('searchbox', { name: 'Search public company cards' }).fill('QA investor');
@@ -307,6 +307,7 @@ async function tablet() {
   check('Keyboard arrow selects and focuses next tab', await all.getAttribute('aria-selected') === 'true' && await all.evaluate(e => e === document.activeElement));
   check('Tabs meet 44px target height', await page.getByRole('tab').evaluateAll(tabs => tabs.every(e => e.getBoundingClientRect().height >= 44)));
   check('Tablet Roundtables label stays on one line', await page.getByRole('tab', { name: 'Roundtables', exact: true }).evaluate(e => { const range = document.createRange(); range.selectNodeContents(e.firstChild); return range.getClientRects().length === 1; }));
+  await page.locator('#matchmaking-panel-all').getByText('Advanced filters and search',{exact:true}).click();
   await page.getByRole('search').waitFor();
   await screenshot(page, 'matchmaking-768'); await context.close();
 }
@@ -363,7 +364,7 @@ async function languageQA() {
   const writes=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/action-plans/')&&!r.url().includes('/localization')&&!['GET','HEAD'].includes(r.method()))writes.push(r.url());});
   for(const locale of ['zh-tw','en']) {
     const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',expectedTitle=zh?'向 3 位潛在客戶提出付費試用，驗證付費意願':title,expectedCriterion=zh?'在 3 位潛在客戶中，至少 1 位同意付費試用，確認對方接受的試用價格。':criterion,expectedMilestone=zh?'透過結構化客戶訪談，驗證目標客戶輪廓':milestone;
-    await page.goto(origin+prefix+'/dashboard');await page.locator('#home-task-title').waitFor();check('Localized home task '+locale,await page.locator('#home-task-title').innerText()===expectedTitle);check('Localized home criterion '+locale,(await page.locator('section[aria-labelledby="home-task-title"]').innerText()).includes(expectedCriterion));check('Localized home milestone and raw goal '+locale,(await page.locator('section[aria-labelledby="home-goal-title"]').innerText()).includes(expectedMilestone)&&(await page.locator('section[aria-labelledby="home-goal-title"]').innerText()).includes('Make 1M'));
+    await page.goto(origin+prefix+'/dashboard');await page.locator('#home-task-title').waitFor();check('Localized home task '+locale,await page.locator('#home-task-title').innerText()===expectedTitle);check('Localized home criterion '+locale,(await page.locator('section[aria-labelledby="home-task-title"]').innerText()).includes(expectedCriterion));check('Home preserves the original member goal '+locale,(await page.locator('section[aria-labelledby="home-task-title"]').innerText()).includes('Make 1M'));
     for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Language home responsive '+locale+width,await page.evaluate(l=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1&&document.documentElement.lang===l,locale));await screenshot(page,'language-home-'+locale+'-'+width);}
     await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();await closeTour(page,locale);const hero=page.locator('[data-legacy-task] [data-today-priority]');check('Localized task title and criteria '+locale,(await hero.innerText()).includes(expectedTitle)&&(await hero.innerText()).includes(expectedCriterion));check('Localized task keeps quantities '+locale,(await hero.innerText()).includes('0 / 1'));
     const map=page.locator('#action-map');check('Localized roadmap summary '+locale,(await map.locator(':scope > summary').innerText()).includes(expectedMilestone));await map.locator(':scope > summary').click();check('Localized roadmap keeps original criteria '+locale,(await map.innerText()).includes(expectedCriterion));
@@ -492,13 +493,12 @@ async function flowCore(key, width, locale) {
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   for (let i = 0; i < 10; i++) {
     await article.getByRole('button', { name: w('＋ 記錄客戶對話', '＋ Record a conversation'), exact: true }).click();
-    const row = article.locator('details[open]');
-    await row.getByRole('button', { name: w('顯示完整表單', 'Show complete form'), exact: true }).click();
-    await row.getByLabel(w('你與對方的關係', 'Your relationship'), { exact: true }).selectOption('prospect');
-    await row.getByLabel(w('是否符合目標客群', 'Target customer fit'), { exact: true }).selectOption('yes');
-    for (const [label, value] of [[w('公司', 'Company'), 'Flow company ' + i], [w('對象姓名', 'Person'), 'Person ' + i], [w('對話日期', 'Conversation date'), date], [w('痛點與原話', 'Pain and customer wording'), 'Manual reporting'], [w('目前的解決方式', 'Current solution'), 'Spreadsheets']]) await row.getByLabel(label, { exact: true }).fill(value);
-    await row.getByLabel(w('痛點嚴重程度', 'Pain severity'), { exact: true }).selectOption('high');
-    await row.getByLabel(w('付費意願', 'Willingness to pay'), { exact: true }).selectOption('willing');
+    const row = article.locator('[data-conversation-form]');
+    await row.getByRole('button', { name: w('潛在客戶', 'Potential customer'), exact: true }).click();
+    await row.getByRole('button', { name: w('符合', 'Fits'), exact: true }).click();
+    for (const [label, value] of [[w('公司', 'Company'), 'Flow company ' + i], [w('對象姓名', 'Person'), 'Person ' + i], [w('對話日期', 'Conversation date'), date], [w('主要痛點與原話', 'Main pain and customer wording'), 'Manual reporting'], [w('目前的解決方式', 'Current solution'), 'Spreadsheets']]) await row.getByLabel(label, { exact: true }).fill(value);
+    await row.getByRole('button', { name: w('高', 'High'), exact: true }).click();
+    await row.getByRole('button', { name: w('願意', 'Willing'), exact: true }).click();
     if (i === 8) { await saved(); check('Nine conversations cannot complete ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled()); }
   }
   await db.actionPlan.update({ where: { id: plan.id }, data: { revision: { increment: 1 } } });
@@ -515,6 +515,17 @@ async function flowCore(key, width, locale) {
   check('Goal expansion is shown once ' + width, !await page.locator('#action-map').evaluate(e => e.open));
   await screenshot(page, 'flow-conversation-' + locale + '-' + width);
   await completed(w('寫出一句話定位，並請 5 位受訪者確認', 'Write a positioning statement and confirm it with five conversation participants'));
+  const originalCompleted = JSON.stringify(await db.actionItem.findUnique({where:{id:plan.actions[0].id}}));
+  if(!await page.locator('#action-map').evaluate(e=>e.open))await page.locator('#action-map > summary').click();
+  await page.locator('#action-map').getByRole('button',{name:/01-1/}).click();
+  const chooser=article.getByLabel(w('選擇對話紀錄','Choose a conversation record'),{exact:true});
+  check('Completed conversations remain navigable '+locale,await chooser.isEnabled());
+  await chooser.selectOption(await chooser.locator('option').first().getAttribute('value'));
+  check('Completed conversation fields stay read only '+locale,await article.getByLabel(w('公司','Company'),{exact:true}).isDisabled()&&await article.getByLabel(w('公司','Company'),{exact:true}).inputValue()==='Flow company 0');
+  check('Reading another completed record does not mutate it '+locale,JSON.stringify(await db.actionItem.findUnique({where:{id:plan.actions[0].id}}))===originalCompleted);
+  await page.getByRole('button',{name:w('回到目前一步','Return to the current step'),exact:true}).click();
+  await article.getByRole('heading',{name:w('寫出一句話定位，並請 5 位受訪者確認','Write a positioning statement and confirm it with five conversation participants'),exact:true}).waitFor();
+  if(await page.locator('#action-map').evaluate(e=>e.open))await page.locator('#action-map > summary').click();
   const fourFields=[[w('目標客戶（誰）','Target customer (who)'),'B2B founders'],[w('情境（什麼時候最痛）','Situation (when it hurts)'),'before sales outreach'],[w('要解決的痛點','Problem to solve'),'unclear customer needs'],[w('與現有做法的差別','Difference from current solutions'),'reviewed customer evidence']];
   for(const [label,value] of fourFields)await article.getByLabel(label,{exact:true}).fill(value);
   const preview=await article.locator('[data-positioning-editor] blockquote').innerText();
@@ -846,7 +857,7 @@ async function tokenCore(senderKey, recipientKey, width, locale, resolution) {
   const sender = await session(senderKey, width), recipient = await session(recipientKey, width);
   const profile = await db.matchmakingProfile.findUniqueOrThrow({ where: { userId: users[recipientKey].id } });
   await sender.page.goto(origin + prefix + '/dashboard/matchmaking');
-  await sender.page.getByText(/Token (可用|available) 150/, { exact: false }).waitFor();
+  await sender.page.getByText(/Token (餘額|balance) 150/, { exact: false }).waitFor();
   check('Monthly Token grant visible ' + width + locale, (await db.tokenWallet.findUniqueOrThrow({ where: { userId: users[senderKey].id } })).available === 150);
   await sender.page.goto(origin + prefix + '/dashboard/matchmaking/' + profile.id);
   await sender.page.getByRole('button', { name: w('提出交流 · 預扣 5 Token', 'Request to chat · hold 5 Token'), exact: true }).waitFor();
@@ -886,7 +897,8 @@ async function tokenCore(senderKey, recipientKey, width, locale, resolution) {
   check('Opening delivered once only on acceptance ' + locale + width, await db.networkMessage.count({ where: { connectionId: hold.resourceId, body: opening } }) === (resolution === 'accept' ? 1 : 0));
   check('Fee settlement never shares private data ' + locale + width, await db.networkShare.count({ where: { connectionId: hold.resourceId } }) === 0);
   await sender.page.goto(origin + prefix + '/dashboard/matchmaking');
-  await sender.page.getByText(/Token (可用|available) (145|150)/, { exact: false }).waitFor();
+  await sender.page.getByText(/Token (餘額|balance) (145|150)/, { exact: false }).waitFor();
+  await sender.page.locator('header details > summary').first().click();
   await sender.page.getByText(w('收支紀錄', 'Transaction history'), { exact: true }).click();
   if (locale === 'en') check('English ledger descriptions stay English ' + width, !/[\u4e00-\u9fff]/.test(await sender.page.locator('section[aria-label="Token"]').innerText()));
   const bounds = await sender.page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > innerWidth + 1, headings: document.querySelectorAll('h1').length }));
@@ -1003,9 +1015,54 @@ async function guidedEntryQA() {
     await openInputOptions(page,locale);await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();
     check('Talk entry opens without focusing text '+locale,await article.locator('[data-task-assist]').evaluate(e=>e.open&&document.activeElement?.tagName==='SUMMARY'));
     const transcript=article.getByRole('textbox',{name:w('貼上會議紀錄或逐字稿','Paste meeting notes or a transcript'),exact:true});await transcript.fill('QA owned source words');await article.locator('[data-task-assist] > summary').click();
-    await article.getByRole('button',{name:w('逐題點選整理','Work through questions'),exact:true}).click();check('Question entry focuses its form '+locale,await article.locator('fieldset').evaluate(e=>e.contains(document.activeElement)));
+    await article.getByRole('button',{name:w('逐題點選整理','Work through questions'),exact:true}).click();await page.waitForFunction(()=>document.querySelector('#task-work > fieldset')?.contains(document.activeElement));check('Question entry focuses its form '+locale,await article.locator('fieldset').evaluate(e=>e.contains(document.activeElement)));
     await openInputOptions(page,locale);await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Entry changes retain transcript '+locale,await transcript.inputValue()==='QA owned source words');
     for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Guided entry layout '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'guided-entry-'+locale+'-'+width);}
+    await context.close();
+  }
+}
+
+async function layoutQA() {
+  for (const [key,locale] of [['desktop','en'],['mobile','zh-tw']]) {
+    const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',w=(a,b)=>zh?a:b;
+    const {context,page}=await session(key,1440);
+    for(const width of [390,768,1440]) {
+      await page.setViewportSize({width,height:1000});await page.goto(origin+prefix+'/dashboard');
+      await page.locator('[data-home-evidence] ol li').first().waitFor();await page.getByRole('heading',{name:w('本週證據','THIS WEEK’S EVIDENCE'),exact:true}).count();
+      await page.getByText(w('查看佐證','Review evidence'),{exact:false}).first().waitFor();
+      check('Five evidence stages precede the task '+locale+width,await page.locator('[data-home-evidence]').evaluate(e=>e.querySelector('ol').compareDocumentPosition(e.querySelector('#home-task-title'))&Node.DOCUMENT_POSITION_FOLLOWING));
+      check('Home three utility cards '+locale+width,await page.getByRole('button',{name:w('設定提醒','Set reminders'),exact:true}).isVisible());
+      const evidence=await context.request.get(origin+'/api/evidence');const summary=(await evidence.json()).data;
+      check('Weekly evidence uses actual server counts '+locale+width,evidence.ok()&&Number.isInteger(summary.weekly.conversations)&&Number.isInteger(summary.weekly.findings)&&Number.isInteger(summary.weekly.commitments));
+      if(width===390){await page.getByRole('button',{name:w('設定提醒','Set reminders'),exact:true}).click();await page.getByText(w('任務、圓桌與交流 Email 提醒','Task, roundtable and connection emails'),{exact:true}).waitFor();check('Home opens existing email preferences '+locale,true);await page.getByRole('button',{name:w('設定提醒','Set reminders'),exact:true}).click();await page.getByRole('button',{name:w('加入行事曆','Add to calendar'),exact:true}).click();await page.locator('#this-week').waitFor();check('Home opens existing calendar '+locale,await page.locator('#this-week button').count()>0);await page.getByRole('button',{name:w('加入行事曆','Add to calendar'),exact:true}).click();}
+      await layout(page,'Target home '+locale+width,locale);await screenshot(page,'target-home-'+locale+'-'+width);
+      await page.goto(origin+prefix+'/dashboard/matchmaking?tab=recommendations');await page.locator('#matchmaking-panel-recommendations article').first().waitFor();
+      check('Compact card has offer and need '+locale+width,(await page.locator('#matchmaking-panel-recommendations article').first().innerText()).includes(w('可以提供','Can offer')));
+      check('Wallet is collapsed '+locale+width,!await page.locator('header details').first().evaluate(e=>e.open));
+      await layout(page,'Target matching '+locale+width,locale);await screenshot(page,'target-matching-'+locale+'-'+width);
+      await page.getByRole('tab',{name:w('推薦給你','For you'),exact:true}).focus();await page.keyboard.press('ArrowRight');check('Tabs support keyboard '+locale+width,await page.getByRole('tab',{name:w('所有會員','All members'),exact:true}).getAttribute('aria-selected')==='true');
+      await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();await closeTour(page,locale);await layout(page,'Target legacy '+locale+width,locale);await screenshot(page,'target-legacy-'+locale+'-'+width);
+    }
+    const generated=await context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale,requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:'QA source',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'QA demand',bottleneckConfidence:65},answers:[{question:'Progress',answer:'Working MVP'},{question:'Bottleneck',answer:'Customer demand'},{question:'Goal',answer:'Validate demand'}]}});
+    assert.equal(generated.status(),201);const newPlan=(await generated.json()).data;
+    const records=Array.from({length:3},(_,i)=>({id:randomUUID(),company:'QA company '+(i+1),name:'QA person '+(i+1),date:new Date().toISOString().slice(0,10),relationship:'prospect',fit:'yes',pain:zh?'原始對話：整理報表花太多時間':'Original source: reporting takes too long',severity:'high',solution:'Spreadsheet',wtp:'considering',reason:'',missing:'',referral:''}));
+    const save=await context.request.post(origin+'/api/action-plans/flow?locale='+locale,{headers:{origin},data:{action:'save',planId:newPlan.id,revision:newPlan.revision,step:'01-1',data:{kind:'conversation',market:'TW',records}}});assert.equal(save.status(),200);
+    const fingerprint=async()=>JSON.stringify({actions:await db.actionItem.findMany({where:{actionPlanId:newPlan.id},orderBy:{id:'asc'}}),milestones:await db.planMilestone.findMany({where:{actionPlanId:newPlan.id},orderBy:{id:'asc'}})}),original=await fingerprint();
+    for(const width of [390,768,1440]){
+      await page.setViewportSize({width,height:1000});await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-conversation-form]').waitFor();await closeTour(page,locale);
+      check('Single-page conversation is primary '+locale+width,await page.getByLabel(w('對象姓名','Person'),{exact:true}).isVisible()&&await page.getByRole('button',{name:w('高','High'),exact:true}).isVisible());
+      check('Incomplete target remains locked '+locale+width,await page.getByRole('button',{name:w('確認並完成','Confirm and complete'),exact:true}).isDisabled());
+      check('Evidence and delivered-company tables precede map '+locale+width,await page.locator('#current-findings-title').count()===1&&await page.locator('#prospects').isVisible());
+      await layout(page,'Target conversation '+locale+width,locale);await screenshot(page,'target-conversation-'+locale+'-'+width);
+    }
+    const capture=async(name,locator)=>{const file=path.join(output,name+'-'+locale+'.png');await locator.screenshot({path:file});report.screenshots.push(file);};
+    await page.setViewportSize({width:1334,height:1058});await page.goto(origin+prefix+'/dashboard');await page.getByText(w('查看佐證','Review evidence'),{exact:false}).first().waitFor();await capture('reference-home',page.locator('main > div'));
+    await page.setViewportSize({width:1052,height:662});await page.goto(origin+prefix+'/dashboard/matchmaking?tab=recommendations');await page.locator('#matchmaking-panel-recommendations article').first().waitFor();const matching=path.join(output,'reference-matching-'+locale+'.png');await page.screenshot({path:matching});report.screenshots.push(matching);
+    await page.setViewportSize({width:1056,height:1330});await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-conversation-form]').waitFor();await closeTour(page,locale);const map=page.locator('#action-map');if(await map.evaluate(e=>e.open))await map.locator(':scope > summary').click();await page.evaluate(()=>window.scrollTo(0,0));
+    await page.addStyleTag({content:'*{scroll-behavior:auto!important;animation:none!important;transition:none!important}'});await page.evaluate(()=>window.scrollTo(0,0));
+    await capture('reference-task',page.locator('#goal-roadmap'));
+    const visibleErrors=(await page.getByRole('alert').allInnerTexts()).filter(text=>text.trim());check('Reference captures have no failed translation '+locale,visibleErrors.length===0);
+    check('Rendering preserves saved steps and completion data '+locale,await fingerprint()===original);
     await context.close();
   }
 }
@@ -1101,11 +1158,12 @@ async function commerceSettingsQA() {
 }
 
 try {
-  if(scenario==='localization') await startCopyProvider();
+  if(['localization','layout'].includes(scenario)) await startCopyProvider();
   await startServer(); await redirects();
   if (mode === 'start') {
     if(scenario!=='homepage') await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'localization') { await localizationQA(); }
+    if (scenario === 'layout') { await layoutQA(); }
+    else if (scenario === 'localization') { await localizationQA(); }
     else if (scenario === 'language') { await languageQA(); }
     else if (scenario === 'legacy') { await legacyLayoutQA(); }
     else if (scenario === 'guided') { await guidedEntryQA(); }

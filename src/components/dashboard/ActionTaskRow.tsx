@@ -13,7 +13,7 @@ import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { priorityTier } from "@/lib/action-plan/ranking";
 import { formatActionTime } from "@/lib/action-plan/time";
 
-export default function ActionTaskRow({ action, busy = false, readOnly = false, onToggle, onMetric, onDependencyChange, revision, onEdit, onDelete, href, compact = false, featured = false, focusMode = false, workspace, plan }: { plan?: ActionPlanDto; focusMode?: boolean; workspace?: ReactNode; action: ActionPlanActionDto; busy?: boolean; readOnly?: boolean; revision?: number; onDependencyChange?: (thresholds: Record<string, number | null>, revision?: number) => Promise<boolean | void>; onToggle?: () => void; onMetric?: (metric: { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number }) => Promise<boolean | void>; onEdit?: () => void; onDelete?: () => void; href?: string; compact?: boolean; featured?: boolean }) {
+export default function ActionTaskRow({ action, busy = false, readOnly = false, onToggle, onMetric, onDependencyChange, revision, onEdit, onDelete, href, compact = false, featured = false, focusMode = false, workspace, results, plan }: { results?: ReactNode; plan?: ActionPlanDto; focusMode?: boolean; workspace?: ReactNode; action: ActionPlanActionDto; busy?: boolean; readOnly?: boolean; revision?: number; onDependencyChange?: (thresholds: Record<string, number | null>, revision?: number) => Promise<boolean | void>; onToggle?: () => void; onMetric?: (metric: { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number }) => Promise<boolean | void>; onEdit?: () => void; onDelete?: () => void; href?: string; compact?: boolean; featured?: boolean }) {
   const { planText, planUnit, displayTaskReference } = usePlanDisplay();
   const locale = useLocale(), zh = locale === "zh-tw";
   const title = planText(action.title, locale), outcome = planText(action.expectedOutcome.text, locale);
@@ -64,6 +64,7 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
         {checkbox && <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}</section>
         <aside className="min-w-0 space-y-4 rounded-xl border border-dark/10 bg-white p-5"><h3 className="font-bold">{zh ? "方法指引" : "How to approach it"}</h3><p className="whitespace-pre-wrap break-words text-sm leading-7">{planText(action.bottleneckFit.reason, locale)}</p><LearningResources visual kind={workspaceKind(action)} question={title} /></aside>
       </div>
+      {results}
     </article>;
   }
   if (compact) return <article className={`min-w-0 rounded-2xl border bg-white p-3 [overflow-wrap:anywhere] sm:p-4 ${featured ? "border-black shadow-sm" : focusMode ? "border-dark/30" : "border-dark/10"}`}>

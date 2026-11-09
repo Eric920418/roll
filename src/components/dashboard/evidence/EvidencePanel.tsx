@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocale } from 'next-intl';
 import { MemberFetchError, memberFetch } from '@/lib/member-fetch';
 import { pathForLocale } from '@/lib/routes';
@@ -12,9 +12,10 @@ type View = Awaited<ReturnType<typeof evidenceSnapshot>>;
 const button = 'inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/20 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-40';
 const field = 'mt-2 min-h-11 w-full min-w-0 rounded-lg border border-dark/20 px-3 py-2';
 const blank = () => ({ id: crypto.randomUUID(), description: '', why: '', test: '', who: '', size: '', buyer: '', pain: '', alternatives: '' });
-export default function EvidencePanel({ userId, compact = false }: {
+export default function EvidencePanel({ userId, compact = false, homeTask }: {
     userId: string;
     compact?: boolean;
+    homeTask?: ReactNode;
 }) {
     const locale = useLocale() as Locale, zh = locale === 'zh-tw', w = (a: string, b: string) => zh ? a : b;
     const [view, setView] = useState<View | null>(null), [draft, setDraft] = useState<z.infer<typeof hypothesisSchema> | null>(null), [links, setLinks] = useState<z.infer<typeof sourceLinkSchema>[]>([]), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
@@ -156,6 +157,17 @@ export default function EvidencePanel({ userId, compact = false }: {
         }
     }
     const selected = view?.state.hypotheses.find(h => h.id === view.state.selectedId);
+    if (compact) return <div className="space-y-4" data-home-evidence>
+      <section className="rounded-2xl border border-dark/10 bg-white p-5" aria-label={w('NOVA 驗證框架', 'NOVA validation framework')}>
+        <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] tracking-widest text-dark/50">{w('NOVA 驗證框架', 'NOVA VALIDATION FRAMEWORK')}</p><h2 className="mt-2 text-lg font-semibold">{view ? w(`你目前在第 ${view.result.stage} 階段：${STAGE_NAMES[view.result.stage-1][0]}`, `Stage ${view.result.stage}: ${STAGE_NAMES[view.result.stage-1][1]}`) : w('正在核對客戶證據', 'Checking customer evidence')}</h2></div><p className="text-xs text-dark/45">{w('先驗證，再建置', 'Validate first, then build')}</p></div>
+        <ol className="mt-5 grid grid-cols-5 gap-2 sm:gap-4" aria-label={w('五個驗證階段', 'Five validation stages')}>{STAGE_NAMES.map(([a,b],i) => <li key={b} aria-current={view?.result.stage === i+1 ? 'step' : undefined} className={view && i+1 <= view.result.stage ? 'text-black' : 'text-dark/40'}><div className={'h-1 rounded-full '+(view?.result.stage === i+1 ? 'bg-black' : view && i+1<view.result.stage ? 'bg-dark/45' : 'bg-dark/10')} /><p className="mt-2 text-[10px] tracking-widest">{String(i+1).padStart(2,'0')}</p><p className="mt-1 break-words text-xs font-semibold sm:text-sm">{w(a,b)}</p><p className="mt-1 text-[10px]">{view ? i+1 < view.result.stage ? w('已完成','Complete') : i+1 === view.result.stage ? w('進行中','In progress') : w('待解鎖','Upcoming') : '—'}</p></li>)}</ol>
+      </section>
+      <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">{homeTask}<section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-5" aria-labelledby="home-weekly-title"><p className="text-xs text-dark/45">{w('本週證據','THIS WEEK’S EVIDENCE')}</p><h2 id="home-weekly-title" className="mt-2 text-lg font-semibold">{view ? w(`已累積 ${view.weekly.conversations} 次對話、${view.weekly.findings} 項已記錄痛點`, `${view.weekly.conversations} conversations · ${view.weekly.findings} recorded pain points`) : w('正在整理本週紀錄…','Loading this week’s records…')}</h2>
+        {view && <p className="mt-2 text-[10px] leading-5 text-dark/45">{selected ? w('僅計入已連結目前假設、且符合客群的本週紀錄。','Only this week’s matching records linked to the current hypothesis are counted.') : w('先至公司檔案確認目標客戶假設，再連結已儲存對話；原始紀錄會保留。','Confirm a customer hypothesis in Company profile, then link saved conversations. Original records are retained.')}</p>}
+        {view && <dl className="mt-4 divide-y divide-dark/10">{[[w('客戶對話','Customer conversations'),view.weekly.conversations],[w('已記錄痛點','Recorded pain points'),view.weekly.findings],[w('已核對付費承諾','Verified payment commitments'),view.weekly.commitments]].map(([label,n],i) => <div key={label} className="flex items-center justify-between gap-3 py-3"><div><dt className="text-xs text-dark/55">{label}</dt>{i===0 && <p className="mt-1 text-[10px] text-dark/40">{view.cohort ? w(`同階段匿名平均 ${view.cohort.average} 次`, `Anonymous same-stage average: ${view.cohort.average}`) : w('匿名樣本不足，暫不顯示平均','Not enough consenting peers for an average')}</p>}</div><dd className="text-xl font-semibold tabular-nums">{n}</dd></div>)}</dl>}
+        {error && <div role="alert" className="whitespace-pre-wrap break-words text-xs text-red-800">{error}</div>}<div className="mt-2 flex flex-wrap items-center justify-between gap-2"><a className="inline-flex min-h-11 items-center text-xs underline" href={pathForLocale('/dashboard/profile',locale)}>{w('查看佐證','Review evidence')} →</a><button type="button" className="min-h-11 text-xs underline" onClick={() => void load()}>{w('重新核對','Refresh evidence')}</button></div>
+      </section></div>
+    </div>;
     return <section className="min-w-0 space-y-5 rounded-2xl border border-dark/15 bg-white p-5 sm:p-7" aria-label={w('驗證框架與目標客戶假設', 'Validation framework and customer hypotheses')}>
   <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold tracking-widest text-dark/55">{w('NOVA 驗證框架', 'NOVA VALIDATION FRAMEWORK')}</p><h2 className="mt-2 text-xl font-bold">{view ? w(`你目前在第 ${view.result.stage} 階段：${STAGE_NAMES[view.result.stage - 1][0]}`, `Stage ${view.result.stage}: ${STAGE_NAMES[view.result.stage - 1][1]}`) : w('正在核對客戶證據', 'Checking customer evidence')}</h2></div><button type="button" className={button} disabled={busy} onClick={() => void load()}>{w('重新核對', 'Refresh evidence')}</button></div>
   {view && <><ol className="grid grid-cols-5 gap-1" aria-label={w('五個驗證階段', 'Five validation stages')}>{STAGE_NAMES.map(([a, b], i) => <li key={b} aria-current={view.result.stage === i + 1 ? 'step' : undefined} className={`rounded p-2 text-xs ${i < view.result.stage ? 'bg-black text-white' : 'bg-dark/5 text-dark/60'}`}>{i + 1}<span className="mt-2 hidden sm:block">{w(a, b)}</span></li>)}</ol><p className="text-sm text-dark/65">{w('驗證階段依客戶證據判斷，與行動地圖的里程碑分開。更換假設後從客戶對話階段開始，舊成果保留。', 'Evidence stages are separate from action milestones. Changing a hypothesis starts a new conversation cycle and preserves prior results.')}</p><div className="grid grid-cols-3 gap-3">{[[view.result.conversations, w('有效對話', 'Valid conversations')], [view.result.findings.length, w('有來源的痛點', 'Sourced pain points')], [view.result.paid, w('已核對付費承諾', 'Verified commitments')]].map(([n, label]) => <div key={label} className="rounded-xl bg-dark/5 p-3"><p className="text-2xl font-semibold">{n}</p><p className="mt-2 text-xs">{label}</p></div>)}</div></>}

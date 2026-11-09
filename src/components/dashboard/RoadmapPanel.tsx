@@ -2,6 +2,7 @@
 import { PlanLocalizationProvider, PlanCopyText, usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { personalizationResponses } from "@/lib/action-plan/personalization";
 import ValidationWorkspace from "./ValidationWorkspace";
+import ProspectSearch from "./prospecting/ProspectSearch";
 import ActionMap from "./ActionMap";
 import ConversationHistory from "./ConversationHistory";
 import { commercialTask } from "@/lib/validation/schema";
@@ -11,7 +12,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { correctionSchema, type StageCorrection } from "@/lib/roadmap/corrections";
-import { InterviewInsights, CompletedTaskInsights } from "./InterviewWorkspace";
+import { InterviewInsights, CompletedTaskInsights, InterviewFindings } from "./InterviewWorkspace";
 import TaskWorkspace from "./TaskWorkspace";
 import { workspaceKind } from "@/lib/action-plan/workspace";
 import ActionTaskRow from "./ActionTaskRow";
@@ -166,6 +167,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
 
       <ActionTaskRow plan={initialPlan || undefined} action={a} compact focusMode featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
         onToggle={readOnly ? undefined : () => { void changeTask(a.id, { done: !a.done }).then(saved => { if (saved && !a.done) { setCompletion(locale === "zh-tw" ? `已完成：${planText(a.title, locale)}` : `Completed: ${a.title}`); if (a.recordingMode === "interview") setInsights({ id: a.id, title: planText(a.title, locale) }); } }); }}
+        results={!readOnly && a.id === featuredId && workspaceKind(a) === "interview" ? <InterviewFindings actionId={a.id} revision={initialPlan?.revision} /> : undefined}
         onMetric={readOnly ? undefined : metric => changeTask(a.id, metric, "PATCH", true)}
         workspace={readOnly || (!workspaceKind(a) && !commercialTask(a)) ? undefined : <TaskWorkspace showGuide={a.id !== featuredId} userId={userId} action={a} plan={initialPlan!} busy={busy} onChanged={onChanged} onInsights={() => setInsights({ id: a.id, title: planText(a.title, locale) })} onAnalyze={() => { void analyzeTask(a.id); }} />}
         onDependencyChange={readOnly ? undefined : (dependencyThresholds, revision) => changeTask(a.id, { dependencyThresholds, revision: revision ?? initialPlan?.revision }, "PATCH", true)}
@@ -223,6 +225,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     {completion && <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-black p-4 text-white motion-safe:animate-[fadeIn_.3s_ease-out]"><p>✓ {completion}</p><button className="min-h-11 px-3 text-sm underline" onClick={() => setCompletion("")}>{locale === "zh-tw" ? "關閉" : "Dismiss"}</button></div>}
     {error && !opened && <div role="alert" className="mt-3 space-y-3 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
     {notice && !opened && <p role="status" className="rounded-xl bg-dark/5 p-4 text-sm">{notice}</p>}
+    {initialPlan && featured && workspaceKind(featured) === "interview" && <ProspectSearch userId={userId} compact />}
     {initialPlan && <ActionMap userId={userId} plan={initialPlan} event={mapEvent} compact>
     {initialPlan && <div id="action-plan-list" tabIndex={-1} className="mt-7 scroll-mt-6">
       <details className="mt-3 text-sm"><summary className="min-h-11 cursor-pointer font-semibold">{locale === "zh-tw" ? "搜尋與篩選" : "Search and filter"}</summary><div className="mt-2 flex flex-wrap gap-2">

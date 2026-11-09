@@ -17,6 +17,8 @@ import EvidencePanel from "@/components/dashboard/evidence/EvidencePanel";
 import PlanRefresh from "@/components/dashboard/PlanRefresh";
 import FounderRecommendations from "@/components/dashboard/home/FounderRecommendations";
 import RoundtablesPanel from "@/components/dashboard/matchmaking/RoundtablesPanel";
+import ReferralPanel from "@/components/dashboard/rewards/ReferralPanel";
+import ReturnReminder from "@/components/dashboard/home/ReturnReminder";
 import UpcomingEventsRail from "@/components/dashboard/home/UpcomingEventsRail";
 
 export default async function DashboardOverview({ params }: { params: Promise<{ locale: string }> }) {
@@ -57,27 +59,18 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
     descriptions.blocked = zh ? "先前證據已失效，完成紀錄仍保留。補正後即可繼續或分享報告。" : "Earlier evidence needs attention. Completion history is retained; correct the proof to continue or share.";
   }
   const progress = plan ? actionProgress(plan.actions) : next.kind === "conversation" || next.kind === "prospects" ? Math.min(100, Math.round((discovery?.total || 0) / (discovery?.target || 3) * 100)) : null;
-  return <PlanLocalizationProvider planId={plan?.id} revision={plan?.revision}><div className="space-y-8 font-[family-name:var(--font-body)]">
-    <PlanRefresh userId={account.id} />
-    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-dark/10 pb-6">
-      <div><p className="text-xs font-semibold tracking-[0.18em] text-dark/55">NOVA AI</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{zh ? "把下一步，變成進展。" : "Turn your next step into progress."}</h1>
-        <p className="mt-3 text-base text-dark/65">{account.firstName ? `${account.firstName}${zh ? "，" : ", "}` : ""}{zh ? "今天，先專心做好一件事。" : "Focus on one meaningful action today."}</p>
-      </div><Link className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4" href={pathForLocale("/dashboard/profile", l)}>{zh ? "公司檔案" : "Company profile"} →</Link>
-    </header>
-    <section aria-labelledby="home-goal-title" className="grid gap-5 sm:grid-cols-[1fr_auto]">
-      <div className="min-w-0"><p id="home-goal-title" className="text-xs font-semibold text-dark/55">{zh ? "我的目標" : "MY GOAL"}</p><p className="mt-2 break-words text-xl font-semibold">{goal || (zh ? "先找出最值得驗證的方向" : "Find the direction worth validating")}</p><p className="mt-2 text-sm text-dark/65">{milestone ? <>{zh ? "目前里程碑" : "Current milestone"} {milestone.position + 1} · <PlanCopyText value={milestone.title} /></> : plan?.roadmap ? (zh ? "所有里程碑已完成" : "All milestones completed") : (zh ? "依目前紀錄與方案安排下一步" : "Your next step follows your records and access")}</p></div>
-      {progress !== null && <div className="min-w-36"><p className="text-sm text-dark/65">{zh ? "目前計畫進度" : "Current plan progress"}</p><p className="mt-1 text-3xl font-semibold tabular-nums">{progress}%</p><progress className="mt-2 h-1.5 w-full accent-black" max={100} value={progress} aria-label={zh ? "目前計畫進度" : "Current plan progress"} /></div>}
-    </section>
-    <section aria-labelledby="home-task-title" className="rounded-2xl bg-black p-6 text-white sm:p-9">
-      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-semibold tracking-[0.18em] text-white/60">{zh ? "今日任務 · 目前這一步" : "TODAY'S TASK · YOUR CURRENT STEP"}</p>{milestone?.targetDate && <p className="text-sm text-white/70">{zh ? "截止" : "Due"} {milestone.targetDate}</p>}</div>
-      <h2 id="home-task-title" className="mt-5 max-w-4xl break-words text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">{next.action ? <PlanCopyText value={next.action.title} /> : (completedFlow ? (zh ? "已完成驗證" : "Validation complete") : labels[next.kind])}</h2>
-      <div className="mt-5 max-w-3xl border-t border-white/20 pt-5"><p className="text-xs font-semibold text-white/60">{next.action ? (zh ? "完成標準" : "COMPLETION CRITERIA") : (zh ? "接下來" : "WHAT'S NEXT")}</p><p className="mt-2 whitespace-pre-wrap text-base leading-7 text-white/85">{next.action ? <PlanCopyText value={next.action.expectedOutcome.text} /> : descriptions[next.kind]}</p>{next.action?.metric?.target != null && <p className="mt-3 text-sm tabular-nums">{zh ? "目前進度" : "Progress"} · {next.action.metric.current ?? 0} / {next.action.metric.target}</p>}{next.kind === "conversation" && <p className="mt-3 text-sm">{zh ? "已記錄" : "Recorded"} {discovery?.total} / {discovery?.target} {zh ? "家公司的有效對話" : "valid company conversations"}</p>}</div>
-      <Link href={pathForLocale(next.href, l)} className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">{labels[next.kind]} →</Link>
-    </section>
-    <EvidencePanel userId={account.id} compact />
-    <FounderRecommendations />
-    <div className="grid min-w-0 gap-5 lg:grid-cols-[1.4fr_1fr]"><RoundtablesPanel userId={account.id} compact /><section className="flex flex-col justify-between rounded-2xl border border-dark/15 bg-white p-6 sm:p-8"><div><p className="text-xs font-semibold tracking-widest text-dark/55">{zh ? "讓交流帶來行動" : "MAKE CONNECTIONS COUNT"}</p><h2 className="mt-6 text-2xl font-semibold">{zh ? "接續你的對話" : "Keep the conversation going"}</h2><p className="mt-3 text-base leading-7 text-dark/70">{zh ? "查看交流邀請與訊息，和適合的人一起推進下一步。" : "Review invitations and messages, and take the next step with the right people."}</p></div><Link href={pathForLocale("/dashboard/matchmaking?tab=messages", l)} className="mt-6 inline-flex min-h-11 w-fit items-center font-semibold underline underline-offset-4">{zh ? "前往訊息" : "Open messages"} →</Link></section></div>
-    <details className="rounded-2xl border border-dark/10 bg-white px-5 py-2"><summary className="flex min-h-11 cursor-pointer items-center font-semibold">{zh ? "近期活動" : "Community events"}</summary><div className="pb-3"><UpcomingEventsRail locale={l} events={events.slice(0, 4).map(({ id, date, title, location }) => ({ id, date, title, location }))} /></div></details>
+  const task = (<section aria-labelledby="home-task-title" className="rounded-2xl bg-black p-6 text-white sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-semibold tracking-[0.18em] text-white/60">{zh ? "今日任務 · 目前這一步" : "TODAY'S TASK · YOUR CURRENT STEP"}</p></div>
+      <h2 id="home-task-title" className="mt-3 max-w-4xl break-words text-xl font-semibold leading-snug tracking-tight sm:text-2xl">{next.action ? <PlanCopyText value={next.action.title} /> : (completedFlow ? (zh ? "已完成驗證" : "Validation complete") : labels[next.kind])}</h2>
+      <p className="mt-3 break-words text-xs text-white/60">{goal}{progress !== null ? ` · ${progress}%` : ''}</p>
+      <dl className="mt-4 grid gap-4 border-t border-white/20 pt-4 text-xs sm:grid-cols-[1.5fr_1fr_1fr]"><div><dt className="text-white/50">{next.action ? (zh ? '完成標準' : 'Completion criteria') : (zh ? '接下來' : 'What’s next')}</dt><dd className="mt-2 whitespace-pre-wrap break-words leading-5">{next.action ? <PlanCopyText value={next.action.expectedOutcome.text} /> : descriptions[next.kind]}</dd></div><div><dt className="text-white/50">{zh?'目前進度':'Saved progress'}</dt><dd className="mt-2 font-semibold tabular-nums">{next.action?.metric?.target != null ? `${next.action.metric.current ?? 0} / ${next.action.metric.target}` : next.kind==='conversation' ? `${discovery?.total ?? 0} / ${discovery?.target ?? 0}` : progress !== null ? `${progress}%` : '—'}</dd></div><div><dt className="text-white/50">{zh?'截止日期':'Due date'}</dt><dd className="mt-2 font-semibold">{milestone?.targetDate || plan?.roadmap?.deadline || '—'}</dd></div></dl>
+      <Link href={pathForLocale(next.href, l)} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">{labels[next.kind]} →</Link>
+    </section>);
+  return <PlanLocalizationProvider planId={plan?.id} revision={plan?.revision}><div className="space-y-4 font-[family-name:var(--font-body)]">
+    <PlanRefresh userId={account.id} /><h1 className="sr-only">{zh ? "首頁" : "Home"}</h1>
+    <EvidencePanel userId={account.id} compact homeTask={task} />
+    <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"><RoundtablesPanel userId={account.id} compact /><FounderRecommendations /></div>
+    <div className="grid min-w-0 items-start gap-4 lg:grid-cols-3"><UpcomingEventsRail locale={l} events={events.slice(0,1).map(({id,date,title,location})=>({id,date,title,location}))} /><ReturnReminder date={milestone?.targetDate} /><ReferralPanel compact /></div>
+    <section className="grid gap-5 rounded-2xl border border-dark/10 bg-white p-5 sm:grid-cols-[1fr_2fr]" aria-label={zh ? "關注 NOVA" : "Follow NOVA"}><div><p className="text-xs text-dark/45">{zh ? "關注 NOVA" : "FOLLOW NOVA"}</p><h2 className="mt-2 text-sm font-semibold">{zh ? "最新活動、案例與創辦人洞察" : "Events, cases and founder insights"}</h2></div><div className="grid gap-x-6 sm:grid-cols-2">{[{label:'LinkedIn',name:'ROLL ON',url:'https://www.linkedin.com/company/rollon/'},{label:'YouTube',name:'Golden Ticket',url:'https://www.youtube.com/@GOLDENTICKET-rollon'},{label:'Instagram',name:'ROLL ON TAIWAN',url:'https://www.instagram.com/rollon.tw/'}].map(item=><a key={item.url} href={item.url} target="_blank" rel="noopener noreferrer" className="flex min-h-11 min-w-0 items-center gap-3 border-t border-dark/10 text-xs"><span className="text-dark/50">{item.label}</span><span className="flex-1 break-words font-semibold">{item.name}</span><span aria-hidden>↗</span></a>)}</div></section>
   </div></PlanLocalizationProvider>;
 }

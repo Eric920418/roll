@@ -29,7 +29,7 @@ export default async function UpcomingEventsRail({
         </p>
         <Link
           href={`${pathForLocale("/", locale)}#events`}
-          className="shrink-0 text-xs font-semibold text-primary hover:text-primary-dark font-[family-name:var(--font-heading)]"
+          className="inline-flex min-h-11 shrink-0 items-center text-xs font-semibold text-primary hover:text-primary-dark font-[family-name:var(--font-heading)]"
         >
           {t("viewAll")}
         </Link>

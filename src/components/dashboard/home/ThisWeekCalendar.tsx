@@ -14,9 +14,9 @@ type Draft = { id?: string; revision?: number; requestId: string; date: string; 
 const outline = "min-h-11 rounded-xl border border-current/20 px-4 py-2 text-sm font-semibold disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2";
 const field = "mt-1 min-h-11 w-full rounded-xl border border-dark/20 bg-white px-3 py-2 text-sm text-dark focus-visible:outline-2";
 async function readResponse<T>(res: Response): Promise<T> {
-  let body: { data: T; error?: string; code?: string };
+  let body: { data: T; error?: string; code?: string; requestId?: string };
   try { body = await res.json(); } catch { throw new Error(`HTTP ${res.status} ${res.statusText}`); }
-  if (!res.ok) throw new Error(`${body.error || `HTTP ${res.status}`}${body.code ? ` (${body.code})` : ""}`);
+  if (!res.ok) throw new Error([`HTTP ${res.status}`, body.error, body.code, body.requestId].filter(Boolean).join("\n"));
   return body.data;
 }
 const dragMedia = "(min-width: 768px) and (hover: hover) and (pointer: fine)";

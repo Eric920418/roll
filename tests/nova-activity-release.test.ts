@@ -93,7 +93,7 @@ test("Action map starts closed, claims each real transition once and isolates me
   assert.equal(saved.size, 4);
 });
 
-type NodeProps = { children?: ReactNode; href?: string; role?: string; id?: string; active?: boolean; embedded?: boolean; onClick?: () => void; onUnreadChange?: (n: number) => void; onKeyDown?: (e: object) => void };
+type NodeProps = { homeTask?: ReactNode; children?: ReactNode; href?: string; role?: string; id?: string; active?: boolean; embedded?: boolean; onClick?: () => void; onUnreadChange?: (n: number) => void; onKeyDown?: (e: object) => void };
 function nodes(root: ReactNode) {
   const result: Array<{ type: unknown; props: NodeProps }> = [];
   function visit(node: ReactNode) { Children.forEach(node, child => { if (isValidElement<NodeProps>(child)) { result.push(child); visit(child.props.children); } }); }
@@ -171,7 +171,8 @@ test("Home renders one primary task in both languages with locale-correct destin
     ...Object.fromEntries(["PlanRefresh", "evidence/EvidencePanel", "home/FounderRecommendations", "matchmaking/RoundtablesPanel", "home/UpcomingEventsRail"].map(name => [`@/components/dashboard/${name}`, { default: () => null }])),
   });
   for (const locale of ["en", "zh-tw"]) {
-    const tree = nodes(await page.default({ params: Promise.resolve({ locale }) }));
+    const outer = nodes(await page.default({ params: Promise.resolve({ locale }) }));
+    const tree = [...outer, ...nodes(outer.find(n => n.props.homeTask)?.props.homeTask as ReactNode)];
     assert.equal(tree.filter(n => n.type === "h1").length, 1);
     const main = tree.find(n => n.props.id === "home-task-title");
     assert.equal((main?.props.children as { props: { value: string } }).props.value, "Saved task");

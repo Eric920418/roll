@@ -1,4 +1,5 @@
 "use client";
+import { memberFetch } from "@/lib/member-fetch";
 import { usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -16,10 +17,7 @@ import LearningResources from "./LearningResources";
 
 const button = "min-h-11 rounded-xl border border-dark/20 px-4 py-2 text-sm font-semibold disabled:opacity-50";
 async function readInterviews(actionId: string) {
-  const res = await fetch(`/api/customer-insights?actionId=${encodeURIComponent(actionId)}`, { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error([`HTTP ${res.status}`, json.error, json.code, json.requestId].filter(Boolean).join("\n"));
-  return json.data as { rows: Array<InterviewRow & { updatedAt: string }>; summary: InterviewSummary; plan: ActionPlanDto | null };
+  return memberFetch<{ rows: Array<InterviewRow & { updatedAt: string }>; summary: InterviewSummary; plan: ActionPlanDto | null }>(`/api/customer-insights?actionId=${encodeURIComponent(actionId)}`);
 }
 
 export default function InterviewWorkspace({ userId, action, busy, onChanged, onInsights, revision, showGuide = true }: {
@@ -72,6 +70,13 @@ export function InterviewInsights({ actionId, title, onClose }: { actionId: stri
     {summary && summary.total > 0 && <div className="mt-6 space-y-3 border-t border-dark/10 pt-5"><h3 className="font-semibold">{zh ? "下一步：確認你的 目標客戶" : "Next: review your target customer"}</h3><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "確認或更新目標客戶" : "Confirm or update your target customer"} →</Link></div>}
     {error && <div role="alert" className="mt-5 space-y-3"><p className="whitespace-pre-wrap text-red-700">{error}</p><button type="button" className={button} onClick={() => { void load(); }}>{zh ? "重試" : "Retry"}</button></div>}
   </dialog>;
+}
+
+export function InterviewFindings({ actionId, revision }: { actionId: string; revision?: number }) {
+  const zh = useLocale() === "zh-tw", [summary,setSummary]=useState<InterviewSummary|null>(null), [error,setError]=useState("");
+  const [attempt,setAttempt]=useState(0);
+  useEffect(()=>{let alive=true;void readInterviews(actionId).then(data=>{if(alive){setSummary(data.summary);setError("");}}).catch(cause=>{if(alive)setError(cause instanceof Error?cause.message:String(cause));});return()=>{alive=false;};},[actionId,revision,attempt]);
+  return <section className="min-w-0 space-y-3" aria-label={zh?"關鍵發現":"Key findings"}><h3 className="text-sm font-bold"><span className="mr-3 text-[10px] text-dark/40">03</span>{zh?"關鍵發現":"Key findings"}</h3><div className="rounded-xl border border-dark/10 bg-white p-4">{error && <div role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800"><p>{error}</p><button type="button" className={button} onClick={()=>setAttempt(v=>v+1)}>{zh?"重試":"Retry"}</button></div>}{!summary && !error && <p role="status" className="text-sm">{zh?"整理已存對話…":"Loading saved conversations…"}</p>}{summary && <><p className="mb-3 text-xs text-dark/50">{zh?`依 ${summary.total} 家公司的已存對話分類；未分類內容不推測痛點。`:`Based on saved conversations from ${summary.total} companies; unclassified notes are not inferred as pain.`}</p>{summary.top.length?<table className="w-full table-fixed text-left text-xs"><thead className="text-dark/45"><tr><th scope="col" className="w-2/3 pb-3">{zh?"已分類挑戰":"Classified challenge"}</th><th scope="col" className="pb-3">{zh?"佐證公司":"Supporting companies"}</th></tr></thead><tbody>{summary.top.map(row=><tr className="border-t border-dark/10" key={row.key}><th scope="row" className="break-words py-3 pr-3">{CHALLENGES[row.key][zh?1:0]}</th><td className="py-3">{row.count} / {summary.total}</td></tr>)}</tbody></table>:<p className="text-sm text-dark/55">{zh?"尚無已分類的主要挑戰。":"No classified challenges yet."}</p>}</>}</div></section>;
 }
 
 export function InterviewSummaryView({ summary }: { summary: InterviewSummary }) {

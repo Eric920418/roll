@@ -568,7 +568,8 @@ test("舊計畫五項任務只出現一次，主進度僅一條，地圖篩選�
       if (id.startsWith("@/lib/action-plan/")) return require(`../src/lib/action-plan/${id.split("/").at(-1)}`);
       if (id === "./ActionTaskRow") return { default: ({ action }: { action: ActionPlanActionDto }) => require("react/jsx-runtime").jsx("input", { type: "checkbox", disabled: !action.done && action.dependency.blocked }) };
       if (id === "./ActionPlanManager") return { ActionEditor: () => null };
-      if (id === "./InterviewWorkspace") return { default: () => null, InterviewInsights: () => null };
+      if (id === "./InterviewWorkspace") return { default: () => null, InterviewInsights: () => null, InterviewFindings: () => null };
+      if (id === "./prospecting/ProspectSearch") return { default: () => null };
       if (id === "./ActionMap") return { default: ({ children }: { children: ReactNode }) => children };
       if (id === "./ConversationHistory") return { default: () => null };
       if (id === "./ValidationWorkspace") return { default: () => null };

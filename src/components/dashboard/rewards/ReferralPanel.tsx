@@ -6,7 +6,7 @@ import { memberFetch } from "@/lib/member-fetch";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 const button = "min-h-11 rounded-xl border border-dark/20 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2";
-export default function ReferralPanel() {
+export default function ReferralPanel({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("Referrals"), locale = useLocale() as Locale;
   const [data, setData] = useState<ReferralSummary | null>(null), [page, setPage] = useState(1), [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState(false);
   const writing = useRef(false), generation = useRef(0);
@@ -30,6 +30,7 @@ export default function ReferralPanel() {
     catch (cause) { setError(`${t("copyFallback")}\n${cause instanceof Error ? cause.message : String(cause)}`); }
   }
   const date = (value: string) => new Intl.DateTimeFormat(locale === "zh-tw" ? "zh-TW" : "en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(value));
+  if (compact) return <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-5"><p className="text-xs text-dark/45">{locale === 'zh-tw' ? '邀請創辦人加入 NOVA' : 'INVITE A FOUNDER'}</p><h2 className="mt-2 text-lg font-semibold">{t('title')}</h2><p className="mt-3 text-xs leading-6 text-dark/65">{locale === 'zh-tw' ? '分享邀請連結，讓更多創辦人一起驗證市場。獎勵依現行推薦規則發放。' : 'Invite a founder to validate their market. Rewards follow the current referral rules.'}</p><details><summary className="min-h-11 cursor-pointer py-3 text-xs underline">{locale === 'zh-tw' ? '查看獎勵規則' : 'Reward rules'}</summary><p className="text-xs leading-6 text-dark/65">{t('rules')}</p><p className="mt-2 text-xs leading-6 text-dark/65">{t('refundRules')}</p></details>{error && <p role="alert" className="mt-3 whitespace-pre-wrap break-words text-xs text-red-800">{error}</p>}{notice && <p role="status" className="mt-2 text-xs">{notice}</p>}{!data ? <button type="button" className={button+' mt-3'} onClick={() => void load()}>{error ? t('retry') : t('loading')}</button> : data.code ? <><button type="button" className={button+' mt-3'} onClick={() => void copy()}>{t('copy')}</button><details className="mt-2"><summary className="min-h-11 cursor-pointer py-3 text-xs">{t('link')}</summary><input aria-label={t('link')} readOnly value={link} onFocus={e=>e.currentTarget.select()} className="min-h-11 w-full min-w-0 rounded-lg border p-2 text-xs" /></details></> : <button type="button" className={button+' mt-3'} disabled={busy} onClick={() => void create()}>{t('create')}</button>}</section>;
   return <section className="mt-8 min-w-0 rounded-2xl border border-dark/15 bg-white p-5 sm:p-8" aria-labelledby="referral-title">
     <h2 id="referral-title" className="text-xl font-bold">{t("title")}</h2><p className="mt-3 text-sm leading-6 text-dark/70">{t("rules")}</p><p className="mt-2 text-sm leading-6 text-dark/70">{t("refundRules")}</p>
     {error && <div role="alert" className="mt-4 whitespace-pre-wrap break-words rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><p>{error}</p><button className={button+" mt-3"} onClick={() => void load()}>{t("retry")}</button></div>}

@@ -108,7 +108,7 @@ test("Both languages show one question, allow skip/edit, and confirm only from t
   }
 });
 
-test("Customer insight guidance maps eight prompts to existing data and preserves legacy stages", () => {
+test("Customer insight guidance maps single-page fields to existing data and preserves legacy stages", () => {
   const require = createRequire(import.meta.url);
   for (const locale of ["zh-tw", "en"]) {
     let index = 0;
@@ -133,16 +133,17 @@ test("Customer insight guidance maps eight prompts to existing data and preserve
     const render = () => { index = 0; return elements(loaded.exports.default({ userId: "qa", journeyId: "journey", rows: [], outcomes: [] })).find(el => el.type === "GuidedQuestions")!; };
     type Question = { id: string; label: string; value: string; ask?: boolean; input: Element };
     let view = render(), questions = view.props.questions as Question[];
-    assert.deepEqual(Array.from(questions, q => q.id), ["company", "name", "notes", "answer-0", "answer-1", "price", "answer-2", "answer-3"]);
+    assert.deepEqual(Array.from(questions, q => q.id), ["company", "name", "date", "fit", "willingness", "notes", "answer-0", "answer-1", "price", "answer-2", "answer-3"]);
     assert.equal(view.props.reviewTitle, locale === "zh-tw" ? "確認本次客戶洞察" : "Confirm this customer insight");
     assert.equal(view.props.confirmLabel, locale === "zh-tw" ? "儲存洞察" : "Save insight");
     assert(questions.filter(q => q.id.startsWith("answer-")).every(q => q.ask), "Writing the problem must not skip the other requested prompts");
-    assert.equal(questions[0].value, "Acme · CTO");
-    assert.equal(questions[2].value, initial.notes);
-    const priceInputs = elements(questions[5].input).filter(el => el.type === "input");
+    assert.equal(view.props.flat, true);
+    assert.equal(questions.find(q=>q.id === "company")!.value, "Acme · CTO");
+    assert.equal(questions.find(q=>q.id === "notes")!.value, initial.notes);
+    const priceInputs = elements(questions.find(q=>q.id === "price")!.input).filter(el => el.type === "input");
     (priceInputs[0].props.onChange as (e: unknown) => void)({ target: { value: "125.50" } });
     view = render(); questions = view.props.questions as Question[];
-    assert.equal(questions[5].value, "125.50");
+    assert.equal(questions.find(q=>q.id === "price")!.value, "125.50");
     const saved = insightSchema.parse(states[0]);
     assert.equal(saved.commercial?.amount, "125.50");
     assert.equal(saved.commercial?.willingness, undefined, "A price is not consent to pay");
@@ -150,7 +151,7 @@ test("Customer insight guidance maps eight prompts to existing data and preserve
     states[0] = { ...emptyInsight("mvp"), company: "Legacy MVP", notes: "Old MVP notes" };
     questions = render().props.questions as Question[];
     assert(!questions.some(q => q.id === "price"));
-    assert.equal(questions[3].label, locale === "zh-tw" ? "試用了什麼" : "What they tried");
-    assert.equal(questions[3].ask, false, "Other stages retain their original note-based guidance");
+    assert.equal(questions.find(q=>q.id === "answer-0")!.label, locale === "zh-tw" ? "試用了什麼" : "What they tried");
+    assert.equal(questions.find(q=>q.id === "answer-0")!.ask, false, "Other stages retain their original note-based guidance");
   }
 });

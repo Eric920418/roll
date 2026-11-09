@@ -42,10 +42,9 @@ export default function MatchmakingWorkspace({ userId, initialTab }: { userId: s
   }
   const labels = zh ? ["推薦給你", "所有會員", "圓桌會議", "訊息"] : ["For you", "All members", "Roundtables", "Messages"];
   return <div className="min-w-0 space-y-6">
-    <header className="border-b border-dark/10 pb-6"><p className="text-xs font-semibold tracking-widest text-dark/55">NOVA AI</p><h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{zh ? "商機媒合" : "Business matching"}</h1><p className="mt-3 text-base text-dark/65">{zh ? "找到適合交流的人，推進你的下一步。" : "Find the right people for your next step."}</p></header>
-    <TokenBalance key={userId} />
-    <div role="tablist" aria-label={zh ? "商機媒合" : "Business matching"} className="grid grid-cols-2 gap-2 rounded-2xl bg-dark/5 p-2 lg:grid-cols-4">
-      {MATCHMAKING_TABS.map((id, index) => <button key={id} id={`matchmaking-tab-${id}`} role="tab" type="button" aria-selected={tab === id} aria-controls={`matchmaking-panel-${id}`} tabIndex={tab === id ? 0 : -1} className={`min-h-12 min-w-0 break-words rounded-xl px-3 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${tab === id ? "bg-black text-white" : "bg-white text-dark/70"}`} onClick={() => select(id)} onKeyDown={e => {
+    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-dark/10 pb-4"><div><h1 className="text-2xl font-semibold tracking-tight">{zh ? "商機媒合" : "Business matching"}</h1><p className="mt-2 text-xs leading-6 text-dark/55">{zh ? "找到能幫你驗證市場的人：潛在客戶、導師、合作夥伴與投資人" : "Find people who help validate your market: customers, mentors, partners and investors."}</p></div><TokenBalance key={userId} compact /></header>
+    <div role="tablist" aria-label={zh ? "商機媒合" : "Business matching"} className="flex min-w-0 gap-2 border-b border-dark/10 sm:gap-4">
+      {MATCHMAKING_TABS.map((id, index) => <button key={id} id={`matchmaking-tab-${id}`} role="tab" type="button" aria-selected={tab === id} aria-controls={`matchmaking-panel-${id}`} tabIndex={tab === id ? 0 : -1} className={`min-h-11 min-w-0 border-b-2 px-2 py-3 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 sm:text-sm ${tab === id ? "border-black text-black" : "border-transparent text-dark/50"}`} onClick={() => select(id)} onKeyDown={e => {
         const direction = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
         const next = e.key === "Home" ? MATCHMAKING_TABS[0] : e.key === "End" ? MATCHMAKING_TABS.at(-1) : direction ? MATCHMAKING_TABS[(index + direction + MATCHMAKING_TABS.length) % MATCHMAKING_TABS.length] : null;
         if (next) { e.preventDefault(); select(next); document.getElementById(`matchmaking-tab-${next}`)?.focus(); }

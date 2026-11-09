@@ -16,6 +16,7 @@ type DB = Prisma.TransactionClient;
 type EvidenceSnapshot = {
     cohort: ReturnType<typeof anonymousCohortAverage>;
     weekConversations: number;
+    weekly: Awaited<ReturnType<typeof weeklyEvidence>>;
     analysisPending: boolean;
     state: EvidenceState;
     revision: number;
@@ -73,7 +74,7 @@ export async function evidenceSnapshot(userId: string, attempt = 0): Promise<Evi
     const cohort = anonymousCohortAverage(cohortStats.map(v => v.weekConversations));
     const discovery = discoveryStateSchema.safeParse(icp?.discovery).data?.result;
     const candidates = discovery?.candidates || [];
-    return { cohort, weekConversations: stats.weekConversations, analysisPending: analysis?.status === 'processing' && Date.now() - Date.parse(analysis.since) < 120000, state: projected, revision, sources: input.sources, result, policy, candidates, clarification: discovery?.question || null, icpRevision: icp?.revision || 0 };
+    return { weekly: await weeklyEvidence(userId), cohort, weekConversations: stats.weekConversations, analysisPending: analysis?.status === 'processing' && Date.now() - Date.parse(analysis.since) < 120000, state: projected, revision, sources: input.sources, result, policy, candidates, clarification: discovery?.question || null, icpRevision: icp?.revision || 0 };
 }
 export async function mutateEvidence(userId: string, input: z.infer<typeof evidenceMutationSchema>) {
     const hash = createHash('sha256').update(JSON.stringify(input)).digest('hex');
