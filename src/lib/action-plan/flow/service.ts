@@ -10,7 +10,7 @@ import { completeGettingStarted } from "@/lib/getting-started/service";
 import { salesRecordSchema, sameScope } from "@/lib/validation/schema";
 import { today } from "@/lib/roadmap/schema";
 import { STEPS, flowKey, flowStep, flowStoredSchema, flowDataSchema, stepIdSchema, flowMilestones, emptyFlowData } from "./catalog";
-import { flowView, dataAt, records, criteria, tiers, channels, paidCompanies, customerMetrics, weeklyTarget, evaluateStep, type FlowContext, type Confirmation } from "./evaluate";
+import { flowView, dataAt, records, positioningReplies, criteria, tiers, channels, paidCompanies, customerMetrics, weeklyTarget, evaluateStep, type FlowContext, type Confirmation } from "./evaluate";
 
 type DB = Prisma.TransactionClient;
 const include = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, commercialValidation: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
@@ -42,7 +42,7 @@ export async function getFlow(userId: string, planId?: string, locale?: string) 
   const financial = metadata(plan.actions.find(a => flowStep(a)?.id === "04-3" && a.done)?.taskFinding).outcome as { metrics?: ReturnType<typeof customerMetrics> } | undefined;
   const growth = metadata(plan.actions.find(a => flowStep(a)?.id === "05-1" && a.done)?.taskFinding).outcome as { weekly?: ReturnType<typeof weeklyTarget> } | undefined;
   return { plan: serializePlan(plan), archived: Boolean(plan.archivedAt), steps, current: steps.find(s => !s.done)?.id || null,
-    leads: records(context), criteria: criteria(context), tiers: tiers(context), channels: channels(context), payments: paidCompanies(context).map(p => ({ company: p.company, name: p.name, currency: p.currency })),
+    positioningReplies: positioningReplies(context), leads: records(context), criteria: criteria(context), tiers: tiers(context), channels: channels(context), payments: paidCompanies(context).map(p => ({ company: p.company, name: p.name, currency: p.currency })),
     metrics: financial?.metrics || customerMetrics(context), weekly: growth?.weekly || weeklyTarget(context),
     proofStatus: context.proofs.map(p => ({ company: p.company, kind: p.kind, approved: p.approved, revoked: p.revoked, status: p.reviewStatus || "pending", note: p.reviewNote || "" })),
     integrity: steps.filter(s => s.done && !s.ready).map(s => ({ step: s.id, reasons: s.reasons })),

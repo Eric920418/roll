@@ -123,6 +123,9 @@ test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replie
         await assert.rejects(flow.confirmation(id, token, "no"), /already saved/);
       }
       await refresh(); assert.equal(current.steps[1].current, 5);
+      assert.equal(current.positioningReplies.filter(r => r.answer === "yes").length, 5);
+      assert.equal(current.positioningReplies.length, 10);
+      assert(current.positioningReplies.every(r => Object.keys(r).sort().join(",") === "answer,at,leadId"));
       assert.equal((await plans.getActiveActionPlan(owner.id))!.nextMoves[0].metric!.current, 5);
       await complete("01-2");
     });

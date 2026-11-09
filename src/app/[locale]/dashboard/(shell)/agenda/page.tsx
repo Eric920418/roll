@@ -34,7 +34,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
     return (
       <div className="font-[family-name:var(--font-body)]">
 
-        <h1 className="text-4xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
+        <h1 className="text-2xl font-bold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
           {t("title")}
         </h1>
         <RoundtableCommitments />
@@ -52,16 +52,16 @@ export default async function AgendaPage({ params, searchParams }: Props) {
   return (
     <div className="font-[family-name:var(--font-body)]">
 
-      <h1 className="text-4xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
+      <h1 className="text-2xl font-bold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
         {t("title")}
       </h1>
 
-      {actionPlan && <NextStepsTour workflowVersion={actionPlan.workflowVersion} mission={currentTask?.title || (awaitingOutcome ? (locale === "zh-tw" ? "確認本階段成果並繼續" : "Confirm this stage’s outcomes and continue") : (locale === "zh-tw" ? "驗證你的目標客戶" : "Validate your ICP"))} target={currentTask?.metric?.target} reward={Boolean(currentTask)} />}
-      <GettingStartedHint mode="next" />
-      <RoundtableCommitments />
       <AgendaBoard guided={guided || !actionPlan} userId={account.id}
         actionPlan={actionPlan}
       />
+      {actionPlan && <NextStepsTour workflowVersion={actionPlan.workflowVersion} mission={currentTask?.title || (awaitingOutcome ? (locale === "zh-tw" ? "確認本階段成果並繼續" : "Confirm this stage’s outcomes and continue") : (locale === "zh-tw" ? "驗證你的目標客戶" : "Validate your ICP"))} target={currentTask?.metric?.target} reward={Boolean(currentTask)} />}
+      <GettingStartedHint mode="next" />
+      <RoundtableCommitments />
       {savedDiscovery?.journeyId && (savedDiscovery.total > 0 || savedDiscovery.setup?.confirmed) && <div className="my-7"><DiscoveryJourney userId={account.id} compactTrial /></div>}
       {!actionPlan && !savedDiscovery?.journeyId && <details id="prospects" className="mt-6 scroll-mt-6 rounded-2xl border border-dark/15 bg-white p-5"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "搜尋優先聯絡的公司" : "Find companies worth contacting"}</summary><ProspectSearch userId={account.id} /></details>}
       <InvestorProgress confirmationOnly />

@@ -301,6 +301,13 @@ async function states() {
   }
 }
 
+async function openInputOptions(page, locale) {
+  const label=locale==='zh-tw'?'更多輸入方式':'More input options';const summary=page.getByText(label,{exact:true});
+  await summary.waitFor({state:'visible'});if(!await summary.evaluate(e=>e.parentElement.open))await summary.click();
+}
+async function openTaskTools(page) {
+  const tools=page.locator('#task-tools');await tools.waitFor({state:'visible'});if(!await tools.evaluate(e=>e.open))await tools.locator(':scope > summary').click();
+}
 async function flowCore(key, width, locale) {
   const zh = locale === 'zh-tw', w = (a, b) => zh ? a : b, prefix = zh ? '/zh-tw' : '';
   const { context, page } = await session(key, width, true);
@@ -330,7 +337,7 @@ async function flowCore(key, width, locale) {
     await page.waitForFunction(name => [...document.querySelectorAll('button')].some(b => b.textContent === name && !b.disabled), completeLabel);
     check('Complete current step ' + width, await postClick(completeLabel) === 200);
     await article.getByRole('heading', { name: title, exact: true }).waitFor();
-    check('Only current-step work form remains '+width,await article.locator(':scope > fieldset').count()===1);
+    check('Only current-step work form remains '+width,await article.locator('#task-work > fieldset').count()===1);
     const guided=article.locator('[data-guided-fields]').first();
     if(await guided.isVisible()){
       const before=await guided.locator('input,textarea,select').evaluateAll(nodes=>nodes.map(n=>n.value));
@@ -338,7 +345,7 @@ async function flowCore(key, width, locale) {
       await guided.getByRole('button',{name:w('下一題','Next'),exact:true}).click();await guided.getByRole('button',{name:w('上一題','Back'),exact:true}).click();
       check('Guided navigation retains values '+locale+title,JSON.stringify(await guided.locator('input,textarea,select').evaluateAll(nodes=>nodes.map(n=>n.value)))===JSON.stringify(before));
     }
-    await article.getByRole('button',{name:w('切換完整表單','Switch to complete form'),exact:true}).click();
+    const full=article.getByRole('button',{name:w('切換完整表單','Switch to complete form'),exact:true});if(await full.count())await full.click();
   }
   async function responsive(name) {
     for (const size of [390, 768, 1440]) {
@@ -349,7 +356,7 @@ async function flowCore(key, width, locale) {
     await page.setViewportSize({ width, height: 1000 });
   }
   await responsive('Conversation template');
-  await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Talk entry opens source drafting '+locale,await article.locator('[data-task-assist]').evaluate(e=>e.open));await article.locator('[data-task-assist] > summary').click();
+  await openInputOptions(page,locale);await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Talk entry opens source drafting '+locale,await article.locator('[data-task-assist]').evaluate(e=>e.open));await article.locator('[data-task-assist] > summary').click();await article.getByText(w('更多輸入方式','More input options'),{exact:true}).click();
   check('Initial goal expands map ' + width, await page.locator('#action-map').evaluate(e => e.open));
   check('Only one actionable map step ' + width, await page.locator('#action-map button').count() === 1);
   await page.locator('#action-map > summary').click();
@@ -380,13 +387,21 @@ async function flowCore(key, width, locale) {
   check('Goal expansion is shown once ' + width, !await page.locator('#action-map').evaluate(e => e.open));
   await screenshot(page, 'flow-conversation-' + locale + '-' + width);
   await completed(w('寫出一句話定位，並請 5 位受訪者確認', 'Write a positioning statement and confirm it with five interviewees'));
+  const fourFields=[[w('目標客戶（誰）','Target customer (who)'),'B2B founders'],[w('情境（什麼時候最痛）','Situation (when it hurts)'),'before sales outreach'],[w('要解決的痛點','Problem to solve'),'unclear customer needs'],[w('與現有做法的差別','Difference from current solutions'),'reviewed customer evidence']];
+  for(const [label,value] of fourFields)await article.getByLabel(label,{exact:true}).fill(value);
+  const preview=await article.locator('[data-positioning-editor] blockquote').innerText();
+  check('Four fields preview without changing saved statement '+locale,preview.includes('B2B founders')&&!(await db.actionItem.findUnique({where:{id:plan.actions[1].id}})).taskWorkspace?.data?.values?.positioning);
+  await article.getByRole('button',{name:w('套用預覽到定位草稿','Apply preview to the positioning draft'),exact:true}).click();
+  await article.getByText(w('直接編輯一句話定位','Edit the full positioning statement'),{exact:true}).click();
+  check('Applying preview changes draft only '+locale,await article.getByLabel(w('一句話定位','Positioning statement'),{exact:true}).inputValue()===preview);
+
   await article.getByLabel(w('一句話定位', 'Positioning statement'), { exact: true }).fill('We help founders replace manual reporting with reliable customer evidence.');
   await article.getByRole('checkbox', { name: w('我已核對並確認這一項', 'I reviewed and confirm this item'), exact: true }).check();
-  await saved(); check('Owner cannot claim five replies ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
+  await saved();await article.getByText(w('直接編輯一句話定位','Edit the full positioning statement'),{exact:true}).click(); check('Owner cannot claim five replies ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
   const anonymous = await browser.newContext({ extraHTTPHeaders: { 'x-forwarded-for': testIp } }); contexts.push(anonymous);
   const confirmationLinks = new Set();
   for (let i = 0; i < 5; i++) {
-    await article.getByLabel(w('選擇受訪者', 'Choose an interviewee'), { exact: true }).selectOption({ index: i + 1 });
+    await article.getByRole('group',{name:w('選擇受訪者','Choose an interviewee'),exact:true}).getByRole('button').nth(i).click();
     check('Generate private confirmation link ' + width, await postClick(w('建立確認連結', 'Create confirmation link')) === 200);
     const link = await page.getByLabel(w('專屬連結（可複製）', 'Dedicated link (copy to share)'), { exact: true }).inputValue();
     check('Each interviewee receives a new dedicated link ' + width + ' ' + i, !confirmationLinks.has(link)); confirmationLinks.add(link);
@@ -401,8 +416,21 @@ async function flowCore(key, width, locale) {
     const refreshedState = await (await refreshed).json();
     check('Server counts the correct interviewee response ' + width + ' ' + i, refreshedState.data.steps.find(s => s.id === '01-2').current === i + 1);
     await page.waitForFunction(name => [...document.querySelectorAll('button')].some(b => b.textContent === name && !b.disabled), w('更新回覆', 'Refresh responses'));
+    check('Confirmation table matches saved current version '+locale+' '+i,await article.locator('#positioning-confirmations tbody tr').count()===10&&(await article.locator('#positioning-confirmations tbody').innerText()).includes(w('符合','Fits'))&&refreshedState.data.positioningReplies.filter(r=>r.answer==='yes').length===i+1);
+    if(i===2){
+      const table=article.locator('#positioning-confirmations');check('Priority shows three real confirmations '+locale,(await article.locator('[data-today-priority]').innerText()).includes('3 / 5'));
+      for(const size of [390,768,1440]){await page.setViewportSize({width:size,height:1100});await page.locator('[data-next-step="goal"]').scrollIntoViewIfNeeded();check('Positioning layout '+locale+size,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));const boxes=await article.locator('[data-task-columns] > *').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));check('Work and guide columns '+locale+size,size===1440?Math.abs(boxes[0].y-boxes[1].y)<2:boxes[1].y>boxes[0].y);check('Real confirmation statuses '+locale+size,await table.getByText(w('符合','Fits'),{exact:true}).count()===3&&await table.getByText(w('未回覆','No response'),{exact:true}).count()===7);check('Task touch targets '+locale+size,await article.locator('button:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=43)));if(size<=768)check('Mobile and tablet priority title has full width '+locale,await article.locator('[data-today-priority]').evaluate(e=>e.querySelector('h2').getBoundingClientRect().width>=e.getBoundingClientRect().width*.7));await screenshot(page,'flow-positioning-'+locale+'-'+size);}
+      const map=page.locator('#action-map');await map.locator(':scope > summary').focus();await page.keyboard.press('Enter');check('Action map opens with keyboard '+locale,await map.evaluate(e=>e.open));await page.keyboard.press('Enter');check('Action map closes with keyboard '+locale,!await map.evaluate(e=>e.open));
+      await page.setViewportSize({width,height:1000});
+    }
+
   }
   await anonymous.close();
+  await article.getByLabel(w('目標客戶（誰）','Target customer (who)'),{exact:true}).fill('Updated customer segment');await saved();
+  check('Unapplied positioning keeps five replies but blocks completion '+locale,await article.getByRole('button',{name:completeLabel,exact:true}).isDisabled()&&(await article.locator('[data-today-priority]').innerText()).includes('5 / 5'));
+  await article.getByText(w('直接編輯一句話定位','Edit the full positioning statement'),{exact:true}).click();const original='We help founders replace manual reporting with reliable customer evidence.';
+  await article.getByLabel(w('一句話定位','Positioning statement'),{exact:true}).fill(original+' ');await article.getByLabel(w('一句話定位','Positioning statement'),{exact:true}).fill(original);await article.getByRole('checkbox',{name:w('我已核對並確認這一項','I reviewed and confirm this item'),exact:true}).check();await saved();
+  check('Keeping the original statement retains external replies '+locale,await article.getByRole('button',{name:completeLabel,exact:true}).isEnabled());
   await completed(w('建立潛在客戶評分標準', 'Define lead qualification criteria'));
   for (const checkbox of await article.getByRole('checkbox', { name: w('確認條件與權重', 'Confirm criterion and weight'), exact: true }).all()) await checkbox.check();
   await saved(); await screenshot(page, 'flow-organize-' + locale + '-' + width);
@@ -437,17 +465,20 @@ async function flowCore(key, width, locale) {
   await screenshot(page, 'flow-document-' + locale + '-' + width);
   check('Old completed records remain byte-identical ' + width, JSON.stringify(await db.actionItem.findMany({ where: { actionPlanId: oldPlan }, orderBy: { id: 'asc' } })) === before);
   check('Old plan is archived ' + width, Boolean((await db.actionPlan.findUnique({ where: { id: oldPlan } })).archivedAt));
-  const history = page.locator('details').filter({ has: page.locator('summary').filter({ hasText: w('計畫歷史與新計畫', 'Plan history and a new plan') }) });
-  await history.locator('summary').click();
+  const history = page.getByText(w('計畫歷史與新計畫', 'Plan history and a new plan'), {exact:true}).locator('..');
+  await openTaskTools(page);await history.locator('summary').click();
   const historyResponse = waitResponse(page, r => r.request().method() === 'GET' && r.url().includes('planId=' + oldPlan));
   await history.getByRole('button').nth(1).click(); await historyResponse;
   const goalHeader = page.locator('header[data-next-step="goal"]');
-  await goalHeader.getByText('NOVA · ' + w('歷史計畫', 'ARCHIVED PLAN'), { exact: true }).waitFor();
+  await goalHeader.getByText(w('歷史版本，唯讀','Archived, read only'), { exact: false }).waitFor();
   check('Archived plan shows its actual task count ' + width, !(await goalHeader.innerText()).includes('16') && (await goalHeader.innerText()).includes('/ ' + JSON.parse(before).length));
   const activeResponse = waitResponse(page, r => r.request().method() === 'GET' && r.url().includes('planId=' + plan.id));
   await page.getByRole('button', { name: w('回到目前計畫', 'Return to the active plan'), exact: true }).click(); await activeResponse;
   await page.getByRole('heading', { name: w('取得付款或簽約證據', 'Obtain payment or signed contract evidence'), exact: true }).waitFor();
   check('Return from history preserves the active step ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
+  let prospectRequests=0;page.on('request',request=>{if(new URL(request.url()).pathname==='/api/prospects'&&request.method()==='GET')prospectRequests++;});
+  await page.clock.install();await page.goto(origin+prefix+'/dashboard/matchmaking?tab=prospects');await page.waitForURL(/dashboard\/agenda#prospects/);await page.locator('#task-tools[open] #prospects[open]').waitFor();await page.getByRole('region',{name:w('找新公司','Find new companies'),exact:true}).waitFor();check('Legacy prospect link opens nested search '+locale,true);
+  const beforeActivePoll=prospectRequests,poll=waitResponse(page,response=>new URL(response.url()).pathname==='/api/prospects'&&response.request().method()==='GET');await page.clock.fastForward(61000);await poll;check('Visible prospect search polls '+locale,prospectRequests>beforeActivePoll);await page.locator('#task-tools > summary').click();const requestsBeforeHidden=prospectRequests;await page.clock.fastForward(61000);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await page.waitForTimeout(150);check('Hidden task tools stop prospect polling '+locale,prospectRequests===requestsBeforeHidden);
   await context.close();
 }
 
@@ -814,15 +845,16 @@ async function pdfCompletion() {
     const diagnosis={companyStage:'MVP',stageReason:'Owned QA evidence',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Find real customers',bottleneckConfidence:65};
     const generated=await context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale,requestId:randomUUID(),candidateCount:5,diagnosis,answers:[{question:'Progress',answer:'Working MVP'},{question:'Bottleneck',answer:'Unverified customer demand'},{question:'Goal',answer:'Verify demand'}]}});assert.equal(generated.status(),201);const plan=(await generated.json()).data;users[key].flowActionIds=plan.actions.map(a=>a.id);
     await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('article[data-next-step="record"]').waitFor();await closeTour(page,locale);
-    await page.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Talk entry does not start microphone '+locale,await page.evaluate(()=>!window.qaSpeech&&document.activeElement?.tagName!=='TEXTAREA'));const transcript=page.getByRole('textbox',{name:w('貼上會議紀錄或逐字稿','Paste meeting notes or a transcript'),exact:true});await transcript.fill('Existing transcript');
+    await openInputOptions(page,locale);await page.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Talk entry does not start microphone '+locale,await page.evaluate(()=>!window.qaSpeech&&document.activeElement?.tagName!=='TEXTAREA'));const transcript=page.getByRole('textbox',{name:w('貼上會議紀錄或逐字稿','Paste meeting notes or a transcript'),exact:true});await transcript.fill('Existing transcript');
     const speechStart=page.getByRole('button',{name:w('開始語音轉寫','Start speech transcription'),exact:true}),speechCancel=page.getByRole('button',{name:w('取消啟動','Cancel speech start'),exact:true});
     await speechStart.click();check('Speech waits for actual start '+locale,await speechCancel.isVisible()&&await page.getByRole('status').filter({hasText:w('正在啟動語音辨識','Starting speech recognition')}).isVisible());
     await speechCancel.click();check('Pending speech can cancel without losing draft '+locale,await speechStart.isVisible()&&await transcript.inputValue()==='Existing transcript'&&await page.evaluate(()=>window.qaSpeech.aborted&&window.qaSpeech.onstart===null&&window.qaSpeech.onresult===null));
     await speechStart.click();await page.getByRole('alert').filter({hasText:'start-timeout'}).waitFor({timeout:25000});check('Speech start timeout restores retry '+locale,await speechStart.isVisible()&&await transcript.inputValue()==='Existing transcript');
     await speechStart.click();await page.evaluate(()=>{window.qaSpeech.onstart();window.qaSpeech.onend();});await page.getByRole('alert').filter({hasText:'no-result'}).waitFor();check('Silent speech end gives actionable feedback '+locale,await speechStart.isVisible()&&await transcript.inputValue()==='Existing transcript');
     await speechStart.click();await page.evaluate(()=>window.qaSpeech.onstart());const speechStop=page.getByRole('button',{name:w('停止收音','Stop listening'),exact:true});await speechStop.waitFor();check('Speech shows listening only after start '+locale,await speechStop.isVisible());await page.evaluate(()=>{window.qaSpeech.onresult({resultIndex:0,results:[{isFinal:true,0:{transcript:'Spoken words'}}]});window.qaSpeech.abort=()=>{throw Error('QA already stopped');};window.qaSpeech.onerror({error:'not-allowed',message:'QA permission declined'});});await page.getByRole('alert').filter({hasText:'not-allowed · QA permission declined'}).waitFor();check('Speech failure restores retry even if abort throws '+locale,await speechStart.isVisible());
-    await page.waitForFunction(()=>[...document.querySelectorAll('textarea')].some(e=>e.value.includes('Spoken words')));check('Speech result and failure retain text '+locale,(await transcript.inputValue()).includes('Spoken words'));await page.reload();await page.locator('summary').filter({hasText:w('語音／逐字稿與 AI 草稿協助','Speech, transcript and AI drafting')}).click();check('Transcript draft survives navigation '+locale,(await transcript.inputValue()).includes('Spoken words'));
-    await speechStart.click();await page.evaluate(()=>window.qaSpeech.onstart());await speechStop.waitFor();await page.locator('[data-task-assist] > summary').click();await page.waitForFunction(()=>window.qaSpeech.aborted&&window.qaSpeech.onresult===null);check('Closing speech panel stops capture '+locale,await page.evaluate(()=>window.qaSpeech.onstart===null));await page.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Reopening speech keeps transcript '+locale,(await transcript.inputValue()).includes('Spoken words'));
+    await page.waitForFunction(()=>[...document.querySelectorAll('textarea')].some(e=>e.value.includes('Spoken words')));check('Speech result and failure retain text '+locale,(await transcript.inputValue()).includes('Spoken words'));await page.reload();await openInputOptions(page,locale);await page.locator('summary').filter({hasText:w('語音／逐字稿與 AI 草稿協助','Speech, transcript and AI drafting')}).click();check('Transcript draft survives navigation '+locale,(await transcript.inputValue()).includes('Spoken words'));
+    await speechStart.click();await page.evaluate(()=>window.qaSpeech.onstart());await speechStop.waitFor();await page.locator('[data-task-assist] > summary').click();await page.waitForFunction(()=>window.qaSpeech.aborted&&window.qaSpeech.onresult===null);check('Closing speech panel stops capture '+locale,await page.evaluate(()=>window.qaSpeech.onstart===null));await openInputOptions(page,locale);await page.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Reopening speech keeps transcript '+locale,(await transcript.inputValue()).includes('Spoken words'));
+    await speechStart.click();await page.evaluate(()=>window.qaSpeech.onstart());await speechStop.waitFor();await page.getByText(w('更多輸入方式','More input options'),{exact:true}).click();await page.waitForFunction(()=>window.qaSpeech.aborted&&window.qaSpeech.onresult===null);check('Closing input options stops hidden capture '+locale,true);await openInputOptions(page,locale);await page.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();
     response=waitResponse(page,r=>r.url().endsWith('/api/action-plans/assist')&&r.request().method()==='POST');await page.getByRole('button',{name:w('產生未確認草稿 · 使用 1 次 AI 額度','Generate unconfirmed draft · uses 1 AI allowance'),exact:true}).click();check('AI failure returns safe server error '+locale,(await response).status()>=400);await page.getByRole('alert').filter({hasText:'HTTP'}).waitFor();check('AI failure retains transcript '+locale,(await transcript.inputValue()).includes('Spoken words'));
     const attempts=[];await page.route('**/api/action-plans/assist',async route=>{attempts.push(route.request().postDataJSON());if(attempts.length===1){await db.actionPlan.update({where:{id:plan.id},data:{revision:{increment:1}}});await route.abort();}else await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'QA lost response retry verified',code:'qa-retry',requestId:'qa-safe-retry'})});});
     const generateButton=page.getByRole('button',{name:w('產生未確認草稿 · 使用 1 次 AI 額度','Generate unconfirmed draft · uses 1 AI allowance'),exact:true});const refreshed=waitResponse(page,r=>r.url().includes('/api/action-plans/flow?')&&r.request().method()==='GET');await generateButton.click();await refreshed;await page.getByRole('alert').filter({hasText:'fetch'}).waitFor();response=waitResponse(page,r=>r.url().endsWith('/api/action-plans/assist')&&r.request().method()==='POST');await generateButton.click();assert.equal((await response).status(),503);check('Lost AI response keeps original request and revision '+locale,attempts.length===2&&JSON.stringify(attempts[0])===JSON.stringify(attempts[1]));await page.unroute('**/api/action-plans/assist');
@@ -840,11 +872,11 @@ async function guidedEntryQA() {
     const zh=locale==='zh-tw',w=(a,b)=>zh?a:b,prefix=zh?'/zh-tw':'';const {context,page}=await session(key,390);
     const response=await context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale,requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:'QA evidence',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Demand',bottleneckConfidence:65},answers:[{question:'Progress',answer:'Working MVP'},{question:'Bottleneck',answer:'Customer demand'},{question:'Goal',answer:'Verify demand'}]}});assert.equal(response.status(),201);
     await page.goto(origin+prefix+'/dashboard/agenda');const article=page.locator('article[data-next-step="record"]');await article.waitFor();await closeTour(page,locale);
-    await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();
+    await openInputOptions(page,locale);await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();
     check('Talk entry opens without focusing text '+locale,await article.locator('[data-task-assist]').evaluate(e=>e.open&&document.activeElement?.tagName==='SUMMARY'));
     const transcript=article.getByRole('textbox',{name:w('貼上會議紀錄或逐字稿','Paste meeting notes or a transcript'),exact:true});await transcript.fill('QA owned source words');await article.locator('[data-task-assist] > summary').click();
     await article.getByRole('button',{name:w('逐題點選整理','Work through questions'),exact:true}).click();check('Question entry focuses its form '+locale,await article.locator('fieldset').evaluate(e=>e.contains(document.activeElement)));
-    await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Entry changes retain transcript '+locale,await transcript.inputValue()==='QA owned source words');
+    await openInputOptions(page,locale);await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Entry changes retain transcript '+locale,await transcript.inputValue()==='QA owned source words');
     for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Guided entry layout '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'guided-entry-'+locale+'-'+width);}
     await context.close();
   }
@@ -927,9 +959,9 @@ async function commerceSettingsQA() {
   for(const locale of ['en','zh-tw']){const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'';await member.page.goto(origin+prefix+'/product');await member.page.locator('#pricing').getByText(zh?'搜尋每 5 家 25 Token':'Search five companies for 25 Token',{exact:false}).waitFor();for(const width of [390,768,1440]){await member.page.setViewportSize({width,height:1000});check('Published public pricing '+locale+width,await member.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(member.page,'commerce-public-'+locale+'-'+width);}}
   const card=await db.matchmakingProfile.findUniqueOrThrow({where:{userId:users.newpaid.id}});await member.page.goto(origin+'/dashboard/matchmaking/'+card.id);await member.page.getByRole('button',{name:'Request to chat · hold 9 Token',exact:true}).waitFor();check('Member invitation displays published fee',true);
   await member.page.goto(origin+'/dashboard/account#plan');check('Billing page stays available after token-only policy publish',await member.page.getByRole('heading',{level:1}).count()===1);response=waitResponse(member.page,r=>r.url().endsWith('/api/billing/subscribe')&&r.request().method()==='POST');await member.page.getByTestId('subscribe-pro').click();assert.equal((await response).status(),503);await member.page.getByRole('alert').filter({hasText:'HTTP 503'}).waitFor();check('Unavailable PayPal checkout shows full HTTP error',true);
-  const generated=await member.context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale:'en',requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:'Private pricing QA',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Verify pricing without provider calls',bottleneckConfidence:65},answers:[{question:'Progress',answer:'Private prototype'},{question:'Bottleneck',answer:'Customer research'},{question:'Goal',answer:'Verify pricing settings'}]}});assert.equal(generated.status(),201);const plan=(await generated.json()).data;users.desktop.flowActionIds=plan.actions.map(a=>a.id);await member.page.goto(origin+'/dashboard/agenda');await closeTour(member.page,'en');await member.page.locator('#prospects > summary').click();const search=member.page.getByRole('region',{name:'Find new companies',exact:true});const find=search.getByRole('button',{name:'Find 5 new companies · hold 25 Token',exact:true});await find.waitFor();check('Task search shows published fee and quota',(await search.innerText()).includes('0/15'));
+  const generated=await member.context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale:'en',requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:'Private pricing QA',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Verify pricing without provider calls',bottleneckConfidence:65},answers:[{question:'Progress',answer:'Private prototype'},{question:'Bottleneck',answer:'Customer research'},{question:'Goal',answer:'Verify pricing settings'}]}});assert.equal(generated.status(),201);const plan=(await generated.json()).data;users.desktop.flowActionIds=plan.actions.map(a=>a.id);await member.page.goto(origin+'/dashboard/agenda');await closeTour(member.page,'en');await openTaskTools(member.page);await member.page.locator('#prospects > summary').click();const search=member.page.getByRole('region',{name:'Find new companies',exact:true});const find=search.getByRole('button',{name:'Find 5 new companies · hold 25 Token',exact:true});await find.waitFor();check('Task search shows published fee and quota',(await search.innerText()).includes('0/15'));
   await search.getByRole('textbox',{name:'Target buyer description',exact:true}).fill('Private QA buyer criteria without supplier submission');await search.getByRole('checkbox').check();response=waitResponse(member.page,r=>r.url().endsWith('/api/prospects/orders')&&r.request().method()==='POST');await find.click();const created=await response;assert.equal(created.status(),202);check('Task search sends the published quote version',created.request().postDataJSON().pricingVersion===2);const orderId=(await created.json()).data.id,fee=await db.tokenReservation.findFirstOrThrow({where:{resourceId:orderId}}),wallet=await db.tokenWallet.findUniqueOrThrow({where:{userId:users.desktop.id}});check('Task search reserves the configured amount once',fee.amount===25&&wallet.available===125&&wallet.reserved===25);const local=await db.prospectingOrder.findUniqueOrThrow({where:{id:orderId}});check('Pricing QA never submits to the supplier',local.providerOrderId===null&&local.submittedAt===null);
-  await member.page.goto(origin+'/zh-tw/dashboard/agenda');await closeTour(member.page,'zh-tw');await member.page.locator('#prospects > summary').click();const chineseSearch=member.page.getByRole('region',{name:'找新公司',exact:true});await chineseSearch.getByRole('button',{name:'搜尋 5 家新公司 · 預扣 25 Token',exact:true}).waitFor();check('Chinese task search shows published fee and quota',(await chineseSearch.innerText()).includes('0/15'));
+  await member.page.goto(origin+'/zh-tw/dashboard/agenda');await closeTour(member.page,'zh-tw');await openTaskTools(member.page);await member.page.locator('#prospects > summary').click();const chineseSearch=member.page.getByRole('region',{name:'找新公司',exact:true});await chineseSearch.getByRole('button',{name:'搜尋 5 家新公司 · 預扣 25 Token',exact:true}).waitFor();check('Chinese task search shows published fee and quota',(await chineseSearch.innerText()).includes('0/15'));
   // Simulate a lost acknowledgement after the server saves, then retry the same request.
   await page.getByLabel('交流邀請預扣 Token',{exact:true}).fill('11');const requests=[];await page.route('**/api/admin/billing/settings',async route=>{if(route.request().method()!=='POST')return route.continue();requests.push(route.request().postDataJSON());if(requests.length===1){const saved=await route.fetch();assert.equal(saved.status(),200);await route.abort();}else await route.continue();});
   await page.getByRole('button',{name:'儲存草稿',exact:true}).click();await page.getByRole('alert').filter({hasText:'fetch'}).waitFor();check('Lost save acknowledgement keeps editor input',await page.getByLabel('交流邀請預扣 Token',{exact:true}).inputValue()==='11');response=waitResponse(page,r=>r.url().endsWith('/api/admin/billing/settings')&&r.request().method()==='POST');await page.getByRole('button',{name:'儲存草稿',exact:true}).click();assert.equal((await response).status(),200);check('Lost save retries the same request',requests.length===2&&JSON.stringify(requests[0])===JSON.stringify(requests[1]));await page.unroute('**/api/admin/billing/settings');

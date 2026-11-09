@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import PositioningEditor from "./PositioningEditor";
 import GuidedFields from "./GuidedFields";
 import ConversationEditor from "./ConversationEditor";
 import { CHAPTERS, ORGANIZE_FIELDS, emptyRecord, emptyContact, words, type FlowData, type StepId } from "@/lib/action-plan/flow/catalog";
@@ -19,8 +20,8 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
   const [editing, setEditing] = useState(""), [guided, setGuided] = useState(true);
   const confirm = (key: string, label: string) => data.kind === "organize" && <label key={key} className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="h-5 w-5 shrink-0" checked={data.confirmed.includes(key)} onChange={e => onChange({ ...data, confirmed: e.target.checked ? [...data.confirmed, key] : data.confirmed.filter(k => k !== key) })} />{label}</label>;
   return <fieldset disabled={disabled} className="min-w-0 space-y-5">
-    <legend className="mb-4 text-lg font-bold">{w("操作區", "Your work")}</legend>
-    {!readOnly && <button type="button" aria-pressed={!guided} className={button} onClick={() => setGuided(!guided)}>{guided ? w("切換完整表單", "Switch to complete form") : w("切換逐題整理", "Switch to guided work")}</button>}
+    <legend className="mb-4 text-base font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">02</span>{step === "01-2" ? w("定位草稿", "Positioning draft") : w("操作區", "Your work")}</legend>
+    {!readOnly && step !== "01-2" && <button type="button" aria-pressed={!guided} className={button} onClick={() => setGuided(!guided)}>{guided ? w("切換完整表單", "Switch to complete form") : w("切換逐題整理", "Switch to guided work")}</button>}
     {(data.kind === "conversation" || data.kind === "outreach") && ["01-1", "05-2"].includes(step) && <TextField label={w("目標市場／國家", "Target market / country")} value={data.market} onChange={market => onChange({ ...data, market })} />}
     {data.kind === "conversation" && <>
       <div className="space-y-3">{data.records.map((row, index) => <details key={row.id} open={editing === row.id} className="min-w-0 rounded-xl border border-dark/15 p-4">
@@ -33,7 +34,8 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
       <button type="button" className={button} onClick={() => { const row = emptyRecord(crypto.randomUUID()); onChange({ ...data, records: [...data.records, row] }); setEditing(row.id); }}>＋ {w(step === "04-2" ? "記錄使用回顧" : "記錄客戶對話", step === "04-2" ? "Record a usage review" : "Record a conversation")}</button>
     </>}
     {data.kind === "organize" && <GuidedFields guided={guided && !readOnly} locale={locale}>
-      {(ORGANIZE_FIELDS[step] || []).map(f => <div key={f.key} className="space-y-2"><TextField label={words(f.label, locale)} value={data.values[f.key] || ""} multiline={!f.number} type={f.number ? "number" : "text"} onChange={value => onChange({ ...data, values: { ...data.values, [f.key]: value } })} />{["01-2", "02-3"].includes(step) && confirm(f.key, w("我已核對並確認這一項", "I reviewed and confirm this item"))}</div>)}
+      {step === "01-2" && <PositioningEditor data={data} locale={locale} readOnly={readOnly} onChange={onChange} />}
+      {(step === "01-2" ? [] : ORGANIZE_FIELDS[step] || []).map(f => <div key={f.key} className="space-y-2"><TextField label={words(f.label, locale)} value={data.values[f.key] || ""} multiline={!f.number} type={f.number ? "number" : "text"} onChange={value => onChange({ ...data, values: { ...data.values, [f.key]: value } })} />{["01-2", "02-3"].includes(step) && confirm(f.key, w("我已核對並確認這一項", "I reviewed and confirm this item"))}</div>)}
       {step === "01-3" && <>
         {data.criteria.map((c, index) => <section key={c.id} className="space-y-3 rounded-xl border border-dark/15 p-4">
           <div className="grid gap-4 sm:grid-cols-[1fr_100px]"><TextField label={w("條件 " + (index + 1), "Criterion " + (index + 1))} value={c.label} onChange={label => onChange({ ...data, criteria: data.criteria.map(v => v.id === c.id ? { ...v, label } : v) })} /><TextField type="number" label={w("權重 %", "Weight %")} value={String(c.weight)} onChange={value => onChange({ ...data, criteria: data.criteria.map(v => v.id === c.id ? { ...v, weight: Math.max(1, Math.min(100, Number(value) || 1)) } : v) })} /></div>

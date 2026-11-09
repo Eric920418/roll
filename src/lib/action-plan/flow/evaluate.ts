@@ -9,6 +9,15 @@ export type Confirmation = { version: string; leadId: string; statement: string;
 export function storedData(action?: FlowAction) { return flowStoredSchema.safeParse(action?.taskWorkspace).data?.data; }
 export function dataAt(context: FlowContext, step: StepId) { return storedData(context.actions.find(a => flowStep(a)?.id === step)) || emptyFlowData(STEPS.find(s => s.id === step)!.kind); }
 export function records(context: FlowContext) { const data = dataAt(context, "01-1"); return data.kind === "conversation" ? data.records.filter(r => r.fit == null || ["yes","possible"].includes(r.fit)) : []; }
+export function positioningReplies(context: FlowContext) {
+  const action = context.actions.find(a => flowStep(a)?.id === "01-2"), data = dataAt(context, "01-2");
+  const meta = action?.taskFinding as { responses?: Confirmation[]; positioningVersion?: string } | null;
+  const statement = data.kind === "organize" ? data.values.positioning : "";
+  return records(context).map(lead => {
+    const reply = statement && meta?.positioningVersion ? meta.responses?.find(r => r.version === meta.positioningVersion && r.statement === statement && r.leadId === lead.id && ["yes", "no"].includes(r.answer)) : null;
+    return { leadId: lead.id, answer: reply?.answer || null, at: reply?.at || null };
+  });
+}
 export function criteria(context: FlowContext) { const data = dataAt(context, "01-3"); return data.kind === "organize" ? data.criteria : []; }
 export function score(context: FlowContext, matches: string[]) {
   const usable = criteria(context).filter(c => c.confirmed && new Set(c.sources).size >= 3);
