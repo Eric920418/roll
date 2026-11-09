@@ -541,7 +541,7 @@ test("五題草稿在失敗前保存，沿用已存開場回答且生成需要�
   assert.equal(cache.size, 0);
 });
 
-test("Next steps 五項任務只出現一次，不重複頂部進度條，只有首個可執行任務突出且可篩選", () => {
+test("舊計畫五項任務只出現一次，主進度僅一條，地圖篩選不隱藏首個可執行任務", () => {
   const state: unknown[] = [];
   let cursor = 0;
   const require = createRequire(import.meta.url);
@@ -589,12 +589,12 @@ test("Next steps 五項任務只出現一次，不重複頂部進度條，只有
   assert.equal(list().length, 5);
   assert.equal(plan.nextMoves.length, 1);
   assert.equal(render().filter(n => n.props.disabled).length, 4, "受阻擋任務仍禁止完成");
-  assert.equal(render().filter(n => n.props.role === "progressbar").length, 0);
+  assert.equal(render().filter(n => n.type === "progress").length, 1);
   assert.equal(render().filter(n => n.props.featured).length, 1);
   render().find(n => n.type === "select")!.props.onChange!({ target: { value: "ready" } });
   assert.equal(list().length, 1);
   render().find(n => n.type === "input" && typeof n.props.value === "string")!.props.onChange!({ target: { value: "No matching task" } });
-  assert.equal(list().length, 0);
+  assert.equal(list().length, 1, "地圖沒有符合結果時，主行動仍顯示目前任務");
   render().find(n => n.type === "select")!.props.onChange!({ target: { value: "all" } });
   render().find(n => n.type === "input" && typeof n.props.value === "string")!.props.onChange!({ target: { value: "" } });
   assert.equal(list().length, 5);

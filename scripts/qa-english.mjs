@@ -6,7 +6,7 @@ import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
@@ -17,7 +17,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -153,7 +153,7 @@ async function core(key, width) {
   await page.locator('#action-map').waitFor(); await closeTour(page);
   await layout(page, `Task ${width}`);
   check(`Action map defaults collapsed ${width}`, !await page.locator('#action-map').evaluate(e => e.open));
-  check(`English map uses actual singular milestone ${width}`, (await page.locator('#action-map > summary').innerText()).includes('1 milestone ·'));
+  check(`English map uses actual singular milestone ${width}`, (await page.locator('#action-map > summary').innerText()).includes('View all 1 milestone'));
   const complete = page.getByRole('checkbox', { name: 'Complete task: Write a positioning statement', exact: true });
   check(`Unfinished task is locked ${width}`, await complete.isDisabled());
   const inputs = [['Who you help (your target customer)', 'B2B startup founders'], ['Their pain', 'Unclear customer demand'], ['The outcome they get', 'Evidence for the next step'], ['How you deliver it', 'Customer conversations'], ['Their reaction (what made sense, what confused them)', 'Three founders confirmed the statement']];
@@ -307,6 +307,66 @@ async function openInputOptions(page, locale) {
 }
 async function openTaskTools(page) {
   const tools=page.locator('#task-tools');await tools.waitFor({state:'visible'});if(!await tools.evaluate(e=>e.open))await tools.locator(':scope > summary').click();
+}
+async function legacyLayoutQA() {
+  for(const [key,locale] of [['mobile','zh-tw'],['desktop','en']]) {
+    const zh=locale==='zh-tw',w=(a,b)=>zh?a:b,prefix=zh?'/zh-tw':'';
+    const {context,page}=await session(key,1440), owner=users[key], actionId=owner.actionId;
+    const saved=await db.actionItem.findMany({where:{actionPlanId:owner.planId},orderBy:{executionOrder:'asc'}});
+    const pastDate=new Date(Date.now()-86400000),criteria=[{id:'legacy-condition',criterion:'Actual buyer need',weight:3,fit:'Confirms manual reporting'}];
+    await db.actionDependency.deleteMany({where:{actionId:{in:saved.slice(1).map(a=>a.id)}}});
+    await db.actionItem.update({where:{id:saved[1].id},data:{title:'Interview 2 founders',done:true,completedAt:pastDate,executionOrder:0,dependencyLevel:0,recordingMode:'interview',metricTarget:2,metricCurrent:2,metricUnit:'companies'}});
+    await db.actionItem.update({where:{id:saved[2].id},data:{title:'Build a lead scorecard',done:true,completedAt:pastDate,executionOrder:1,taskWorkspace:{kind:'scorecard',criteria},taskFinding:{result:{cards:[0,1,2].map(i=>({title:'Original finding '+i,text:'Saved insight '+i,evidence:'Manual reporting is slow'})),why:'Original saved next step'},source:'user'}}});
+    await db.actionDependency.create({data:{actionId:saved[2].id,dependsOnId:saved[1].id}});
+    await db.actionItem.update({where:{id:actionId},data:{executionOrder:2}});
+    const leads=[];
+    for(let i=0;i<2;i++)leads.push(await db.meetingNote.create({data:{userId:owner.id,title:'Owned legacy conversation '+i,insight:{actionId:saved[1].id,stage:'discover',type:'Prospect',name:'Existing person '+i,company:'Legacy QA company '+i,fit:'yes',role:'Buyer',answers:['Manual reporting is slow','','',''],notes:'Original interview quote',region:'TW',industry:'saas',date:pastDate.toISOString().slice(0,10)}}}));
+    const historical=async()=>JSON.stringify({actions:await db.actionItem.findMany({where:{id:{in:saved.slice(1).map(a=>a.id)}},orderBy:{id:'asc'}}),notes:await db.meetingNote.findMany({where:{userId:owner.id},orderBy:{id:'asc'}})});
+    const originalHistory=await historical();
+    const snapshot=async()=>JSON.stringify({plan:await db.actionPlan.findUnique({where:{id:owner.planId}}),actions:await db.actionItem.findMany({where:{actionPlanId:owner.planId},orderBy:{id:'asc'}}),history:await historical()});
+    const positioning={kind:'positioning',who:'Original customer',pain:'Original customer pain',outcome:'Original result',how:'Original method',tested:3,reaction:'Actual saved customer feedback'};
+    const cases=[
+      ['icp','Define and document your ideal customer profile',{kind:'icp',candidates:[{name:'Original candidate',industry:'SaaS',size:'10 people',role:'Founder',pain:'Manual reporting',trigger:'New market'}]},false],
+      ['interview','Interview 2 founders',null,false],
+      ['pilot','Run paid pilot offer with 3 prospects',{kind:'pilot',prospects:leads.map(l=>({leadId:l.id,offer:'Original offer',response:'thinking',reason:'Original objection'}))},true],
+      ['positioning','Write a positioning statement',positioning,false],
+      ['scorecard','Build a lead scorecard',{kind:'scorecard',criteria},false],
+      ['tiers','Tier your customer leads',{kind:'tiers',leads:leads.map(l=>({leadId:l.id,tier:'A',segment:'Existing segment',matches:['legacy-condition']}))},false],
+      ['generic','Prepare the original market brief',null,false],
+      ['commercial','Secure 2 paying customers',null,true],
+    ];
+    for(const [kind,title,workspace,commercial] of cases) {
+      await db.actionItem.update({where:{id:actionId},data:{title,taskWorkspace:workspace||Prisma.DbNull,recordingMode:kind==='interview'?'interview':null,metricTarget:kind==='interview'?2:4,metricCurrent:kind==='interview'?0:2,metricUnit:kind==='interview'?'companies':'records'}});
+      const before=await snapshot();await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();await closeTour(page,locale);
+      const article=page.locator('[data-legacy-task]');check('Legacy keeps current action '+locale+kind,await article.getByRole('heading',{name:title,exact:true}).count()===1&&await article.locator('[data-today-priority]').count()===1);
+      check('Legacy actual action and milestone counts '+locale+kind,(await page.locator('[data-next-step="goal"]').innerText()).includes('2 / 3')&&(await page.locator('#action-map > summary').innerText()).includes(zh?'查看全部 1 個里程碑':'View all 1 milestone'));
+      check('Legacy secondary tools default '+locale+kind,await page.locator('#legacy-tools').evaluate(e=>e.open)===commercial);
+      if(commercial){const evidence=article.getByRole('link',{name:w('付款／簽約證據 →','Payment / contract evidence →'),exact:true});await evidence.waitFor();check('Legacy payment work has its original evidence entry '+locale+kind,true);await page.locator('#legacy-tools > summary').click();await evidence.click();await page.locator('#legacy-tools[open]').waitFor();check('Legacy payment link opens the right records '+locale+kind,new URL(page.url()).hash==='#validation-'+owner.planId);}
+      for(const width of [390,768,1440]) {
+        await page.setViewportSize({width,height:1000});check('Legacy responsive '+locale+kind+width,await page.evaluate(l=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1&&document.documentElement.lang===l,locale));
+        const boxes=await article.locator('[data-task-columns] > *').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().toJSON()));check('Legacy columns and title '+locale+kind+width,width===1440?Math.abs(boxes[0].y-boxes[1].y)<2:boxes[1].y>boxes[0].y&&await article.locator('[data-today-priority]').evaluate(e=>e.querySelector('h2').getBoundingClientRect().width>=e.getBoundingClientRect().width*.7));
+        check('Legacy primary touch target '+locale+kind+width,await article.locator('[data-today-priority] button').evaluate(e=>e.getBoundingClientRect().height>=44));
+        if(['positioning','interview','generic'].includes(kind))await screenshot(page,'legacy-'+kind+'-'+locale+'-'+width);
+      }
+      check('Viewing legacy plan never rewrites its data '+locale+kind,await snapshot()===before);
+    }
+    // A plan with no roadmap keeps its actual steps and does not gain milestones.
+    await db.actionPlan.update({where:{id:owner.planId},data:{goal:null}});await db.actionItem.update({where:{id:actionId},data:{title:'Write a positioning statement',taskWorkspace:positioning,metricTarget:1,metricCurrent:1}});
+    const noMap=await snapshot();await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();check('Legacy plan without roadmap shows real steps '+locale,(await page.locator('#action-map > summary').innerText()).includes(zh?'查看全部 3 個步驟':'View all 3 steps'));check('No-roadmap view retains all data '+locale,await snapshot()===noMap);
+    const map=page.locator('#action-map');await map.locator(':scope > summary').focus();await page.keyboard.press('Enter');check('Legacy map keyboard opens '+locale,await map.evaluate(e=>e.open));await page.keyboard.press('Enter');check('Legacy map keyboard closes '+locale,!await map.evaluate(e=>e.open));
+    await page.getByRole('button',{name:w('繼續本步行動','Work on this step'),exact:true}).click();check('Legacy primary action focuses its work '+locale,await page.locator('#task-work-'+actionId).evaluate(e=>e.contains(document.activeElement)));
+    const who=page.getByLabel(w('你幫助哪一類客戶','Who you help (your target customer)'),{exact:true});await who.fill('Retained unsaved legacy draft');await page.reload();await who.waitFor();check('Legacy local draft survives reload '+locale,await who.inputValue()==='Retained unsaved legacy draft');
+    const save=page.getByRole('button',{name:w('儲存定位句','Save statement'),exact:true});const route='**/api/action-plans/actions/'+actionId;
+    await page.route(route,r=>r.request().method()==='PATCH'?r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'QA save unavailable',code:'qa_legacy_save',requestId:'qa-legacy-trace'})}):r.continue());
+    let response=waitResponse(page,r=>r.url().endsWith('/actions/'+actionId)&&r.request().method()==='PATCH');await save.click();assert.equal((await response).status(),503);await page.getByRole('alert').filter({hasText:'qa_legacy_save'}).waitFor();check('Legacy save error is complete and retains input '+locale,(await page.getByRole('alert').allInnerTexts()).some(t=>t.includes('503')&&t.includes('qa-legacy-trace'))&&await who.inputValue()==='Retained unsaved legacy draft');await page.unroute(route);
+    await db.actionPlan.update({where:{id:owner.planId},data:{revision:{increment:1}}});response=waitResponse(page,r=>r.url().endsWith('/actions/'+actionId)&&r.request().method()==='PATCH');await save.click();assert.equal((await response).status(),409);await page.getByRole('button',{name:w('比較最新版本並重試','Compare latest version and retry'),exact:true}).click();response=waitResponse(page,r=>r.url().endsWith('/actions/'+actionId)&&r.request().method()==='PATCH');await save.click();assert.equal((await response).status(),200);check('Legacy conflict retry saves only its original workspace '+locale,(await db.actionItem.findUniqueOrThrow({where:{id:actionId}})).taskWorkspace.who==='Retained unsaved legacy draft');
+    const previous=page.getByText(w('前項任務成果','Previous task findings'),{exact:true});await previous.click();await page.getByText('Original saved next step',{exact:true}).waitFor();check('Completed legacy findings remain available '+locale,true);
+    await page.clock.install();await page.goto(origin+prefix+'/dashboard/matchmaking?tab=prospects');await page.waitForURL(/dashboard\/agenda#prospects/);await page.locator('#legacy-tools[open]').waitFor();await page.getByRole('region',{name:w('找新公司','Find new companies'),exact:true}).waitFor();check('Legacy search deep link opens tools '+locale,true);
+    let calls=0;page.on('request',r=>{if(new URL(r.url()).pathname==='/api/prospects'&&r.method()==='GET')calls++;});const activePoll=waitResponse(page,r=>new URL(r.url()).pathname==='/api/prospects'&&r.request().method()==='GET');await page.clock.fastForward(61000);await activePoll;check('Legacy visible search polls '+locale,calls>0);await page.locator('#legacy-tools > summary').click();const count=calls;await page.clock.fastForward(61000);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await page.waitForTimeout(150);check('Legacy hidden search stops polling '+locale,calls===count);
+    check('Completed legacy tasks, findings and interviews stay byte-identical '+locale,await historical()===originalHistory);
+    const after=await context.request.get(origin+'/api/action-plans/roadmap');const active=(await after.json()).data.active;check('Legacy plan is not converted or renumbered '+locale,active.workflowVersion!==2&&active.actions.length===3&&active.actions.map(a=>a.id).join(',')===[saved[1].id,saved[2].id,actionId].join(','));
+    await context.close();
+  }
 }
 async function flowCore(key, width, locale) {
   const zh = locale === 'zh-tw', w = (a, b) => zh ? a : b, prefix = zh ? '/zh-tw' : '';
@@ -974,7 +1034,8 @@ try {
   await startServer(); await redirects();
   if (mode === 'start') {
     if(scenario!=='homepage') await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'guided') { await guidedEntryQA(); }
+    if (scenario === 'legacy') { await legacyLayoutQA(); }
+    else if (scenario === 'guided') { await guidedEntryQA(); }
     else if (scenario === 'homepage') { await homepageQA(); }
     else if (scenario === 'coupons') { await couponCodesQA(); }
     else if (scenario === 'commerce') { await commerceSettingsQA(); }

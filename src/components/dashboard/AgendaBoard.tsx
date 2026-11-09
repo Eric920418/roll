@@ -32,7 +32,7 @@ export default function AgendaBoard({ userId, actionPlan, guided = false }: Prop
       <PlanRefresh userId={userId} />
       {currentPlan?.personalization?.weeklyTime === "under3" && <p className="rounded-xl border border-dark/15 bg-white p-5 text-sm">{zh ? "本週只聚焦目前這一步，後續任務依序安排。" : "Focus on the current step this week. Later tasks follow in order."}</p>}
       {!currentPlan && <><ActionPlanManager guided={guided} initialPlan={null} onChanged={acceptPlan} /><RoadmapPanel userId={userId} initialPlan={null} onChanged={acceptPlan} /></>}
-      {currentPlan && <>{currentPlan.workflowVersion === 2 ? <FlowWorkspace key={currentPlan.id} userId={userId} plan={currentPlan} onChanged={acceptPlan} /> : <RoadmapPanel userId={userId} initialPlan={currentPlan} onChanged={acceptPlan} />}<ActionDiagnosis plan={currentPlan} /></>}
+      {currentPlan && <>{currentPlan.workflowVersion === 2 ? <FlowWorkspace key={currentPlan.id} userId={userId} plan={currentPlan} onChanged={acceptPlan} /> : <RoadmapPanel key={currentPlan.id} userId={userId} initialPlan={currentPlan} onChanged={acceptPlan} />}<ActionDiagnosis plan={currentPlan} /></>}
 
     </div>
   );

@@ -21,7 +21,8 @@ async function readInterviews(actionId: string) {
   return json.data as { rows: Array<InterviewRow & { updatedAt: string }>; summary: InterviewSummary; plan: ActionPlanDto | null };
 }
 
-export default function InterviewWorkspace({ userId, action, busy, onChanged, onInsights, revision }: {
+export default function InterviewWorkspace({ userId, action, busy, onChanged, onInsights, revision, showGuide = true }: {
+  showGuide?: boolean;
   userId: string; action: ActionPlanActionDto; busy: boolean; revision?: number;
   onChanged: (plan: ActionPlanDto | null) => void; onInsights: () => void;
 }) {
@@ -40,7 +41,7 @@ export default function InterviewWorkspace({ userId, action, busy, onChanged, on
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
   }
   return <section className="mt-5 space-y-5 border-t border-dark/10 pt-5">
-    <LearningResources collapsed kind="interview" question={zh ? "如何進行客戶對話？" : "How to run a customer conversation?"} />
+    {showGuide && <LearningResources collapsed kind="interview" question={zh ? "如何進行客戶對話？" : "How to run a customer conversation?"} />}
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold">{zh ? "已記錄客戶對話" : "Conversations recorded"} · {rows ? interviewSummary(action.id, rows).total : "…"}/{target ?? "?"} {zh ? "間不同公司" : "distinct companies"}</p><button type="button" onClick={onInsights} className={button}>{zh ? "查看關鍵發現" : "View findings"}</button></div>
       <progress aria-label={zh ? "有效訪談進度" : "Valid conversation progress"} className="mt-3 h-2 w-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" value={action.recordingMode === "interview" ? Math.min(action.metric?.current ?? 0, target ?? 1) : 0} max={target ?? 1} />
@@ -48,7 +49,7 @@ export default function InterviewWorkspace({ userId, action, busy, onChanged, on
       {!rows && !error && <p role="status" className="text-sm">{zh ? "載入訪談紀錄…" : "Loading conversations…"}</p>}
       {rows && <CustomerDiscovery userId={userId} actionId={action.id} rows={rows} outcomes={[]} readOnly={busy || action.done || action.dependency.blocked} onSaved={plan => { void reload(plan); }} />}
       {action.done ? <div className="space-y-3 rounded-xl border border-dark/15 bg-white p-4"><h4 className="font-semibold">{zh ? "對話任務已完成，下一步整理目標客戶" : "Conversations complete. Next: review your target customer"}</h4><Link href={`${pathForLocale("/dashboard/profile", locale)}#icp-start`} className={`${button} inline-flex items-center justify-center bg-black text-white`}>{zh ? "確認或更新目標客戶" : "Confirm or update your target customer"} →</Link></div> : null}
-    {error && <div role="alert" className="space-y-2 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p>{<button type="button" className={button} onClick={() => { void reload(); }}>{zh ? "重新載入（保留輸入）" : "Reload (keep input)"}</button>}</div>}
+    {error && <div role="alert" className="space-y-2 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p>{<button type="button" className={button} onClick={() => { void reload(); }}>{zh ? "重新載入（保留輸入）" : "Reload (keep input)"}</button>}</div>}
   </section>;
 }
 
@@ -93,6 +94,6 @@ export function CompletedTaskInsights({ action, revision }: { action: ActionPlan
     {commercialTask(action) ? <div className="mt-3 space-y-2 text-sm"><p>{action.commercialValidation?.requiresConfirmation ? (zh ? "付款證據已撤銷，成果需重新確認。" : "Payment evidence revoked; reconfirm this outcome.") : action.commercialValidation?.confirmedAt ? (zh ? `已確認 ${action.metric?.current ?? 0} 家有效商業承諾；付款與合約金額在上方分別顯示。` : `${action.metric?.current ?? 0} companies with confirmed commitments; payment and contract values are listed separately above.`) : (zh ? "歷史完成紀錄；付款／付費合約尚未經此流程驗證。" : "Historical completion; payment / paid contract not verified in this workflow.")}</p></div> : result ? <><div className="mt-4 grid gap-3 sm:grid-cols-3">{result.cards.map((card, i) => <article key={i} className="rounded-xl bg-dark/5 p-3"><h4 className="text-sm font-bold">{card.title}</h4><p className="mt-2 whitespace-pre-wrap break-words text-sm">{card.text}</p></article>)}</div><p className="mt-3 whitespace-pre-wrap text-sm">{result.why}</p></> : !interview && <p className="mt-3 text-sm text-dark/60">{zh ? "此任務尚未保存 Insights。" : "This task has no saved Insights yet."}</p>}
     {interview && (summary ? <details open={!result}><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{zh ? "已保存的訪談統計" : "Saved interview summary"}</summary><InterviewSummaryView summary={summary} /></details> : !error && <p role="status" className="mt-3 text-sm">{zh ? "載入統計…" : "Loading summary…"}</p>)}
     {action.taskFinding?.error && <p role="alert" className="mt-3 whitespace-pre-wrap text-sm text-red-700">{action.taskFinding.error}</p>}
-    {error && <div role="alert" className="mt-3 text-sm text-red-700"><p className="whitespace-pre-wrap">{error}</p><button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></div>}
+    {error && <div role="alert" className="mt-3 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p><button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></div>}
   </section>;
 }

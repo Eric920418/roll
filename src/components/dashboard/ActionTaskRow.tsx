@@ -1,6 +1,7 @@
 "use client";
 import { commercialTask } from "@/lib/validation/schema";
 import type { ReactNode } from "react";
+import type { ActionPlanDto } from "@/lib/action-plan/service";
 import TaskDependencyEditor from "./TaskDependencyEditor";
 import TaskProgressLog from "./TaskProgressLog";
 import { useLocale } from "next-intl";
@@ -11,7 +12,7 @@ import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { taskReference, priorityTier } from "@/lib/action-plan/ranking";
 import { formatActionTime } from "@/lib/action-plan/time";
 
-export default function ActionTaskRow({ action, busy = false, readOnly = false, onToggle, onMetric, onDependencyChange, revision, onEdit, onDelete, href, compact = false, featured = false, focusMode = false, workspace }: { focusMode?: boolean; workspace?: ReactNode; action: ActionPlanActionDto; busy?: boolean; readOnly?: boolean; revision?: number; onDependencyChange?: (thresholds: Record<string, number | null>, revision?: number) => Promise<boolean | void>; onToggle?: () => void; onMetric?: (metric: { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number }) => Promise<boolean | void>; onEdit?: () => void; onDelete?: () => void; href?: string; compact?: boolean; featured?: boolean }) {
+export default function ActionTaskRow({ action, busy = false, readOnly = false, onToggle, onMetric, onDependencyChange, revision, onEdit, onDelete, href, compact = false, featured = false, focusMode = false, workspace, plan }: { plan?: ActionPlanDto; focusMode?: boolean; workspace?: ReactNode; action: ActionPlanActionDto; busy?: boolean; readOnly?: boolean; revision?: number; onDependencyChange?: (thresholds: Record<string, number | null>, revision?: number) => Promise<boolean | void>; onToggle?: () => void; onMetric?: (metric: { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number }) => Promise<boolean | void>; onEdit?: () => void; onDelete?: () => void; href?: string; compact?: boolean; featured?: boolean }) {
   const zh = useLocale() === "zh-tw";
   const status = action.done ? (zh ? "已完成" : "Done") : action.dependency.blocked ? (zh ? "受阻擋" : "Blocked") : (zh ? "可執行" : "Ready");
   const blockedReason = `${zh ? "前置條件" : "Requires"}: ${action.dependency.milestoneTitle || (action.dependency.missingLink ? (zh ? "請設定前置任務" : "Link prerequisites") : action.dependency.actionRefs.filter(d => !(d.resolved ?? d.done)).map(d => zh ? taskReference(d).replace(/^Milestone (\d+) · /, "里程碑 $1 的 ") : taskReference(d)).join(", "))}`;
@@ -38,6 +39,30 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
   </div>}{!readOnly && onMetric && !action.done && !action.dependency.blocked && action.recordingMode !== "interview" && !action.taskWorkspace && !commercialTask(action) && !(focusMode && workspace) && <TaskProgressLog inline={focusMode} action={action} revision={revision} busy={busy} onSave={onMetric} />}</>;
   const shortBlocker = action.dependency.milestoneTitle || (action.dependency.missingLink ? (zh ? "請設定前置任務" : "Link prerequisites") : action.dependency.actionRefs.filter(d => !(d.resolved ?? d.done)).map(d => `${d.crossMilestone && d.milestonePosition != null ? (zh ? `里程碑 ${Number(d.milestonePosition) + 1} 的 ` : `Milestone ${Number(d.milestonePosition) + 1} · `) : ""}#${d.displayNumber}${d.minimumCurrent != null ? ` (${d.metricCurrent ?? "?"}/${d.minimumCurrent} ${d.metricUnit || ""})` : ""}`).join(", "));
   const number = <span aria-hidden="true" className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dark/20 text-sm font-bold">{action.displayNumber}</span>;
+  if (compact && focusMode && featured && plan) {
+    const milestone = plan.roadmap?.milestones.find(m => m.id === action.milestoneId);
+    const group = plan.actions.filter(a => a.milestoneId === action.milestoneId);
+    const workId = `task-work-${action.id}`;
+    return <article className="min-w-0 space-y-6" data-legacy-task>
+      <section data-today-priority className="rounded-xl bg-black p-5 text-white sm:p-6">
+        <div className="flex flex-col items-start justify-between gap-4 lg:flex-row"><div className="min-w-0 w-full flex-1 lg:w-auto">
+          <p className="text-[10px] font-semibold tracking-wider text-white/55">{milestone ? `${zh ? "里程碑" : "Milestone"} ${milestone.position + 1} · ${milestone.title}` : zh ? "目前計畫" : "Current plan"} · {zh ? "行動" : "Action"} {group.findIndex(a => a.id === action.id) + 1} / {group.length}</p>
+          <h2 className="mt-3 break-words text-xl font-bold sm:text-2xl">{action.title}</h2>
+          <div className="mt-3 flex flex-wrap gap-1" aria-hidden="true">{group.map(a => <span key={a.id} className={"h-1 w-7 rounded-full " + (a.done || a.id === action.id ? "bg-white" : "bg-white/20")} />)}</div>
+        </div><button type="button" disabled={busy} className="min-h-11 shrink-0 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2 disabled:opacity-50" onClick={() => { const work = document.getElementById(workId); work?.scrollIntoView({ block: "start" }); work?.querySelector<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a")?.focus(); }}>{zh ? "繼續本步行動" : "Work on this step"}</button></div>
+        <dl className="mt-5 grid gap-5 border-t border-white/15 pt-4 text-sm sm:grid-cols-[1.6fr_1fr_1fr]">
+          <div><dt className="text-[10px] tracking-wider text-white/50">{zh ? "完成標準" : "Completion criteria"}</dt><dd className="mt-2 whitespace-pre-wrap break-words leading-6">{action.expectedOutcome.text}</dd></div>
+          <div><dt className="text-[10px] tracking-wider text-white/50">{zh ? "目前進度" : "Saved progress"}</dt><dd className="mt-2 font-semibold">{action.metric?.target != null ? `${action.metric.current ?? 0} / ${action.metric.target} ${action.metric.unit || ""}` : status}</dd></div>
+          <div><dt className="text-[10px] tracking-wider text-white/50">{milestone ? zh ? "里程碑期限" : "Milestone due" : zh ? "目標期限" : "Goal due"}</dt><dd className="mt-2 font-semibold">{milestone?.targetDate || plan.roadmap?.deadline || "—"}</dd></div>
+        </dl>
+      </section>
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" data-task-columns>
+        <section id={workId} className="min-w-0 scroll-mt-6 space-y-5 rounded-xl border border-dark/10 bg-white p-5" aria-label={zh ? "本步操作" : "Current step work"}><h3 className="text-base font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">02</span>{zh ? "操作區" : "Your work"}</h3>{metric}{workspace || <p className="text-sm leading-7 text-dark/60">{zh ? "依原任務的完成標準執行，完成後確認下方選項。" : "Follow the original completion criteria, then confirm below."}</p>}{fullDetails}
+        {checkbox && <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}</section>
+        <aside className="min-w-0 space-y-4 rounded-xl border border-dark/10 bg-white p-5"><h3 className="font-bold">{zh ? "方法指引" : "How to approach it"}</h3><p className="whitespace-pre-wrap break-words text-sm leading-7">{action.bottleneckFit.reason}</p><LearningResources visual kind={workspaceKind(action)} question={action.title} /></aside>
+      </div>
+    </article>;
+  }
   if (compact) return <article className={`min-w-0 rounded-2xl border bg-white p-3 [overflow-wrap:anywhere] sm:p-4 ${featured ? "border-black shadow-sm" : focusMode ? "border-dark/30" : "border-dark/10"}`}>
     <div className={focusMode ? "relative" : "flex items-start gap-2 sm:gap-3"}><div className={focusMode ? "absolute left-0 top-0 flex items-start gap-2" : "flex shrink-0 flex-col items-center gap-2 sm:flex-row sm:items-start"}>{number}{!featured && checkbox}</div>
       <details key={featured ? "featured" : "secondary"} open={featured} className="group/task min-w-0 flex-1">
