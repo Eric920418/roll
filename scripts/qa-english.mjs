@@ -17,7 +17,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -331,6 +331,14 @@ async function flowCore(key, width, locale) {
     check('Complete current step ' + width, await postClick(completeLabel) === 200);
     await article.getByRole('heading', { name: title, exact: true }).waitFor();
     check('Only current-step work form remains '+width,await article.locator(':scope > fieldset').count()===1);
+    const guided=article.locator('[data-guided-fields]').first();
+    if(await guided.isVisible()){
+      const before=await guided.locator('input,textarea,select').evaluateAll(nodes=>nodes.map(n=>n.value));
+      check('One question group visible '+locale+title,await guided.locator(':scope > div:not([hidden])').count()===2);
+      await guided.getByRole('button',{name:w('下一題','Next'),exact:true}).click();await guided.getByRole('button',{name:w('上一題','Back'),exact:true}).click();
+      check('Guided navigation retains values '+locale+title,JSON.stringify(await guided.locator('input,textarea,select').evaluateAll(nodes=>nodes.map(n=>n.value)))===JSON.stringify(before));
+    }
+    await article.getByRole('button',{name:w('切換完整表單','Switch to complete form'),exact:true}).click();
   }
   async function responsive(name) {
     for (const size of [390, 768, 1440]) {
@@ -341,6 +349,7 @@ async function flowCore(key, width, locale) {
     await page.setViewportSize({ width, height: 1000 });
   }
   await responsive('Conversation template');
+  await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Talk entry opens source drafting '+locale,await article.locator('[data-task-assist]').evaluate(e=>e.open));await article.locator('[data-task-assist] > summary').click();
   check('Initial goal expands map ' + width, await page.locator('#action-map').evaluate(e => e.open));
   check('Only one actionable map step ' + width, await page.locator('#action-map button').count() === 1);
   await page.locator('#action-map > summary').click();
@@ -414,7 +423,7 @@ async function flowCore(key, width, locale) {
     await proposals.nth(i).locator('summary').click();
     const row = proposals.nth(i);
     await row.getByLabel(w('實際聯絡日期', 'Actual contact date'), { exact: true }).fill(date);
-    await row.getByLabel(w('管道', 'Channel'), { exact: true }).fill('Email');
+    await row.getByLabel(w('管道', 'Channel'), { exact: true }).selectOption('Email');
     await row.getByLabel(w('聯絡狀態', 'Contact status'), { exact: true }).selectOption('sent');
     await row.getByLabel(w('聯絡訊息／價格、範圍與期間', 'Message / price, scope and duration'), { exact: true }).fill('USD100 reporting pilot for fourteen days, with agreed success criteria.');
   }
@@ -798,14 +807,14 @@ async function pdfCompletion() {
     response=waitResponse(page,r=>r.url().endsWith('/api/evidence')&&r.request().method()==='POST');await panel.getByRole('button',{name:w('確認並儲存佐證關聯','Save evidence links'),exact:true}).click();assert.equal((await response).status(),200);
     await panel.getByRole('heading',{name:zh?'你目前在第 4 階段：驗證付費意願':'Stage 4: Validate willingness to pay',exact:true}).waitFor();check('Server evidence stage '+locale,true);
     for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Evidence profile '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'pdf-evidence-'+locale+'-'+width);}
-    await page.goto(origin+prefix+'/dashboard/matchmaking?tab=messages');await page.locator('summary').filter({hasText:w('任務、圓桌與交流 Email 提醒','Task, roundtable and connection emails')}).click();
+    await page.goto(origin+prefix+'/dashboard/matchmaking?tab=messages');const preferences=page.locator('summary').filter({hasText:w('任務、圓桌與交流 Email 提醒','Task, roundtable and connection emails')});check('One email preferences panel '+locale,await preferences.count()===1);await preferences.click();
     const pref=page.locator('details').filter({has:page.getByRole('button',{name:w('儲存通知偏好','Save email preferences'),exact:true})});
     check('Email categories default off '+locale,await pref.getByRole('checkbox').evaluateAll(nodes=>nodes.every(n=>!n.checked)));
     await pref.getByRole('checkbox').first().check();response=waitResponse(page,r=>r.url().endsWith('/api/evidence')&&r.request().method()==='POST');await pref.getByRole('button',{name:w('儲存通知偏好','Save email preferences'),exact:true}).click();assert.equal((await response).status(),200);
     const diagnosis={companyStage:'MVP',stageReason:'Owned QA evidence',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Find real customers',bottleneckConfidence:65};
     const generated=await context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale,requestId:randomUUID(),candidateCount:5,diagnosis,answers:[{question:'Progress',answer:'Working MVP'},{question:'Bottleneck',answer:'Unverified customer demand'},{question:'Goal',answer:'Verify demand'}]}});assert.equal(generated.status(),201);const plan=(await generated.json()).data;users[key].flowActionIds=plan.actions.map(a=>a.id);
     await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('article[data-next-step="record"]').waitFor();await closeTour(page,locale);
-    await page.locator('summary').filter({hasText:w('語音／逐字稿與 AI 草稿協助','Speech, transcript and AI drafting')}).click();const transcript=page.getByRole('textbox',{name:w('貼上會議紀錄或逐字稿','Paste meeting notes or a transcript'),exact:true});await transcript.fill('Existing transcript');
+    await page.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Talk entry does not start microphone '+locale,await page.evaluate(()=>!window.qaSpeech&&document.activeElement?.tagName!=='TEXTAREA'));const transcript=page.getByRole('textbox',{name:w('貼上會議紀錄或逐字稿','Paste meeting notes or a transcript'),exact:true});await transcript.fill('Existing transcript');
     const speechStart=page.getByRole('button',{name:w('開始語音轉寫','Start speech transcription'),exact:true}),speechCancel=page.getByRole('button',{name:w('取消啟動','Cancel speech start'),exact:true});
     await speechStart.click();check('Speech waits for actual start '+locale,await speechCancel.isVisible()&&await page.getByRole('status').filter({hasText:w('正在啟動語音辨識','Starting speech recognition')}).isVisible());
     await speechCancel.click();check('Pending speech can cancel without losing draft '+locale,await speechStart.isVisible()&&await transcript.inputValue()==='Existing transcript'&&await page.evaluate(()=>window.qaSpeech.aborted&&window.qaSpeech.onstart===null&&window.qaSpeech.onresult===null));
@@ -813,6 +822,7 @@ async function pdfCompletion() {
     await speechStart.click();await page.evaluate(()=>{window.qaSpeech.onstart();window.qaSpeech.onend();});await page.getByRole('alert').filter({hasText:'no-result'}).waitFor();check('Silent speech end gives actionable feedback '+locale,await speechStart.isVisible()&&await transcript.inputValue()==='Existing transcript');
     await speechStart.click();await page.evaluate(()=>window.qaSpeech.onstart());const speechStop=page.getByRole('button',{name:w('停止收音','Stop listening'),exact:true});await speechStop.waitFor();check('Speech shows listening only after start '+locale,await speechStop.isVisible());await page.evaluate(()=>{window.qaSpeech.onresult({resultIndex:0,results:[{isFinal:true,0:{transcript:'Spoken words'}}]});window.qaSpeech.abort=()=>{throw Error('QA already stopped');};window.qaSpeech.onerror({error:'not-allowed',message:'QA permission declined'});});await page.getByRole('alert').filter({hasText:'not-allowed · QA permission declined'}).waitFor();check('Speech failure restores retry even if abort throws '+locale,await speechStart.isVisible());
     await page.waitForFunction(()=>[...document.querySelectorAll('textarea')].some(e=>e.value.includes('Spoken words')));check('Speech result and failure retain text '+locale,(await transcript.inputValue()).includes('Spoken words'));await page.reload();await page.locator('summary').filter({hasText:w('語音／逐字稿與 AI 草稿協助','Speech, transcript and AI drafting')}).click();check('Transcript draft survives navigation '+locale,(await transcript.inputValue()).includes('Spoken words'));
+    await speechStart.click();await page.evaluate(()=>window.qaSpeech.onstart());await speechStop.waitFor();await page.locator('[data-task-assist] > summary').click();await page.waitForFunction(()=>window.qaSpeech.aborted&&window.qaSpeech.onresult===null);check('Closing speech panel stops capture '+locale,await page.evaluate(()=>window.qaSpeech.onstart===null));await page.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Reopening speech keeps transcript '+locale,(await transcript.inputValue()).includes('Spoken words'));
     response=waitResponse(page,r=>r.url().endsWith('/api/action-plans/assist')&&r.request().method()==='POST');await page.getByRole('button',{name:w('產生未確認草稿 · 使用 1 次 AI 額度','Generate unconfirmed draft · uses 1 AI allowance'),exact:true}).click();check('AI failure returns safe server error '+locale,(await response).status()>=400);await page.getByRole('alert').filter({hasText:'HTTP'}).waitFor();check('AI failure retains transcript '+locale,(await transcript.inputValue()).includes('Spoken words'));
     const attempts=[];await page.route('**/api/action-plans/assist',async route=>{attempts.push(route.request().postDataJSON());if(attempts.length===1){await db.actionPlan.update({where:{id:plan.id},data:{revision:{increment:1}}});await route.abort();}else await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'QA lost response retry verified',code:'qa-retry',requestId:'qa-safe-retry'})});});
     const generateButton=page.getByRole('button',{name:w('產生未確認草稿 · 使用 1 次 AI 額度','Generate unconfirmed draft · uses 1 AI allowance'),exact:true});const refreshed=waitResponse(page,r=>r.url().includes('/api/action-plans/flow?')&&r.request().method()==='GET');await generateButton.click();await refreshed;await page.getByRole('alert').filter({hasText:'fetch'}).waitFor();response=waitResponse(page,r=>r.url().endsWith('/api/action-plans/assist')&&r.request().method()==='POST');await generateButton.click();assert.equal((await response).status(),503);check('Lost AI response keeps original request and revision '+locale,attempts.length===2&&JSON.stringify(attempts[0])===JSON.stringify(attempts[1]));await page.unroute('**/api/action-plans/assist');
@@ -824,6 +834,21 @@ async function pdfCompletion() {
   }
 }
 
+
+async function guidedEntryQA() {
+  for(const [key,locale] of [['mobile','zh-tw'],['desktop','en']]){
+    const zh=locale==='zh-tw',w=(a,b)=>zh?a:b,prefix=zh?'/zh-tw':'';const {context,page}=await session(key,390);
+    const response=await context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale,requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:'QA evidence',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Demand',bottleneckConfidence:65},answers:[{question:'Progress',answer:'Working MVP'},{question:'Bottleneck',answer:'Customer demand'},{question:'Goal',answer:'Verify demand'}]}});assert.equal(response.status(),201);
+    await page.goto(origin+prefix+'/dashboard/agenda');const article=page.locator('article[data-next-step="record"]');await article.waitFor();await closeTour(page,locale);
+    await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();
+    check('Talk entry opens without focusing text '+locale,await article.locator('[data-task-assist]').evaluate(e=>e.open&&document.activeElement?.tagName==='SUMMARY'));
+    const transcript=article.getByRole('textbox',{name:w('貼上會議紀錄或逐字稿','Paste meeting notes or a transcript'),exact:true});await transcript.fill('QA owned source words');await article.locator('[data-task-assist] > summary').click();
+    await article.getByRole('button',{name:w('逐題點選整理','Work through questions'),exact:true}).click();check('Question entry focuses its form '+locale,await article.locator('fieldset').evaluate(e=>e.contains(document.activeElement)));
+    await article.getByRole('button',{name:w('聊聊／語音整理','Talk / speech drafting'),exact:true}).click();check('Entry changes retain transcript '+locale,await transcript.inputValue()==='QA owned source words');
+    for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Guided entry layout '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'guided-entry-'+locale+'-'+width);}
+    await context.close();
+  }
+}
 
 async function homepageQA() {
   const context=await browser.newContext();contexts.push(context);const page=await context.newPage();page.on('pageerror',e=>report.browserErrors.push(e.message));
@@ -902,7 +927,8 @@ try {
   await startServer(); await redirects();
   if (mode === 'start') {
     if(scenario!=='homepage') await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'homepage') { await homepageQA(); }
+    if (scenario === 'guided') { await guidedEntryQA(); }
+    else if (scenario === 'homepage') { await homepageQA(); }
     else if (scenario === 'coupons') { await couponCodesQA(); }
     else if (scenario === 'commerce') { await commerceSettingsQA(); }
     else if (scenario === 'pdf') { await pdfCompletion(); }
