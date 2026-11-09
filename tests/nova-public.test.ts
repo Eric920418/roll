@@ -32,7 +32,9 @@ for (const locale of ['en', 'zh-tw'] as const)
         assert.equal((html.match(/<h1/g) || []).length, 1);
         assert(html.includes(routes.pathForLocale('/signup', locale)));
         assert(html.includes('Inside NOVA AI'));
-        assert(!html.includes('/nova/cases/') && !html.includes('/medix-') && !html.includes('case study photo'));
+        assert(!html.includes('/medix-'));
+        for (const file of ['quibi', 'dropbox', 'zappos']) assert(html.includes(`/nova/cases/${file}.webp`));
+        assert.equal((html.match(/casePhoto/g) || []).length, 3);
         for (const name of ['Quibi', 'Dropbox', 'Zappos']) assert(html.includes(name));
         assert(html.indexOf('aria-label="Quibi"') < html.indexOf('aria-label="Dropbox"'));
         assert(html.indexOf('aria-label="Dropbox"') < html.indexOf('aria-label="Zappos"'));

@@ -852,7 +852,7 @@ async function guidedEntryQA() {
 
 async function homepageQA() {
   const context=await browser.newContext();contexts.push(context);const page=await context.newPage();page.on('pageerror',e=>report.browserErrors.push(e.message));
-  for(const locale of ['en','zh-tw'])for(const width of [390,768,1440]){
+  for(const locale of ['en','zh-tw'])for(const width of [390,768,1440,1920]){
     const label=locale+width;await page.setViewportSize({width,height:1000});const response=await page.goto(origin+(locale==='en'?'':'/zh-tw')+'/product');check('Home responds '+label,response.status()===200);
     await page.getByRole('heading',{level:1}).waitFor();check('Home layout '+label,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));
     check('Every landing element has square corners '+label,await page.locator('main').evaluate(root=>[root,...root.querySelectorAll('*')].every(el=>{const s=getComputedStyle(el);return [s.borderTopLeftRadius,s.borderTopRightRadius,s.borderBottomLeftRadius,s.borderBottomRightRadius].every(v=>v==='0px');})));
@@ -863,6 +863,21 @@ async function homepageQA() {
     check('Confirmed event and two placeholders '+label,await page.locator('#community time[datetime="2026-11-16"]').count()===1&&await page.locator('#community').getByRole('heading',{name:'Coming soon',exact:true}).count()===2);
     check('No invented event registration '+label,await page.locator('#community').getByRole('link',{name:/reserve|register|報名|候補/i}).count()===0);
     const body=await page.locator('body').innerText();check('Inside NOVA AI and no old operators '+label,body.includes('Inside NOVA AI')&&!/Inside ROLL ON|Built by operators|\[Photo/.test(body));
+    check('Case photos match supplied companies '+label,await page.locator('#cases article').evaluateAll(nodes=>nodes.every(n=>n.querySelector('img')?.getAttribute('src')?.includes(n.getAttribute('aria-label').toLowerCase()+'.webp'))));
+    for(const interval of ['month','year']){
+      await page.getByRole('button',{name:interval==='month'?(locale==='en'?'Monthly':'月繳'):(locale==='en'?'Yearly':'年繳'),exact:true}).click();
+      const cards=page.locator('[data-pricing-card]');
+      const layout=await cards.evaluateAll(nodes=>{
+        const result=nodes.map(n=>{const rect=n.getBoundingClientRect();const positions=Object.fromEntries(['amount','billing','features','action'].map(part=>{const e=n.querySelector('[data-pricing-part="'+part+'"]'),r=e.getBoundingClientRect();return[part,{top:r.top,bottom:r.bottom,height:r.height}];}));const action=n.querySelector('a'),style=getComputedStyle(action);return{key:n.getAttribute('data-pricing-card'),top:rect.top,positions,color:style.color,background:style.backgroundColor,contained:action.scrollWidth<=action.clientWidth+1};});
+        const luminance=value=>{if(!value.startsWith('rgb('))return null;const channels=value.match(/[\d.]+/g).slice(0,3).map(Number).map(n=>{const v=n/255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;});return channels[0]*.2126+channels[1]*.7152+channels[2]*.0722;};
+        return{aligned:result.every((c,i)=>result.slice(i+1).filter(other=>Math.abs(other.top-c.top)<1).every(other=>['amount','billing','features','action'].every(part=>Math.abs(c.positions[part].top-other.positions[part].top)<1&&Math.abs(c.positions.action.bottom-other.positions.action.bottom)<1))),contrast:result.every(c=>{const text=luminance(c.color),background=luminance(c.background);return text!==null&&background!==null&&(Math.max(text,background)+.05)/(Math.min(text,background)+.05)>=4.5;}),touch:result.every(c=>c.positions.action.height>=44&&c.contained)};
+      });
+      check('Pricing rows aligned '+label+interval,layout.aligned);check('Pricing actions readable '+label+interval,layout.contrast&&layout.touch);
+      const amounts=await page.locator('[data-pricing-part="amount"]').allTextContents();check('Existing prices retained '+label+interval,amounts[0]==='USD 0'&&amounts[1]===(interval==='month'?'USD 49':'USD 39')&&amounts[2]===(interval==='month'?'USD 149':'USD 139'));
+      if(interval==='year'){check('Annual totals disclosed '+label,(await page.locator('[data-pricing-card="pro"] [data-pricing-part="billing"]').innerText()).includes('USD 468')&&(await page.locator('[data-pricing-card="business"] [data-pricing-part="billing"]').innerText()).includes('USD 1,668'));}
+      if(width>=1440){const file=path.join(output,'pricing-'+label+'-'+interval+'.png');await cards.first().locator('..').screenshot({path:file});report.screenshots.push(file);}
+    }
+    await page.getByRole('button',{name:locale==='en'?'Monthly':'月繳',exact:true}).click();
     const height=await page.evaluate(()=>document.body.scrollHeight);for(let y=0;y<height;y+=750){await page.evaluate(y=>scrollTo(0,y),y);await page.waitForTimeout(60);}await page.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));check('Images load '+label,true);
     await screenshot(page,'homepage-'+label);
     if(width===1440){const file=path.join(output,'cases-'+locale+'.png');await page.locator('#cases').screenshot({path:file});report.screenshots.push(file);}
