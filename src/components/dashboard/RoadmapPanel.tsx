@@ -1,5 +1,5 @@
 "use client";
-import { planText, displayTaskReference } from "@/lib/action-plan/display";
+import { PlanLocalizationProvider, PlanCopyText, usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { personalizationResponses } from "@/lib/action-plan/personalization";
 import ValidationWorkspace from "./ValidationWorkspace";
 import ActionMap from "./ActionMap";
@@ -27,6 +27,7 @@ const input = "w-full rounded-xl border border-dark/15 bg-white px-3 py-2 text-s
 const editorSchema = z.object({ ...roadmapDraftSchema.shape, goal: z.string().max(2000), startsAt: z.string().max(10), deadline: z.string().max(10), milestones: z.array(z.object({ ...milestoneSchema.shape, title: z.string().max(200), expectedOutcome: z.string().max(1000), acceptanceCriteria: z.string().max(1000), targetDate: z.string().max(10) })).min(3).max(5), actions: z.array(z.object({ ...roadmapDraftSchema.shape.actions.element.shape, title: z.string().max(200), expectedOutcome: z.string().max(1000) })).length(5) });
 
 export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userId: string; initialPlan: ActionPlanDto | null; onChanged: (plan: ActionPlanDto | null) => void }) {
+  const { planText, displayTaskReference } = usePlanDisplay();
   const t = useTranslations("Dashboard.roadmap"), locale = useLocale() === "zh-tw" ? "zh-tw" : "en", router = useRouter();
   const tools = useRef<HTMLDetailsElement>(null), planTrigger = useRef<HTMLButtonElement>(null), dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLElement | null>(null), busyRef = useRef(false);
   const [toolsOpen, setToolsOpen] = useState(false), [referencesOpen, setReferencesOpen] = useState(false);
@@ -201,8 +202,8 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   function milestoneCard(m: MilestoneView, readOnly = false) {
     const isCurrent = m.id === current?.id && !readOnly;
     return <details key={m.id} open={isCurrent || (!readOnly && (search.length > 0 || filter !== "all") && initialPlan?.actions.some(a => a.milestoneId === m.id && matches(a)))} className="min-w-0 rounded-xl border-0 border-dark/15 p-0 sm:border sm:p-4">
-      <summary className="cursor-pointer break-words [overflow-wrap:anywhere] text-sm font-semibold"><span>{m.position + 1}. {planText(m.title || "", locale)}</span><span className="ml-3 text-xs text-dark/60">{t(`status.${m.status}`)} · {m.targetDate}</span></summary>
-      <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{planText(m.expectedOutcome || "", locale)}</p><p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-dark/60">{t("criteria")}: {planText(m.acceptanceCriteria || "", locale)}</p>
+      <summary className="cursor-pointer break-words [overflow-wrap:anywhere] text-sm font-semibold"><span>{m.position + 1}. {<PlanCopyText value={m.title || ""} />}</span><span className="ml-3 text-xs text-dark/60">{t(`status.${m.status}`)} · {m.targetDate}</span></summary>
+      <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{<PlanCopyText value={m.expectedOutcome || ""} />}</p><p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-dark/60">{t("criteria")}: {<PlanCopyText value={m.acceptanceCriteria || ""} />}</p>
       <div className="mt-3 space-y-3">{(readOnly ? historical : initialPlan)?.actions.filter(a => a.milestoneId === m.id && (readOnly || a.id !== featuredId && matches(a))).map(a => taskRow(a, readOnly))}</div>
       {m.outcomeNote && <p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{t("actualResult")}: {m.outcomeNote}</p>}
       {!readOnly && m.status === "awaiting" && <form onSubmit={e => { e.preventDefault(); void outcome(m, true); }} className="mt-4 space-y-3"><label className="block text-sm">{t("actualResult")}<textarea aria-label={t("actualResult")} required maxLength={4000} rows={3} className={`${input} mt-1`} value={note} onChange={e => storeNote(e.target.value)} /></label><button className={button} disabled={busy || !note.trim()}>{t("confirmOutcome")}</button></form>}
@@ -260,7 +261,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
         {(error || view?.error) && <div role="alert" className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{error || view?.error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
         {notice && <p role="status" className="rounded-xl bg-dark/[0.04] p-3 text-sm">{notice}</p>}
         {view && view.history.length > 0 && <section><h3 className="font-bold">{t("history")}</h3><ul className="mt-3 space-y-2">{view.history.map(p => <li key={p.id}><button type="button" className={button} onClick={() => { void request("GET", undefined, `/api/action-plans/roadmap?planId=${encodeURIComponent(p.id)}`).then(data => setHistorical(data.plan)).catch(cause => setError(cause.message)); }}>{p.goal || t("oldPlan")} · {p.createdAt.slice(0, 10)}</button></li>)}</ul></section>}
-        {historical && <section className="space-y-3 rounded-xl border border-dark/10 p-4"><h3 className="font-bold">{t("readOnly")}</h3>{historical.roadmap?.milestones.map(m => milestoneCard(m, true))}<ul className="list-inside list-disc space-y-2 text-sm">{historical.actions.filter(a => !historical.roadmap || !a.milestoneId).map(a => <li key={a.id} className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{a.done ? "✓ " : "○ "}{planText(a.title, locale)} — {planText(a.expectedOutcome.text, locale)}</li>)}</ul></section>}
+        {historical && <PlanLocalizationProvider planId={historical.id} revision={historical.revision}><section className="space-y-3 rounded-xl border border-dark/10 p-4"><h3 className="font-bold">{t("readOnly")}</h3>{historical.roadmap?.milestones.map(m => milestoneCard(m, true))}<ul className="list-inside list-disc space-y-2 text-sm">{historical.actions.filter(a => !historical.roadmap || !a.milestoneId).map(a => <li key={a.id} className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{a.done ? "✓ " : "○ "}{planText(a.title, locale)} — {planText(a.expectedOutcome.text, locale)}</li>)}</ul></section></PlanLocalizationProvider>}
       </div>
     </dialog>, document.body)}
   </section>;

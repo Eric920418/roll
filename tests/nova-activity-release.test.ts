@@ -47,10 +47,11 @@ test("Home preserves trial setup, actual evidence and the paid five-question sta
 function load<T>(file: string, mocks: Record<string, unknown>, globals: Record<string, unknown> = {}) {
   const req = createRequire(import.meta.url), loaded = { exports: {} };
   const code = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  runInNewContext(code, { module: loaded, exports: loaded.exports, URL, URLSearchParams, console, ...globals, require: (id: string) => id in mocks ? mocks[id] : req(id) });
+  runInNewContext(code, { module: loaded, exports: loaded.exports, URL, URLSearchParams, console, ...globals, require: (id: string) => id in mocks ? mocks[id] : id === "@/components/dashboard/PlanLocalization" ? { usePlanDisplay: () => req("../src/lib/action-plan/display") } : req(id) });
   return loaded.exports as T;
 }
-const intl = { useLocale: () => "zh-tw", setRequestLocale() {} };
+const intl = {
+useLocale: () => "zh-tw", setRequestLocale() {} };
 
 test("Four canonical tabs and legacy aliases remain deterministic", () => {
   assert.deepEqual(MATCHMAKING_TABS, ["recommendations", "all", "roundtables", "messages"]);
@@ -173,7 +174,7 @@ test("Home renders one primary task in both languages with locale-correct destin
     const tree = nodes(await page.default({ params: Promise.resolve({ locale }) }));
     assert.equal(tree.filter(n => n.type === "h1").length, 1);
     const main = tree.find(n => n.props.id === "home-task-title");
-    assert.equal(main?.props.children, "Saved task");
+    assert.equal((main?.props.children as { props: { value: string } }).props.value, "Saved task");
     const links = tree.filter(n => n.type === "a");
     assert.equal(links.filter(n => n.props.href === `${locale === "en" ? "" : "/zh-tw"}/dashboard/agenda#action-ready`).length, 1);
     assert.match(JSON.stringify(tree), locale === "en" ? /Continue today's task/ : /繼續今日任務/);

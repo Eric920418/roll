@@ -1,7 +1,6 @@
 import RoundtableCommitments from "@/components/dashboard/roundtables/Commitments";
 import { InvestorProgress } from "@/components/dashboard/network/NetworkPanels";
 import { requireUserPage } from "@/lib/auth/guard";
-import NextStepsTour from "@/components/dashboard/NextStepsTour";
 import ProspectSearch from "@/components/dashboard/prospecting/ProspectSearch";
 import ConversationHistory from "@/components/dashboard/ConversationHistory";
 import GettingStartedHint from "@/components/dashboard/GettingStartedHint";
@@ -46,8 +45,6 @@ export default async function AgendaPage({ params, searchParams }: Props) {
   const guided = (await searchParams).guide === "build";
   const actionPlan = await getActiveActionPlan(account.id);
   const savedDiscovery = discovery && !actionPlan ? await getDiscoverySnapshot(account.id) : null;
-  const currentTask = actionPlan?.nextMoves[0] || actionPlan?.actions.find(a => !a.done && !a.dependency.blocked);
-  const awaitingOutcome = actionPlan?.roadmap?.milestones.some(m => !m.achievedAt && ["awaiting", "unplanned"].includes(m.status));
 
   return (
     <div className="font-[family-name:var(--font-body)]">
@@ -59,7 +56,6 @@ export default async function AgendaPage({ params, searchParams }: Props) {
       <AgendaBoard guided={guided || !actionPlan} userId={account.id}
         actionPlan={actionPlan}
       />
-      {actionPlan && <NextStepsTour workflowVersion={actionPlan.workflowVersion} mission={currentTask?.title || (awaitingOutcome ? (locale === "zh-tw" ? "確認本階段成果並繼續" : "Confirm this stage’s outcomes and continue") : (locale === "zh-tw" ? "驗證你的目標客戶" : "Validate your ICP"))} target={currentTask?.metric?.target} reward={Boolean(currentTask)} />}
       <GettingStartedHint mode="next" />
       <RoundtableCommitments />
       {savedDiscovery?.journeyId && (savedDiscovery.total > 0 || savedDiscovery.setup?.confirmed) && <div className="my-7"><DiscoveryJourney userId={account.id} compactTrial /></div>}

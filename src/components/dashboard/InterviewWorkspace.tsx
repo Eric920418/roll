@@ -1,5 +1,5 @@
 "use client";
-import { planText } from "@/lib/action-plan/display";
+import { usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { pathForLocale } from "@/lib/routes";
@@ -80,20 +80,22 @@ export function InterviewSummaryView({ summary }: { summary: InterviewSummary })
       <h3 className="font-semibold">{zh ? "前三項創業挑戰" : "Top 3 Startup Challenges"} · {summary.total} {zh ? "間公司" : "companies"}</h3>
       {summary.top.length ? <ol className="list-inside list-decimal space-y-3">{summary.top.map(row => <li key={row.key}>{CHALLENGES[row.key][zh ? 1 : 0]} — {row.count}/{summary.total} ({row.percent}%)</li>)}</ol> : <p>{zh ? "尚無已分類的主要挑戰。" : "No classified challenges yet."}</p>}
       <p className="text-sm text-dark/60">{zh ? "其他" : "Other"}: {summary.counts.other} · {zh ? "未分類" : "Unclassified"}: {summary.counts.unclassified}</p>
-      <h3 className="font-semibold">{zh ? "受訪公司名單" : "Interviewed companies"}</h3>
-      {summary.companies.length ? <ul className="space-y-2">{summary.companies.map(company => <li key={company.recordId} className="break-words">{company.name} · {company.challenge === "unclassified" ? (zh ? "未分類" : "Unclassified") : CHALLENGES[company.challenge][zh ? 1 : 0]}</li>)}</ul> : <p>{zh ? "尚無有效訪談紀錄。" : "No valid interviews yet."}</p>}
+      <h3 className="font-semibold">{zh ? "受訪公司名單" : "Companies with conversations"}</h3>
+      {summary.companies.length ? <ul className="space-y-2">{summary.companies.map(company => <li key={company.recordId} className="break-words">{company.name} · {company.challenge === "unclassified" ? (zh ? "未分類" : "Unclassified") : CHALLENGES[company.challenge][zh ? 1 : 0]}</li>)}</ul> : <p>{zh ? "尚無有效訪談紀錄。" : "No valid conversations yet."}</p>}
     </div>;
 }
 
 export function CompletedTaskInsights({ action, revision }: { action: ActionPlanActionDto; revision?: number }) {
+  const { planText } = usePlanDisplay();
   const zh = useLocale() === "zh-tw", [summary, setSummary] = useState<InterviewSummary | null>(null), [error, setError] = useState("");
   const interview = workspaceKind(action) === "interview";
   async function load() { try { setSummary((await readInterviews(action.id)).summary); setError(""); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } }
   useEffect(() => { if (!interview) return; let alive = true; void readInterviews(action.id).then(data => { if (alive) { setSummary(data.summary); setError(""); } }).catch(cause => { if (alive) setError(cause instanceof Error ? cause.message : String(cause)); }); return () => { alive = false; }; }, [action.id, revision, interview]);
+  const copy = (value: string) => action.taskFinding?.source === "ai" ? planText(value, zh ? "zh-tw" : "en") : value;
   const result = action.taskFinding?.result;
   return <section aria-label={zh ? "前項任務分析結果" : "Previous task Insights"} className="mb-4 rounded-2xl border border-dark/15 bg-white p-5"><h3 className="font-bold">{zh ? "分析結果" : "Insights"} · {zh ? "供下一項任務參考" : "Reference for your next task"}</h3><p className="mt-2 text-sm text-dark/60">#{action.displayNumber} · {planText(action.title, zh ? "zh-tw" : "en")}</p>
-    {commercialTask(action) ? <div className="mt-3 space-y-2 text-sm"><p>{action.commercialValidation?.requiresConfirmation ? (zh ? "付款證據已撤銷，成果需重新確認。" : "Payment evidence revoked; reconfirm this outcome.") : action.commercialValidation?.confirmedAt ? (zh ? `已確認 ${action.metric?.current ?? 0} 家有效商業承諾；付款與合約金額在上方分別顯示。` : `${action.metric?.current ?? 0} companies with confirmed commitments; payment and contract values are listed separately above.`) : (zh ? "歷史完成紀錄；付款／付費合約尚未經此流程驗證。" : "Historical completion; payment / paid contract not verified in this workflow.")}</p></div> : result ? <><div className="mt-4 grid gap-3 sm:grid-cols-3">{result.cards.map((card, i) => <article key={i} className="rounded-xl bg-dark/5 p-3"><h4 className="text-sm font-bold">{card.title}</h4><p className="mt-2 whitespace-pre-wrap break-words text-sm">{card.text}</p></article>)}</div><p className="mt-3 whitespace-pre-wrap text-sm">{result.why}</p></> : !interview && <p className="mt-3 text-sm text-dark/60">{zh ? "此任務尚未保存 Insights。" : "This task has no saved Insights yet."}</p>}
-    {interview && (summary ? <details open={!result}><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{zh ? "已保存的訪談統計" : "Saved interview summary"}</summary><InterviewSummaryView summary={summary} /></details> : !error && <p role="status" className="mt-3 text-sm">{zh ? "載入統計…" : "Loading summary…"}</p>)}
+    {commercialTask(action) ? <div className="mt-3 space-y-2 text-sm"><p>{action.commercialValidation?.requiresConfirmation ? (zh ? "付款證據已撤銷，成果需重新確認。" : "Payment evidence revoked; reconfirm this outcome.") : action.commercialValidation?.confirmedAt ? (zh ? `已確認 ${action.metric?.current ?? 0} 家有效商業承諾；付款與合約金額在上方分別顯示。` : `${action.metric?.current ?? 0} companies with confirmed commitments; payment and contract values are listed separately above.`) : (zh ? "歷史完成紀錄；付款／付費合約尚未經此流程驗證。" : "Historical completion; payment / paid contract not verified in this workflow.")}</p></div> : result ? <><div className="mt-4 grid gap-3 sm:grid-cols-3">{result.cards.map((card, i) => <article key={i} className="rounded-xl bg-dark/5 p-3"><h4 className="text-sm font-bold">{copy(card.title)}</h4><p className="mt-2 whitespace-pre-wrap break-words text-sm">{copy(card.text)}</p></article>)}</div><p className="mt-3 whitespace-pre-wrap text-sm">{copy(result.why)}</p></> : !interview && <p className="mt-3 text-sm text-dark/60">{zh ? "此任務尚未保存 Insights。" : "This task has no saved Insights yet."}</p>}
+    {interview && (summary ? <details open={!result}><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{zh ? "已保存的訪談統計" : "Saved conversation summary"}</summary><InterviewSummaryView summary={summary} /></details> : !error && <p role="status" className="mt-3 text-sm">{zh ? "載入統計…" : "Loading summary…"}</p>)}
     {action.taskFinding?.error && <p role="alert" className="mt-3 whitespace-pre-wrap text-sm text-red-700">{action.taskFinding.error}</p>}
     {error && <div role="alert" className="mt-3 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p><button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></div>}
   </section>;

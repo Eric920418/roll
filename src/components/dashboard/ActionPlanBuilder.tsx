@@ -232,7 +232,7 @@ export default function ActionPlanBuilder({
               </button>
             </div>
 
-            {discoveryTrial && <p className="mt-4 text-sm">{locale === "zh-tw" ? "完成五題單選，確認適合你的起步任務。訪談、銷售與募資方向依答案安排；完整功能仍依原方案開放。" : "Answer five multiple-choice questions and confirm your starter steps. Interview, sales and fundraising priorities follow your answers; full features remain subject to your plan."}</p>}
+            {discoveryTrial && <p className="mt-4 text-sm">{locale === "zh-tw" ? "完成五題單選，確認適合你的起步任務。訪談、銷售與募資方向依答案安排；完整功能仍依原方案開放。" : "Answer five multiple-choice questions and confirm your starter steps. Conversation, sales and fundraising priorities follow your answers; full features remain subject to your plan."}</p>}
             {notice && <p role="status" className="mt-4 text-sm text-sky-800">{notice}</p>}
             {draft?.generatingAt && <p role="status" className="mt-4 text-sm text-sky-800">{tGuide("pendingRequest")}</p>}
             {busy && <p role="status" className="mt-4 text-sm">{t("diagnosing")}</p>}

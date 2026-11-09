@@ -8,6 +8,13 @@ export const COMPANY_STAGES = [
   "Expansion",
 ] as const;
 
+export function conversationCopy(value: string) {
+  return value.replace(/^Interview (\d+)/, 'Talk with $1')
+    .replace(/\binterviewees\b/gi, 'conversation participants').replace(/\binterviewee\b/gi, 'conversation participant')
+    .replace(/\binterviews\b/g, 'conversations').replace(/\bInterviews\b/g, 'Conversations')
+    .replace(/\binterview\b/g, 'conversation').replace(/\bInterview\b/g, 'Conversation');
+}
+
 export const BOTTLENECKS = {
   Product: [
     ["product_not_ready", "Product not ready"],

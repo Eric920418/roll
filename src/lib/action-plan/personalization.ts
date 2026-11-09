@@ -14,7 +14,7 @@ export const PERSONALIZATION_QUESTIONS = [
   { key: "payingCustomers", title: words("你目前有幾個付費客戶？", "How many paying customers do you currently have?"), options: [
     ["none", words("還沒有", "None yet")], ["1-5", words("1–5 個", "1–5")], ["6-20", words("6–20 個", "6–20")], ["21+", words("21 個以上", "21 or more")],
   ] },
-  { key: "interviews", title: words("你已經和幾位潛在客戶深入聊過需求？", "How many potential customers have you interviewed in depth?"), options: [
+  { key: "interviews", title: words("你已經和幾位潛在客戶深入聊過需求？", "How many potential customers have you had in-depth conversations with?"), options: [
     ["none", words("還沒有", "None yet")], ["1-5", words("1–5 位", "1–5")], ["6-15", words("6–15 位", "6–15")], ["16+", words("16 位以上", "16 or more")],
   ] },
   { key: "channel", title: words("你現在主要靠什麼方式找到客戶？", "How do you primarily find customers today?"), options: [
@@ -41,7 +41,7 @@ export function personalizedSteps(value: Personalization, locale: Locale) {
   const contacts = value.weeklyTime === "under3" ? 2 : value.weeklyTime === "3to8" ? 5 : 10;
   const channel = PERSONALIZATION_QUESTIONS[2].options.find(o => o[0] === value.channel)![1][locale];
   const steps = route === "interviews" ? [
-    w("訪談 3 間公司，記錄需求與付費意願", "Interview 3 companies about needs and willingness to pay"),
+    w("訪談 3 間公司，記錄需求與付費意願", "Talk with 3 companies about needs and willingness to pay"),
     w("比對買方回饋，列出有原話依據的需求", "Compare buyer feedback and list needs supported by direct quotes"),
   ] : route === "sales" ? [
     w("整理現有銷售流程與最常停住的環節", "Map the current sales process and where deals stall"),

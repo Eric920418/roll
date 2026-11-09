@@ -1,3 +1,4 @@
+import { conversationCopy } from "../src/lib/action-plan/constants";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { planText, planUnit, displayTaskReference } from '../src/lib/action-plan/display';
@@ -10,13 +11,14 @@ const sample = [
   ['At least 1 of 3 prospects agrees to a paid pilot, confirming a validated willingness-to-pay price point.', '在 3 位潛在客戶中，至少 1 位同意付費試用，確認對方接受的試用價格。'],
 ];
 test('Screenshot system phrases translate exactly and English remains byte-identical', () => {
-  for (const [en, zh] of sample) { assert.equal(planText(en, 'zh-tw'), zh); assert.equal(planText(en, 'en'), en); }
+  for (const [en, zh] of sample) { assert.equal(planText(en, 'zh-tw'), zh); assert.equal(planText(en, 'en'), conversationCopy(en)); }
+  assert.equal(planText(sample[0][1], 'en'), sample[0][0]);
   assert.equal(planText('  Run paid pilot offer with 12 prospects to test willingness to pay. ', 'zh-tw'), '向 12 位潛在客戶提出付費試用，驗證付費意願');
   assert.equal(planText('At least 2 of 12 prospects agree to a paid pilot.', 'zh-tw'), '在 12 位潛在客戶中，至少 2 位同意付費試用，確認對方接受的試用價格。');
 });
 test('Every fixed milestone and step uses the existing Traditional Chinese catalog', () => {
   for (const [zh, en] of [...MILESTONES, ...STEPS.flatMap(s => [s.title, s.criteria, s.guide])]) {
-    assert.equal(planText(en, 'zh-tw'), zh); assert.equal(planText(en, 'en'), en); assert.equal(planText(zh, 'zh-tw'), zh);
+    assert.equal(planText(en, 'zh-tw'), zh); assert.equal(planText(en, 'en'), conversationCopy(en)); assert.equal(planText(zh, 'zh-tw'), zh);
   }
 });
 test('Unknown content and quoted or embedded text are never partially rewritten', () => {

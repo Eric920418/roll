@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,7 +18,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -33,13 +34,59 @@ let server, browser, commerceOwned = false, couponCodesOwned = false;
 const serverLog = fs.createWriteStream(path.join(output, 'server.log'));
 const check = (name, value) => { assert(value, name); report.checks.push(name); console.log(`PASS ${name}`); };
 
+let copyProvider, copyProviderUrl, copyCalls=0, copyFailure=false;
+async function startCopyProvider() {
+  copyProvider=createServer(async(req,res)=>{
+    let raw='';for await(const part of req)raw+=part;
+    copyCalls++;res.setHeader('Content-Type','application/json');
+    if(copyFailure){res.statusCode=503;res.end(JSON.stringify({type:'error',error:{type:'overloaded_error',message:'Controlled provider outage'}}));return;}
+    try {
+      const input=JSON.parse(raw),english=input.system.includes('natural English'),rows=JSON.parse(input.messages[0].content);
+      const translations=rows.map(({id,text})=>{
+        let result;
+        if(text.startsWith('Compare '))result=text.replace('Compare ','比較 ').replace(' proposals by ',' 份提案，期限 ').replace(' for ','，金額 ');
+        else if(text.startsWith('比較 '))result=text.replace('比較 ','Compare ').replace(' 份提案，期限 ',' proposals by ').replace('，金額 ',' for ');
+        else result=(english?'Review saved evidence ':'依已儲存的佐證確認 ')+(text.match(/__NOVA_KEEP_\d+__/g)||[]).join(' ');
+        return{id,text:result};
+      });
+      res.end(JSON.stringify({id:'qa-copy',type:'message',role:'assistant',model:input.model,content:[{type:'tool_use',id:'qa-tool',name:'translated_copy',input:{translations}}],stop_reason:'tool_use',usage:{input_tokens:1,output_tokens:1}}));
+    }catch{res.statusCode=400;res.end(JSON.stringify({type:'error',error:{type:'invalid_request_error',message:'Malformed QA request'}}));}
+  });
+  await new Promise(resolve=>copyProvider.listen(0,'127.0.0.1',resolve));copyProviderUrl='http://127.0.0.1:'+copyProvider.address().port;
+}
+async function localizationQA() {
+  for(const [key,locale] of [['desktop','zh-tw'],['mobile','en']]) {
+    const owner=users[key],zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',title=zh?'Compare 7 proposals by 2027-02-20 for USD 260':'比較 7 份提案，期限 2027-02-20，金額 USD 260',expected=zh?'比較 7 份提案，期限 2027-02-20，金額 USD 260':'Compare 7 proposals by 2027-02-20 for USD 260';
+    await db.actionPlan.update({where:{id:owner.planId},data:{goal:'Make 1M'}});await db.actionItem.update({where:{id:owner.actionId},data:{title,source:'nova'}});await db.planMilestone.update({where:{id:owner.milestoneId},data:{title}});
+    const original=async()=>JSON.stringify({plan:await db.actionPlan.findUnique({where:{id:owner.planId}}),actions:await db.actionItem.findMany({where:{actionPlanId:owner.planId},orderBy:{id:'asc'}}),milestones:await db.planMilestone.findMany({where:{actionPlanId:owner.planId},orderBy:{id:'asc'}})}),snapshot=await original();
+    const {context,page}=await session(key,1440);
+    const foreign=await context.request.get(origin+'/api/action-plans/localization?'+new URLSearchParams({planId:users.blocked.planId,locale}));check('Translation rejects another member '+locale,foreign.status()===404);
+    const arbitrary=await context.request.post(origin+'/api/action-plans/localization',{headers:{origin},data:{planId:owner.planId,locale,text:'Not accepted'}});check('Translation rejects arbitrary client text '+locale,arbitrary.status()===400);
+    copyFailure=true;await page.goto(origin+prefix+'/dashboard');await page.getByRole('button',{name:zh?'重試翻譯':'Retry translation',exact:true}).waitFor();
+    const alert=page.getByRole('alert').filter({hasText:zh?'翻譯尚未完成':'Translation is incomplete'});check('Safe translation error retains source and HTTP trace '+locale,(await alert.innerText()).includes('HTTP 503')&&(await alert.innerText()).includes('internal')&&(await page.locator('#home-task-title').innerText())===title);
+    copyFailure=false;await page.getByRole('button',{name:zh?'重試翻譯':'Retry translation',exact:true}).click();await page.waitForFunction(t=>document.querySelector('#home-task-title')?.textContent===t,expected);
+    check('Unknown system copy translated end to end '+locale,true);const calls=copyCalls;
+    for(const width of [390,768,1440]) {
+      await page.setViewportSize({width,height:1000});await page.reload();await page.waitForFunction(t=>document.querySelector('#home-task-title')?.textContent===t,expected);
+      check('Translated home responsive '+locale+width,await page.evaluate(l=>document.documentElement.lang===l&&document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1,locale));await screenshot(page,'copy-home-'+locale+width);
+      await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();await closeTour(page,locale);await page.waitForFunction(t=>document.querySelector('[data-legacy-task] [data-today-priority]')?.textContent.includes(t),expected);
+      check('Translated task and map use same copy '+locale+width,(await page.locator('#action-map > summary').innerText()).includes(expected));
+      check('Translated tasks responsive '+locale+width,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'copy-task-'+locale+width);
+      await page.goto(origin+prefix+'/dashboard');
+    }
+    check('Cached translations do not call provider again '+locale,copyCalls===calls);check('Plan and completion data unchanged '+locale,await original()===snapshot);check('No member AI or Token debit '+locale,await db.aiUsage.count({where:{userId:owner.id}})===0&&await db.tokenReservation.count({where:{userId:owner.id}})===0);
+    await context.close();
+  }
+  const anonymous=await browser.newContext();contexts.push(anonymous);check('Anonymous translation API protected',(await anonymous.request.get(origin+'/api/action-plans/localization?planId=x&locale=en')).status()===401);await anonymous.close();
+}
+
 async function startServer() {
   await new Promise((resolve, reject) => {
     let startup = '';
     const timer = setTimeout(() => reject(new Error('QA server startup timed out.')), 60000);
     server = spawn(process.execPath, [require.resolve('next/dist/bin/next'), mode, '--hostname', hostname, '--port', String(port)], {
       cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: ['tokens','commerce'].includes(scenario) ? 'qa-disabled' : '', OMRADE_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', OMRADE_WORKER_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '', ...(scenario === 'coupons' ? { BILLING_NOVA60_ENABLED: 'true', ...Object.fromEntries(['PRO','BUSINESS'].flatMap(p=>['MONTHLY','YEARLY'].map(i=>[`PAYPAL_PLAN_ID_NOVA60_${p}_${i}_USD`,`P-QA${p}${i}`]))) } : {}) },
+      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: copyProviderUrl || 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: ['tokens','commerce'].includes(scenario) ? 'qa-disabled' : '', OMRADE_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', OMRADE_WORKER_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '', ...(scenario === 'coupons' ? { BILLING_NOVA60_ENABLED: 'true', ...Object.fromEntries(['PRO','BUSINESS'].flatMap(p=>['MONTHLY','YEARLY'].map(i=>[`PAYPAL_PLAN_ID_NOVA60_${p}_${i}_USD`,`P-QA${p}${i}`]))) } : {}) },
     });
     server.stdout.on('data', chunk => { serverLog.write(chunk); startup += chunk; if (startup.includes('Ready in')) { clearTimeout(timer); resolve(); } });
     server.stderr.on('data', chunk => serverLog.write(chunk));
@@ -313,7 +360,7 @@ async function languageQA() {
   const title='Run paid pilot offer with 3 prospects to test willingness to pay',criterion='At least 1 of 3 prospects agrees to a paid pilot, confirming a validated willingness-to-pay price point.',milestone='Validate ICP through structured customer discovery';
   await db.actionPlan.update({where:{id:owner.planId},data:{goal:'Make 1M'}});await db.planMilestone.update({where:{id:owner.milestoneId},data:{title:milestone,expectedOutcome:milestone,acceptanceCriteria:criterion}});await db.actionItem.update({where:{id:owner.actionId},data:{title,expectedOutcome:criterion,metricTarget:1,metricCurrent:0,metricUnit:'companies'}});
   const snapshot=async()=>JSON.stringify({plan:await db.actionPlan.findUnique({where:{id:owner.planId}}),milestones:await db.planMilestone.findMany({where:{actionPlanId:owner.planId},orderBy:{position:'asc'}}),actions:await db.actionItem.findMany({where:{actionPlanId:owner.planId},orderBy:{id:'asc'}})}),original=await snapshot();
-  const writes=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/action-plans/')&&!['GET','HEAD'].includes(r.method()))writes.push(r.url());});
+  const writes=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/action-plans/')&&!r.url().includes('/localization')&&!['GET','HEAD'].includes(r.method()))writes.push(r.url());});
   for(const locale of ['zh-tw','en']) {
     const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',expectedTitle=zh?'向 3 位潛在客戶提出付費試用，驗證付費意願':title,expectedCriterion=zh?'在 3 位潛在客戶中，至少 1 位同意付費試用，確認對方接受的試用價格。':criterion,expectedMilestone=zh?'透過結構化客戶訪談，驗證目標客戶輪廓':milestone;
     await page.goto(origin+prefix+'/dashboard');await page.locator('#home-task-title').waitFor();check('Localized home task '+locale,await page.locator('#home-task-title').innerText()===expectedTitle);check('Localized home criterion '+locale,(await page.locator('section[aria-labelledby="home-task-title"]').innerText()).includes(expectedCriterion));check('Localized home milestone and raw goal '+locale,(await page.locator('section[aria-labelledby="home-goal-title"]').innerText()).includes(expectedMilestone)&&(await page.locator('section[aria-labelledby="home-goal-title"]').innerText()).includes('Make 1M'));
@@ -359,7 +406,7 @@ async function legacyLayoutQA() {
     for(const [kind,title,workspace,commercial] of cases) {
       await db.actionItem.update({where:{id:actionId},data:{title,taskWorkspace:workspace||Prisma.DbNull,recordingMode:kind==='interview'?'interview':null,metricTarget:kind==='interview'?2:4,metricCurrent:kind==='interview'?0:2,metricUnit:kind==='interview'?'companies':'records'}});
       const before=await snapshot();await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();await closeTour(page,locale);
-      const article=page.locator('[data-legacy-task]'),localizedTitle=zh?({icp:'定義並記錄目標客戶輪廓',interview:'訪談 2 位創辦人',pilot:'向 3 位潛在客戶提出付費試用，驗證付費意願',positioning:'撰寫一句話定位',scorecard:'建立潛在客戶評分卡',tiers:'將潛在客戶分級',generic:title,commercial:'取得 2 位付費客戶'}[kind]):title;check('Legacy keeps current action '+locale+kind,await article.getByRole('heading',{name:localizedTitle,exact:true}).count()===1&&await article.locator('[data-today-priority]').count()===1);
+      const article=page.locator('[data-legacy-task]'),localizedTitle=zh?({icp:'定義並記錄目標客戶輪廓',interview:'訪談 2 位創辦人',pilot:'向 3 位潛在客戶提出付費試用，驗證付費意願',positioning:'撰寫一句話定位',scorecard:'建立潛在客戶評分卡',tiers:'將潛在客戶分級',generic:title,commercial:'取得 2 位付費客戶'}[kind]):kind==='interview'?'Talk with 2 founders':title;check('Legacy keeps current action '+locale+kind,await article.getByRole('heading',{name:localizedTitle,exact:true}).count()===1&&await article.locator('[data-today-priority]').count()===1);
       check('Legacy actual action and milestone counts '+locale+kind,(await page.locator('[data-next-step="goal"]').innerText()).includes('2 / 3')&&(await page.locator('#action-map > summary').innerText()).includes(zh?'查看全部 1 個里程碑':'View all 1 milestone'));
       check('Legacy secondary tools default '+locale+kind,await page.locator('#legacy-tools').evaluate(e=>e.open)===commercial);
       if(commercial){const evidence=article.getByRole('link',{name:w('付款／簽約證據 →','Payment / contract evidence →'),exact:true});await evidence.waitFor();check('Legacy payment work has its original evidence entry '+locale+kind,true);await page.locator('#legacy-tools > summary').click();await evidence.click();await page.locator('#legacy-tools[open]').waitFor();check('Legacy payment link opens the right records '+locale+kind,new URL(page.url()).hash==='#validation-'+owner.planId);}
@@ -467,7 +514,7 @@ async function flowCore(key, width, locale) {
   await saved(); await page.reload(); await article.getByRole('heading', { name: w('與 10 位目標客戶對話，確認痛點與付費意願', 'Talk with 10 target customers about pain and willingness to pay'), exact: true }).waitFor();
   check('Goal expansion is shown once ' + width, !await page.locator('#action-map').evaluate(e => e.open));
   await screenshot(page, 'flow-conversation-' + locale + '-' + width);
-  await completed(w('寫出一句話定位，並請 5 位受訪者確認', 'Write a positioning statement and confirm it with five interviewees'));
+  await completed(w('寫出一句話定位，並請 5 位受訪者確認', 'Write a positioning statement and confirm it with five conversation participants'));
   const fourFields=[[w('目標客戶（誰）','Target customer (who)'),'B2B founders'],[w('情境（什麼時候最痛）','Situation (when it hurts)'),'before sales outreach'],[w('要解決的痛點','Problem to solve'),'unclear customer needs'],[w('與現有做法的差別','Difference from current solutions'),'reviewed customer evidence']];
   for(const [label,value] of fourFields)await article.getByLabel(label,{exact:true}).fill(value);
   const preview=await article.locator('[data-positioning-editor] blockquote').innerText();
@@ -482,7 +529,7 @@ async function flowCore(key, width, locale) {
   const anonymous = await browser.newContext({ extraHTTPHeaders: { 'x-forwarded-for': testIp } }); contexts.push(anonymous);
   const confirmationLinks = new Set();
   for (let i = 0; i < 5; i++) {
-    await article.getByRole('group',{name:w('選擇受訪者','Choose an interviewee'),exact:true}).getByRole('button').nth(i).click();
+    await article.getByRole('group',{name:w('選擇受訪者','Choose a conversation participant'),exact:true}).getByRole('button').nth(i).click();
     check('Generate private confirmation link ' + width, await postClick(w('建立確認連結', 'Create confirmation link')) === 200);
     const link = await page.getByLabel(w('專屬連結（可複製）', 'Dedicated link (copy to share)'), { exact: true }).inputValue();
     check('Each interviewee receives a new dedicated link ' + width + ' ' + i, !confirmationLinks.has(link)); confirmationLinks.add(link);
@@ -515,7 +562,7 @@ async function flowCore(key, width, locale) {
   await completed(w('建立潛在客戶評分標準', 'Define lead qualification criteria'));
   for (const checkbox of await article.getByRole('checkbox', { name: w('確認條件與權重', 'Confirm criterion and weight'), exact: true }).all()) await checkbox.check();
   await saved(); await screenshot(page, 'flow-organize-' + locale + '-' + width);
-  await completed(w('將已對話的客戶分級', 'Score and tier your interviewees'));
+  await completed(w('將已對話的客戶分級', 'Score and tier your conversation participants'));
   const tierCards = article.locator('fieldset > section');
   for (let i = 0; i < await tierCards.count(); i++) {
     const checks = tierCards.nth(i).getByRole('checkbox');
@@ -1054,10 +1101,12 @@ async function commerceSettingsQA() {
 }
 
 try {
+  if(scenario==='localization') await startCopyProvider();
   await startServer(); await redirects();
   if (mode === 'start') {
     if(scenario!=='homepage') await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'language') { await languageQA(); }
+    if (scenario === 'localization') { await localizationQA(); }
+    else if (scenario === 'language') { await languageQA(); }
     else if (scenario === 'legacy') { await legacyLayoutQA(); }
     else if (scenario === 'guided') { await guidedEntryQA(); }
     else if (scenario === 'homepage') { await homepageQA(); }
@@ -1089,6 +1138,7 @@ try {
   if (commerceOwned) await db.setting.deleteMany({where:{key:{startsWith:'novaCommerce.'}}});
   await db.$disconnect();
   if (server && server.exitCode === null) { server.kill('SIGTERM'); await new Promise(resolve => server.once('exit', resolve)); }
+  if(copyProvider) await new Promise(resolve=>copyProvider.close(resolve));
   serverLog.end();
   fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ checks: report.checks.length, failure: report.failure, output, cleanup: report.cleanup }));

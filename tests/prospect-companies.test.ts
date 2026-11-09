@@ -80,6 +80,7 @@ test("New-company discovery and existing follow-up have distinct bilingual label
     runInNewContext(code, {
       module: loaded, exports: loaded.exports,
       require: (id: string) => {
+        if (id === "@/components/dashboard/PlanLocalization") return { usePlanDisplay: () => require("../src/lib/action-plan/display") };
         if (id === "react") return { useEffect() {}, useRef: (current: unknown) => ({ current }), useCallback: (fn: unknown) => fn, useState: (initial: unknown) => [cursor++ === 0 ? snapshot : initial, () => {}] };
         if (id === "next-intl") return { useLocale: () => locale };
         if (id === "next/navigation") return { useRouter: () => ({ refresh() {} }) };
@@ -94,14 +95,14 @@ test("New-company discovery and existing follow-up have distinct bilingual label
     const discovery = html.indexOf(zh ? 'aria-label="找新公司"' : 'aria-label="Find new companies"');
     const followup = html.indexOf(zh ? 'aria-label="既有公司跟進"' : 'aria-label="Follow up existing companies"');
     assert(followup >= 0 && discovery > followup);
-    const newList = html.slice(discovery, html.indexOf(zh ? "訪談證據分析" : "Interview evidence analysis"));
+    const newList = html.slice(discovery, html.indexOf(zh ? "訪談證據分析" : "Conversation evidence analysis"));
     assert(newList.includes("Shared Omrade workspace"));
     assert(newList.includes(zh ? "歷史 AI 公司名單" : "Historical AI lists"));
     assert(newList.includes("New Taiwan Buyer") && !newList.includes("CircleWe"));
     assert(!newList.includes(zh ? "使用 1 次 AI" : "1 AI request"));
     const existingList = html.slice(followup, discovery);
     assert(existingList.includes("CircleWe") && existingList.includes("Saved Lead") && !existingList.includes("New Taiwan Buyer"));
-    assert.equal(existingList.split(zh ? "已有訪談紀錄" : "Interview recorded").length - 1, 1);
+    assert.equal(existingList.split(zh ? "已有訪談紀錄" : "Conversation recorded").length - 1, 1);
     assert.equal(existingList.split(zh ? "已加入跟進" : "Saved for follow-up").length - 1, 1);
     assert(existingList.includes(zh ? "查看紀錄／繼續跟進" : "View records / continue follow-up"));
   }

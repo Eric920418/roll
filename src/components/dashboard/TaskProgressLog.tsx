@@ -1,11 +1,12 @@
 "use client";
-import { planText } from "@/lib/action-plan/display";
+import { usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 
 type Metric = { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number };
 export default function TaskProgressLog({ action, revision, busy, onSave, inline = false }: { inline?: boolean; action: ActionPlanActionDto; revision?: number; busy?: boolean; onSave: (metric: Metric) => Promise<boolean | void> }) {
+  const { planText } = usePlanDisplay();
   const zh = useLocale() === "zh-tw", dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null), sending = useRef(false);
   const [latest, setLatest] = useState("");
   const [form, setForm] = useState({ target: String(action.metric?.target ?? ""), unit: action.metric?.unit || "", current: String(action.metric?.current ?? ""), revision }), [error, setError] = useState(""), [saving, setSaving] = useState(false);
@@ -18,7 +19,7 @@ export default function TaskProgressLog({ action, revision, busy, onSave, inline
   }, [action.id]);
   const editor = (<form className="mt-4 space-y-4" onSubmit={async event => { event.preventDefault(); if (sending.current) return; sending.current = true; setSaving(true); setError(""); try { const result = await onSave({ metricTarget: form.target ? Number(form.target) : null, metricUnit: form.unit.trim() || null, metricCurrent: form.current ? Number(form.current) : null, revision: form.revision }); if (result === false) setError(zh ? "未儲存成功，請查看錯誤訊息。輸入已保留；版本衝突時請先重新載入。" : "Not saved. Your input is retained. Check the error below; reload after a version conflict."); else { dialog.current?.close(); if (inline) setLatest(zh ? "紀錄已儲存。" : "Record saved."); } } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } finally { sending.current = false; setSaving(false); } }}>
         <label className="block text-sm">{zh ? "數量目標（選填）" : "Target (optional)"}<input autoFocus={!inline} type="number" min="1" max="1000000000" step="1" value={form.target} onChange={e => setForm({ ...form, target: e.target.value })} className={field} /></label>
-        <label className="block text-sm">{zh ? "單位" : "Unit"}<input maxLength={80} value={form.unit} placeholder={zh ? "例如：次訪談" : "e.g. interviews"} onChange={e => setForm({ ...form, unit: e.target.value })} className={field} /></label>
+        <label className="block text-sm">{zh ? "單位" : "Unit"}<input maxLength={80} value={form.unit} placeholder={zh ? "例如：次訪談" : "e.g. conversations"} onChange={e => setForm({ ...form, unit: e.target.value })} className={field} /></label>
         <label className="block text-sm">{zh ? "截至目前的累計值（未知請留白）" : "Total so far (leave blank if unknown)"}<input type="number" min="0" max="1000000000" step="1" value={form.current} onChange={e => setForm({ ...form, current: e.target.value })} className={field} /></label>
         {error && <div role="alert" className="space-y-2"><p className="whitespace-pre-wrap text-sm text-red-700">{error}</p><button type="button" disabled={saving} className={button} onClick={async () => { setSaving(true); try { const res = await fetch("/api/action-plans/roadmap", { cache: "no-store" }); const json = await res.json(); if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`); const plan = json.data?.active; const task = plan?.actions.find((a: ActionPlanActionDto) => a.id === action.id); if (!task) throw new Error(zh ? "這個計畫已封存或任務已移除，請返回今日任務。" : "This plan was archived or the task removed. Return to today's tasks."); setForm(current => ({ ...current, revision: plan.revision })); setLatest(zh ? `伺服器目前累計：${task.metric?.current ?? "尚未回報"}。輸入已保留，請比對後再儲存。` : `Latest saved total: ${task.metric?.current ?? "Not reported"}. Your input is retained; review before saving.`); setError(""); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } finally { setSaving(false); } }}>{zh ? "載入最新版本（保留輸入）" : "Reload latest version (keep input)"}</button></div>}
         {latest && <p role="status" className="text-sm">{latest}</p>}

@@ -223,6 +223,7 @@ test("Zero interviews do not hide the paid prospect eligibility check behind a s
   runInNewContext(ts.transpileModule(readFileSync("src/components/dashboard/ValidationWorkspace.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText, {
     module: loaded, exports: loaded.exports,
     require: (id: string) => {
+      if (id === "@/components/dashboard/PlanLocalization") return { usePlanDisplay: () => native("../src/lib/action-plan/display") };
       if (id === "react") return { useState: (v: unknown) => [calls++ === 0 ? data : v, () => {}], useCallback: (fn: unknown) => fn, useEffect() {}, useRef: (current: unknown) => ({ current }) };
       if (id === "next-intl") return { useLocale: () => "en" };
       if (id === "next/navigation") return { useRouter: () => ({}) };

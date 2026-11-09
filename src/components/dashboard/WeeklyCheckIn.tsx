@@ -1,5 +1,5 @@
 "use client";
-import { planText, planUnit, displayTaskReference } from "@/lib/action-plan/display";
+import { usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { commercialTask } from "@/lib/validation/schema";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -15,6 +15,7 @@ import { pathForLocale } from "@/lib/routes";
 const button = "min-h-11 rounded-xl border border-dark/15 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50";
 const input = "mt-1 w-full rounded-xl border border-dark/15 bg-white p-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
 export default function WeeklyCheckIn({ userId, plan, canShare, onChanged, compact = false }: { userId: string; plan: ActionPlanDto | null; canShare: boolean; compact?: boolean; onChanged: (plan: ActionPlanDto | null) => void }) {
+  const { planText, planUnit, displayTaskReference } = usePlanDisplay();
   const locale = useLocale() === "zh-tw" ? "zh-tw" : "en", zh = locale === "zh-tw";
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLElement | null>(null), busyRef = useRef(false), editVersion = useRef<{ planRevision: number; revision: number } | null>(null);
   const [mounted, setMounted] = useState(false), [opened, setOpened] = useState(false), [busy, setBusy] = useState(false), [view, setView] = useState<CheckInView | null>(null);

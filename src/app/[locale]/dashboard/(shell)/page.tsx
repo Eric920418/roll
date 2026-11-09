@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { planText } from "@/lib/action-plan/display";
+import { PlanLocalizationProvider, PlanCopyText } from "@/components/dashboard/PlanLocalization";
 import { setRequestLocale } from "next-intl/server";
 import { requireUserPage } from "@/lib/auth/guard";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -57,7 +57,7 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
     descriptions.blocked = zh ? "先前證據已失效，完成紀錄仍保留。補正後即可繼續或分享報告。" : "Earlier evidence needs attention. Completion history is retained; correct the proof to continue or share.";
   }
   const progress = plan ? actionProgress(plan.actions) : next.kind === "conversation" || next.kind === "prospects" ? Math.min(100, Math.round((discovery?.total || 0) / (discovery?.target || 3) * 100)) : null;
-  return <div className="space-y-8 font-[family-name:var(--font-body)]">
+  return <PlanLocalizationProvider planId={plan?.id} revision={plan?.revision}><div className="space-y-8 font-[family-name:var(--font-body)]">
     <PlanRefresh userId={account.id} />
     <header className="flex flex-wrap items-start justify-between gap-4 border-b border-dark/10 pb-6">
       <div><p className="text-xs font-semibold tracking-[0.18em] text-dark/55">NOVA AI</p>
@@ -66,18 +66,18 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
       </div><Link className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4" href={pathForLocale("/dashboard/profile", l)}>{zh ? "公司檔案" : "Company profile"} →</Link>
     </header>
     <section aria-labelledby="home-goal-title" className="grid gap-5 sm:grid-cols-[1fr_auto]">
-      <div className="min-w-0"><p id="home-goal-title" className="text-xs font-semibold text-dark/55">{zh ? "我的目標" : "MY GOAL"}</p><p className="mt-2 break-words text-xl font-semibold">{goal || (zh ? "先找出最值得驗證的方向" : "Find the direction worth validating")}</p><p className="mt-2 text-sm text-dark/65">{milestone ? `${zh ? "目前里程碑" : "Current milestone"} ${milestone.position + 1} · ${planText(milestone.title, l)}` : plan?.roadmap ? (zh ? "所有里程碑已完成" : "All milestones completed") : (zh ? "依目前紀錄與方案安排下一步" : "Your next step follows your records and access")}</p></div>
+      <div className="min-w-0"><p id="home-goal-title" className="text-xs font-semibold text-dark/55">{zh ? "我的目標" : "MY GOAL"}</p><p className="mt-2 break-words text-xl font-semibold">{goal || (zh ? "先找出最值得驗證的方向" : "Find the direction worth validating")}</p><p className="mt-2 text-sm text-dark/65">{milestone ? <>{zh ? "目前里程碑" : "Current milestone"} {milestone.position + 1} · <PlanCopyText value={milestone.title} /></> : plan?.roadmap ? (zh ? "所有里程碑已完成" : "All milestones completed") : (zh ? "依目前紀錄與方案安排下一步" : "Your next step follows your records and access")}</p></div>
       {progress !== null && <div className="min-w-36"><p className="text-sm text-dark/65">{zh ? "目前計畫進度" : "Current plan progress"}</p><p className="mt-1 text-3xl font-semibold tabular-nums">{progress}%</p><progress className="mt-2 h-1.5 w-full accent-black" max={100} value={progress} aria-label={zh ? "目前計畫進度" : "Current plan progress"} /></div>}
     </section>
     <section aria-labelledby="home-task-title" className="rounded-2xl bg-black p-6 text-white sm:p-9">
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-semibold tracking-[0.18em] text-white/60">{zh ? "今日任務 · 目前這一步" : "TODAY'S TASK · YOUR CURRENT STEP"}</p>{milestone?.targetDate && <p className="text-sm text-white/70">{zh ? "截止" : "Due"} {milestone.targetDate}</p>}</div>
-      <h2 id="home-task-title" className="mt-5 max-w-4xl break-words text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">{(next.action ? planText(next.action.title, l) : "") || (completedFlow ? (zh ? "已完成驗證" : "Validation complete") : labels[next.kind])}</h2>
-      <div className="mt-5 max-w-3xl border-t border-white/20 pt-5"><p className="text-xs font-semibold text-white/60">{next.action ? (zh ? "完成標準" : "COMPLETION CRITERIA") : (zh ? "接下來" : "WHAT'S NEXT")}</p><p className="mt-2 whitespace-pre-wrap text-base leading-7 text-white/85">{(next.action ? planText(next.action.expectedOutcome.text, l) : "") || descriptions[next.kind]}</p>{next.action?.metric?.target != null && <p className="mt-3 text-sm tabular-nums">{zh ? "目前進度" : "Progress"} · {next.action.metric.current ?? 0} / {next.action.metric.target}</p>}{next.kind === "conversation" && <p className="mt-3 text-sm">{zh ? "已記錄" : "Recorded"} {discovery?.total} / {discovery?.target} {zh ? "家公司的有效對話" : "valid company conversations"}</p>}</div>
+      <h2 id="home-task-title" className="mt-5 max-w-4xl break-words text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">{next.action ? <PlanCopyText value={next.action.title} /> : (completedFlow ? (zh ? "已完成驗證" : "Validation complete") : labels[next.kind])}</h2>
+      <div className="mt-5 max-w-3xl border-t border-white/20 pt-5"><p className="text-xs font-semibold text-white/60">{next.action ? (zh ? "完成標準" : "COMPLETION CRITERIA") : (zh ? "接下來" : "WHAT'S NEXT")}</p><p className="mt-2 whitespace-pre-wrap text-base leading-7 text-white/85">{next.action ? <PlanCopyText value={next.action.expectedOutcome.text} /> : descriptions[next.kind]}</p>{next.action?.metric?.target != null && <p className="mt-3 text-sm tabular-nums">{zh ? "目前進度" : "Progress"} · {next.action.metric.current ?? 0} / {next.action.metric.target}</p>}{next.kind === "conversation" && <p className="mt-3 text-sm">{zh ? "已記錄" : "Recorded"} {discovery?.total} / {discovery?.target} {zh ? "家公司的有效對話" : "valid company conversations"}</p>}</div>
       <Link href={pathForLocale(next.href, l)} className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">{labels[next.kind]} →</Link>
     </section>
     <EvidencePanel userId={account.id} compact />
     <FounderRecommendations />
     <div className="grid min-w-0 gap-5 lg:grid-cols-[1.4fr_1fr]"><RoundtablesPanel userId={account.id} compact /><section className="flex flex-col justify-between rounded-2xl border border-dark/15 bg-white p-6 sm:p-8"><div><p className="text-xs font-semibold tracking-widest text-dark/55">{zh ? "讓交流帶來行動" : "MAKE CONNECTIONS COUNT"}</p><h2 className="mt-6 text-2xl font-semibold">{zh ? "接續你的對話" : "Keep the conversation going"}</h2><p className="mt-3 text-base leading-7 text-dark/70">{zh ? "查看交流邀請與訊息，和適合的人一起推進下一步。" : "Review invitations and messages, and take the next step with the right people."}</p></div><Link href={pathForLocale("/dashboard/matchmaking?tab=messages", l)} className="mt-6 inline-flex min-h-11 w-fit items-center font-semibold underline underline-offset-4">{zh ? "前往訊息" : "Open messages"} →</Link></section></div>
     <details className="rounded-2xl border border-dark/10 bg-white px-5 py-2"><summary className="flex min-h-11 cursor-pointer items-center font-semibold">{zh ? "近期活動" : "Community events"}</summary><div className="pb-3"><UpcomingEventsRail locale={l} events={events.slice(0, 4).map(({ id, date, title, location }) => ({ id, date, title, location }))} /></div></details>
-  </div>;
+  </div></PlanLocalizationProvider>;
 }

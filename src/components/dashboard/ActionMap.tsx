@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { planText } from "@/lib/action-plan/display";
+import { usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { useLocale } from "next-intl";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 
 export default function ActionMap({ userId, plan, event, children, compact = false }: {
   userId: string; plan: ActionPlanDto; event: string | null; children: ReactNode; compact?: boolean;
 }) {
+  const { planText } = usePlanDisplay();
   const locale = useLocale(), zh = locale === "zh-tw", ref = useRef<HTMLDetailsElement>(null);
   const [warning, setWarning] = useState("");
   const milestones = plan.roadmap?.milestones || [];

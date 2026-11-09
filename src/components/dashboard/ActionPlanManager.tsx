@@ -1,5 +1,5 @@
 "use client";
-import { planText } from "@/lib/action-plan/display";
+import { usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 
 import { PersonalizationSummary } from "./PersonalizationQuestions";
 import { useLocale } from "next-intl";
@@ -11,11 +11,12 @@ import type { ActionPlanDto } from "@/lib/action-plan/service";
 import ActionPlanBuilder from "./ActionPlanBuilder";
 
 export function ActionDiagnosis({ plan }: { plan: ActionPlanDto }) {
+  const { planText } = usePlanDisplay();
   const locale = useLocale() === "zh-tw" ? "zh-tw" : "en";
   const t = useTranslations("Dashboard.actionPlan");
   return <details className="rounded-2xl border border-dark/10 bg-white p-5">
     <summary className="min-h-11 cursor-pointer text-lg font-bold">{t("diagnosis.eyebrow")}</summary>
-    <div className="mt-3 space-y-4">
+    <div className="mt-3 space-y-4"><dl className="space-y-3 text-sm"><div><dt className="font-semibold">{t("diagnosis.stage")}</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{planText(plan.diagnosis.stageReason, locale)}</dd></div><div><dt className="font-semibold">{t("diagnosis.bottleneck")}</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{planText(plan.diagnosis.bottleneckReason, locale)}</dd></div></dl>
       {plan.personalization && <PersonalizationSummary value={plan.personalization} locale={locale} />}
       {plan.diagnosticAnswers?.length === 3 ? <dl className="space-y-4 text-sm">{plan.diagnosticAnswers.map((row, i) => <div key={i}><dt className="font-semibold">{planText(row.question, locale)}</dt><dd className="mt-2 whitespace-pre-wrap text-dark/65">{row.answer}</dd></div>)}</dl> : <p className="text-sm text-dark/60">{t("diagnosis.missingAnswers")}</p>}
       <ActionPlanBuilder variant="regenerate" />

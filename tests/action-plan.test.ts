@@ -558,6 +558,7 @@ test("舊計畫五項任務只出現一次，主進度僅一條，地圖篩選�
   runInNewContext(code, {
     module: loaded, exports: loaded.exports,
     require: (id: string) => {
+      if (id === "@/components/dashboard/PlanLocalization") return { usePlanDisplay: () => require("../src/lib/action-plan/display"), PlanCopyText: (p: { value: string }) => p.value, PlanLocalizationProvider: (p: { children: ReactNode }) => p.children };
       if (id === "react") return {
         useEffect() {}, useRef: (value: unknown) => ({ current: value }), useMemo: (fn: () => unknown) => fn(),
         useState: (initial: unknown) => { const index = cursor++; if (!(index in state)) state[index] = initial; return [state[index], (value: unknown) => { state[index] = value; }]; },

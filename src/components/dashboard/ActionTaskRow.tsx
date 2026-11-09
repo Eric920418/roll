@@ -1,5 +1,5 @@
 "use client";
-import { planText, planUnit, displayTaskReference } from "@/lib/action-plan/display";
+import { usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { commercialTask } from "@/lib/validation/schema";
 import type { ReactNode } from "react";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
@@ -14,6 +14,7 @@ import { priorityTier } from "@/lib/action-plan/ranking";
 import { formatActionTime } from "@/lib/action-plan/time";
 
 export default function ActionTaskRow({ action, busy = false, readOnly = false, onToggle, onMetric, onDependencyChange, revision, onEdit, onDelete, href, compact = false, featured = false, focusMode = false, workspace, plan }: { plan?: ActionPlanDto; focusMode?: boolean; workspace?: ReactNode; action: ActionPlanActionDto; busy?: boolean; readOnly?: boolean; revision?: number; onDependencyChange?: (thresholds: Record<string, number | null>, revision?: number) => Promise<boolean | void>; onToggle?: () => void; onMetric?: (metric: { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number }) => Promise<boolean | void>; onEdit?: () => void; onDelete?: () => void; href?: string; compact?: boolean; featured?: boolean }) {
+  const { planText, planUnit, displayTaskReference } = usePlanDisplay();
   const locale = useLocale(), zh = locale === "zh-tw";
   const title = planText(action.title, locale), outcome = planText(action.expectedOutcome.text, locale);
   const status = action.done ? (zh ? "已完成" : "Done") : action.dependency.blocked ? (zh ? "受阻擋" : "Blocked") : (zh ? "可執行" : "Ready");
@@ -26,14 +27,14 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
         <div><dt className="font-semibold">{zh ? "預估時間" : "Estimated time"}</dt><dd>{action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {zh ? "天" : "days"} · {formatActionTime(action.difficulty.actionTime, zh ? "zh-tw" : "en")}</dd></div>
         <div><dt className="font-semibold">{zh ? "為何現在做" : "Why now"}</dt><dd>{planText(action.bottleneckFit.reason, locale)}</dd></div>
         <div><dt className="font-semibold">{zh ? "階段適合度" : "Stage fit"}</dt><dd>{planText(action.stageFit.reason, locale)}</dd></div>
-        <div><dt className="font-semibold">{zh ? "前置任務" : "Blocked by / Prerequisites"}</dt><dd>{(action.dependency.milestoneTitle ? planText(action.dependency.milestoneTitle, locale) : "") || action.dependency.actionRefs.map(d => displayTaskReference(d, locale)).join(", ") || (zh ? "無" : "None")}{action.dependency.notes ? `\n${action.dependency.notes}` : ""}</dd></div>
+        <div><dt className="font-semibold">{zh ? "前置任務" : "Blocked by / Prerequisites"}</dt><dd>{(action.dependency.milestoneTitle ? planText(action.dependency.milestoneTitle, locale) : "") || action.dependency.actionRefs.map(d => displayTaskReference(d, locale)).join(", ") || (zh ? "無" : "None")}{action.dependency.notes ? `\n${planText(action.dependency.notes, locale)}` : ""}</dd></div>
       </dl>
       {!readOnly && onDependencyChange && action.dependency.actionRefs.length > 0 && <TaskDependencyEditor action={action} revision={revision} busy={busy} onSave={onDependencyChange} />}
       <div className="mt-3 flex flex-wrap gap-2">{onEdit && <button type="button" disabled={busy} onClick={onEdit} className={button}>{zh ? "編輯" : "Edit"}</button>}{onDelete && <button type="button" disabled={busy} onClick={onDelete} className={`${button} text-red-700`}>{zh ? "刪除" : "Delete"}</button>}{href && <a href={href} className={button}>{zh ? "開啟今日任務" : "Open today's tasks"} →</a>}</div>
     </details></>;
   const interviewPending = focusMode && action.recordingMode === "interview" && action.metric?.target != null && (action.metric.current ?? 0) < action.metric.target;
   const workspacePending = focusMode && Boolean(workspaceKind(action)) && workspaceKind(action) !== "interview" && !commercialTask(action) && !workspaceComplete(action.taskWorkspace ?? null);
-  const checkbox = !readOnly && (onToggle || action.dependency.blocked) && <TaskCheckbox label={`${zh ? "完成任務" : "Complete task"}: ${title}`} checked={action.done} locked={!action.done && (action.dependency.blocked || interviewPending || workspacePending)} disabled={busy} reason={interviewPending ? (zh ? "達到有效訪談公司數目標後，才能確認完成" : "Reach the valid company interview target before confirming completion") : workspacePending ? (zh ? "請先儲存符合完成標準的紀錄" : "Save records that meet the completion criteria first") : blockedReason} onChange={onToggle || (() => {})} />;
+  const checkbox = !readOnly && (onToggle || action.dependency.blocked) && <TaskCheckbox label={`${zh ? "完成任務" : "Complete task"}: ${title}`} checked={action.done} locked={!action.done && (action.dependency.blocked || interviewPending || workspacePending)} disabled={busy} reason={interviewPending ? (zh ? "達到有效訪談公司數目標後，才能確認完成" : "Reach the valid company conversation target before confirming completion") : workspacePending ? (zh ? "請先儲存符合完成標準的紀錄" : "Save records that meet the completion criteria first") : blockedReason} onChange={onToggle || (() => {})} />;
   const badges = !focusMode && <div className="mt-2 flex flex-wrap gap-2 text-xs"><span className={`rounded-md px-2 py-1 ${action.done ? "bg-dark/5" : action.dependency.blocked ? "bg-amber-100 text-amber-900" : "bg-green-100 text-green-900"}`}>{status}</span><span className="rounded-md bg-amber-100/70 px-2 py-1 text-amber-900">{priorityTier(action.priorityScore)}</span></div>;
   const metric = <>{action.metric?.target != null && !(focusMode && workspace) && <div className="mt-3">
     <p className="text-sm font-semibold">{action.metric.current ?? (zh ? "尚未回報" : "Not reported")}/{action.metric.target} {planUnit(action.metric.unit || "", locale)}</p>

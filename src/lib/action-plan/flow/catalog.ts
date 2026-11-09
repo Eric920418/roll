@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { dateSchema } from "@/lib/roadmap/schema";
 import type { Diagnosis, GeneratedAction } from "../schemas";
+import { conversationCopy } from '../constants';
 
 type Words = readonly [string, string];
-export const words = (value: Words, locale: string) => value[locale === "zh-tw" ? 0 : 1];
+export const words = (value: Words, locale: string) => locale === "zh-tw" ? value[0] : conversationCopy(value[1]);
 export const MILESTONES: Words[] = [
   ["確認目標客戶", "Confirm your target customer"], ["驗證付費意願", "Validate willingness to pay"],
   ["建立可複製的開發流程", "Build a repeatable acquisition process"], ["建立第一批穩定付費客戶", "Build your first paying customer cohort"],
