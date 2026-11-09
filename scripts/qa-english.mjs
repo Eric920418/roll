@@ -17,7 +17,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -308,6 +308,27 @@ async function openInputOptions(page, locale) {
 async function openTaskTools(page) {
   const tools=page.locator('#task-tools');await tools.waitFor({state:'visible'});if(!await tools.evaluate(e=>e.open))await tools.locator(':scope > summary').click();
 }
+async function languageQA() {
+  const {context,page}=await session('desktop',1440),owner=users.desktop;
+  const title='Run paid pilot offer with 3 prospects to test willingness to pay',criterion='At least 1 of 3 prospects agrees to a paid pilot, confirming a validated willingness-to-pay price point.',milestone='Validate ICP through structured customer discovery';
+  await db.actionPlan.update({where:{id:owner.planId},data:{goal:'Make 1M'}});await db.planMilestone.update({where:{id:owner.milestoneId},data:{title:milestone,expectedOutcome:milestone,acceptanceCriteria:criterion}});await db.actionItem.update({where:{id:owner.actionId},data:{title,expectedOutcome:criterion,metricTarget:1,metricCurrent:0,metricUnit:'companies'}});
+  const snapshot=async()=>JSON.stringify({plan:await db.actionPlan.findUnique({where:{id:owner.planId}}),milestones:await db.planMilestone.findMany({where:{actionPlanId:owner.planId},orderBy:{position:'asc'}}),actions:await db.actionItem.findMany({where:{actionPlanId:owner.planId},orderBy:{id:'asc'}})}),original=await snapshot();
+  const writes=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/action-plans/')&&!['GET','HEAD'].includes(r.method()))writes.push(r.url());});
+  for(const locale of ['zh-tw','en']) {
+    const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',expectedTitle=zh?'向 3 位潛在客戶提出付費試用，驗證付費意願':title,expectedCriterion=zh?'在 3 位潛在客戶中，至少 1 位同意付費試用，確認對方接受的試用價格。':criterion,expectedMilestone=zh?'透過結構化客戶訪談，驗證目標客戶輪廓':milestone;
+    await page.goto(origin+prefix+'/dashboard');await page.locator('#home-task-title').waitFor();check('Localized home task '+locale,await page.locator('#home-task-title').innerText()===expectedTitle);check('Localized home criterion '+locale,(await page.locator('section[aria-labelledby="home-task-title"]').innerText()).includes(expectedCriterion));check('Localized home milestone and raw goal '+locale,(await page.locator('section[aria-labelledby="home-goal-title"]').innerText()).includes(expectedMilestone)&&(await page.locator('section[aria-labelledby="home-goal-title"]').innerText()).includes('Make 1M'));
+    for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Language home responsive '+locale+width,await page.evaluate(l=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1&&document.documentElement.lang===l,locale));await screenshot(page,'language-home-'+locale+'-'+width);}
+    await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();await closeTour(page,locale);const hero=page.locator('[data-legacy-task] [data-today-priority]');check('Localized task title and criteria '+locale,(await hero.innerText()).includes(expectedTitle)&&(await hero.innerText()).includes(expectedCriterion));check('Localized task keeps quantities '+locale,(await hero.innerText()).includes('0 / 1'));
+    const map=page.locator('#action-map');check('Localized roadmap summary '+locale,(await map.locator(':scope > summary').innerText()).includes(expectedMilestone));await map.locator(':scope > summary').click();check('Localized roadmap keeps original criteria '+locale,(await map.innerText()).includes(expectedCriterion));
+    if(zh){await map.getByText('搜尋與篩選',{exact:true}).click();await map.getByRole('textbox',{name:'搜尋任務',exact:true}).fill('評分卡');check('Chinese roadmap search finds translated task',await map.getByRole('heading',{name:'建立潛在客戶評分卡',exact:true}).count()===1);await map.getByRole('textbox',{name:'搜尋任務',exact:true}).fill('');}
+    await map.locator(':scope > summary').click();
+    for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Language task responsive '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'language-task-'+locale+'-'+width);}
+    check('Locale switch never rewrites original plan '+locale,await snapshot()===original);
+  }
+  check('Translation never submits a plan mutation',writes.length===0);check('Translation consumes no AI or Token reservation',await db.aiUsage.count({where:{userId:owner.id}})===0&&await db.tokenReservation.count({where:{userId:owner.id}})===0);
+  await context.close();
+}
+
 async function legacyLayoutQA() {
   for(const [key,locale] of [['mobile','zh-tw'],['desktop','en']]) {
     const zh=locale==='zh-tw',w=(a,b)=>zh?a:b,prefix=zh?'/zh-tw':'';
@@ -338,7 +359,7 @@ async function legacyLayoutQA() {
     for(const [kind,title,workspace,commercial] of cases) {
       await db.actionItem.update({where:{id:actionId},data:{title,taskWorkspace:workspace||Prisma.DbNull,recordingMode:kind==='interview'?'interview':null,metricTarget:kind==='interview'?2:4,metricCurrent:kind==='interview'?0:2,metricUnit:kind==='interview'?'companies':'records'}});
       const before=await snapshot();await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();await closeTour(page,locale);
-      const article=page.locator('[data-legacy-task]');check('Legacy keeps current action '+locale+kind,await article.getByRole('heading',{name:title,exact:true}).count()===1&&await article.locator('[data-today-priority]').count()===1);
+      const article=page.locator('[data-legacy-task]'),localizedTitle=zh?({icp:'定義並記錄目標客戶輪廓',interview:'訪談 2 位創辦人',pilot:'向 3 位潛在客戶提出付費試用，驗證付費意願',positioning:'撰寫一句話定位',scorecard:'建立潛在客戶評分卡',tiers:'將潛在客戶分級',generic:title,commercial:'取得 2 位付費客戶'}[kind]):title;check('Legacy keeps current action '+locale+kind,await article.getByRole('heading',{name:localizedTitle,exact:true}).count()===1&&await article.locator('[data-today-priority]').count()===1);
       check('Legacy actual action and milestone counts '+locale+kind,(await page.locator('[data-next-step="goal"]').innerText()).includes('2 / 3')&&(await page.locator('#action-map > summary').innerText()).includes(zh?'查看全部 1 個里程碑':'View all 1 milestone'));
       check('Legacy secondary tools default '+locale+kind,await page.locator('#legacy-tools').evaluate(e=>e.open)===commercial);
       if(commercial){const evidence=article.getByRole('link',{name:w('付款／簽約證據 →','Payment / contract evidence →'),exact:true});await evidence.waitFor();check('Legacy payment work has its original evidence entry '+locale+kind,true);await page.locator('#legacy-tools > summary').click();await evidence.click();await page.locator('#legacy-tools[open]').waitFor();check('Legacy payment link opens the right records '+locale+kind,new URL(page.url()).hash==='#validation-'+owner.planId);}
@@ -1034,7 +1055,8 @@ try {
   await startServer(); await redirects();
   if (mode === 'start') {
     if(scenario!=='homepage') await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'legacy') { await legacyLayoutQA(); }
+    if (scenario === 'language') { await languageQA(); }
+    else if (scenario === 'legacy') { await legacyLayoutQA(); }
     else if (scenario === 'guided') { await guidedEntryQA(); }
     else if (scenario === 'homepage') { await homepageQA(); }
     else if (scenario === 'coupons') { await couponCodesQA(); }

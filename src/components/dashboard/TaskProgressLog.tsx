@@ -1,4 +1,5 @@
 "use client";
+import { planText } from "@/lib/action-plan/display";
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
@@ -26,7 +27,7 @@ export default function TaskProgressLog({ action, revision, busy, onSave, inline
   if (inline) return <section className="mt-4 rounded-xl border border-dark/10 p-4"><h4 className="font-semibold">{zh ? "數量紀錄" : "Quantity record"}</h4>{editor}</section>;
   return <><button ref={trigger} type="button" onClick={open} disabled={busy} className={`${button} mt-3`}>+ {zh ? "記錄進度" : "Log progress"}</button>
     <dialog ref={dialog} aria-labelledby={`log-title-${action.id}`} onClose={() => trigger.current?.focus()} onCancel={event => { if (saving) event.preventDefault(); }} className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-dark/15 bg-white p-6 text-dark shadow-xl backdrop:bg-black/30">
-      <h3 id={`log-title-${action.id}`} className="text-xl font-bold">{zh ? "記錄累計進度" : "Log cumulative progress"}</h3><p className="mt-2 text-sm">#{action.displayNumber} · {action.title}</p>
+      <h3 id={`log-title-${action.id}`} className="text-xl font-bold">{zh ? "記錄累計進度" : "Log cumulative progress"}</h3><p className="mt-2 text-sm">#{action.displayNumber} · {planText(action.title, zh ? "zh-tw" : "en")}</p>
       {editor}
     </dialog></>;
 }

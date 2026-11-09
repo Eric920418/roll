@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { planText } from "@/lib/action-plan/display";
 import ActionPlanBuilder from "@/components/dashboard/ActionPlanBuilder";
 import type { Locale } from "@/i18n/routing";
 import type { DashboardPriority } from "@/lib/action-plan/dashboard";
@@ -64,8 +65,8 @@ export default async function PriorityBanner({
   const content =
     priority.kind === "action"
       ? {
-          title: `#${priority.action.rank ?? 1} ${priority.action.title}`,
-          body: priority.action.expectedOutcome.text,
+          title: `#${priority.action.rank ?? 1} ${planText(priority.action.title, locale)}`,
+          body: planText(priority.action.expectedOutcome.text, locale),
           cta: t("actionCta"),
           onTrack: false,
         }
