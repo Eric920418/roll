@@ -831,16 +831,18 @@ async function homepageQA() {
     const label=locale+width;await page.setViewportSize({width,height:1000});const response=await page.goto(origin+(locale==='en'?'':'/zh-tw')+'/product');check('Home responds '+label,response.status()===200);
     await page.getByRole('heading',{level:1}).waitFor();check('Home layout '+label,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));
     check('Every landing element has square corners '+label,await page.locator('main').evaluate(root=>[root,...root.querySelectorAll('*')].every(el=>{const s=getComputedStyle(el);return [s.borderTopLeftRadius,s.borderTopRightRadius,s.borderBottomLeftRadius,s.borderBottomRightRadius].every(v=>v==='0px');})));
-    check('Three educational cases '+label,await page.locator('#cases article').count()===7&&await page.locator('#cases a[target="_blank"]').count()===3);
-    const names=await page.locator('#team article h3').allTextContents();check('Requested team order '+label,JSON.stringify(names)===JSON.stringify(['Vivian Lee','Eric',locale==='en'?'Mentor':'導師','Iris']));
+    check('Three educational cases '+label,await page.locator('#cases article').count()===3&&await page.locator('#cases a[target="_blank"]').count()===3);
+    check('Reference case numbers and order '+label,JSON.stringify(await page.locator('#cases article h3').allTextContents())===JSON.stringify(['$1.75B','15×','0'])&&JSON.stringify(await page.locator('#cases article').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label'))))===JSON.stringify(['Quibi','Dropbox','Zappos']));
+    const names=await page.locator('#team article h3').allTextContents();check('Requested team order '+label,JSON.stringify(names)===JSON.stringify(['Vivian Lee','Eric','Vincent','Iris']));
     check('Pilot country statement '+label,(await page.locator('aside').innerText()).includes(locale==='en'?'5 countries':'5 個國家'));
     check('Confirmed event and two placeholders '+label,await page.locator('#community time[datetime="2026-11-16"]').count()===1&&await page.locator('#community').getByRole('heading',{name:'Coming soon',exact:true}).count()===2);
     check('No invented event registration '+label,await page.locator('#community').getByRole('link',{name:/reserve|register|報名|候補/i}).count()===0);
     const body=await page.locator('body').innerText();check('Inside NOVA AI and no old operators '+label,body.includes('Inside NOVA AI')&&!/Inside ROLL ON|Built by operators|\[Photo/.test(body));
     const height=await page.evaluate(()=>document.body.scrollHeight);for(let y=0;y<height;y+=750){await page.evaluate(y=>scrollTo(0,y),y);await page.waitForTimeout(60);}await page.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));check('Images load '+label,true);
     await screenshot(page,'homepage-'+label);
+    if(width===1440){const file=path.join(output,'cases-'+locale+'.png');await page.locator('#cases').screenshot({path:file});report.screenshots.push(file);}
   }
-  await page.setViewportSize({width:390,height:1000});await page.getByRole('button',{name:'選單 +',exact:true}).click();check('Mobile menu expands',await page.getByRole('button',{name:'選單 −',exact:true}).getAttribute('aria-expanded')==='true');await page.getByRole('link',{name:'實務案例',exact:true}).click();check('Mobile anchor reaches cases',page.url().endsWith('#cases'));
+  await page.setViewportSize({width:390,height:1000});await page.getByRole('button',{name:'選單 +',exact:true}).click();check('Mobile menu expands',await page.getByRole('button',{name:'選單 −',exact:true}).getAttribute('aria-expanded')==='true');await page.getByRole('link',{name:'團隊',exact:true}).click();check('Mobile anchor reaches team',page.url().endsWith('#team'));
 }
 
 async function couponCodesQA() {

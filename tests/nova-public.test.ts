@@ -33,7 +33,13 @@ for (const locale of ['en', 'zh-tw'] as const)
         assert(html.includes(routes.pathForLocale('/signup', locale)));
         assert(html.includes('Inside NOVA AI'));
         assert(!html.includes('/nova/cases/') && !html.includes('/medix-') && !html.includes('case study photo'));
-        for (const name of ['Quibi', 'Zappos', 'Dropbox']) assert(!html.includes(name));
+        for (const name of ['Quibi', 'Dropbox', 'Zappos']) assert(html.includes(name));
+        assert(html.indexOf('aria-label="Quibi"') < html.indexOf('aria-label="Dropbox"'));
+        assert(html.indexOf('aria-label="Dropbox"') < html.indexOf('aria-label="Zappos"'));
+        for (const metric of ['$1.75B', '15×', '0']) assert(html.includes(`<h3 class="caseNumber">${metric}</h3>`));
+        assert(html.includes('Evidence is not.') || html.includes('證據，不必昂貴。'));
+        assert(html.includes(locale === 'en' ? 'Waitlist growth from one demo video' : '一支示範影片帶來的候補名單成長'));
+        assert(html.includes(locale === 'en' ? 'Inventory before the first sale' : '第一筆成交前的庫存'));
         assert(html.includes(contact.MEETING_URL));
         assert(html.includes('Founder &amp; CEO, Nova AI &amp; Roll On'));
         assert(html.includes('Co-founder &amp; CTO, Nova AI'));

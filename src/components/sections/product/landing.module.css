@@ -17,3 +17,5 @@
 
 .heroGrid{grid-template-columns:1fr}.heroGrid .steps{grid-template-columns:repeat(4,minmax(0,1fr))}.teamWithoutPhoto{grid-column:2}
 @media(max-width:767px){.heroGrid .steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.caseStats{border-top:2px solid #111;padding-top:28px}.caseStats article{min-width:0;display:flex;flex-direction:column}.caseStats .eyebrow{margin-bottom:14px}.caseNumber{font-size:clamp(48px,5.8vw,76px);font-weight:500;letter-spacing:-.07em;line-height:1.05;margin:0 0 14px}.caseSummary{font-size:14px;line-height:1.6;margin-bottom:18px}.caseSource{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:44px;padding:12px 0;border-top:1px solid #111;font-size:13px;font-weight:600;margin-top:auto}.caseSource:hover{text-decoration:underline}

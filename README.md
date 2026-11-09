@@ -1,3 +1,7 @@
+# NOVA 案例數字對齊參考圖（2026-11-09）
+
+依最新 IMG_2868.JPG 補回 `/product`、`/zh-tw/product` 的三個純文字數字案例，順序為 Quibi `$1.75B`、Dropbox `15×`、Zappos `0`；主標對齊「Vision is expensive. Evidence is not.」，短文分別說明募資、影片帶來候補名單成長、第一筆成交前的庫存。延續上一批撤下照片的決定，不恢復案例照片，不改團隊順序、Calendly 預約或市場報告；本輪數字不是 NOVA 會員成果。Quibi 依 S&P Global 的回顧寫「上線約六個月後宣布關閉」，避免將停止服務日期說成六個月內；Dropbox 依創辦人接受 Inc. 訪問的 5,000 → 75,000 候補名單計算 15 倍，不表示營收或付費會員成長；Zappos 0 僅指首筆成交前未預先備貨，非零營運成本。三卡各連到對應已核對來源，雙語同步。無資料庫、會員、方案、付款、額度或套件變更。驗收：雙語公開頁回歸 2 項、隔離環境瀏覽器 73 項（390／768／1440px）通過；TypeScript、build 與 lint 通過，lint 保留 14 項既有警告。已人工檢視中英文數字區截圖；證據位於既有視覺目錄 nova-case-numbers-20261109。本次未重跑與此純展示變更無關的付款、搜尋及帳本流程。
+
 # NOVA AI 公開首頁修訂（2026-11-08）
 
 本批更新 `/product` 與 `/zh-tw/product`（NOVA AI 首頁，ROLL ON 根首頁維持原業務）：全頁含導覽、價格、電子報及頁尾統一直角；依首頁 PDF 加入 5 個國家 pilot 社群提示，不虛構國家、會員或推薦語。依使用者確認，Apple 改為 Quibi 反例，與 Zappos／Dropbox 三個教育案例採提供照片、驗證提問與可查來源；不把示範註冊當付費證明，不把照片中的 Tony Hsieh 誤稱為最初驗證實驗的 Nick Swinmurn。The Team 順序 Vivian → Eric → Mentor → Iris；沿用既有 Vivian／Iris 照片，Eric／Mentor 使用文字佔位，不虛構導師姓名。11/16 圓桌以使用者確認的 Taiwan Startup Hub／方舟計劃（Ark Project）合辦公告呈現，不建立實際場次、報名或候補；其他兩卡 Coming soon 搭配 NOVA 標誌。Inside NOVA AI 暫放品牌與預告，待提供 speaker 照片及文案後再補；五種媒合身分保留用途導覽，未授權名單不上線。本次待補：新版團隊照片、speaker 照片與文案、授權展示名單、圓桌時間／地點／參加方式。原團隊案例、影片與 CMS 活動資料均保留，未改資料庫。已檢查雙語 390／768／1440px 共 67 項瀏覽器條件，包含直角、唯一主標、無溢位、案例來源、團隊順序、活動占位、圖片載入與行動選單；視覺檢查修正 Zappos 直幅照片裁切以保留臉部。隔離資料庫完整 pnpm test 534 項通過，TypeScript 與 build 通過，lint 無錯誤（14 項既有警告）。證據保存在既有視覺目錄 nova-home-nov08-final；待提供素材的項目不宣稱已完成。
