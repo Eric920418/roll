@@ -39,7 +39,7 @@ export default function InterviewWorkspace({ userId, action, busy, onChanged, on
     try { const data = await readInterviews(action.id); setRows(data.rows); onChanged(data.plan); setError(""); }
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
   }
-  return <section className="mt-5 space-y-5 border-t border-dark/10 pt-5">
+  return <section className={showGuide ? "mt-5 space-y-5 border-t border-dark/10 pt-5" : "space-y-3"}>
     {showGuide && <LearningResources collapsed kind="interview" question={zh ? "如何進行客戶對話？" : "How to run a customer conversation?"} />}
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold">{zh ? "已記錄客戶對話" : "Conversations recorded"} · {rows ? interviewSummary(action.id, rows).total : "…"}/{target ?? "?"} {zh ? "間不同公司" : "distinct companies"}</p><button type="button" onClick={onInsights} className={button}>{zh ? "查看關鍵發現" : "View findings"}</button></div>

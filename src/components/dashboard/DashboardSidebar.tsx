@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -52,6 +52,8 @@ export default function DashboardSidebar({
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   // overview 用完全比對（避免被子路由吃掉 active），其餘用前綴比對
   function isActive(path: string): boolean {
@@ -71,32 +73,37 @@ export default function DashboardSidebar({
   }
 
   return (
-    <aside style={{ fontFamily: `${inter.style.fontFamily}, var(--font-chinese), sans-serif` }} className="print:hidden flex shrink-0 flex-col gap-4 border-b border-dark/10 bg-white p-5 md:w-40 md:gap-5 xl:w-44 md:border-b-0 md:border-r">
-      <div>
+    <aside onKeyDown={event => { if (event.key === "Escape" && menuOpen) { setMenuOpen(false); menuButton.current?.focus(); } }} style={{ fontFamily: `${inter.style.fontFamily}, var(--font-chinese), sans-serif` }} className="print:hidden flex shrink-0 flex-col gap-3 border-b border-dark/10 bg-white px-4 py-2 md:w-40 md:gap-5 md:p-5 xl:w-44 md:border-b-0 md:border-r">
+      <div className="flex items-center justify-between gap-3 md:block">
+        <div>
         <Link
           href={pathForLocale("/dashboard", locale)}
           aria-label="NOVA AI"
-          className="inline-flex"
+          className="inline-flex min-h-6 items-center md:min-h-0"
         >
-          <span className="text-[26px] font-semibold leading-none tracking-[0.04em]">NOVA AI</span>
+          <span className="text-xl font-semibold leading-none tracking-[0.04em] md:text-[26px]">NOVA AI</span>
         </Link>
         <Link
           href={pathForLocale("/", locale)}
-          className="mt-1.5 block text-[11px] font-normal tracking-[0.06em] text-[#8A8A85] transition-colors hover:text-dark/70"
+          className="block text-[10px] font-normal tracking-[0.06em] text-[#8A8A85] transition-colors hover:text-dark/70 md:mt-1.5 md:text-[11px]"
         >
           by ROLL ON
         </Link>
+        </div>
+        <button ref={menuButton} type="button" aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)} className="min-h-11 rounded-lg border border-dark/15 px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 md:hidden">{locale === "zh-tw" ? (menuOpen ? "收合選單" : "選單") : (menuOpen ? "Close menu" : "Menu")}</button>
       </div>
 
-      <nav className="flex gap-0 overflow-x-auto md:flex-col md:overflow-visible">
+      <div id="dashboard-navigation" className={`${menuOpen ? "flex" : "hidden"} flex-1 flex-col gap-3 md:flex md:gap-5`}>
+      <nav aria-label={locale === "zh-tw" ? "會員導覽" : "Member navigation"} className="flex flex-col gap-0">
         {NAV.map(({ key, path, soon }) => {
           const active = isActive(path);
           if (soon) return <span key={key} aria-disabled="true" className="flex min-h-11 shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-lg px-3 text-[12px] text-dark/40"><span>{t(`nav.${key}`)}</span><span className="shrink-0 whitespace-nowrap rounded-full border border-dark/10 px-2 py-1 text-[10px] leading-none">{t("comingSoon.badge")}</span></span>;
-          if (key === "feedback") return <button key={key} type="button" onClick={() => (document.getElementById("trial-feedback-dialog") as HTMLDialogElement | null)?.showModal()} className="flex min-h-11 shrink-0 items-center rounded-lg px-3 text-left text-[14px] font-medium text-[#55554F] transition-colors hover:bg-dark/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-11">{t("nav.feedback")}</button>;
+          if (key === "feedback") return <button key={key} type="button" onClick={() => { setMenuOpen(false); (document.getElementById("trial-feedback-dialog") as HTMLDialogElement | null)?.showModal(); }} className="flex min-h-11 shrink-0 items-center rounded-lg px-3 text-left text-[14px] font-medium text-[#55554F] transition-colors hover:bg-dark/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-11">{t("nav.feedback")}</button>;
           return (
             <Link
               key={key}
               href={pathForLocale(path, locale)}
+              onClick={() => setMenuOpen(false)}
               aria-current={active ? "page" : undefined}
               className={`relative flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-lg px-3 text-[14px] font-medium tracking-normal transition-colors md:min-h-11 ${key === "rewards" ? "md:mt-4 md:before:absolute md:before:-top-2 md:before:inset-x-0 md:before:border-t md:before:border-dark/10" : ""} ${
                 active
@@ -122,7 +129,6 @@ export default function DashboardSidebar({
           );
         })}
       </nav>
-      {rewards.error && <div role="alert" className="break-words rounded-xl bg-red-50 p-3 text-xs text-red-700"><p>{rewards.error}</p><button type="button" className="min-h-11 underline" onClick={() => void rewards.refresh()}>{rt("retry")}</button></div>}
 
       <div className="mt-auto flex flex-row items-center gap-3 border-t border-dark/10 pt-3 md:flex-col md:items-stretch md:pt-5">
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
@@ -142,6 +148,8 @@ export default function DashboardSidebar({
           {t("logout")}
         </button>
       </div>
+      </div>
+      {rewards.error && <div role="alert" className="break-words rounded-xl bg-red-50 p-3 text-xs text-red-700"><p>{rewards.error}</p><button type="button" className="min-h-11 underline" onClick={() => void rewards.refresh()}>{rt("retry")}</button></div>}
     </aside>
   );
 }

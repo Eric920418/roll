@@ -47,7 +47,7 @@ export default async function DashboardLayout({ children, params }: Props) {
         planLabel={planLabel}
         userLabel={userLabel}
       />
-      <main className="nova-page-enter min-w-0 flex-1 px-4 py-6 md:px-7 print:p-0">
+      <main className="nova-page-enter min-w-0 flex-1 px-4 py-4 md:px-7 md:py-6 print:p-0">
         <div className="mx-auto w-full max-w-7xl"><div className="print:hidden"><TrialFeedback key={account.id} userId={account.id} discovery={isDiscoveryMember(account)} paidDiscovery={isDiscoveryMember(account) && effectivePlan !== "free"} /></div>{children}</div>
       </main>
     </div>

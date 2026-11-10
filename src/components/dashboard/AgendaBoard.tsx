@@ -32,7 +32,7 @@ export default function AgendaBoard({ userId, actionPlan, guided = false }: Prop
   }
 
   return (
-    <PlanLocalizationProvider planId={currentPlan?.id} revision={currentPlan?.revision}><div className="mt-7 flex flex-col gap-8">
+    <PlanLocalizationProvider planId={currentPlan?.id} revision={currentPlan?.revision}><div className="mt-4 flex flex-col gap-4">
       <PlanRefresh userId={userId} />
       {currentPlan?.personalization?.weeklyTime === "under3" && <p className="rounded-xl border border-dark/15 bg-white p-5 text-sm">{zh ? "本週只聚焦目前這一步，後續任務依序安排。" : "Focus on the current step this week. Later tasks follow in order."}</p>}
       {!currentPlan && <><ActionPlanManager guided={guided} initialPlan={null} onChanged={acceptPlan} /><RoadmapPanel userId={userId} initialPlan={null} onChanged={acceptPlan} /></>}

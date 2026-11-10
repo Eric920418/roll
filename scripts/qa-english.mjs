@@ -492,9 +492,9 @@ async function flowCore(key, width, locale) {
   await article.getByLabel(w('目標市場／國家', 'Target market / country'), { exact: true }).fill('TW');
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   for (let i = 0; i < 10; i++) {
-    await article.getByRole('button', { name: w('＋ 記錄客戶對話', '＋ Record a conversation'), exact: true }).click();
+    await article.getByRole('button', { name: w('＋ 記錄客戶對話', '＋ New conversation'), exact: true }).click();
     const row = article.locator('[data-conversation-form]');
-    await row.getByRole('button', { name: w('潛在客戶', 'Potential customer'), exact: true }).click();
+    await row.getByRole('button', { name: w('潛在客戶', 'Prospect'), exact: true }).click();
     await row.getByRole('button', { name: w('符合', 'Fits'), exact: true }).click();
     for (const [label, value] of [[w('公司', 'Company'), 'Flow company ' + i], [w('對象姓名', 'Person'), 'Person ' + i], [w('對話日期', 'Conversation date'), date], [w('主要痛點與原話', 'Main pain and customer wording'), 'Manual reporting'], [w('目前的解決方式', 'Current solution'), 'Spreadsheets']]) await row.getByLabel(label, { exact: true }).fill(value);
     await row.getByRole('button', { name: w('高', 'High'), exact: true }).click();
@@ -518,7 +518,7 @@ async function flowCore(key, width, locale) {
   const originalCompleted = JSON.stringify(await db.actionItem.findUnique({where:{id:plan.actions[0].id}}));
   if(!await page.locator('#action-map').evaluate(e=>e.open))await page.locator('#action-map > summary').click();
   await page.locator('#action-map').getByRole('button',{name:/01-1/}).click();
-  const chooser=article.getByLabel(w('選擇對話紀錄','Choose a conversation record'),{exact:true});
+  const chooser=article.getByLabel(w('選擇對話紀錄','Conversation record'),{exact:true});
   check('Completed conversations remain navigable '+locale,await chooser.isEnabled());
   await chooser.selectOption(await chooser.locator('option').first().getAttribute('value'));
   check('Completed conversation fields stay read only '+locale,await article.getByLabel(w('公司','Company'),{exact:true}).isDisabled()&&await article.getByLabel(w('公司','Company'),{exact:true}).inputValue()==='Flow company 0');
@@ -1022,18 +1022,46 @@ async function guidedEntryQA() {
   }
 }
 
+async function compactMemberQA(page, locale) {
+  const toggle=page.locator('aside button[aria-controls="dashboard-navigation"]');
+  check('Mobile header stays compact '+locale,await page.locator('aside').evaluate(e=>e.getBoundingClientRect().height<=76));
+  check('Mobile navigation starts collapsed '+locale,await toggle.getAttribute('aria-expanded')==='false'&&!await page.locator('#dashboard-navigation').isVisible());
+  await toggle.focus();await page.keyboard.press('Enter');
+  check('Keyboard opens all member destinations '+locale,await page.locator('#dashboard-navigation nav a').count()===6&&await page.locator('#dashboard-navigation').isVisible());
+  await page.keyboard.press('Escape');
+  check('Escape restores menu focus '+locale,await toggle.getAttribute('aria-expanded')==='false'&&await toggle.evaluate(e=>e===document.activeElement));
+  await toggle.click();await page.locator('#dashboard-navigation a[aria-current="page"]').click();
+  check('Member navigation closes after a link '+locale,await toggle.getAttribute('aria-expanded')==='false');
+  const stages=page.locator('[data-home-evidence] ol');
+  check('Stages scroll without splitting English words '+locale,await stages.evaluate(list=>{
+    if(list.scrollWidth<=list.clientWidth)return false;
+    for(const label of list.querySelectorAll('li > p:nth-of-type(2)')){
+      const node=label.firstChild;if(!node||node.nodeType!==Node.TEXT_NODE)continue;
+      for(const match of node.textContent.matchAll(/[A-Za-z]{3,}/g)){
+        const range=document.createRange();range.setStart(node,match.index);range.setEnd(node,match.index+match[0].length);
+        if(new Set([...range.getClientRects()].map(r=>Math.round(r.top))).size>1)return false;
+      }
+    }
+    const active=list.querySelector('[aria-current="step"]'),a=active?.getBoundingClientRect(),b=list.getBoundingClientRect();
+    return !a||(a.left>=b.left-1&&a.right<=b.right+1);
+  }));
+  await page.evaluate(()=>window.scrollTo(0,0));
+  check('Home primary action fits the 844px first screen '+locale,await page.locator('[aria-labelledby="home-task-title"] a').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight));
+}
+
 async function layoutQA() {
   for (const [key,locale] of [['desktop','en'],['mobile','zh-tw']]) {
     const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',w=(a,b)=>zh?a:b;
     const {context,page}=await session(key,1440);
     for(const width of [390,768,1440]) {
-      await page.setViewportSize({width,height:1000});await page.goto(origin+prefix+'/dashboard');
+      await page.setViewportSize({width,height:width===390?844:1000});await page.goto(origin+prefix+'/dashboard');
       await page.locator('[data-home-evidence] ol li').first().waitFor();await page.getByRole('heading',{name:w('本週證據','THIS WEEK’S EVIDENCE'),exact:true}).count();
       await page.getByText(w('查看佐證','Review evidence'),{exact:false}).first().waitFor();
       check('Five evidence stages precede the task '+locale+width,await page.locator('[data-home-evidence]').evaluate(e=>e.querySelector('ol').compareDocumentPosition(e.querySelector('#home-task-title'))&Node.DOCUMENT_POSITION_FOLLOWING));
       check('Home three utility cards '+locale+width,await page.getByRole('button',{name:w('設定提醒','Set reminders'),exact:true}).isVisible());
       const evidence=await context.request.get(origin+'/api/evidence');const summary=(await evidence.json()).data;
       check('Weekly evidence uses actual server counts '+locale+width,evidence.ok()&&Number.isInteger(summary.weekly.conversations)&&Number.isInteger(summary.weekly.findings)&&Number.isInteger(summary.weekly.commitments));
+      if(width===390)await compactMemberQA(page,locale);
       if(width===390){await page.getByRole('button',{name:w('設定提醒','Set reminders'),exact:true}).click();await page.getByText(w('任務、圓桌與交流 Email 提醒','Task, roundtable and connection emails'),{exact:true}).waitFor();check('Home opens existing email preferences '+locale,true);await page.getByRole('button',{name:w('設定提醒','Set reminders'),exact:true}).click();await page.getByRole('button',{name:w('加入行事曆','Add to calendar'),exact:true}).click();await page.locator('#this-week').waitFor();check('Home opens existing calendar '+locale,await page.locator('#this-week button').count()>0);await page.getByRole('button',{name:w('加入行事曆','Add to calendar'),exact:true}).click();}
       await layout(page,'Target home '+locale+width,locale);await screenshot(page,'target-home-'+locale+'-'+width);
       await page.goto(origin+prefix+'/dashboard/matchmaking?tab=recommendations');await page.locator('#matchmaking-panel-recommendations article').first().waitFor();
@@ -1049,7 +1077,8 @@ async function layoutQA() {
     const save=await context.request.post(origin+'/api/action-plans/flow?locale='+locale,{headers:{origin},data:{action:'save',planId:newPlan.id,revision:newPlan.revision,step:'01-1',data:{kind:'conversation',market:'TW',records}}});assert.equal(save.status(),200);
     const fingerprint=async()=>JSON.stringify({actions:await db.actionItem.findMany({where:{actionPlanId:newPlan.id},orderBy:{id:'asc'}}),milestones:await db.planMilestone.findMany({where:{actionPlanId:newPlan.id},orderBy:{id:'asc'}})}),original=await fingerprint();
     for(const width of [390,768,1440]){
-      await page.setViewportSize({width,height:1000});await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-conversation-form]').waitFor();await closeTour(page,locale);
+      await page.setViewportSize({width,height:width===390?844:1000});await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-conversation-form]').waitFor();await closeTour(page,locale);
+      if(width===390){await page.evaluate(()=>window.scrollTo(0,0));check('Task CTA fits the 844px first screen '+locale,await page.locator('[data-today-priority] button').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight));}
       check('Single-page conversation is primary '+locale+width,await page.getByLabel(w('對象姓名','Person'),{exact:true}).isVisible()&&await page.getByRole('button',{name:w('高','High'),exact:true}).isVisible());
       check('Incomplete target remains locked '+locale+width,await page.getByRole('button',{name:w('確認並完成','Confirm and complete'),exact:true}).isDisabled());
       check('Evidence and delivered-company tables precede map '+locale+width,await page.locator('#current-findings-title').count()===1&&await page.locator('#prospects').isVisible());
