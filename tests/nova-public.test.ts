@@ -33,7 +33,7 @@ for (const locale of ['en', 'zh-tw'] as const)
         assert(html.includes(routes.pathForLocale('/signup', locale)));
         assert(html.includes(locale === 'en' ? 'Inside NOVA AI' : 'NOVA AI 幕後'));
         assert(!html.includes('/medix-'));
-        for (const file of ['quibi', 'dropbox', 'zappos']) assert(html.includes(`/nova/cases/${file}.webp`));
+        for (const file of ['quibi', 'dropbox', 'zappos']) assert.match(html, new RegExp(`/nova/cases/${file}-[a-f0-9]{8}\\.webp`));
         assert.equal((html.match(/casePhoto/g) || []).length, 3);
         for (const name of ['Quibi', 'Dropbox', 'Zappos']) assert(html.includes(name));
         assert(html.indexOf('aria-label="Quibi"') < html.indexOf('aria-label="Dropbox"'));

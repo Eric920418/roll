@@ -1112,7 +1112,7 @@ async function homepageQA() {
     check('Confirmed event and two placeholders '+label,await page.locator('#community time[datetime="2026-11-16"]').count()===1&&await page.locator('#community').getByRole('heading',{name:locale==='en'?'Coming soon':'即將推出',exact:true}).count()===2);
     check('No invented event registration '+label,await page.locator('#community').getByRole('link',{name:/reserve|register|報名|候補/i}).count()===0);
     const body=await page.locator('body').innerText();check('Inside NOVA AI and no old operators '+label,body.includes(locale==='en'?'Inside NOVA AI':'NOVA AI 幕後')&&!/Inside ROLL ON|Built by operators|\[Photo/.test(body));
-    check('Case photos match supplied companies '+label,await page.locator('#cases article').evaluateAll(nodes=>nodes.every(n=>n.querySelector('img')?.getAttribute('src')?.includes(n.getAttribute('aria-label').toLowerCase()+'.webp'))));
+    check('Case photos match supplied companies '+label,await page.locator('#cases article').evaluateAll(nodes=>nodes.every(n=>new RegExp(n.getAttribute('aria-label').toLowerCase()+'-[a-f0-9]{8}\\.webp').test(n.querySelector('img')?.getAttribute('src')||''))));
     for(const interval of ['month','year']){
       await page.getByRole('button',{name:interval==='month'?(locale==='en'?'Monthly':'月繳'):(locale==='en'?'Yearly':'年繳'),exact:true}).click();
       const cards=page.locator('[data-pricing-card]');
