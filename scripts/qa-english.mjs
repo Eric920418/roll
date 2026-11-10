@@ -1043,7 +1043,8 @@ async function compactMemberQA(page, locale) {
       }
     }
     const active=list.querySelector('[aria-current="step"]'),a=active?.getBoundingClientRect(),b=list.getBoundingClientRect();
-    return !a||(a.left>=b.left-1&&a.right<=b.right+1);
+    const whole=[...list.children].filter(e=>{const r=e.getBoundingClientRect();return r.left>=b.left-1&&r.right<=b.right+1;});
+    return whole.length===3&&(!a||(a.left>=b.left-1&&a.right<=b.right+1));
   }));
   await page.evaluate(()=>window.scrollTo(0,0));
   check('Home primary action fits the 844px first screen '+locale,await page.locator('[aria-labelledby="home-task-title"] a').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight));
