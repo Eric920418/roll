@@ -1,3 +1,11 @@
+# Omrade 金鑰輪替（2026-11-11）
+
+依使用者指示更新本機 `.env.local` 與 Vercel Production 的 `OMRADE_API_KEY`，正式維持 sensitive／Production 限定；不寫入程式、Git 或前端。本機原有 `OMRADE_ENABLED=false`、`OMRADE_WORKER_ENABLED=false` 及其他設定保留，正式搜尋開關不變。使用者附的 Google 分享連結已撤回，不作 API 設定依據。
+
+新金鑰 `GET /usage` 回 200；舊金鑰回 403。新金鑰對既有供應商 ICP／舊測試訂單回 404，不能只替換金鑰並沿用失效連線。以已保存且雜湊一致的確認條件、事先保存的 UUID 冪等鍵重建唯一一份 ICP，`POST /icps` 回 201，驗證讀寫權限。交易鎖定該會員且確認無進行中訂單後，只更新工作區的供應商 ICP ID／版本；國家、描述、revision、條件雜湊不變，23 位會員完整資料及該會員 4 筆歷史訂單前後指紋一致。不修改失敗訂單、不自動重送搜尋、不調整 Token 或方案。
+
+核對前後公司用量相同：免費可用 150、交付 0、預留 0、進行中 0；`paid_enabled=false`、月支出上限與付費累積均 US$0。沒有建立公司搜尋訂單或呼叫 AI。每筆新搜尋原有 `max_charge_cents:0`、公司來源查證、去重、會員額度與 Token 結退規則保留。本批僅設定及連線中繼資料調整，未更改程式、schema 或套件；正式部署與連線驗收結果接續補記。
+
 # NOVA 首頁案例照片更新（2026-11-10）
 
 「Vision is expensive. Evidence is not.」案例區換用本次 11/9 資料夾提供的 Quibi 1240×827、Dropbox 1600×1200、Tony_hsieh／Zappos 500×750 原圖，保留比例轉成 WebP；維持方形版位與置頂人物裁切。三張採內容雜湊檔名，避免 30 天圖片快取繼續顯示舊圖；舊網址保留供既有快取頁使用。順序維持 Quibi／Dropbox／Zappos，數字 `$1.75B／15×／0`、雙語文案與來源連結不變，不更動會員、方案或資料庫。
