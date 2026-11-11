@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useLocale } from "next-intl";
 import { TextField, button } from "../flow/Templates";
 import { STEPS, words } from "@/lib/action-plan/flow/catalog";
-import { LANGUAGES, INDUSTRIES, type RoundtableMutation } from "@/lib/roundtables/schema";
+import { LANGUAGES, INDUSTRIES, mentorDraftSchema, type RoundtableMutation } from "@/lib/roundtables/schema";
 import { industryLabel } from "@/lib/member-options";
 import type { RoundtableState } from "@/lib/roundtables/service";
 export const field = "mt-1 min-h-11 w-full min-w-0 rounded-xl border border-dark/20 bg-white px-3 py-2 text-sm focus-visible:outline-2";
@@ -34,10 +34,41 @@ function Checks({ label, values, options, onChange }: { label: string; values: s
   return <fieldset><legend className="mb-2 text-sm font-semibold">{label}</legend><div className="flex flex-wrap gap-x-5 gap-y-1">{options.map(([key, text]) => <label key={key} className="flex min-h-11 min-w-0 items-center gap-2 break-words text-sm"><input type="checkbox" className="h-5 w-5 shrink-0" checked={values.includes(key)} onChange={e => onChange(e.target.checked ? [...values, key] : values.filter(v => v !== key))} />{text}</label>)}</div></fieldset>;
 }
 export function languageLabel(value: string, zh: boolean) { return ({ "zh-tw": zh ? "繁體中文" : "Traditional Chinese", en: "English", ja: zh ? "日文" : "Japanese", ko: zh ? "韓文" : "Korean", other: zh ? "其他（請在說明註明）" : "Other (specify in description)" })[value] || value; }
-export function MentorForm({ userId, cert, disabled, write }: { userId: string; cert: RoundtableState["certification"]; disabled: boolean; write: Write }) {
+export function MentorForm({ userId, cert, disabled, write, error = "", notice = "" }: { userId: string; cert: RoundtableState["certification"]; disabled: boolean; write: Write; error?: string; notice?: string }) {
   const zh = useLocale() === "zh-tw", w = (a: string, b: string) => zh ? a : b;
   const { draft, change, clear, warning } = useDraft("nova:mentor:" + userId, { publicName: cert?.draft.publicName || "", bio: cert?.draft.bio || "", expertise: cert?.draft.expertise || "", references: cert?.draft.references.join("\n") || "", languages: cert?.draft.languages || ["en"], industries: cert?.draft.industries || ["all"], consent: false }, mentorForm);
-  return <form className="space-y-4" onSubmit={e => { e.preventDefault(); void write({ action: "mentorApply", revision: cert?.revision || 0, draft: { publicName: draft.publicName, bio: draft.bio, expertise: draft.expertise, references: draft.references.split("\n").map(v => v.trim()).filter(Boolean), languages: draft.languages, industries: draft.industries }, consent: draft.consent }).then(ok => { if (ok) clear(); }); }}><fieldset disabled={disabled} className="space-y-4"><TextField label={w("公開導師名稱", "Public mentor name")} value={draft.publicName} onChange={v => change({ ...draft, publicName: v })} /><TextField multiline label={w("專業簡介（至少 20 字）", "Professional bio (at least 20 characters)")} value={draft.bio} onChange={v => change({ ...draft, bio: v })} /><TextField multiline label={w("可協助的問題與經驗（至少 10 字）", "Expertise and experience (at least 10 characters)")} value={draft.expertise} onChange={v => change({ ...draft, expertise: v })} /><TextField multiline label={w("佐證網址（每行一個，僅本人及管理員可見）", "Evidence URLs (one per line; private to you and administrators)")} value={draft.references} onChange={v => change({ ...draft, references: v })} /><Checks label={w("可用語言", "Languages")} values={draft.languages} options={LANGUAGES.map(k => [k, languageLabel(k, zh)])} onChange={v => change({ ...draft, languages: v })} /><Checks label={w("專業產業", "Industries")} values={draft.industries} options={INDUSTRIES.map(k => [k, k === "all" ? w("不限產業", "All industries") : industryLabel(k, zh ? "zh-tw" : "en")])} onChange={v => change({ ...draft, industries: v })} /><label className="flex min-h-11 items-start gap-3 py-2 text-sm"><input aria-label={w("同意認證資料使用", "Consent to certification use")} className="mt-1 h-5 w-5 shrink-0" type="checkbox" checked={draft.consent} onChange={e => change({ ...draft, consent: e.target.checked })} />{w("同意管理員核對佐證，通過後在主持場次公開名稱與簡介；不自動變更會員角色、照片或方案。", "Allow administrators to review references and publish my name and bio on hosted sessions after approval. My member role, photo and plan stay under my control.")}</label><button className={button + " bg-black text-white"} disabled={disabled || !draft.consent}>{w("送出導師認證申請", "Submit mentor application")}</button></fieldset>{warning && <p role="status" className="text-sm">{warning}</p>}</form>;
+  const [validation, setValidation] = useState("");
+  const feedback = useRef<HTMLDivElement>(null), message = validation || error;
+  useEffect(() => { if (message) feedback.current?.focus(); }, [message]);
+  return <form className="space-y-4" onSubmit={async e => {
+    e.preventDefault();
+    const parsed = mentorDraftSchema.safeParse({ publicName: draft.publicName, bio: draft.bio, expertise: draft.expertise, references: draft.references.split("\n").map(v => v.trim()).filter(Boolean), languages: draft.languages, industries: draft.industries });
+    if (!parsed.success) {
+      const labels: Record<string, string> = { publicName: w("公開導師名稱", "Public mentor name"), bio: w("專業簡介", "Professional bio"), expertise: w("專業經驗", "Expertise"), references: w("佐證網址", "Evidence URLs"), languages: w("可用語言", "Languages"), industries: w("專業產業", "Industries") };
+      setValidation("HTTP 400\n" + parsed.error.issues.map(i => (labels[String(i.path[0])] || i.path.join(".")) + (i.path[0] === "references" && typeof i.path[1] === "number" ? w(" · 第 " + (i.path[1] + 1) + " 行", " · line " + (i.path[1] + 1)) : "") + ": " + i.message).join("\n"));
+      return;
+    }
+    setValidation("");
+    if (await write({ action: "mentorApply", revision: cert?.revision || 0, draft: parsed.data, consent: draft.consent })) {
+      change({ ...draft, ...parsed.data, references: parsed.data.references.join("\n") });
+      clear();
+    }
+  }}>
+    <fieldset disabled={disabled} className="space-y-4">
+      <TextField label={w("公開導師名稱", "Public mentor name")} value={draft.publicName} onChange={v => change({ ...draft, publicName: v })} />
+      <TextField multiline label={w("專業簡介（至少 20 字）", "Professional bio (at least 20 characters)")} value={draft.bio} onChange={v => change({ ...draft, bio: v })} />
+      <TextField multiline label={w("可協助的問題與經驗（至少 10 字）", "Expertise and experience (at least 10 characters)")} value={draft.expertise} onChange={v => change({ ...draft, expertise: v })} />
+      <TextField multiline label={w("佐證網址（每行一個，僅本人及管理員可見）", "Evidence URLs (one per line; private to you and administrators)")} value={draft.references} onChange={v => change({ ...draft, references: v })} />
+      <p className="text-sm text-dark/65">{w("可直接貼上 www.linkedin.com/...；未填協定的完整網域會自動補上 https://。最多 5 個網址。", "You may paste www.linkedin.com/...; full domains without a protocol use https:// automatically. Up to five URLs.")}</p>
+      <Checks label={w("可用語言", "Languages")} values={draft.languages} options={LANGUAGES.map(k => [k, languageLabel(k, zh)])} onChange={v => change({ ...draft, languages: v })} />
+      <Checks label={w("專業產業", "Industries")} values={draft.industries} options={INDUSTRIES.map(k => [k, k === "all" ? w("不限產業", "All industries") : industryLabel(k, zh ? "zh-tw" : "en")])} onChange={v => change({ ...draft, industries: v })} />
+      <label className="flex min-h-11 items-start gap-3 py-2 text-sm"><input aria-label={w("同意認證資料使用", "Consent to certification use")} className="mt-1 h-5 w-5 shrink-0" type="checkbox" checked={draft.consent} onChange={e => change({ ...draft, consent: e.target.checked })} />{w("同意管理員核對佐證，通過後在主持場次公開名稱與簡介；不自動變更會員角色、照片或方案。", "Allow administrators to review references and publish my name and bio on hosted sessions after approval. My member role, photo and plan stay under my control.")}</label>
+      <button className={button + " bg-black text-white"} disabled={disabled || !draft.consent}>{w("送出導師認證申請", "Submit mentor application")}</button>
+    </fieldset>
+    {message && <div ref={feedback} tabIndex={-1} role="alert" className="whitespace-pre-wrap break-words rounded-xl bg-red-50 p-4 text-sm text-red-800">{message}</div>}
+    {!message && notice && <p role="status" className="rounded-xl bg-dark/5 p-4 text-sm">{notice}</p>}
+    {warning && <p role="status" className="text-sm">{warning}</p>}
+  </form>;
 }
 export function SessionForm({ userId, initial, disabled, write }: { userId: string; initial?: RoundtableState["sessions"][number]; disabled: boolean; write: Write }) {
   const locale = useLocale(), zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;

@@ -6,11 +6,58 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
+import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { pdfRuntime } from "./helpers/pdf-runtime";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { roundtableMutationSchema, mentorDraftSchema, sessionDraftSchema } from "../src/lib/roundtables/schema";
+import { roundtableMutationSchema, mentorDraftSchema, sessionDraftSchema, httpsUrl } from "../src/lib/roundtables/schema";
 import type { RoundtableMutation } from "../src/lib/roundtables/schema";
 const mentor = { publicName: "QA certified mentor", bio: "Experienced founder and mentor in evidence-based customer development.", expertise: "Customer discovery and paid pilot experiments.", references: ["https://example.com/private-reference"], languages: ["en" as const, "zh-tw" as const], industries: ["saas" as const] };
+test("Mentor URLs normalize missing HTTPS and return validation errors without throwing", () => {
+  const result = mentorDraftSchema.safeParse({ ...mentor, references: [" https://www.rollgrp.com ", "www.linkedin.com/in/qa-mentor", "example.com/profile"] });
+  assert(result.success);
+  assert.deepEqual(result.data.references, ["https://www.rollgrp.com", "https://www.linkedin.com/in/qa-mentor", "https://example.com/profile"]);
+  for (const url of ["not a URL", "", "http://example.com", "javascript:alert(1)", "data:text/plain,hello", "https://user:password@example.com", "//example.com/profile"]) {
+    assert.doesNotThrow(() => assert(!mentorDraftSchema.safeParse({ ...mentor, references: [url] }).success));
+    assert.doesNotThrow(() => assert(!httpsUrl.safeParse(url).success));
+  }
+  assert(!mentorDraftSchema.safeParse({ ...mentor, references: ["www.example.com/profile", "https://www.example.com/profile"] }).success);
+});
+
+test("Mentor form keeps errors next to submit, preserves failed drafts and normalizes successful retries", async () => {
+  for (const locale of ["en", "zh-tw"]) {
+    const draft = { ...mentor, references: "https://example.com\nhttps://example.com/profile\nnot a URL", consent: true };
+    const slots: unknown[] = [draft, ""], storage = new Map<string, string>();
+    let cursor = 0, accepted = false;
+    const submitted: Array<{ draft: { references: string[] } }> = [];
+    const load = pdfRuntime({ react: { ...React, useEffect() {}, useRef: () => ({ current: null }), useState(initial: unknown) {
+      const index = cursor++;
+      if (!(index in slots)) slots[index] = typeof initial === "function" ? initial() : initial;
+      return [slots[index], (value: unknown) => { slots[index] = typeof value === "function" ? value(slots[index]) : value; }];
+    } }, "next-intl": { useLocale: () => locale } }, { localStorage: { getItem: (key: string) => storage.get(key), setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) } });
+    const { MentorForm } = load<typeof import("../src/components/dashboard/roundtables/Forms")>("src/components/dashboard/roundtables/Forms.tsx");
+    const props = { userId: "mentor-qa", cert: null, disabled: false, error: "HTTP 503\nRequest failed\nreference-qa", notice: "", write: async (input: unknown) => { submitted.push(input as typeof submitted[number]); return accepted; } };
+    const render = () => { cursor = 0; return MentorForm(props) as React.ReactElement<{ onSubmit(e: { preventDefault(): void }): void | Promise<void> }>; };
+    await render().props.onSubmit({ preventDefault() {} });
+    assert.equal(submitted.length, 0);
+    const invalid = renderToStaticMarkup(render());
+    assert.match(invalid, locale === "en" ? /Evidence URLs.*line 3/ : /佐證網址.*第 3 行/);
+    assert(invalid.indexOf('role="alert"') > invalid.indexOf("</button>"));
+    assert.deepEqual(slots[0], draft);
+    slots[0] = { ...draft, references: "www.linkedin.com/in/qa-mentor" };
+    await render().props.onSubmit({ preventDefault() {} });
+    assert.equal(submitted.length, 1);
+    assert.deepEqual(Array.from(submitted[0].draft.references), ["https://www.linkedin.com/in/qa-mentor"]);
+    assert.equal((slots[0] as typeof draft).references, "www.linkedin.com/in/qa-mentor");
+    const failed = renderToStaticMarkup(render());
+    assert.match(failed, /HTTP 503/); assert.match(failed, /reference-qa/);
+    accepted = true; props.error = "";
+    await render().props.onSubmit({ preventDefault() {} });
+    assert.equal((slots[0] as typeof draft).references, "https://www.linkedin.com/in/qa-mentor");
+    assert.equal(storage.size, 0);
+  }
+});
 test("Roundtable boundaries reject forged certifications, capacity outside 4–6, unsafe links and unconsented applications", () => {
   assert(!mentorDraftSchema.safeParse({ ...mentor, status: "approved" }).success);
   assert(!mentorDraftSchema.safeParse({ ...mentor, references: ["javascript:alert(1)"] }).success);

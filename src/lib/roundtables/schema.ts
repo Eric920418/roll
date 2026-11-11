@@ -4,10 +4,18 @@ import { dateSchema } from "@/lib/roadmap/schema";
 export const LANGUAGES = ["zh-tw", "en", "ja", "ko", "other"] as const;
 export const INDUSTRIES = ["all", "saas", "hardware", "biotech", "consumer", "fintech", "other"] as const;
 const distinct = <T>(v: T[]) => new Set(v).size === v.length;
-export const httpsUrl = z.url().max(2000).refine(v => { const u = new URL(v); return u.protocol === "https:" && !u.username && !u.password; }, "請使用無帳密的 HTTPS 網址 / Use an HTTPS URL without credentials");
+export const httpsUrl = z.url({ error: "網址格式無效，請檢查網址 / Invalid URL; check the address" }).max(2000).refine(v => {
+  try { const u = new URL(v); return u.protocol === "https:" && !u.username && !u.password; }
+  catch { return false; }
+}, "請使用無帳密的 HTTPS 網址 / Use an HTTPS URL without credentials");
+const mentorReference = z.preprocess(value => {
+  if (typeof value !== "string") return value;
+  const url = value.trim();
+  return /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?::\d{1,5})?(?:[/?#]|$)/i.test(url) ? "https://" + url : url;
+}, httpsUrl);
 export const mentorDraftSchema = z.object({
   publicName: z.string().trim().min(2).max(100), bio: z.string().trim().min(20).max(2000),
-  expertise: z.string().trim().min(10).max(2000), references: z.array(httpsUrl).min(1).max(5).refine(distinct),
+  expertise: z.string().trim().min(10).max(2000), references: z.array(mentorReference).min(1).max(5).refine(distinct, "佐證網址不可重複 / Evidence URLs must be distinct"),
   languages: z.array(z.enum(LANGUAGES)).min(1).max(5).refine(distinct),
   industries: z.array(z.enum(INDUSTRIES)).min(1).max(7).refine(distinct),
 }).strict();
