@@ -70,7 +70,7 @@ export async function refreshCommercialProgress(tx: DB, userId: string, scope: S
 export async function assertCommercialCompletion(tx: DB, userId: string, action: { id: string; actionPlanId: string; title: string; taskWorkspace?: unknown; metricTarget?: number | null; expectedOutcome?: string }) {
   const deals = await validationDeals(tx, userId, { planId: action.actionPlanId });
   const total = commitmentSummary(deals.map(d => d.record)).total, target = commercialTarget(action);
-  if (total < target) throw new PlanWriteError(`需有效付款或付費合約證據 ${total}/${target}；口頭 Yes 不計 / Valid payment or paid-contract evidence required`, 409);
+  if (total < target) throw new PlanWriteError(`需有效付款或付費合約證據 ${total}/${target}；口頭承諾不計入。`, 409);
   await tx.actionItem.update({ where: { id: action.id }, data: { metricCurrent: total, metricTarget: target, metricUnit: "companies", commercialValidation: { requiresConfirmation: false, confirmedAt: new Date().toISOString() } } });
 }
 export async function assertCommercialPrerequisites(tx: DB, userId: string, planId: string, dependencyIds: string[]) {

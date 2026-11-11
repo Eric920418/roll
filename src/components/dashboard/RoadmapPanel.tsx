@@ -71,7 +71,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   async function reload(preserve = true) {
     setBusy(true);
     try {
-      const fresh: RoadmapView = await request(); accept(fresh);
+      const fresh: RoadmapView = await request(); accept(fresh); setError("");
       let cached; try { cached = JSON.parse(localStorage.getItem(cacheKey) || "null"); } catch { setNotice(t("storageError")); }
       if (!preserve || (!fresh.pending && view?.pending)) setCorrection(fresh.correction);
       if (cached?.pendingRequestId && cached.pendingRequestId === fresh.lastRequestId) { clearCache(cached.pendingRequestId); setForm(fresh.draft); setCorrection(fresh.correction); }

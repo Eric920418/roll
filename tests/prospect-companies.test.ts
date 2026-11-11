@@ -67,7 +67,7 @@ test("Only officially cited Taiwan prospects qualify, fewer than requested is va
 });
 
 
-test("New-company discovery and existing follow-up have distinct bilingual labels without mislabelling added companies as interviewed", () => {
+test("Compact company picker retains saved companies while the deleted follow-up grid stays removed", () => {
   const require = createRequire(import.meta.url);
   const code = ts.transpileModule(readFileSync("src/components/dashboard/ValidationWorkspace.tsx", "utf8"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
@@ -75,7 +75,7 @@ test("New-company discovery and existing follow-up have distinct bilingual label
   for (const [locale, warning] of [["zh-tw", "provider_credits"], ["en", "provider_credits"], ["zh-tw", "budget_limit"], ["en", "budget_limit"]]) {
     let cursor = 0;
     const existing = { company: "CircleWe", name: "Contact", sourceId: "note-1", quote: "Pain", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "" };
-    const snapshot = { source: "ui-source", rows: [1, 2, 3].map(n => ({ id: `note-${n}`, insight: { stage: "discover", type: "Prospect", company: `Interview ${n}`, name: "Contact", role: "Founder", fit: "unknown", answers: ["Pain", "", "", ""], notes: "Recorded pain", region: "", industry: "", date: "" } })), prospects: { [`6:${locale}`]: { companies: [company("New Taiwan Buyer")], stale: false, warning } }, priority: [existing, { ...existing, company: "Saved Lead", sourceId: undefined }], summary: { total: 0, paid: 0, signed: 0, amounts: {} }, deals: [], tasks: [], analysis: null };
+    const snapshot = { source: "ui-source", rows: [1, 2, 3].map(n => ({ id: `note-${n}`, insight: { stage: "discover", type: "Prospect", company: `Interview ${n}`, name: "Contact", role: "Founder", fit: "unknown", answers: ["Pain", "", "", ""], notes: "Recorded pain", region: "", industry: "", date: "" } })), prospects: { [`6:${locale}`]: { companies: [company("New Taiwan Buyer")], stale: false, warning } }, priority: [existing, { ...existing, company: "Saved Lead", sourceId: undefined }], summary: { total: 0, paid: 0, signed: 0, amounts: {} }, deals: [{company:"Outside shortlist",name:"Saved contact"}], tasks: [], analysis: null };
     const loaded = { exports: {} as { default: (props: object) => ReactNode } };
     runInNewContext(code, {
       module: loaded, exports: loaded.exports,
@@ -93,7 +93,7 @@ test("New-company discovery and existing follow-up have distinct bilingual label
     const html = renderToStaticMarkup(loaded.exports.default({ userId: "ui-only", journeyId: "ui-only" }));
     const zh = locale === "zh-tw";
     const discovery = html.indexOf(zh ? 'aria-label="找新公司"' : 'aria-label="Find new companies"');
-    const followup = html.indexOf(zh ? 'aria-label="既有公司跟進"' : 'aria-label="Follow up existing companies"');
+    const followup = html.indexOf('data-company-picker');
     assert(followup >= 0 && discovery > followup);
     const newList = html.slice(discovery, html.indexOf(zh ? "訪談證據分析" : "Conversation evidence analysis"));
     assert(newList.includes("Shared Omrade workspace"));
@@ -102,9 +102,12 @@ test("New-company discovery and existing follow-up have distinct bilingual label
     assert(!newList.includes(zh ? "使用 1 次 AI" : "1 AI request"));
     const existingList = html.slice(followup, discovery);
     assert(existingList.includes("CircleWe") && existingList.includes("Saved Lead") && !existingList.includes("New Taiwan Buyer"));
-    assert.equal(existingList.split(zh ? "已有訪談紀錄" : "Conversation recorded").length - 1, 1);
-    assert.equal(existingList.split(zh ? "已加入跟進" : "Saved for follow-up").length - 1, 1);
-    assert(existingList.includes(zh ? "查看紀錄／繼續跟進" : "View records / continue follow-up"));
+    assert(existingList.includes("Outside shortlist"));
+    assert(existingList.includes(zh ? 'aria-label="選擇公司紀錄"' : 'aria-label="Select a company record"'));
+    assert(!html.includes('<section data-next-step="followup"')); assert(html.includes('data-company-picker="true"') || html.includes('data-company-picker=""'));
+    assert(!html.includes("Companies with conversations / added"));
+    assert(!html.includes(zh ? "已有訪談紀錄" : "Conversation recorded"));
+
   }
 });
 

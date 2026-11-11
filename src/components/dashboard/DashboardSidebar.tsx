@@ -73,7 +73,7 @@ export default function DashboardSidebar({
   }
 
   return (
-    <aside onKeyDown={event => { if (event.key === "Escape" && menuOpen) { setMenuOpen(false); menuButton.current?.focus(); } }} style={{ fontFamily: `${inter.style.fontFamily}, var(--font-chinese), sans-serif` }} className="print:hidden flex shrink-0 flex-col gap-3 border-b border-dark/10 bg-white px-4 py-2 md:w-40 md:gap-5 md:p-5 xl:w-44 md:border-b-0 md:border-r">
+    <aside onKeyDown={event => { if (event.key === "Escape" && menuOpen) { setMenuOpen(false); menuButton.current?.focus(); } }} style={{ fontFamily: `${inter.style.fontFamily}, var(--font-chinese), sans-serif` }} className={`print:hidden flex shrink-0 flex-col gap-3 border-b border-dark/10 bg-white px-4 py-2 md:gap-5 md:p-5 md:border-b-0 md:border-r ${locale === "en" ? "md:w-52" : "md:w-40 xl:w-44"}`}>
       <div className="flex items-center justify-between gap-3 md:block">
         <div>
         <Link
@@ -123,7 +123,7 @@ export default function DashboardSidebar({
                   }
                 />
               )}
-              <span className="relative z-10">{t(`nav.${key}`)}</span>
+              <span className="relative z-10 whitespace-nowrap">{t(`nav.${key}`)}</span>
               {key === "rewards" && <RewardBadge />}
             </Link>
           );

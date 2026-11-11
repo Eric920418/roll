@@ -18,7 +18,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout', 'sales'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -1022,6 +1022,64 @@ async function guidedEntryQA() {
   }
 }
 
+async function salesSaveQA() {
+  for(const [key,locale] of [['desktop','en'],['mobile','zh-tw']]) {
+    const owner=users[key],zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',w=(a,b)=>zh?a:b;
+    await db.actionItem.update({where:{id:owner.actionId},data:{title:'Run a paid pilot',commercialValidation:{requiresConfirmation:false},metricTarget:1,metricCurrent:0,metricUnit:'companies'}});
+    const historical=await db.actionItem.findFirst({where:{actionPlanId:owner.planId,id:{not:owner.actionId}},orderBy:{executionOrder:'desc'}});
+    await db.actionItem.update({where:{id:historical.id},data:{done:true,completedAt:new Date('2026-10-01T00:00:00Z')}});
+    const history=async()=>JSON.stringify(await db.actionItem.findMany({where:{actionPlanId:owner.planId},orderBy:{id:'asc'},select:{id:true,done:true,completedAt:true}})),before=await history();
+    const {context,page}=await session(key,1440),scope={planId:owner.planId};
+    for(let i=1;i<=6;i++) {const r=await context.request.post(origin+'/api/pipeline',{headers:{origin},data:{scope,company:'QA company '+i,name:'QA buyer '+i,requestId:randomUUID(),version:0,status:'quoted',amount:'10',currency:'USD',quote:'Original quote '+i,reason:'Original note '+i}});assert.equal(r.status(),200);}
+    const snapshot=(await(await context.request.get(origin+'/api/pipeline?planId='+owner.planId)).json()).data;
+    await page.goto(origin+prefix+'/dashboard/agenda');await page.addStyleTag({content:'[data-custom-cursor]{visibility:hidden!important}'});await closeTour(page,locale);const tools=page.locator('#legacy-tools');if(!await tools.evaluate(e=>e.open))await tools.locator(':scope > summary').click();
+    check('Deleted follow-up grid stays removed '+locale,await page.locator('section[data-next-step="followup"]').count()===0);
+    const chooser=page.getByLabel(w('選擇公司紀錄','Select a company record'),{exact:true});await chooser.waitFor();
+    check('All saved companies remain selectable '+locale,await chooser.locator('option').count()===7);
+    const company='QA company 6',saved=snapshot.deals.find(d=>d.company===company),draft={scope,company,name:saved.name,requestId:randomUUID(),version:saved.version,status:'quoted',amount:'149*80%',currency:'US',quote:'Keep original wording',reason:'Keep follow-up notes',scripts:{}};
+    const draftKey='nova:commercial:'+owner.id+':'+owner.planId+':'+company.toLowerCase();
+    await page.evaluate(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:draftKey,value:draft});await chooser.selectOption(company);
+    const editor=page.getByRole('region',{name:w('公司跟進紀錄','Company follow-up'),exact:true}),amount=editor.getByLabel(w('報價／證據金額','Quoted / evidence amount'),{exact:true}),currency=editor.getByLabel(w('幣別（USD／TWD 等）','Currency (USD / TWD etc.)'),{exact:true}),quote=editor.getByLabel(w('對方回覆原話','Their exact reply'),{exact:true}),save=editor.getByRole('button',{name:w('儲存紀錄與證據','Save records and evidence'),exact:true});
+    await save.waitFor({state:'visible'});await page.waitForFunction(()=>[...document.querySelectorAll('input')].some(e=>e.value==='149*80%'));
+    check('Legacy invalid draft remains visible '+locale,await amount.inputValue()==='149*80%'&&await currency.inputValue()==='US');
+    let writes=0;page.on('request',r=>{if(r.method()==='POST'&&new URL(r.url()).pathname==='/api/pipeline')writes++;});await save.click();
+    await editor.getByRole('alert').waitFor();const error=await editor.getByRole('alert').innerText();
+    check('Validation explains both fields in Chinese '+locale,error.includes('金額')&&error.includes('幣別')&&!/Invalid|pattern/.test(error));
+    check('Invalid input is retained without a write '+locale,writes===0&&await amount.inputValue()==='149*80%'&&await quote.inputValue()==='Keep original wording');
+    await page.mouse.move(-100,-100);await screenshot(page,'sales-invalid-'+locale);
+    await amount.fill('119.20');await currency.selectOption('USD');let response=waitResponse(page,r=>r.request().method()==='POST'&&r.url().endsWith('/api/pipeline'));await save.click();assert.equal((await response).status(),200);
+    await editor.getByRole('status').filter({hasText:w('已儲存','Saved.')}).waitFor();
+    let fresh=(await(await context.request.get(origin+'/api/pipeline?planId='+owner.planId)).json()).data,deal=fresh.deals.find(d=>d.company===company);
+    check('Corrected quote saves with no payment proof '+locale,deal.events.at(-1).amount==='119.20'&&deal.events.at(-1).currency==='USD'&&deal.events.at(-1).quote===draft.quote&&fresh.summary.total===0&&!deal.proofs.length);
+    await editor.getByLabel(w('目前狀態','Current status'),{exact:true}).selectOption('declined');response=waitResponse(page,r=>r.request().method()==='POST'&&r.url().endsWith('/api/pipeline'));await save.click();assert.equal((await response).status(),200);
+    fresh=(await(await context.request.get(origin+'/api/pipeline?planId='+owner.planId)).json()).data;deal=fresh.deals.find(d=>d.company===company);
+    check('Declined record also saves without completion '+locale,deal.status==='declined'&&fresh.summary.total===0);
+    const revision=(await db.actionPlan.findUnique({where:{id:owner.planId}})).revision,locked=await context.request.patch(origin+'/api/action-plans/actions/'+owner.actionId,{headers:{origin},data:{revision,done:true}}),blocked=await locked.json();
+    check('Payment completion gate remains Chinese only '+locale,locked.status()===409&&blocked.error.includes('口頭承諾不計入')&&!/[A-Za-z]/.test(blocked.error));
+    response=waitResponse(page,r=>r.request().method()==='PATCH'&&r.url().endsWith('/api/action-plans/actions/'+owner.actionId));await page.locator('[data-legacy-task] input[type="checkbox"]').first().click();assert.equal((await response).status(),409);
+    const gate=page.getByRole('alert').filter({hasText:'口頭承諾不計入'});await gate.waitFor();const gateText=await gate.locator('p').first().innerText();
+    check('Actual completion error shows only Chinese explanation '+locale,gateText.includes('HTTP 409')&&!/[A-Za-z]/.test(gateText.replace(/^HTTP 409\s*/,'')));
+    const gateFile=path.join(output,'payment-gate-'+locale+'.png');await gate.screenshot({path:gateFile});report.screenshots.push(gateFile);
+    response=waitResponse(page,r=>r.request().method()==='GET'&&r.url().endsWith('/api/action-plans/roadmap'));await gate.getByRole('button').click();assert.equal((await response).status(),200);await gate.waitFor({state:'hidden'});
+    check('Successful reload clears stale error and keeps form '+locale,await quote.inputValue()===draft.quote&&await amount.inputValue()==='119.20');
+    const parallel=await context.request.post(origin+'/api/pipeline',{headers:{origin},data:{...draft,requestId:randomUUID(),version:deal.version,status:'quoted',amount:'119.20',currency:'USD',quote:'Latest record from another tab'}});assert.equal(parallel.status(),200);
+    await quote.fill('Keep my newer draft');response=waitResponse(page,r=>r.request().method()==='POST'&&r.url().endsWith('/api/pipeline'));await save.click();assert.equal((await response).status(),409);
+    check('Version conflict keeps unsaved wording '+locale,(await editor.getByRole('alert').innerText()).includes('HTTP 409')&&await quote.inputValue()==='Keep my newer draft');
+    let comparison='';page.once('dialog',d=>{comparison=d.message();});await editor.getByRole('button',{name:w('比較最新版本並重試','Compare latest version and retry'),exact:true}).click();await editor.getByRole('alert').waitFor({state:'hidden'});check('Comparison shows user records without request metadata '+locale,comparison.includes('Latest record from another tab')&&!/payloadHash|requestId/.test(comparison));response=waitResponse(page,r=>r.request().method()==='POST'&&r.url().endsWith('/api/pipeline'));await save.click();assert.equal((await response).status(),200);
+    fresh=(await(await context.request.get(origin+'/api/pipeline?planId='+owner.planId)).json()).data;deal=fresh.deals.find(d=>d.company===company);
+    check('Explicit compare and retry preserves both histories '+locale,deal.events.at(-1).quote==='Keep my newer draft'&&deal.events.some(e=>e.quote==='Latest record from another tab')&&deal.events[0].quote==='Original quote 6');
+    await page.locator('[data-company-picker] > details > summary').click();await page.getByLabel(w('公司名稱','Company name'),{exact:true}).fill(' QA COMPANY 6 ');await page.locator('[data-company-picker]').getByRole('button',{name:w('選擇並記錄','Select and record'),exact:true}).click();
+    check('Manual entry reuses the saved company name '+locale,await chooser.inputValue()===company&&await editor.getByRole('heading',{name:company,exact:true}).count()===1);
+    for(const width of [390,768,1440]) {
+      await page.setViewportSize({width,height:1000});await layout(page,'Sales workspace '+locale+width,locale);
+      if(width>=768)check('Every sidebar name stays on one line '+locale+width,await page.locator('#dashboard-navigation nav a').evaluateAll(links=>links.every(a=>{const s=a.querySelector('span.relative'),range=document.createRange();range.selectNodeContents(s);return range.getClientRects().length===1&&s.getBoundingClientRect().width<=a.clientWidth-24+1;})));
+      await page.mouse.move(-100,-100);const formFile=path.join(output,'sales-form-'+locale+'-'+width+'.png');await editor.screenshot({path:formFile});report.screenshots.push(formFile);await screenshot(page,'sales-saved-'+locale+'-'+width);
+    }
+    check('Completed steps and timestamps unchanged '+locale,before===await history());check('Follow-up records do not consume AI or Token '+locale,await db.aiUsage.count({where:{userId:owner.id}})===0&&await db.tokenReservation.count({where:{userId:owner.id}})===0);
+    await context.close();
+  }
+}
+
 async function compactMemberQA(page, locale) {
   const toggle=page.locator('aside button[aria-controls="dashboard-navigation"]');
   check('Mobile header stays compact '+locale,await page.locator('aside').evaluate(e=>e.getBoundingClientRect().height<=76));
@@ -1188,11 +1246,12 @@ async function commerceSettingsQA() {
 }
 
 try {
-  if(['localization','layout'].includes(scenario)) await startCopyProvider();
+  if(['localization','layout','sales'].includes(scenario)) await startCopyProvider();
   await startServer(); await redirects();
   if (mode === 'start') {
     if(scenario!=='homepage') await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'layout') { await layoutQA(); }
+    if (scenario === 'sales') { await salesSaveQA(); }
+    else if (scenario === 'layout') { await layoutQA(); }
     else if (scenario === 'localization') { await localizationQA(); }
     else if (scenario === 'language') { await languageQA(); }
     else if (scenario === 'legacy') { await legacyLayoutQA(); }

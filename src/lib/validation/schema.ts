@@ -17,7 +17,7 @@ export const proofSchema = z.object({
 }).strict();
 export const salesEventSchema = z.object({
   requestId: z.string().uuid(), payloadHash: z.string().optional(), at: z.iso.datetime(), status: z.enum(salesStatuses), quote: z.string().max(4000), reason: z.string().max(4000),
-  amount: z.string().regex(/^\d{1,10}(\.\d{1,2})?$/).or(z.literal("")), currency: z.string().regex(/^[A-Z]{3}$/).or(z.literal("")),
+  amount: z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, "金額請填數字，最多兩位小數，例如 119.20；請勿輸入計算式。").or(z.literal("")), currency: z.string().regex(/^[A-Z]{3}$/, "幣別請選擇三碼代碼，例如 USD 或 TWD。").or(z.literal("")),
 }).strict();
 export const salesRecordSchema = z.object({
   scope: scopeSchema, company: z.string().trim().min(1).max(200), name: z.string().trim().max(200), sourceId: z.string().max(200).optional(),

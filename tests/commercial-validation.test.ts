@@ -24,6 +24,14 @@ test("Commercial fields are optional; interest is never a proof and four legacy 
   assert.equal(proofSchema.safeParse({ ...proof(), date: "2026-02-30" }).success, false);
   assert.equal(proofSchema.safeParse({ ...proof(), kind: "verbal_yes" }).success, false);
 });
+test("Sales input explains amount and currency errors in Chinese without accepting expressions", () => {
+  for (const [field, value, expected] of [["amount", "149*80%", "金額"], ["currency", "US", "幣別"]] as const) {
+    const result = salesMutationSchema.shape[field].safeParse(value);
+    assert(!result.success); assert(result.error.issues.every(i => i.message.includes(expected) && !/Invalid|pattern/.test(i.message)));
+  }
+  for (const value of ["", "0", "119.20", "149"]) assert(salesMutationSchema.shape.amount.safeParse(value).success);
+  for (const value of ["", "USD", "TWD"]) assert(salesMutationSchema.shape.currency.safeParse(value).success);
+});
 test("Commitments dedupe normalized companies, separate paid / signed and currencies, and stop counting revoked proofs", () => {
   const signed = proof(), paid = proof("paid"), twd = { ...proof("paid"), currency: "TWD", amount: "500" };
   const summary = commitmentSummary([record(" ＡＣＭＥ ", [signed]), record("acme", [paid]), record("Beta", [twd])]);
@@ -102,7 +110,8 @@ test("Commercial workflow in isolated PostgreSQL: ownership, concurrency, privat
     });
     await t.test("Interest, legacy won and agreed do not complete; manual quantity and old pilot form are rejected", async () => {
       await db.deal.create({ data: { userId: owner.id, title: "Old win", stage: "won", value: 999 } });
-      assert.equal((await complete()).status, 409);
+      const locked = await complete(); assert.equal(locked.status, 409);
+      const message = (await locked.json()).error; assert(message.includes("口頭承諾不計入")); assert(!/[A-Za-z]/.test(message));
       assert.equal((await tasks.PATCH(req({ revision: await revision(), recordingMode: "interview", metricTarget: 1 }), { params: Promise.resolve({ id: task.id }) })).status, 409);
       const edit = { title: "Document next result", impact: "High", urgencyType: "immediate", urgencyDays: null, dependencyLevel: 0, dependencyNotes: null, difficulty: 1, actionTime: { minMinutes: 60, maxMinutes: 60 }, companyStage: "MVP", stageFit: { score: 4, reason: "QA evidence", confidence: null }, bottleneckGroup: "Sales", bottleneckCode: "no_icp", bottleneckFit: { score: 4, reason: "QA evidence", confidence: null }, outcomeCategory: "customers", expectedOutcome: "At least one paid contract", outcomeTime: { min: 1, max: 7 }, dependencyActionIds: [] };
       assert.equal((await tasks.PATCH(req({ revision: await revision(), ...edit }), { params: Promise.resolve({ id: task.id }) })).status, 200);
