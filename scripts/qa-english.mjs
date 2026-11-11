@@ -18,7 +18,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout', 'sales'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout', 'sales', 'starter'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -1022,6 +1022,67 @@ async function guidedEntryQA() {
   }
 }
 
+async function starterPlanQA() {
+  const personalization={payingCustomers:'none',interviews:'none',channel:'referrals',weeklyTime:'3to8',goal:'validate'};
+  const setup={requestId:randomUUID(),locale:'en',answers:[{question:'Progress',answer:'Working MVP'},{question:'Bottleneck',answer:'Unverified customer demand'},{question:'Goal',answer:'Validate real demand'}],personalization,confirmed:true,diagnosis:{companyStage:'MVP',stageReason:'Saved prototype evidence',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_icp',bottleneckReason:'Confirm the target buyer',bottleneckConfidence:65}};
+  const journey=await db.discoveryJourney.create({data:{userId:users.trial.id,setup}});
+  const original=await db.meetingNote.create({data:{userId:users.trial.id,title:'Saved trial conversation',insight:{journeyId:journey.id,stage:'discover',type:'Prospect',name:'Saved buyer',company:'Original QA company',fit:'yes',role:'Buyer',answers:['Manual reporting is slow','','',''],notes:'Original exact words',region:'TW',industry:'saas',date:'2026-11-10'}}});
+  const before=JSON.stringify({journey,original}),{context,page}=await session('trial',390);
+  for(const locale of ['en','zh-tw']) for(const width of [390,768,1440]) {
+    const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',name=zh?'你的個人化起步計畫':'Your personalised starter plan';
+    await page.setViewportSize({width,height:width===390?844:1000});await page.goto(origin+prefix+'/dashboard/agenda');
+    await page.locator('#discovery').waitFor();await closeTour(page,locale);await page.evaluate(()=>document.fonts.ready);
+    const summary=page.locator('#discovery > details > summary').filter({hasText:name});
+    check('Starter title is secondary and collapsed '+locale+width,await summary.evaluate(el=>getComputedStyle(el).fontSize==='16px'&&!el.parentElement.open));
+    const hero=page.locator('#discovery > [data-next-step="goal"]'),form=page.locator('[data-next-step="record"]');
+    check('Trial priority uses actual target '+locale+width,(await hero.innerText()).includes('1 / 3')&&await hero.evaluate(el=>getComputedStyle(el).backgroundColor==='rgb(0, 0, 0)'));
+    const cards=await form.locator(':scope > div > *').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width};}));
+    check('Trial work and method placement '+locale+width,width>=1024?cards[1].x>cards[0].x+cards[0].width-1:cards[1].y>cards[0].y);
+    const action=hero.getByRole('link',{name:zh?'記錄客戶對話':'Record a conversation',exact:true});
+    check('Trial priority CTA is at least 44px '+locale+width,(await action.boundingBox()).height>=44);
+    await action.click();check('Trial priority reaches form '+locale+width,new URL(page.url()).hash==='#discovery-record-'+journey.id);
+    await summary.focus();await page.keyboard.press('Enter');check('Starter background opens by keyboard '+locale+width,await summary.evaluate(el=>el.parentElement.open));
+    check('Saved diagnosis retained without confidence '+locale+width,(await summary.locator('..').innerText()).includes('Saved prototype evidence')&&!/70%|65%/.test(await summary.locator('..').innerText()));
+    await summary.press('Enter');await summary.evaluate(el=>el.blur());await layout(page,'Trial starter '+locale+width,locale);
+    await page.addStyleTag({content:'[data-custom-cursor]{visibility:hidden!important}'});await page.mouse.move(-100,-100);await page.evaluate(()=>scrollTo(0,0));
+    await screenshot(page,'starter-'+locale+'-'+width);
+  }
+  check('Viewing trial layout preserves raw records',before===JSON.stringify({journey:await db.discoveryJourney.findUnique({where:{id:journey.id}}),original:await db.meetingNote.findUnique({where:{id:original.id}})}));
+  await page.goto(origin+'/dashboard/agenda');await page.locator('#discovery').waitFor();await closeTour(page);
+  const record=page.locator('[data-next-step="record"]');await record.getByRole('textbox',{name:'Company',exact:true}).fill('Second QA company');
+  await record.getByRole('textbox',{name:'Customer problem and original notes',exact:true}).fill('Second authentic customer quote');
+  await page.reload();await page.locator('#discovery').waitFor();await closeTour(page);
+  check('Trial form draft survives reload',await record.getByRole('textbox',{name:'Company',exact:true}).inputValue()==='Second QA company');
+  const response=waitResponse(page,r=>r.url().endsWith('/api/customer-insights')&&r.request().method()==='POST');await record.getByRole('button',{name:'Save insight',exact:true}).click();assert.equal((await response).status(),201);
+  await page.waitForFunction(()=>document.querySelector('[data-next-step="insights"]')?.textContent.includes('2 / 3'));
+  check('Trial saves through the existing API with actual progress',await db.meetingNote.count({where:{userId:users.trial.id}})===2);
+  check('Trial save preserves earlier notes and setup',before===JSON.stringify({journey:{...await db.discoveryJourney.findUnique({where:{id:journey.id}}),version:journey.version,updatedAt:journey.updatedAt},original:await db.meetingNote.findUnique({where:{id:original.id}})}));
+  const third=await db.meetingNote.create({data:{userId:users.trial.id,title:'Third trial conversation',insight:{...original.insight,company:'Third QA company'}}});
+  const current=await db.discoveryJourney.findUniqueOrThrow({where:{id:journey.id}});
+  await db.discoveryJourney.update({where:{id:journey.id},data:{previewVersion:current.version,preview:{total:3,generatedAt:new Date().toISOString(),nextMoves:[],topics:[{label:'Slow reporting',count:2,percent:66.7,evidence:[{recordId:original.id,quote:'Manual reporting is slow'},{recordId:third.id,quote:'Manual reporting is slow'}]}]}}});
+  await page.reload();await page.locator('#discovery').waitFor();await closeTour(page);
+  await page.getByRole('heading',{name:'An early signal, not a conclusion',exact:true}).waitFor();
+  check('Reached trial target retains grounded findings',(await page.locator('#discovery').innerText()).includes('2 of the 3 companies analysed'));
+  check('Reached trial target locks new records',await page.getByRole('button',{name:'+ Log a conversation',exact:true}).isDisabled());
+  const prospects=page.locator('#prospects');await prospects.getByText('No qualified companies delivered yet.',{exact:false}).waitFor();
+  check('Compact prospect entry retains delivery empty state',await prospects.getByRole('heading',{name:'Companies to contact first',exact:true}).isVisible());
+  await prospects.locator('summary').filter({hasText:'Search new companies and review delivery sources'}).click();check('Compact search remains available',await prospects.getByRole('textbox',{name:'Target buyer description',exact:true}).isVisible());
+  await db.discoveryJourney.create({data:{userId:users.expired.id,setup}});
+  const expired=await session('expired',390);await expired.page.goto(origin+'/dashboard/agenda');await expired.page.locator('#discovery').waitFor();await closeTour(expired.page);
+  check('Expired starter keeps read-only and plan entry',await expired.page.getByRole('link',{name:'View regular plans to continue',exact:true}).isVisible()&&await expired.page.getByRole('button',{name:'+ Log a conversation',exact:true}).isDisabled());
+  const otherSetup={...setup,personalization:{...personalization,payingCustomers:'6-20'}};
+  await db.discoveryJourney.update({where:{id:journey.id},data:{setup:otherSetup}});
+  for(const locale of ['en','zh-tw']) {
+    const zh=locale==='zh-tw';await page.goto(origin+(zh?'/zh-tw':'')+'/dashboard/agenda');
+    const heading=page.getByRole('heading',{name:zh?'你的個人化起步計畫':'Your personalised starter plan',exact:true});await heading.waitFor();
+    check('Non-conversation starter title stays small '+locale,await heading.evaluate(el=>getComputedStyle(el).fontSize==='16px'));
+    await page.getByRole('button',{name:zh?'選看訪談工作區（已記錄 3 家）':'Optional conversations (3 companies saved)',exact:true}).click();await page.locator('#discovery').waitFor();
+    await page.getByRole('button',{name:zh?'返回我的起步任務':'Back to my starter steps',exact:true}).click();await heading.waitFor();check('Optional conversation navigation retained '+locale,true);
+  }
+  check('Trial layout consumes no member AI or Tokens',await db.aiUsage.count({where:{userId:users.trial.id}})===0&&await db.tokenReservation.count({where:{userId:users.trial.id}})===0);
+  await context.close();await expired.context.close();
+}
+
 async function salesSaveQA() {
   for(const [key,locale] of [['desktop','en'],['mobile','zh-tw']]) {
     const owner=users[key],zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',w=(a,b)=>zh?a:b;
@@ -1250,7 +1311,8 @@ try {
   await startServer(); await redirects();
   if (mode === 'start') {
     if(scenario!=='homepage') await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'sales') { await salesSaveQA(); }
+    if (scenario === 'starter') { await starterPlanQA(); }
+    else if (scenario === 'sales') { await salesSaveQA(); }
     else if (scenario === 'layout') { await layoutQA(); }
     else if (scenario === 'localization') { await localizationQA(); }
     else if (scenario === 'language') { await languageQA(); }
