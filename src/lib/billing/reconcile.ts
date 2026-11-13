@@ -51,7 +51,7 @@ export async function reconcileFromPaypal(
     });
   }
 
-  if (local && match?.promotion) {
+  if (local) {
     if (status === "ACTIVE") await prisma.billingCouponCheckout.updateMany({ where: { paypalSubscriptionId: paypalSub.id, userId: local.userId, consumedAt: null }, data: { consumedAt: new Date(), status: "used" } });
     else if (isTerminal) await prisma.billingCouponCheckout.updateMany({ where: { paypalSubscriptionId: paypalSub.id, userId: local.userId, consumedAt: null }, data: { status: "closed" } });
   }

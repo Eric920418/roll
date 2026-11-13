@@ -109,7 +109,7 @@ export default function BillingPanel({
           locale,
           pricingVersion: prices.version,
           requestId: checkoutAttempt.current.id,
-          ...(coupon ? { couponCode: coupon.code } : {}),
+          ...(coupon ? { couponCode: coupon.code, couponRevision: coupon.quotes[0]?.revision } : {}),
         }),
       });
       const text = await res.text();
@@ -284,7 +284,7 @@ export default function BillingPanel({
         {!hasActiveSub && <form className="mt-4 rounded-2xl border border-dark/15 bg-white p-4" onSubmit={event => { event.preventDefault(); void applyCoupon(); }}>
           <label htmlFor="billing-coupon-code" className="block text-sm font-semibold">{zh ? "折扣碼" : "Discount code"}</label>
           <div className="mt-2 flex flex-wrap gap-2"><input id="billing-coupon-code" value={couponText} maxLength={32} autoComplete="off" spellCheck={false} disabled={busy !== null} onChange={event => { setCouponText(event.target.value); setCoupon(null); checkoutAttempt.current = null; }} className="min-h-11 min-w-0 flex-1 rounded-xl border border-dark/20 px-3 py-2 text-sm uppercase focus-visible:outline-2" /><button type="submit" disabled={busy !== null || !couponText.trim()} className="min-h-11 rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy === "coupon" ? (zh ? "驗證中…" : "Checking…") : (zh ? "套用" : "Apply")}</button>{couponText && <button type="button" disabled={busy !== null} className="min-h-11 rounded-xl border px-4 py-2 text-sm" onClick={() => { setCouponText(""); setCoupon(null); setError(""); checkoutAttempt.current = null; }}>{zh ? "移除" : "Remove"}</button>}</div>
-          {coupon && <p role="status" className="mt-3 text-sm font-semibold">{coupon.code} · 60% OFF · {zh ? "僅首期，之後原價自動續訂。優惠至 2026/11/30（台北時間），每帳號限一次。" : "First billing period only, then automatic renewal at the regular price. Ends Nov 30, 2026 (Taipei); once per account."}</p>}
+          {coupon && <p role="status" className="mt-3 text-sm font-semibold">{coupon.code} · {coupon.quotes[0]?.percentOff}% OFF · {zh ? "僅首期，之後原價自動續訂；每帳號限一次。" : "First billing period only, then automatic renewal at the regular price; once per account."} {zh ? "有效期限（不含）：" : "Valid until (exclusive): "}{new Date(coupon.quotes[0].endsAt).toLocaleString(zh ? "zh-TW" : "en-US", { timeZone: "Asia/Taipei" })} {zh ? "（台北時間）" : "(Taipei)"}</p>}
         </form>}
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className={`flex flex-col rounded-2xl border p-5 ${currentPlan === "free" ? "border-primary bg-primary/[0.04]" : "border-dark/10 bg-white"}`}>

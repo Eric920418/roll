@@ -21,7 +21,7 @@ function loader(mocks: Record<string, unknown>, env: Record<string, string> = {}
   }
   return load;
 }
-const env: Record<string, string> = { BILLING_NOVA60_ENABLED: "true", MEMBER_NETWORK_ENABLED: "true", BILLING_REQUIRE_EXPLICIT_ENTITLEMENT: "true" };
+const env: Record<string, string> = { PAYPAL_ENV: "sandbox", BILLING_NOVA60_ENABLED: "true", MEMBER_NETWORK_ENABLED: "true", BILLING_REQUIRE_EXPLICIT_ENTITLEMENT: "true" };
 for (const p of ["PRO", "BUSINESS"]) for (const i of ["MONTHLY", "YEARLY"]) { env[`PAYPAL_PLAN_ID_${p}_${i}_USD`] = `BASE-${p}-${i}`; env[`PAYPAL_PLAN_ID_NOVA60_${p}_${i}_USD`] = `PROMO-${p}-${i}`; }
 const pure = loader({}, env), coupon = pure<typeof import("../src/lib/billing/coupons")>("src/lib/billing/coupons.ts"), plans = pure<typeof import("../src/lib/billing/plans")>("src/lib/billing/plans.ts");
 test("NOVA60 uses 40% first-period prices, exact Taipei November boundaries, and unchanged renewals", () => {
@@ -68,7 +68,7 @@ test("Coupon checkout transactions preserve receipts, idempotency, eligibility a
   const session = { uid: null as string | null, validSignature: true };
   const provider = {
     PaypalSubscriptionError: ProviderError,
-    getBillingPlan: async (id: string) => { if (id.startsWith("BASE")) return { product_id: "PRODUCT" }; const plan = id.includes("BUSINESS") ? "business" : "pro", interval = id.includes("YEARLY") ? "year" : "month"; const body = coupon.couponPlanBody("PRODUCT", coupon.couponQuote("NOVA60", plan, interval)); if (mode === "mismatch") body.billing_cycles[0].pricing_scheme.fixed_price.value = "100"; return body; },
+    getBillingPlan: async (id: string) => { if (id.startsWith("BASE")) return { product_id: "PRODUCT" }; const plan = id.includes("BUSINESS") ? "business" : "pro", interval = id.includes("YEARLY") ? "year" : "month"; const body = coupon.couponPlanBody("PRODUCT", coupon.couponQuote("NOVA60", plan, interval)); if (mode === "custom80") body.billing_cycles[0].pricing_scheme.fixed_price.value = (Number(body.billing_cycles[1].pricing_scheme.fixed_price.value) * 0.2).toFixed(2); if (mode === "mismatch") body.billing_cycles[0].pricing_scheme.fixed_price.value = "100"; return body; },
     createSubscription: async (body: { planId: string; requestId: string }) => { posts++; bodies.push(structuredClone(body)); if (mode === "rejected") throw new ProviderError(422); let receipt = receipts.get(body.requestId); if (!receipt) { receipt = { id: `I-${randomUUID()}`, status: "APPROVAL_PENDING", plan_id: body.planId, links: [{ rel: "approve", method: "GET", href: `https://www.paypal.com/webapps/billing/subscriptions?ba_token=${randomUUID()}` }], billing_info: { next_billing_time: "2026-12-15T00:00:00Z" } }; receipts.set(body.requestId, receipt); } if (mode === "timeout") { mode = "normal"; throw new Error("Unknown acceptance private-provider-secret"); } return { id: receipt.id, status: receipt.status, approveUrl: receipt.links[0].href }; },
     getSubscription: async (id: string) => { const found = [...receipts.values()].find(r => r.id === id); assert(found); return found; },
     verifyWebhookSignature: async () => session.validSignature,
@@ -99,12 +99,31 @@ test("Coupon checkout transactions preserve receipts, idempotency, eligibility a
         assert.equal(checkout.code, "MEETTAIPEI60"); assert.equal(checkout.campaign, "november-2026");
         await codes.saveCouponCode({ code: "MEETTAIPEI60", enabled: false });
         const before = posts;
-        assert.equal((await service.checkoutWithCoupon(request)).approveUrl, first.approveUrl);
+        assert.equal((await service.checkoutWithCoupon({ ...request, couponRevision: 0 })).approveUrl, first.approveUrl);
         await assert.rejects(service.checkoutWithCoupon({ ...input(other), code: "MEETTAIPEI60" }), /無效|Invalid/); assert.equal(posts, before);
         const remote = [...receipts.values()].find(r => r.id === checkout.paypalSubscriptionId)!; remote.status = "ACTIVE";
         await reconcile.reconcileFromPaypal(remote);
         await assert.rejects(service.checkoutWithCoupon({ ...input(u), code: "EVENT60" }), /already used|已使用/);
       } finally { await db.setting.deleteMany({ where: { key: codes.couponCodesKey } }); await clean(u.id); await clean(other.id); }
+    });
+    await t.test("80 percent checkout snapshots survive edits and disabling; activation consumes eligibility", async () => {
+      const codes=load<typeof import("../src/lib/billing/coupon-codes")>("src/lib/billing/coupon-codes.ts"),u=await user();
+      assert.equal(await db.setting.findUnique({where:{key:codes.couponCodesKey}}),null);
+      try {
+        await codes.saveCouponCode({code:"EVENT80",enabled:false,revision:0,terms:{percentOff:80,startsAt:"2026-11-01T00:00:00.000Z",endsAt:"2027-01-01T00:00:00.000Z"}});
+        const values=await codes.readCouponCodes(),entry=values.EVENT80;if(typeof entry!=="object")throw Error("Missing rule");
+        entry.plans=Object.fromEntries(["pro","business"].flatMap(p=>["month","year"].map(i=>[`sandbox:${p}:${i}`,`PROMO-${p.toUpperCase()}-${i==='month'?'MONTHLY':'YEARLY'}`])));
+        await db.setting.update({where:{key:codes.couponCodesKey},data:{value:values}});await codes.saveCouponCode({code:"EVENT80",enabled:true});
+        await assert.rejects(service.checkoutWithCoupon({...input(u),code:"EVENT80",couponRevision:0}),/changed|變更/);
+        mode="custom80";const request={...input(u),code:"EVENT80",couponRevision:1},before=posts,first=await service.checkoutWithCoupon(request);
+        const checkout=await db.billingCouponCheckout.findFirstOrThrow({where:{userId:u.id}});assert.equal(checkout.firstAmountMinor,980);assert.equal(checkout.regularAmountMinor,4900);
+        await codes.saveCouponCode({code:"EVENT80",enabled:false,revision:1,terms:{percentOff:70,startsAt:entry.startsAt,endsAt:entry.endsAt}});
+        assert.equal((await service.checkoutWithCoupon(request)).approveUrl,first.approveUrl);assert.equal(posts,before+1);
+        const remote=receipts.get((checkout.request as {requestId:string}).requestId)!;remote.status="ACTIVE";await reconcile.reconcileFromPaypal(remote);
+        assert((await db.billingCouponCheckout.findUniqueOrThrow({where:{id:checkout.id}})).consumedAt);
+        await assert.rejects(service.assertCouponEligibility(u.id),/already used|已使用/);
+        assert.equal((await db.billingCouponCheckout.findUniqueOrThrow({where:{id:checkout.id}})).firstAmountMinor,980);
+      } finally {mode="normal";await db.setting.deleteMany({where:{key:codes.couponCodesKey}});await clean(u.id);}
     });
     await t.test("Parallel multi-tab submissions and changed content never create duplicate discounted subscriptions", async () => {
       const u = await user(), body = input(u), before = posts;
@@ -243,12 +262,26 @@ test("Admin plan preparation preserves parallel plan IDs and does not enable che
     createBillingPlan: async (body: unknown, requestId: string) => { if (keys.has(requestId)) return { id: keys.get(requestId)! }; creates++; const id = `P-${randomUUID().replaceAll("-", "")}`; remote.set(id, body); keys.set(requestId, id); return { id }; },
   } }, { ...Object.fromEntries(Object.entries(env).filter(([key]) => !key.startsWith("PAYPAL_PLAN_ID_NOVA60_"))), PAYPAL_ENV: "sandbox", BILLING_NOVA60_ENABLED: "false" });
   const setup = load<typeof import("../src/lib/billing/coupon-setup")>("src/lib/billing/coupon-setup.ts");
+  const codes = load<typeof import("../src/lib/billing/coupon-codes")>("src/lib/billing/coupon-codes.ts");
+  assert.equal(await db.setting.findUnique({where:{key:"billing.nova60.codes"}}),null);
   try {
+    const terms={percentOff:80,startsAt:"2026-11-01T00:00:00.000Z",endsAt:"2027-01-01T00:00:00.000Z"};
+    await codes.saveCouponCode({code:"EVENT80",enabled:false,terms,revision:0});
+    await assert.rejects(codes.saveCouponCode({code:"EVENT80",enabled:true}),/核對/);
+    await Promise.all((["pro","business"] as const).flatMap(plan=>(["month","year"] as const).map(interval=>setup.prepareCouponPlan(plan,interval,"EVENT80"))));
+    await codes.saveCouponCode({code:"EVENT80",enabled:true});
+    const configured=(await codes.readCouponCodes()).EVENT80;assert.equal(typeof configured,"object");if(typeof configured!=="object")throw Error("Missing terms");assert.equal(Object.keys(configured.plans).length,4);
+    const customQuote=coupon.couponQuote("EVENT80","pro","month",new Date(instant),{EVENT80:configured});assert.equal(customQuote.firstAmountMinor,980);
+    await codes.saveCouponCode({code:"EVENT80",enabled:false});await codes.saveCouponCode({code:"EVENT80",enabled:true});
+    await assert.rejects(codes.saveCouponCode({code:"EVENT80",enabled:false,terms,revision:0}),/更新/);
+    await codes.saveCouponCode({code:"EVENT80",enabled:false,terms:{...terms,percentOff:70},revision:1});
+    const edited=(await codes.readCouponCodes()).EVENT80;assert.equal(typeof edited==='object'&&Object.keys(edited.plans).length,0);
+    assert.equal(remote.size,4);creates=0;
     await Promise.all([setup.prepareCouponPlan("pro", "month"), setup.prepareCouponPlan("business", "year")]);
     let status = await setup.couponSetupStatus(); assert.equal(status.plans.filter(p => p.preparedId).length, 2); assert.equal(status.enabled, false);
     await setup.prepareCouponPlan("pro", "month"); assert.equal(creates, 2); status = await setup.couponSetupStatus(); assert.equal(status.enabled, false);
     assert.equal(await db.subscription.count({ where: { paypalPlanId: { in: [...remote.keys()] } } }), 0);
-  } finally { await db.setting.deleteMany({ where: { key } }); await db.$disconnect(); }
+  } finally { await db.setting.deleteMany({ where: { key: {in:[key,"billing.nova60.codes",...[...remote.keys()].map(id=>"novaCommerce.plan."+id)]} } }); await db.$disconnect(); }
 });
 
 
@@ -269,4 +302,18 @@ test("Payment return refreshes server-rendered access only after confirmed activ
     if (scenario === "error") assert(states.includes("Safe billing error"));
     if (scenario === "pending" || scenario === "missing") assert(states.includes("pending"));
   }
+});
+
+
+test("Custom 80% discounts use exact first-period cents and independent dates", () => {
+  const terms = { enabled: true, percentOff: 80, startsAt: "2026-11-01T00:00:00.000Z", endsAt: "2027-01-01T00:00:00.000Z", revision: 1, plans: {} };
+  const codes = { EVENT80: terms };
+  for (const [plan, interval, expected] of [["pro","month",980],["business","month",2980],["pro","year",9360],["business","year",33360]] as const) {
+    const q = coupon.couponQuote("event80",plan,interval,new Date(instant),codes); assert.equal(q.firstAmountMinor,expected);assert.equal(q.percentOff,80);
+    const body=coupon.couponPlanBody("PRODUCT",q);coupon.assertCouponPlan(body,q,"PRODUCT");assert.equal(body.billing_cycles[1].pricing_scheme.fixed_price.value,(q.regularAmountMinor/100).toFixed(2));
+  }
+  assert.throws(()=>coupon.couponQuote("EVENT80","pro","month",new Date(terms.endsAt),codes),/validity|有效/);
+  assert.throws(()=>coupon.couponQuote("EVENT80","pro","month",new Date(instant),{EVENT80:{...terms,enabled:false}}));
+  assert.throws(()=>coupon.couponPaypalPlanId("pro","month",codes,"EVENT80"),/verification|核對/);
+  for(const percentOff of [0,100,-1,80.5]) assert.equal(coupon.couponRuleSchema.safeParse({...terms,percentOff}).success,false);
 });

@@ -12,7 +12,7 @@ import { createSubscription, getBillingPlan, getSubscription, PaypalSubscription
 import { reconcileFromPaypal } from "./reconcile";
 
 type DB = Prisma.TransactionClient;
-type Input = { userId: string; email: string; requestId: string; code: string; plan: PlanKey; interval: BillingInterval; returnUrl: string; cancelUrl: string };
+type Input = { userId: string; email: string; requestId: string; code: string; couponRevision?: number; plan: PlanKey; interval: BillingInterval; returnUrl: string; cancelUrl: string };
 const requestSchema = z.object({ planId: z.string(), email: z.email(), requestId: z.string().uuid(), returnUrl: z.url(), cancelUrl: z.url() });
 async function lockUser(tx: DB, userId: string) {
   const rows = await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE` as unknown[];
@@ -43,7 +43,7 @@ async function resume(row: BillingCouponCheckout) {
 export async function checkoutWithCoupon(input: Input) {
   const limited = await checkRateLimit(`billing-coupon:${input.userId}`, 10, MINUTE_MS);
   if (!limited.ok) throw new CouponError("付款請求過於頻繁，請稍後重試 / Too many checkout attempts; retry shortly", "coupon_rate_limit", 429);
-  const normalized = { code: input.code.trim().toUpperCase(), plan: input.plan, interval: input.interval, returnUrl: input.returnUrl, cancelUrl: input.cancelUrl };
+  const normalized = { code: input.code.trim().toUpperCase(), plan: input.plan, interval: input.interval, returnUrl: input.returnUrl, cancelUrl: input.cancelUrl, ...(!input.couponRevision ? {} : { couponRevision: input.couponRevision }) };
   const payloadHash = createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
   // Refresh known approvals outside the transaction before deciding if an unpaid attempt is closed.
   const known = await prisma.billingCouponCheckout.findFirst({ where: { userId: input.userId, campaign: NOVEMBER_COUPON.campaign, status: "ready" }, orderBy: { createdAt: "desc" } });
@@ -59,6 +59,7 @@ export async function checkoutWithCoupon(input: Input) {
     await assertCouponEligibility(input.userId, tx);
     const pending = replay || await tx.billingCouponCheckout.findFirst({ where: { userId: input.userId, campaign: NOVEMBER_COUPON.campaign, status: { in: ["creating", "ready"] } }, orderBy: { createdAt: "desc" } });
     if (pending) {
+      if (Boolean(input.couponRevision) && pending.payloadHash !== payloadHash) throw new CouponError("已有不同版本優惠付款，請先處理原付款 / A different discount checkout is pending", "coupon_checkout_pending", 409);
       if (pending.plan !== input.plan || pending.billingInterval !== input.interval || pending.code !== normalized.code) throw new CouponError(`已有 ${pending.plan === "pro" ? "SPARK" : "NOVA"} ${pending.billingInterval === "month" ? "月繳 / monthly" : "年繳 / yearly"} 優惠付款待核准；請選回原方案繼續 / A discount checkout is pending; select the original plan and billing interval to continue`, "coupon_checkout_pending", 409);
       if (pending.status === "ready") return pending;
       // Stop uncertain creates before the provider can forget its idempotency receipt.
@@ -67,14 +68,18 @@ export async function checkoutWithCoupon(input: Input) {
       return tx.billingCouponCheckout.update({ where: { id: pending.id }, data: { leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });
     }
     await assertCurrentCouponPrice(input.plan as "pro" | "business", input.interval);
-    const quote = couponQuote(normalized.code, input.plan, input.interval, new Date(), await readCouponCodes(tx)), paypalPlanId = couponPaypalPlanId(input.plan, input.interval);
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('billing.nova60.codes'))::text`;
+    const codes = await readCouponCodes(tx);
+    const entry = codes[normalized.code];
+    if (typeof entry === "object" && input.couponRevision !== entry.revision) throw new CouponError("優惠條件已變更，請重新套用代碼確認金額 / Discount changed; reapply the code", "coupon_setup_conflict", 409);
+    const quote = couponQuote(normalized.code, input.plan, input.interval, new Date(), codes), paypalPlanId = couponPaypalPlanId(input.plan, input.interval, codes, quote.code);
     const request = { planId: paypalPlanId, email: input.email, requestId: randomUUID(), returnUrl: input.returnUrl, cancelUrl: input.cancelUrl };
     return tx.billingCouponCheckout.create({ data: { userId: input.userId, requestId: input.requestId, payloadHash, campaign: quote.campaign, code: quote.code, plan: input.plan, billingInterval: input.interval, regularAmountMinor: quote.regularAmountMinor, firstAmountMinor: quote.firstAmountMinor, paypalPlanId, request, createdAt: new Date(), leaseToken: token, leaseUntil: new Date(Date.now() + 180000) } });
   }, { timeout: 15000 });
   if (row.status === "ready") return resume(row);
   let submitted = false;
   try {
-    const quote = { ...NOVEMBER_COUPON, plan: row.plan as PlanKey, interval: row.billingInterval as BillingInterval, currency: "USD" as const, regularAmountMinor: row.regularAmountMinor, firstAmountMinor: row.firstAmountMinor };
+    const quote = { ...NOVEMBER_COUPON, code: row.code, revision: 0, percentOff: Math.round((1 - row.firstAmountMinor / row.regularAmountMinor) * 100), plan: row.plan as PlanKey, interval: row.billingInterval as BillingInterval, currency: "USD" as const, regularAmountMinor: row.regularAmountMinor, firstAmountMinor: row.firstAmountMinor };
     const regularId = paypalPlanIdFor(quote.plan, quote.interval);
     if (!regularId) throw new CouponError("原價方案設定缺失，已停止付款 / Regular billing plan is missing; checkout stopped", "coupon_not_configured", 503);
     const [regular, discount] = await Promise.all([getBillingPlan(regularId), getBillingPlan(row.paypalPlanId)]);

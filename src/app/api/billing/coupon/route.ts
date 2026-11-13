@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const quotes = (["pro", "business"] as const).map(plan => couponQuote(parsed.data.code, plan, parsed.data.interval, new Date(), codes)).filter(quote => billingVariantFor(quote.plan, quote.interval, prices.catalog)?.amountMinor === quote.regularAmountMinor);
     if (!quotes.length) throw new CouponError("目前價格已更新，此優惠不適用 / Pricing changed; this promotion is not available for the new price", "coupon_price_changed", 409);
     await assertCouponEligibility(account.id);
-    for (const quote of quotes) couponPaypalPlanId(quote.plan, quote.interval);
+    for (const quote of quotes) couponPaypalPlanId(quote.plan, quote.interval, codes, quote.code);
     return ok({ code: quotes[0].code, quotes });
   } catch (error) {
     if (error instanceof CouponError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });

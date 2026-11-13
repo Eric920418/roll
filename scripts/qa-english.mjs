@@ -86,7 +86,7 @@ async function startServer() {
     const timer = setTimeout(() => reject(new Error('QA server startup timed out.')), 60000);
     server = spawn(process.execPath, [require.resolve('next/dist/bin/next'), mode, '--hostname', hostname, '--port', String(port)], {
       cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: copyProviderUrl || 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: ['tokens','commerce'].includes(scenario) ? 'qa-disabled' : '', OMRADE_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', OMRADE_WORKER_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '', ...(scenario === 'coupons' ? { BILLING_NOVA60_ENABLED: 'true', ...Object.fromEntries(['PRO','BUSINESS'].flatMap(p=>['MONTHLY','YEARLY'].map(i=>[`PAYPAL_PLAN_ID_NOVA60_${p}_${i}_USD`,`P-QA${p}${i}`]))) } : {}) },
+      env: { ...process.env, DATABASE_URL: connectionString, ROLL_LOCAL_POSTGRES: 'true', AUTH_SECRET: authSecret, NEXT_PUBLIC_APP_URL: origin, MEMBER_NETWORK_ENABLED: 'true', MEMBER_NETWORK_EMAIL_ENABLED: 'false', ANTHROPIC_API_KEY: 'qa-disabled', ANTHROPIC_BASE_URL: copyProviderUrl || 'http://127.0.0.1:1', RESEND_API_KEY: '', OMRADE_API_KEY: ['tokens','commerce'].includes(scenario) ? 'qa-disabled' : '', OMRADE_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', OMRADE_WORKER_ENABLED: ['tokens','commerce'].includes(scenario) ? 'true' : 'false', PAYPAL_CLIENT_SECRET: '', INVESTOR_BLOB_READ_WRITE_TOKEN: '', ...(scenario === 'coupons' ? { PAYPAL_ENV: 'sandbox', BILLING_NOVA60_ENABLED: 'true', ...Object.fromEntries(['PRO','BUSINESS'].flatMap(p=>['MONTHLY','YEARLY'].map(i=>[`PAYPAL_PLAN_ID_NOVA60_${p}_${i}_USD`,`P-QA${p}${i}`]))) } : {}) },
     });
     server.stdout.on('data', chunk => { serverLog.write(chunk); startup += chunk; if (startup.includes('Ready in')) { clearTimeout(timer); resolve(); } });
     server.stderr.on('data', chunk => serverLog.write(chunk));
@@ -1259,19 +1259,39 @@ async function couponCodesQA() {
   const token=await new SignJWT({email:'qa-admin@example.invalid',role:'admin'}).setProtectedHeader({alg:'HS256'}).setIssuedAt().setExpirationTime('1h').sign(new TextEncoder().encode(authSecret));
   await context.addCookies([{name:'admin_session',value:token,url:origin,httpOnly:true,sameSite:'Lax'}]);
   const page=await context.newPage();page.on('pageerror',error=>report.browserErrors.push(error.message));
-  await page.goto(origin+'/admin/settings');await page.getByRole('heading',{name:'11 月優惠代碼管理 · 首期 60% OFF'}).waitFor();
+  await page.goto(origin+'/admin/settings');await page.getByRole('heading',{name:'優惠代碼管理 · 自訂首期折扣'}).waitFor();
   for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Coupon admin responsive '+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'coupons-admin-'+width);}
-  await page.getByLabel('新增優惠代碼',{exact:true}).fill('event60');await page.getByRole('button',{name:'新增並啟用',exact:true}).click();await page.getByRole('status').filter({hasText:'EVENT60 已啟用'}).waitFor();
-  check('Admin saves normalized code',(await db.setting.findUniqueOrThrow({where:{key}})).value.EVENT60===true);
-  await page.getByRole('button',{name:'停用 EVENT60',exact:true}).click();await page.getByRole('button',{name:'啟用 EVENT60',exact:true}).waitFor();
-  check('Admin disables code',(await db.setting.findUniqueOrThrow({where:{key}})).value.EVENT60===false);
-  const member=await session('desktop',390);
+  await page.getByLabel('新增優惠代碼',{exact:true}).fill('event80');await page.getByLabel('首期折扣百分比',{exact:true}).fill('80');await page.getByRole('button',{name:'儲存為停用',exact:true}).click();await page.getByRole('status').filter({hasText:'EVENT80 已停用'}).waitFor();
+  const stored=(await db.setting.findUniqueOrThrow({where:{key}})).value.EVENT80;
+  check('Admin saves independent 80 percent draft',stored.percentOff===80&&stored.enabled===false);
+  check('Unverified custom code cannot enable',await page.getByRole('button',{name:'啟用 EVENT80',exact:true}).isDisabled());
+  await page.getByRole('button',{name:'編輯 EVENT80',exact:true}).click();check('Editor restores saved percentage',await page.getByLabel('首期折扣百分比',{exact:true}).inputValue()==='80');
+  await page.getByRole('button',{name:'停用 MEETTAIPEI60',exact:true}).click();await page.getByRole('button',{name:'啟用 MEETTAIPEI60',exact:true}).waitFor();
+  check('Admin disables legacy code',(await db.setting.findUniqueOrThrow({where:{key}})).value.MEETTAIPEI60===false);
+  const member=await session('trial',390);
   check('Member cannot manage codes',(await member.context.request.patch(origin+'/api/admin/billing/coupon',{headers:{origin},data:{code:'DENIED60',enabled:true}})).status()===401);
   check('Cross-origin admin write denied',(await context.request.patch(origin+'/api/admin/billing/coupon',{headers:{origin:'https://evil.example'},data:{code:'DENIED60',enabled:true}})).status()===403);
+  const denied=await member.context.request.post(origin+'/api/billing/coupon',{headers:{origin},data:{code:'MEETTAIPEI60',interval:'month'}});check('Disabled code rejected',denied.status()===400);
+  await page.getByRole('button',{name:'啟用 MEETTAIPEI60',exact:true}).click();await page.getByRole('button',{name:'停用 MEETTAIPEI60',exact:true}).waitFor();check('Admin re-enables legacy code',(await db.setting.findUniqueOrThrow({where:{key}})).value.MEETTAIPEI60===true);
+  const configuration=(await db.setting.findUniqueOrThrow({where:{key}})).value;
+  configuration.EVENT80.plans=Object.fromEntries(['pro','business'].flatMap(plan=>['month','year'].map(interval=>[`sandbox:${plan}:${interval}`,'P-QAVERIFIED'])));
+  await db.setting.update({where:{key},data:{value:configuration}});await page.reload();await page.getByRole('button',{name:'啟用 EVENT80',exact:true}).click();await page.getByRole('button',{name:'停用 EVENT80',exact:true}).waitFor();
+  const customQuote=await member.context.request.post(origin+'/api/billing/coupon',{headers:{origin},data:{code:'EVENT80',interval:'month'}});
+  check('Verified 80 percent quote uses 20 percent payment',customQuote.status()===200&&(await customQuote.json()).data.quotes[0].firstAmountMinor===980);
+  for(const locale of ['en','zh-tw']) {
+    const zh=locale==='zh-tw';await member.page.goto(origin+(zh?'/zh-tw':'')+'/dashboard/account');await member.page.getByLabel(zh?'折扣碼':'Discount code',{exact:true}).fill('EVENT80');
+    await member.page.getByRole('button',{name:zh?'套用':'Apply',exact:true}).click();await member.page.getByRole('status').filter({hasText:'80% OFF'}).waitFor();
+    check('Member shows correct percent and price '+locale,(await member.page.locator('body').innerText()).includes('USD 9.80'));
+    await screenshot(member.page,'coupons-member-80-'+locale);
+  }
+  await page.getByRole('button',{name:'停用 EVENT80',exact:true}).click();await page.getByRole('button',{name:'啟用 EVENT80',exact:true}).waitFor();check('Custom disable retains percentage',(await db.setting.findUniqueOrThrow({where:{key}})).value.EVENT80.percentOff===80);
+  for(const width of [390,1440]){await page.setViewportSize({width,height:1000});await screenshot(page,'coupons-80-'+width);}
+  await page.getByRole('button',{name:'編輯 EVENT80',exact:true}).click();
   const quote=await member.context.request.post(origin+'/api/billing/coupon',{headers:{origin},data:{code:' meettaipei60 ',interval:'month'}});
-  check('Meet Taipei quote accepted',quote.status()===200);const body=await quote.json();check('Meet Taipei quote keeps code and first-period price',body.data.code==='MEETTAIPEI60'&&body.data.quotes[0].firstAmountMinor===1960);
-  const denied=await member.context.request.post(origin+'/api/billing/coupon',{headers:{origin},data:{code:'EVENT60',interval:'month'}});check('Disabled code rejected',denied.status()===400);
-  await page.getByRole('button',{name:'啟用 EVENT60',exact:true}).click();await page.getByRole('button',{name:'停用 EVENT60',exact:true}).waitFor();check('Admin re-enables code',(await db.setting.findUniqueOrThrow({where:{key}})).value.EVENT60===true);
+  check('Existing quote unchanged',quote.status()===200&&(await quote.json()).data.quotes[0].firstAmountMinor===1960);
+  await page.getByLabel('結束時間（台北）',{exact:true}).fill('2026-10-01T00:00');await page.getByRole('button',{name:'儲存為停用',exact:true}).click();await page.getByRole('alert').filter({hasText:'HTTP 400'}).waitFor();check('Invalid date keeps percentage draft',await page.getByLabel('首期折扣百分比',{exact:true}).inputValue()==='80');
+  check('Coupon manager has no destructive delete',await page.getByRole('button',{name:'刪除',exact:true}).count()===0);
+
 }
 
 async function commerceSettingsQA() {

@@ -95,9 +95,9 @@ export async function POST(req: NextRequest) {
     if (!pendingCoupon && (body?.pricingVersion ?? 1) !== prices.version) return bad("pricing_changed", "價格已更新，請重新整理並確認新價格；尚未建立付款 / Pricing changed; reload and confirm the new price. No checkout created", 409);
     if (body?.couponCode !== undefined) {
       if (account.rollonMember) return bad("coupon_existing_access", "目前帳號已有專屬權益，請聯絡客服確認升級 / This account already has special access; contact support before upgrading", 409);
-      if (typeof body.couponCode !== "string" || !/^[A-Za-z0-9-]{3,32}$/.test(body.couponCode.trim())) return bad("coupon_invalid", "折扣碼格式無效 / Invalid discount code format", 400);
+      if (typeof body.couponCode !== "string" || !/^[A-Za-z0-9_-]{3,32}$/.test(body.couponCode.trim())) return bad("coupon_invalid", "折扣碼格式無效 / Invalid discount code format", 400);
       const origin = resolveBillingAppOrigin(req.url);
-      const result = await (await import("@/lib/billing/coupon-checkout")).checkoutWithCoupon({ userId: session.uid, email: session.email, requestId, code: body.couponCode, plan, interval, returnUrl: `${origin}${pathForLocale("/dashboard/billing/return", locale)}`, cancelUrl: `${origin}${pathForLocale("/dashboard/billing", locale)}?cancelled=1` });
+      const result = await (await import("@/lib/billing/coupon-checkout")).checkoutWithCoupon({ userId: session.uid, email: session.email, requestId, code: body.couponCode, couponRevision: Number.isInteger(body.couponRevision) ? body.couponRevision : undefined, plan, interval, returnUrl: `${origin}${pathForLocale("/dashboard/billing/return", locale)}`, cancelUrl: `${origin}${pathForLocale("/dashboard/billing", locale)}?cancelled=1` });
       return ok(result);
     }
     const variant = billingVariantFor(plan, interval, prices.catalog);

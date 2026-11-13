@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readCouponCodes } from "./coupon-codes";
 import "server-only";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +18,8 @@ export async function couponSetupStatus() {
     return { ...couponTerms(plan, interval), env, preparedId: saved[env] || null, configuredId: process.env[env] || null };
   })) };
 }
-export async function prepareCouponPlan(plan: "pro" | "business", interval: BillingInterval) {
+export async function prepareCouponPlan(plan: "pro" | "business", interval: BillingInterval, code?: string) {
+  if (code) return prepareCustomCouponPlan(code, plan, interval);
   const quote = couponTerms(plan, interval), env = novemberPaypalPlanEnvFor(plan, interval)!, base = paypalPlanIdFor(plan, interval);
   if (!base) throw new CouponError("原價方案尚未設定 / Regular plan is not configured", "coupon_not_configured", 503);
   const product = z.object({ product_id: z.string().min(1) }).parse(await getBillingPlan(base)).product_id;
@@ -33,4 +35,27 @@ export async function prepareCouponPlan(plan: "pro" | "business", interval: Bill
   });
   assertCouponPlan(await getBillingPlan(id), quote, product);
   return { env, id, firstAmountMinor: quote.firstAmountMinor, regularAmountMinor: quote.regularAmountMinor };
+}
+
+async function prepareCustomCouponPlan(code: string, plan: "pro" | "business", interval: BillingInterval) {
+  const codes = await readCouponCodes(), entry = codes[code];
+  if (!entry || typeof entry !== "object") throw new CouponError("請先儲存此代碼的折扣與期限", "coupon_invalid");
+  const base = paypalPlanIdFor(plan, interval);
+  if (!base) throw new CouponError("原價方案尚未設定", "coupon_not_configured", 503);
+  const quote = { ...couponTerms(plan, interval), code, revision: entry.revision, percentOff: entry.percentOff, firstAmountMinor: Math.round(couponTerms(plan, interval).regularAmountMinor * (100 - entry.percentOff) / 100) };
+  const product = z.object({ product_id: z.string().min(1) }).parse(await getBillingPlan(base)).product_id;
+  const key = `${getPaypalEnvironment()}:${plan}:${interval}`;
+  const receipt = createHash("sha256").update(JSON.stringify({ key, product, first: quote.firstAmountMinor, regular: quote.regularAmountMinor })).digest("hex").slice(0,32);
+  const id = entry.plans[key] || (await createBillingPlan(couponPlanBody(product, quote), receipt)).id;
+  if (!/^P-[A-Za-z0-9]+$/.test(id)) throw new CouponError("PayPal 方案識別碼無效", "coupon_plan_mismatch", 503);
+  assertCouponPlan(await getBillingPlan(id), quote, product);
+  await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('billing.nova60.codes'))::text`;
+    const fresh = await readCouponCodes(tx), current = fresh[code];
+    if (!current || typeof current !== "object" || current.revision !== entry.revision) throw new CouponError("設定已變更，請重新核對；未啟用新優惠", "coupon_setup_conflict", 409);
+    const mapping = { plan, interval, amountMinor: quote.regularAmountMinor, environment: getPaypalEnvironment() };
+    await tx.setting.upsert({ where: { key: `novaCommerce.plan.${id}` }, create: { key: `novaCommerce.plan.${id}`, value: mapping }, update: { value: mapping } });
+    await tx.setting.upsert({ where: { key: "billing.nova60.codes" }, create: { key: "billing.nova60.codes", value: { ...fresh, [code]: { ...current, plans: { ...current.plans, [key]: id } } } }, update: { value: { ...fresh, [code]: { ...current, plans: { ...current.plans, [key]: id } } } } });
+  });
+  return { id };
 }
