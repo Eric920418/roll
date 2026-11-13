@@ -26,10 +26,11 @@ async function request(path: string, body?: object, method = "POST") {
   if (!res.ok) throw new Error(["HTTP " + res.status, json.error || res.statusText, json.code, json.requestId].filter(Boolean).join("\n"));
   return json.data;
 }
-export default function ValidationWorkspace({ userId, planId, journeyId, revision, active = true }: { active?: boolean; userId: string; planId?: string; journeyId?: string; revision?: number }) {
+export default function ValidationWorkspace({ userId, planId, journeyId, revision, active = true, hideSearch = false, prefill }: { hideSearch?: boolean; prefill?: { company: string; name: string; prospectOrderId: string; prospectCompanyId: string }; active?: boolean; userId: string; planId?: string; journeyId?: string; revision?: number }) {
   const { planText } = usePlanDisplay();
   const zh = useLocale() === "zh-tw", locale = zh ? "zh-tw" : "en", router = useRouter();
   const [data, setData] = useState<Snapshot | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false), [selected, setSelected] = useState<Prospect | null>(null), [newCompany, setNewCompany] = useState("");
+  useEffect(() => { if (!prefill) return; const timer=setTimeout(()=>setSelected({ ...prefill, quote: "", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "" }),0); return()=>clearTimeout(timer); }, [prefill]);
   const query = planId ? `planId=${encodeURIComponent(planId)}` : `journeyId=${encodeURIComponent(journeyId || "")}`;
   const load = useCallback(async () => { try { setData(await request(`/api/pipeline?${query}`)); setError(""); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } }, [query]);
   useEffect(() => { if (!active) return; const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load, revision, active]);
@@ -37,7 +38,7 @@ export default function ValidationWorkspace({ userId, planId, journeyId, revisio
   const companyOptions = [...(data?.priority || [])];
   for (const deal of data?.deals || []) if (!companyOptions.some(p => companyKey(p.company) === companyKey(deal.company))) companyOptions.push({ company: deal.company, name: deal.name, quote: "", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "" });
   const ready = Boolean(data);
-  useEffect(() => { if (active && ready && window.location.hash === "#prospects") document.getElementById("prospects")?.scrollIntoView({ block: "start" }); }, [active, ready]);
+  useEffect(() => { if (!hideSearch && active && ready && window.location.hash === "#prospects") document.getElementById("prospects")?.scrollIntoView({ block: "start" }); }, [active, ready, hideSearch]);
   const scope: Scope = planId ? { planId } : { journeyId };
   const companies = new Set(data?.rows.flatMap(row => { const v = insightSchema.safeParse(row.insight).data; return v && v.company && (v.answers.some(Boolean) || v.notes) ? [companyKey(v.company)] : []; }) || []).size;
   async function analyse(milestone: 3 | 6 | 10) {
@@ -55,8 +56,8 @@ export default function ValidationWorkspace({ userId, planId, journeyId, revisio
         <details><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{zh ? "新增公司紀錄" : "Add a company record"}</summary><form className="flex flex-wrap items-end gap-2 py-3" onSubmit={e => { e.preventDefault(); if (newCompany.trim()) { setSelected(companyOptions.find(p => companyKey(p.company) === companyKey(newCompany)) || { company: newCompany.trim(), name: "", quote: "", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "" }); setNewCompany(""); e.currentTarget.closest("details")?.removeAttribute("open"); } }}><label className="min-w-0 text-sm">{zh ? "公司名稱" : "Company name"}<input required maxLength={200} className={field} value={newCompany} onChange={e => setNewCompany(e.target.value)} /></label><button className={button}>{zh ? "選擇並記錄" : "Select and record"}</button></form></details>
       </div>
       {selected && <SalesEditor key={`${query}:${selected.company}`} userId={userId} prospect={selected} data={data} scope={scope} onSaved={fresh => { setData(fresh); notifyPlanChanged(userId); router.refresh(); }} />}
-      <section id="prospects" className="scroll-mt-6"><span className="sr-only">{zh ? "公司搜尋" : "Company search"}</span></section>
-      <section data-next-step="new-companies" className="space-y-3"><h3 className="text-xl font-bold">{zh ? "找尚未接觸的新公司" : "Find new companies you haven’t contacted"}</h3>      <ProspectSearch active={active} userId={userId} onSelect={c => setSelected({ company: c.name, name: c.contact.name || "", quote: "", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "", prospectOrderId: c.orderId, prospectCompanyId: c.id })} />
+      <section id={hideSearch ? undefined : "prospects"} className="scroll-mt-6"><span className="sr-only">{zh ? "公司搜尋" : "Company search"}</span></section>
+      <section data-next-step="new-companies" className="space-y-3">{!hideSearch && <><h3 className="text-xl font-bold">{zh ? "找尚未接觸的新公司" : "Find new companies you haven’t contacted"}</h3>      <ProspectSearch active={active} userId={userId} onSelect={c => setSelected({ company: c.name, name: c.contact.name || "", quote: "", amount: "", currency: "", willingness: "not_asked", heat: "unknown", respondedAt: "", prospectOrderId: c.orderId, prospectCompanyId: c.id })} /></>}
       {Object.keys(data.prospects).length > 0 && <details><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{zh ? "歷史 AI 公司名單（不會自動重搜）" : "Historical AI lists (no automatic search)"}</summary>{Object.entries(data.prospects).map(([key, report]) => <div key={key} className="space-y-2 border-t py-3"><p>{key} · {report.companies.length} {zh ? "家歷史公司；舊來源需重新確認" : "historical companies; review old sources"}</p>{report.companies.map(c => <p key={c.website}><a className="inline-flex min-h-11 items-center underline" href={c.website} target="_blank" rel="noopener noreferrer">{c.name} ↗</a></p>)}</div>)}</details>}
 </section>
       <details open={companies > 0}><summary className="min-h-11 cursor-pointer py-3 text-lg font-bold">{zh ? "選看訪談證據分析（不是新公司名單）" : "Optional: Conversation evidence analysis"}</summary>

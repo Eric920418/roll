@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import PositioningEditor from "./PositioningEditor";
 import GuidedFields from "./GuidedFields";
 import ConversationEditor from "./ConversationEditor";
@@ -8,31 +8,41 @@ import type { FlowView } from "@/lib/action-plan/flow/service";
 
 export const button = "inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/20 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-45";
 const field = "mt-1 min-h-11 w-full min-w-0 rounded-xl border border-dark/20 bg-white px-3 py-2 text-sm focus-visible:outline-2";
-type Props = { step: StepId; data: FlowData; view: FlowView; locale: string; disabled?: boolean; readOnly?: boolean; onChange(data: FlowData): void };
+type Props = { step: StepId; data: FlowData; view: FlowView; locale: string; disabled?: boolean; readOnly?: boolean; onChange(data: FlowData): void; secondary?: ReactNode; resetVersion?: number };
 export function TextField({ label, value, onChange, multiline = false, type = "text" }: { label: string; value: string; onChange(value: string): void; multiline?: boolean; type?: string }) {
   return <label className="block min-w-0 text-sm">{label}{multiline ? <textarea aria-label={label} className={field} rows={2} maxLength={4000} value={value} onChange={e => onChange(e.target.value)} /> : <input aria-label={label} className={field} type={type} step={type === "number" ? "any" : undefined} maxLength={4000} value={value} onChange={e => onChange(e.target.value)} />}</label>;
 }
 function Choice({ label, value, options, onChange }: { label: string; value: string; options: Array<[string, string]>; onChange(value: string): void }) {
   return <label className="block min-w-0 text-sm">{label}<select aria-label={label} className={field} value={value} onChange={e => onChange(e.target.value)}>{options.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>;
 }
-export default function Templates({ step, data, view, locale, disabled, readOnly = disabled, onChange }: Props) {
+export default function Templates({ step, data, view, locale, disabled, readOnly = disabled, onChange, secondary, resetVersion = 0 }: Props) {
   const zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;
-  const [editing, setEditing] = useState(""), [guided, setGuided] = useState(false);
+  const serverData = view.steps.find(s => s.id === step)?.data;
+  const savedRecords = serverData?.kind === "conversation" ? serverData.records : [];
+  const [editing, setEditing] = useState(() => data.kind === "conversation" ? data.records.find(v=>JSON.stringify(v)!==JSON.stringify(savedRecords.find(s=>s.id===v.id)))?.id || "" : ""), [guided, setGuided] = useState(false);
   const [newRecord, setNewRecord] = useState(() => emptyRecord(crypto.randomUUID()));
-  // The first legend keeps record navigation available when the completed editor is disabled.
-  const conversationRow = data.kind === "conversation" ? data.records.find(v=>v.id===editing) || (editing === newRecord.id ? newRecord : data.records.at(-1)) || newRecord : null;
+  const [lastReset, setLastReset] = useState(resetVersion);
+  if (lastReset !== resetVersion) { setLastReset(resetVersion); setEditing(""); setNewRecord(emptyRecord(crypto.randomUUID())); }
+  const conversationRow = data.kind === "conversation" ? data.records.find(v => v.id === editing) || (readOnly ? data.records[0] : data.records.find(v => JSON.stringify(v) !== JSON.stringify(savedRecords.find(s => s.id === v.id)))) || newRecord : null;
+  function selectRecord(id: string) {
+    if (!readOnly && serverData && JSON.stringify(data) !== JSON.stringify(serverData)) {
+      if (!window.confirm(w("切換前要放棄尚未儲存的修改？", "Discard unsaved changes before switching records?"))) return;
+      onChange(serverData);
+    }
+    setEditing(id);
+  }
   const confirm = (key: string, label: string) => data.kind === "organize" && <label key={key} className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="h-5 w-5 shrink-0" checked={data.confirmed.includes(key)} onChange={e => onChange({ ...data, confirmed: e.target.checked ? [...data.confirmed, key] : data.confirmed.filter(k => k !== key) })} />{label}</label>;
-  return <fieldset disabled={disabled} className="min-w-0 space-y-3">
-    <legend className="mb-3 w-full text-sm font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">02</span>{step === "01-2" ? w("定位草稿", "Positioning draft") : data.kind === "conversation" ? w("客戶對話紀錄", "Customer conversation") : w("操作區", "Your work")}{data.kind === "conversation" && conversationRow && <div className="mt-2 flex flex-wrap items-end gap-2 font-normal"><label className="min-w-0 flex-1 text-xs">{w('選擇對話紀錄','Conversation record')}<select disabled={disabled && !readOnly} aria-label={w('選擇對話紀錄','Conversation record')} className={field} value={conversationRow.id} onChange={e=>setEditing(e.target.value)}>{data.records.map((v,i)=><option key={v.id} value={v.id}>{i+1}. {v.company || v.name || w('草稿','Draft')}</option>)}{!data.records.some(v=>v.id===conversationRow.id) && <option value={conversationRow.id}>{w('新增對話','New conversation')}</option>}</select></label>{!readOnly && <button disabled={disabled} type="button" className={button} onClick={()=>{const next=emptyRecord(crypto.randomUUID());setNewRecord(next);setEditing(next.id);}}>＋ {w(step==='04-2'?'記錄使用回顧':'記錄客戶對話',step==='04-2'?'New usage review':'New conversation')}</button>}</div>}</legend>
+  return <><fieldset disabled={disabled} className="min-w-0 space-y-3">
+    <legend className="mb-3 w-full text-sm font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">02</span>{step === "01-2" ? w("定位草稿", "Positioning draft") : data.kind === "conversation" ? w("客戶對話紀錄", "Customer conversation") : w("操作區", "Your work")}</legend>
     {!readOnly && step !== "01-2" && data.kind !== "conversation" && <button type="button" aria-pressed={!guided} className={button} onClick={() => setGuided(!guided)}>{guided ? w("切換完整表單", "Switch to complete form") : w("切換逐題整理", "Switch to guided work")}</button>}
     {(data.kind === "outreach" && step === "01-1" || step === "05-2" && (data.kind === "conversation" || data.kind === "outreach")) && <TextField label={w("目標市場／國家", "Target market / country")} value={data.market} onChange={market => onChange({ ...data, market })} />}
     {data.kind === "conversation" && (() => {
       const row = conversationRow!;
-      const update = (value: typeof row) => onChange({...data,records:data.records.some(v=>v.id===value.id)?data.records.map(v=>v.id===value.id?value:v):[...data.records,value]});
+      const update = (value: typeof row) => { setEditing(value.id); onChange({...data,records:data.records.some(v=>v.id===value.id)?data.records.map(v=>v.id===value.id?value:v):[...data.records,value]}); };
       const remove = data.records.some(v=>v.id===row.id) && !readOnly ? <button type="button" className={button} onClick={()=>onChange({...data,records:data.records.filter(v=>v.id!==row.id)})}>{w('移除這筆草稿','Remove draft record')}</button> : null;
       return <>
-        {step==='01-1'?<ConversationEditor key={row.id} row={row} locale={locale} guided={false} recordOptions={remove} marketField={<TextField label={w("目標市場／國家", "Target market / country")} value={data.market} onChange={market => onChange({ ...data, market })} />} onChange={update}/>:<div className="space-y-4"><div className="grid gap-3 sm:grid-cols-3">{(['company','name','date'] as const).map(key=><TextField key={key} label={w(({company:'公司',name:'對象姓名',date:'對話日期'})[key],({company:'Company',name:'Person',date:'Conversation date'})[key])} value={row[key]} type={key==='date'?'date':'text'} onChange={value=>update({...row,[key]:value})}/>)}</div>{(['reason','missing','referral'] as const).map(key=><TextField key={key} multiline label={w(({reason:'留下或續約的原因',missing:'還缺什麼（沒有也請註明）',referral:'會推薦誰（不推薦也請註明）'})[key],({reason:'Reason to stay or renew',missing:'What is missing (state none if applicable)',referral:'Who they would refer (state none if applicable)'})[key])} value={row[key]} onChange={value=>update({...row,[key]:value})}/>)}</div>}
-        {step !== '01-1' && remove && <details><summary className="min-h-11 cursor-pointer py-3 text-xs text-dark/55">{w('紀錄選項','Record options')}</summary>{remove}</details>}
+        {step==='01-1'?<ConversationEditor row={row} locale={locale} guided={false} recordOptions={remove} marketField={<TextField label={w("目標市場／國家", "Target market / country")} value={data.market} onChange={market => onChange({ ...data, market })} />} secondary={secondary} onChange={update}/>:<div className="space-y-4"><div className="grid gap-3 sm:grid-cols-3">{(['company','name','date'] as const).map(key=><TextField key={key} label={w(({company:'公司',name:'對象姓名',date:'對話日期'})[key],({company:'Company',name:'Person',date:'Conversation date'})[key])} value={row[key]} type={key==='date'?'date':'text'} onChange={value=>update({...row,[key]:value})}/>)}</div>{(['reason','missing','referral'] as const).map(key=><TextField key={key} multiline label={w(({reason:'留下或續約的原因',missing:'還缺什麼（沒有也請註明）',referral:'會推薦誰（不推薦也請註明）'})[key],({reason:'Reason to stay or renew',missing:'What is missing (state none if applicable)',referral:'Who they would refer (state none if applicable)'})[key])} value={row[key]} onChange={value=>update({...row,[key]:value})}/>)}</div>}
+        {step !== '01-1' && (remove || secondary) && <details><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold">{w('其他資料與輸入工具','Other details and input tools')}</summary>{remove}{secondary}</details>}
       </>;
     })()}
     {data.kind === "organize" && <GuidedFields guided={guided && !readOnly} locale={locale}>
@@ -80,5 +90,7 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
       const chapter = data.sections.find(s => s.id === String(i));
       return chapter && <section key={i} className="space-y-3 rounded-xl border border-dark/15 p-4"><TextField multiline label={words(title, locale)} value={chapter.body} onChange={body => onChange({ ...data, sections: data.sections.map(s => s.id === chapter.id ? { ...s, body } : s) })} /><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="h-5 w-5" checked={chapter.confirmed} onChange={e => onChange({ ...data, sections: data.sections.map(s => s.id === chapter.id ? { ...s, confirmed: e.target.checked } : s) })} />{w("我已核對這一章", "I reviewed this chapter")}</label></section>;
     })}</GuidedFields>}
-  </fieldset>;
+  </fieldset>
+  {data.kind === "conversation" && <section className="mt-4 space-y-3 border-t border-dark/10 pt-4" aria-label={w("已儲存對話", "Saved conversations")}><h4 className="text-sm font-semibold">{w("已儲存對話", "Saved conversations")} · {view.steps.find(s=>s.id===step)?.current || 0} / {view.steps.find(s=>s.id===step)?.target || 0}</h4>{!savedRecords.length ? <p className="text-xs">{w("尚無對話紀錄", "No saved conversations yet")}</p> : <div className="grid gap-2">{savedRecords.map(row => <button key={row.id} type="button" disabled={Boolean(disabled && !readOnly)} aria-pressed={conversationRow?.id === row.id} className={button + " justify-between! gap-3 text-left text-xs"} onClick={() => selectRecord(row.id)}><span className="min-w-0 break-words">{row.company} · {row.name}<span className="mt-1 block font-normal">{row.date || "—"} · {w("痛點", "Pain")} {w(({low:"低",medium:"中",high:"高"})[row.severity as "low"|"medium"|"high"] || "—", row.severity || "—")}</span></span><span>{readOnly ? w("查看", "View") : w("編輯", "Edit")}</span></button>)}</div>}{!readOnly && savedRecords.some(v=>v.id===conversationRow?.id) && <button type="button" className={button} disabled={disabled} onClick={() => { const next=emptyRecord(crypto.randomUUID()); setNewRecord(next); selectRecord(next.id); }}>{w("返回新增對話", "Return to new conversation")}</button>}</section>}
+  </>;
 }

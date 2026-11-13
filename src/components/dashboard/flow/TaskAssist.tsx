@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MemberFetchError, memberFetch } from '@/lib/member-fetch';
 import type { FlowData, StepId } from '@/lib/action-plan/flow/catalog';
 import type { FlowView } from '@/lib/action-plan/flow/service';
@@ -33,7 +33,8 @@ type SpeechWindow = Window & {
     SpeechRecognition?: new () => Recognition;
     webkitSpeechRecognition?: new () => Recognition;
 };
-export default function TaskAssist({ userId, step, view, locale, disabled, onBusy, onView, onRefresh, onApply }: {
+export default function TaskAssist({ userId, step, view, locale, disabled, onBusy, onView, onRefresh, onApply, embedded = false }: {
+    embedded?: boolean;
     userId: string;
     step: StepId;
     view: FlowView;
@@ -45,6 +46,7 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
     onApply(v: FlowData): void;
 }) {
     const w = (a: string, b: string) => locale === 'zh-tw' ? a : b, [transcript, setTranscript] = useState(''), [result, setResult] = useState<z.infer<typeof assistResult> | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [listening, setListening] = useState(false), [started, setStarted] = useState(false), [supported, setSupported] = useState(false);
+    const root = useRef<HTMLElement>(null);
     const speechTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const recognition = useRef<Recognition | null>(null), text = useRef(transcript), attempt = useRef<{
         key: string;
@@ -74,7 +76,7 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
             }
         };
     }, [key]);
-    function finishSpeech(r: Recognition, message?: string) {
+    const finishSpeech = useCallback((r: Recognition, message?: string) => {
         if (recognition.current !== r) return;
         recognition.current = null;
         if (speechTimeout.current) clearTimeout(speechTimeout.current);
@@ -84,7 +86,14 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
         setStarted(false);
         if (message) setError(message);
         try { r.abort(); } catch { /* Recognition may already have ended. */ }
-    }
+    }, []);
+    useEffect(() => {
+        if (!embedded) return;
+        const parent = root.current?.closest("details");
+        const stop = () => { if (!parent?.open && recognition.current) finishSpeech(recognition.current); };
+        parent?.addEventListener("toggle", stop);
+        return () => parent?.removeEventListener("toggle", stop);
+    }, [embedded, finishSpeech]);
     function update(value: string) {
         setTranscript(value);
         text.current = value;
@@ -179,10 +188,11 @@ export default function TaskAssist({ userId, step, view, locale, disabled, onBus
             onBusy(false);
         }
     }
-    return <details data-task-assist onToggle={event => { if (!event.currentTarget.open && recognition.current) finishSpeech(recognition.current); }} className="space-y-4 rounded-xl border p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w('語音／逐字稿與 AI 草稿協助', 'Speech, transcript and AI drafting')}</summary><p className="text-sm">{w('語音由瀏覽器及其供應商提供，按下開始才收音。', 'Speech uses your browser and its provider; listening starts only when you choose it.')}</p><label className="block text-sm">{w('貼上會議紀錄或逐字稿', 'Paste meeting notes or a transcript')}<textarea className="mt-2 min-h-32 w-full rounded-xl border p-3" maxLength={30000} value={transcript} disabled={busy || disabled} onChange={e => update(e.target.value)}/></label><div className="flex flex-wrap gap-3">{supported ? <button type="button" className={button} aria-pressed={listening} disabled={busy || disabled} onClick={speech}>{listening ? started ? w('停止收音', 'Stop listening') : w('取消啟動', 'Cancel speech start') : w('開始語音轉寫', 'Start speech transcription')}</button> : <p className="text-sm">{w('此瀏覽器沒有語音辨識，請貼上逐字稿。', 'Speech recognition is unavailable in this browser. Paste a transcript instead.')}</p>}<button type="button" className={button} disabled={disabled || busy || listening} onClick={() => void generate()}>{w('產生未確認草稿 · 使用 1 次 AI 額度', 'Generate unconfirmed draft · uses 1 AI allowance')}</button></div>{listening && <p role="status">{started ? w('正在收音，按「停止收音」結束。', 'Listening. Choose Stop listening to finish.') : w('正在啟動語音辨識，請允許麥克風權限；可隨時取消。', 'Starting speech recognition. Allow microphone access; you can cancel at any time.')}</p>}
+    const Container = embedded ? "section" : "details", Heading = embedded ? "h4" : "summary";
+    return <Container ref={(element: HTMLElement | null)=>{root.current=element;}} data-task-assist onToggle={event => { if (event.currentTarget instanceof HTMLDetailsElement && !event.currentTarget.open && recognition.current) finishSpeech(recognition.current); }} className="space-y-4 rounded-xl border p-4"><Heading className="min-h-11 py-3 font-semibold">{w('語音／逐字稿與 AI 草稿協助', 'Speech, transcript and AI drafting')}</Heading><p className="text-sm">{w('語音由瀏覽器及其供應商提供，按下開始才收音。', 'Speech uses your browser and its provider; listening starts only when you choose it.')}</p><label className="block text-sm">{w('貼上會議紀錄或逐字稿', 'Paste meeting notes or a transcript')}<textarea aria-label={w("貼上會議紀錄或逐字稿", "Paste meeting notes or a transcript")} className="mt-2 min-h-32 w-full rounded-xl border p-3" maxLength={30000} value={transcript} disabled={busy || disabled} onChange={e => update(e.target.value)}/></label><div className="flex flex-wrap gap-3">{supported ? <button type="button" className={button} aria-pressed={listening} disabled={busy || disabled} onClick={speech}>{listening ? started ? w('停止收音', 'Stop listening') : w('取消啟動', 'Cancel speech start') : w('開始語音轉寫', 'Start speech transcription')}</button> : <p className="text-sm">{w('此瀏覽器沒有語音辨識，請貼上逐字稿。', 'Speech recognition is unavailable in this browser. Paste a transcript instead.')}</p>}<span className="self-center text-xs">{w("使用 1 次 AI 額度", "Uses 1 AI request")}</span><button type="button" className={button} disabled={disabled || busy || listening} onClick={() => void generate()}>{w('產生未確認草稿', 'Generate unconfirmed draft')}</button></div>{listening && <p role="status">{started ? w('正在收音，按「停止收音」結束。', 'Listening. Choose Stop listening to finish.') : w('正在啟動語音辨識，請允許麥克風權限；可隨時取消。', 'Starting speech recognition. Allow microphone access; you can cancel at any time.')}</p>}
  {result && <section className="space-y-3 border-t pt-4"><h3 className="font-bold">{w('草稿 · 請核對來源後套用', 'Draft · review sources before applying')}</h3>{result.variants.map((v, i) => <label className="flex min-h-11 items-start gap-3 whitespace-pre-wrap rounded border p-3 text-sm" key={i}>{step === "01-2" && result.draft.kind === "organize" && <input type="radio" className="mt-1 h-5 w-5 shrink-0" name={"positioning:" + userId} checked={result.draft.values.positioning === v} onChange={() => setResult(old => old?.draft.kind === "organize" ? { ...old, draft: { ...old.draft, values: { ...old.draft.values, positioning: v }, confirmed: [] } } : old)}/>}{i + 1}. {v}</label>)}{result.draft.kind === 'document' && result.draft.sections.map(s => <p className="whitespace-pre-wrap text-sm" key={s.id}>{s.body}</p>)}{result.draft.kind === 'outreach' && result.draft.contacts.map(c => <p className="whitespace-pre-wrap text-sm" key={c.id}>{c.company} · {c.name}：{c.offer}</p>)}{result.draft.kind === 'conversation' && result.draft.records.map(r => <p className="whitespace-pre-wrap text-sm" key={r.id}>{r.company} · {r.name}：{r.pain} · {r.solution}</p>)}{result.draft.kind === 'organize' && Object.entries(result.draft.values).map(([k, v]) => <p key={k} className="whitespace-pre-wrap text-sm">{v}</p>)}<details><summary className="min-h-11 cursor-pointer py-3">{w('查看原文佐證', 'Review source quotes')}</summary>{result.sources.map((s, i) => <blockquote className="my-3 border-l pl-3 text-sm" key={i}>{s.quote}</blockquote>)}</details><button type="button" className={button} disabled={disabled || busy} onClick={() => {
                 if (window.confirm(w('將這份未確認草稿帶入操作區？原紀錄不改，仍需核對並按儲存。', 'Apply this unconfirmed draft to the work area? Saved records stay unchanged; review and save explicitly.')))
                     onApply(result.draft);
             }}>{w('核對後套用草稿', 'Apply reviewed draft')}</button></section>}
- {error && <p role="alert" className="whitespace-pre-wrap break-words rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}</details>;
+ {error && <p role="alert" className="whitespace-pre-wrap break-words rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}</Container>;
 }

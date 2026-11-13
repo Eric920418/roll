@@ -396,12 +396,12 @@ test("Saved ICP remains visible outside tools and uses the newest saved profile 
   assert.equal(saved.guides[0].key, refreshed.guides[0].key, "A profile version refresh must not remount guidance and discard errors or unsent answers");
   assert.equal(refreshed.guides[0].savedVersion, 2);
   assert.match(saved.visible, /Founders without paying customers/);
-  assert.match(saved.visible, /Saved ICP/);
+  assert.match(saved.visible, /Saved target customer/);
   assert(!saved.hidden.includes(draft.summary));
   assert.match(render({ ...draft, summary: "New server version" }, 2, { currentProfileVersion: 1, saved: draft }).visible, /New server version/);
   assert.match(render(draft, 1, { currentProfileVersion: 2, saved: { ...draft, summary: "Just confirmed version" } }).visible, /Just confirmed version/);
   const unsigned = render(null, 0, { draft });
-  assert.match(unsigned.visible, /No saved ICP yet/); assert.match(unsigned.visible, /\+ Add/);
+  assert.match(unsigned.visible, /No saved ICP yet/); assert.match(unsigned.visible, /Add/);
   assert(!unsigned.visible.includes(draft.summary));
   assert.match(render(null, 0, {}, "Legacy saved ICP").visible, /Legacy saved ICP/);
 });

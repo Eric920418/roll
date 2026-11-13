@@ -39,7 +39,7 @@ export function CardChatAction({ card, network, compact = false }: { compact?: b
   if (!network?.enabled) return null;
   if (connection?.status === "blocked") return <p className="text-sm">{zh ? "此連結無法聊天" : "Chat unavailable"}</p>;
   if (connection?.status === "accepted" || connection?.status === "pending") return <Link className={actionButton} href={pathForLocale(`/dashboard/messages?connection=${connection.id}`, locale)}>{connection.status === "accepted" ? (zh ? "開啟聊天" : "Open chat") : (zh ? "查看邀請" : "View invitation")}</Link>;
-  return <Link className={actionButton} href={pathForLocale(network.invite ? `/dashboard/matchmaking/${card.id}` : "/dashboard/account#plan", locale)}>{network.invite ? (zh ? `提出交流${network.pricing ? ` · ${network.pricing.inviteFee} Token` : ""}` : `${compact ? "Connect" : "Request to chat"}${network.pricing ? ` · ${network.pricing.inviteFee} Token` : ""}`) : (zh ? "查看 NOVA 方案" : "View NOVA plans")}</Link>;
+  return <Link className={actionButton} href={pathForLocale(network.invite ? `/dashboard/matchmaking/${card.id}` : "/dashboard/account#plan", locale)}>{network.invite ? (zh ? "提出交流" : (compact ? "Connect" : "Request to chat")) : (zh ? "查看 NOVA 方案" : "View NOVA plans")}</Link>;
 }
 export default function CardView({ card, detail = false, footer, row = false }: { card: PublicCard; detail?: boolean; footer?: ReactNode; row?: boolean }) {
   const t = useTranslations("Matchmaking"), locale = useLocale(), zh = locale === "zh-tw";
@@ -47,7 +47,7 @@ export default function CardView({ card, detail = false, footer, row = false }: 
   if (!detail) return <article className={row ? "flex min-w-0 items-center gap-3 border-t border-dark/10 py-2" : "flex min-w-0 flex-1 flex-col rounded-xl border border-dark/10 bg-white p-4"}>
     <div className={row ? "flex min-w-0 flex-1 items-center gap-3" : "flex items-start gap-3"}>
       <div className="w-11 shrink-0 rounded-full" aria-label={card.photo ? undefined : t("noPhoto")}>{card.photo ? <PrivatePhoto url={card.photo} alt={t("blurredPhoto")} avatar /> : <div className="flex size-11 items-center justify-center rounded-full bg-neutral-200 text-base font-semibold">{(card.displayName || card.companyName || t(`roles.${card.role}`)).slice(0, 1)}</div>}</div>
-      <div className="min-w-0 flex-1"><h2 className="break-words text-sm font-semibold">{card.displayName || card.companyName || t(`roles.${card.role}`)}</h2><p className="mt-1 text-[11px] text-dark/55">{t(`roles.${card.role}`)}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}</p>{row && copy.reasons[0] && <p className="mt-1 line-clamp-1 text-[11px] text-dark/55">{copy.reasons[0]}</p>}</div>
+      <div className="min-w-0 flex-1"><h2 className="break-words text-sm font-semibold">{card.displayName || card.companyName || t(`roles.${card.role}`)}</h2><p className="mt-1 text-[11px] text-dark/55">{t(`roles.${card.role}`)}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}</p></div>
       {!row && card.activity && card.activity !== "inactive" && <span className="text-[10px] text-green-800">{card.activity === "week" ? (zh ? "一週內活躍" : "Active this week") : (zh ? "本月活躍" : "Active this month")}</span>}
     </div>
     {!row && <><p className="mt-4 line-clamp-3 whitespace-pre-wrap break-words text-[11px] leading-5 text-dark/70">{card.slogan || card.companyPitch || (zh ? "介紹尚未公開" : "Introduction not public")}</p>{card.mentorCertified && <p className="mt-1 text-[11px] font-semibold">{zh ? "認證導師" : "Certified mentor"}</p>}

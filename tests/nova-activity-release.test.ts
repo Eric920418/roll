@@ -129,7 +129,7 @@ test("Inactive roundtable panel starts no requests; visible panel loads actual s
     "@/lib/action-plan/flow/catalog": { STEPS: [] }, "@/lib/member-options": {},
     "../flow/Templates": {}, "../roundtables/Preparation": { AutoGroup: () => null, Preparation: () => null, SessionCalendar: () => null, SessionFeedback: () => null },
     "../roundtables/Forms": {},
-  }, { window: { location: { href: "https://nova.test/dashboard/matchmaking?tab=roundtables" } }, setTimeout, clearTimeout, AbortController });
+  }, { window: { location: { href: "https://nova.test/dashboard/matchmaking?tab=roundtables" } }, setTimeout, clearTimeout, AbortController, AbortSignal });
   component.default({ userId: "owner", active: false }); effects.splice(0).forEach(fn => fn());
   await new Promise(r => setTimeout(r, 10)); assert.equal(calls.length, 0);
   component.default({ userId: "owner", active: true }); effects.splice(0).forEach(fn => fn());
@@ -146,7 +146,7 @@ test("An inactive inbox starts no requests or polling; activating it resumes rea
     "./ViewerOverview": { default: () => null }, "../matchmaking/CardView": { PrivatePhoto: () => null },
     "@/lib/routes": { pathForLocale: (path: string) => path }, "@/lib/network/policy": {},
     "@/lib/member-fetch": { memberFetch: async (path: string) => { calls.push(path); return path.endsWith("connections") ? [] : path.endsWith("features") ? network : { workspaces: [] }; } },
-  }, { document: { visibilityState: "visible" }, setInterval: (_: unknown, delay: number) => { timers.push(delay); return 1; }, clearInterval() {}, setTimeout, clearTimeout });
+  }, { document: { visibilityState: "visible" }, setInterval: (_: unknown, delay: number) => { timers.push(delay); return 1; }, clearInterval() {}, setTimeout, clearTimeout, AbortController, AbortSignal });
   component.MessagesPage({ active: false, embedded: true }); effects.forEach(fn => fn());
   await Promise.resolve(); assert.equal(calls.length, 0); assert.equal(timers.length, 0);
   cursor = 0; effects.length = 0;

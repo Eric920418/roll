@@ -201,7 +201,7 @@ test("Member browsing waits for entitlement; restricted accounts retain own-card
     const effects: Array<() => void> = [], requests: string[] = [];
     const loaded = { exports: {} as { default: typeof import("../src/components/dashboard/matchmaking/MatchmakingPage").default } };
     runInNewContext(ts.transpileModule(readFileSync("src/components/dashboard/matchmaking/MatchmakingPage.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText, {
-      module: loaded, exports: loaded.exports, AbortController, URLSearchParams,
+      module: loaded, exports: loaded.exports, AbortController, AbortSignal, URLSearchParams,
       require: (id: string) => {
         if (id === "react") return { useState: (initial: unknown) => [typeof initial === "function" ? initial() : initial, () => {}], useRef: (current: unknown) => ({ current }), useCallback: (fn: unknown) => fn, useEffect: (fn: () => void) => effects.push(fn) };
         if (id === "next/navigation") return { useRouter: () => ({}) };

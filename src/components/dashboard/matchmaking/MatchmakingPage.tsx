@@ -22,14 +22,16 @@ const input = "mt-2 w-full min-w-0 rounded-lg border border-dark/20 bg-white p-3
 type Listing = { cards: PublicCard[]; hasMore: boolean };
 export default function MatchmakingPage({ active = true, editOnly = false, memberView }: { active?: boolean; editOnly?: boolean; memberView?: "recommendations" | "all" }) {
   const router = useRouter(), rewards = useRewards();
-  const { value: network, error: networkError, load: reloadNetwork } = useNetwork();
+  const { value: network, error: networkError, load: reloadNetwork } = useNetwork(active);
   const canBrowse = network !== null && (!network.enabled || network.network);
   const [selectedView, setView] = useState("recommendations");
   const view = memberView ?? selectedView;
   const [company, setCompany] = useState<{ companyName: string; country: string; industry: string; oneLinePitch: string; companyStage: string } | null>(null);
-  const [role, setRole] = useState("all"), [country, setCountry] = useState(""), [industry, setIndustry] = useState(""), [query, setQuery] = useState(""), [q, setQ] = useState("");
+  const [role, setRole] = useState("all"), [country, setCountry] = useState(""), [query, setQuery] = useState(""), [q, setQ] = useState("");
   const t = useTranslations("Matchmaking"), locale = useLocale() as Locale;
   const [owner, setOwner] = useState<CardOwner | null>(null), [draft, setDraft] = useState<CardDraft | null>(null);
+  const [listLoading, setListLoading] = useState(false);
+  const listRequest = useRef(0), listAbort = useRef<AbortController | null>(null);
   const [listing, setListing] = useState<Listing | null>(null), [category, setCategory] = useState("all"), [page, setPage] = useState(1);
   const [error, setError] = useState(""), [listError, setListError] = useState(""), [busy, setBusy] = useState(false), [notice, setNotice] = useState("");
   const [editing, setEditing] = useState(editOnly), [previewing, setPreviewing] = useState(false), [consent, setConsent] = useState(false);
@@ -37,17 +39,21 @@ export default function MatchmakingPage({ active = true, editOnly = false, membe
   const [retryPhoto, setRetryPhoto] = useState<File | null>(null), [uploadingPhoto, setUploadingPhoto] = useState(false);
   const busyRef = useRef(false), pending = useRef({ key: "", id: "" }), photoPending = useRef({ file: null as File | null, revision: -1, id: "" });
   const previewRef = useRef<HTMLDivElement>(null);
-  const loadList = useCallback((signal?: AbortSignal) => {
+  const loadList = useCallback((callerSignal?: AbortSignal) => {
     if (!canBrowse) return Promise.resolve();
-    return memberFetch<Listing>(`/api/matchmaking?${new URLSearchParams({ view, category, page: String(page), role, country, industry, q })}`, { signal })
-    .then(result => { if (!signal?.aborted) { setListing(result); setListError(""); track(result.cards.length ? "flow_success" : "search_empty", { feature: "matchmaking" }); } })
-    .catch(cause => { if (!signal?.aborted) { setListing(null); setListError(cause instanceof Error ? cause.message : String(cause)); } });
-  }, [canBrowse, view, category, page, role, country, industry, q]);
+    listAbort.current?.abort(); const abort = new AbortController(); listAbort.current = abort;
+    const signal = callerSignal ? AbortSignal.any([callerSignal, abort.signal]) : abort.signal;
+    const request = ++listRequest.current; setListLoading(true); setListError("");
+    return memberFetch<Listing>(`/api/matchmaking?${new URLSearchParams({ view, category, page: String(page), role, country, q })}`, { signal, timeoutMs: 20000 })
+    .then(result => { if (!result || !Array.isArray(result.cards) || typeof result.hasMore !== "boolean") throw new MemberFetchError(`HTTP 200\n${locale === "zh-tw" ? "會員名單回應格式不正確" : "Invalid member list response"}\ninvalid_response`, 200); if (!signal?.aborted && request === listRequest.current) { setListing(result); setListError(""); track(result.cards.length ? "flow_success" : "search_empty", { feature: "matchmaking" }); } })
+    .catch(cause => { if (!signal?.aborted && request === listRequest.current) { setListing(null); setListError(cause instanceof Error ? cause.message : String(cause)); } })
+    .finally(() => { if (!signal?.aborted && request === listRequest.current) setListLoading(false); });
+  }, [canBrowse, view, category, page, role, country, q, locale]);
   const loadOwner = useCallback((signal?: AbortSignal) => memberFetch<CardOwner>("/api/matchmaking/me", { signal })
     .then(result => { if (!signal?.aborted) { setOwner(result); setDraft(result.draft); setCompany({ companyName: result.source?.companyName || "", country: result.source?.country || "", industry: result.source?.industry || "", oneLinePitch: result.source?.oneLinePitch || "", companyStage: result.source?.companyStage || "" }); } })
     .catch(cause => { if (!signal?.aborted) setError(cause instanceof Error ? cause.message : String(cause)); }), []);
   useEffect(() => { if (!active || owner) return; const abort = new AbortController(); void loadOwner(abort.signal); return () => abort.abort(); }, [loadOwner, active, owner]);
-  useEffect(() => { if (!active || editOnly || !canBrowse) return; const abort = new AbortController(); void loadList(abort.signal); return () => abort.abort(); }, [loadList, active, editOnly, canBrowse]);
+  useEffect(() => { if (!active || editOnly || !canBrowse) return; const abort = new AbortController(); void Promise.resolve().then(() => { if (!abort.signal.aborted) return loadList(abort.signal); }); return () => { abort.abort(); listAbort.current?.abort(); }; }, [loadList, active, editOnly, canBrowse]);
   useEffect(() => { if (!active) return; const abort = new AbortController(); void memberFetch("/api/matchmaking/activity", { method: "POST", body: "{}", signal: abort.signal }).catch(cause => { if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause)); }); return () => abort.abort(); }, [active]);
   useEffect(() => { if (previewing) previewRef.current?.focus(); }, [previewing]);
   function update<K extends keyof CardDraft>(key: K, value: CardDraft[K]) { setDraft(old => old ? { ...old, [key]: value } : old); setPreviewing(false); setConsent(false); }
@@ -136,14 +142,17 @@ export default function MatchmakingPage({ active = true, editOnly = false, membe
     </section> : <>
     {!memberView && <div className="flex flex-wrap gap-2" aria-label={locale === "zh-tw" ? "推薦模式" : "Member view"}>{["recommendations", "all"].map(v => <button key={v} type="button" className={`${button} ${view === v ? "bg-black! text-white!" : ""}`} aria-pressed={view === v} onClick={() => { setView(v); setPage(1); }}>{v === "recommendations" ? (locale === "zh-tw" ? "推薦給你" : "Recommendations") : (locale === "zh-tw" ? "所有會員" : "All members")}</button>)}</div>}
     <div className="flex flex-wrap items-start justify-between gap-2"><nav aria-label={t("role")} className="flex flex-wrap gap-2">{["all", ...ROLES].map(v => <button key={v} className={`min-h-11 rounded-full border px-4 py-2 text-xs font-semibold focus-visible:outline-2 ${role === v ? "border-black bg-black text-white" : "border-dark/15 bg-white"}`} aria-pressed={role === v} onClick={() => { setRole(v); setPage(1); }}>{v === "all" ? (locale === "zh-tw" ? "全部" : "All") : t(`roles.${v}`)}</button>)}</nav>
-    <details className="min-w-0 open:w-full"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold">{locale === "zh-tw" ? "進階篩選與搜尋" : "Advanced filters and search"}{(q || country || industry || category !== "all") ? " · ●" : ""}</summary><form className="space-y-4 pb-4" role="search" onSubmit={e => { e.preventDefault(); setPage(1); setQ(query.trim()); track("flow_start", { feature: "matchmaking" }); }}>
-      <Link className="inline-flex min-h-11 items-center text-xs underline" href={pathForLocale("/dashboard/matchmaking/me/edit", locale)}>{t("editCard")} →</Link>
-      <div className="flex gap-3"><label className="min-w-0 flex-1"><span className="sr-only">{locale === "zh-tw" ? "搜尋公開公司卡片" : "Search public company cards"}</span><input type="search" maxLength={100} className={`${input} mt-0! min-h-11`} value={query} onChange={e => setQuery(e.target.value)} placeholder={locale === "zh-tw" ? "搜尋公司、簡介或需求…" : "Search company, pitch or needs…"} /></label><button className={`${button} bg-black! text-white!`} type="submit">{locale === "zh-tw" ? "搜尋" : "Search"}</button></div>
-      <div className="grid items-end gap-4 sm:grid-cols-3"><CountrySelect label={t("fields.country")} value={country} onChange={v => { setCountry(v); setPage(1); }} locale={locale} /><label className="text-sm font-semibold">{t("fields.industry")}<select className={`${input} min-h-11`} value={industry} onChange={e => { setIndustry(e.target.value); setPage(1); }}><option value="">{locale === "zh-tw" ? "全部產業" : "All industries"}</option>{Object.keys(INDUSTRY_LABELS).map(v => <option key={v} value={v}>{industryLabel(v, locale)}</option>)}</select></label><label className="text-sm font-semibold">{t("fields.looksFor")}<select className={`${input} min-h-11`} value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>{["all", ...CATEGORIES].map(v => <option value={v} key={v}>{v === "all" ? (locale === "zh-tw" ? "所有需求" : "All needs") : t(`categories.${v}`)}</option>)}</select></label></div>
-      {(q || country || industry || category !== "all" || role !== "all") && <button type="button" className={button} onClick={() => { setQ(""); setQuery(""); setCountry(""); setIndustry(""); setRole("all"); setCategory("all"); setPage(1); }}>{locale === "zh-tw" ? "清除篩選" : "Clear filters"}</button>}
-    </form></details></div>
+    <form className="w-full space-y-3" role="search" onSubmit={e => { e.preventDefault(); setPage(1); setQ(query.trim()); }}>
+      <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="col-span-2 flex items-end gap-2 sm:col-span-1"><label className="min-w-0 flex-1 text-xs">{locale === "zh-tw" ? "搜尋會員" : "Search members"}<input aria-label={locale === "zh-tw" ? "搜尋公開公司卡片" : "Search public company cards"} type="search" maxLength={100} className={input} value={query} onChange={e => setQuery(e.target.value)} placeholder={locale === "zh-tw" ? "公司、簡介或需求" : "Company, pitch or needs"} /></label><button className={`${button} bg-black! text-white!`} type="submit">{locale === "zh-tw" ? "搜尋" : "Search"}</button></div>
+        <CountrySelect compact label={t("fields.country")} value={country} onChange={v => { setCountry(v); setPage(1); }} locale={locale} />
+        <label className="text-xs">{locale === "zh-tw" ? "需求" : "Need"}<select className={input} value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>{["all", ...CATEGORIES].map(v => <option value={v} key={v}>{v === "all" ? (locale === "zh-tw" ? "所有需求" : "All needs") : t(`categories.${v}`)}</option>)}</select></label>
+      </div>
+      {(q || country || category !== "all" || role !== "all") && <button type="button" className={button} onClick={() => { setQ(""); setQuery(""); setCountry(""); setRole("all"); setCategory("all"); setPage(1); }}>{locale === "zh-tw" ? "清除篩選" : "Clear filters"}</button>}
+    </form></div>
     {listError && <div role="alert" className="whitespace-pre-wrap break-words rounded-xl bg-red-50 p-4 text-sm text-red-800"><p>{listError}</p>{network?.enabled && !network.network && <Link className={`${button} mt-3 inline-flex items-center`} href={pathForLocale("/dashboard/account#plan", locale)}>{locale === "zh-tw" ? "查看會員網絡方案" : "View network plans"}</Link>}<button className={`${button} mt-3`} onClick={() => void loadList()}>{t("retry")}</button></div>}
-    {!listing ? !listError && <p role="status" className="text-sm">{t("loading")}</p> : listing.cards.length ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{listing.cards.map(card => <CardView key={card.id} card={card} footer={<><Link className="inline-flex min-h-11 items-center text-xs font-semibold underline" href={pathForLocale(`/dashboard/matchmaking/${card.id}`, locale)}>{locale === "zh-tw" ? "查看檔案" : "View profile"} →</Link><CardChatAction card={card} network={network} /></>} />)}</div> : <p className="rounded-2xl border border-dark/15 bg-white p-8 text-sm text-dark/70">{t("empty")}</p>}
+    {listLoading && <p role="status" className="text-sm">{t("loading")}</p>}
+    {!listing ? null : listing.cards.length ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{listing.cards.map(card => <CardView key={card.id} card={card} footer={<><Link className="inline-flex min-h-11 items-center text-xs font-semibold underline" href={pathForLocale(`/dashboard/matchmaking/${card.id}`, locale)}>{locale === "zh-tw" ? "查看檔案" : "View profile"} →</Link><CardChatAction card={card} network={network} /></>} />)}</div> : <p className="rounded-2xl border border-dark/15 bg-white p-8 text-sm text-dark/70">{t("empty")}</p>}
     {listing && !listError && <div className="flex items-center gap-3"><button className={button} disabled={page === 1} onClick={() => setPage(p => p - 1)}>{t("previous")}</button><span className="text-sm">{page}</span><button className={button} disabled={!listing?.hasMore} onClick={() => setPage(p => p + 1)}>{t("next")}</button></div>}
     </>}
     </>}

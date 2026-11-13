@@ -5,11 +5,10 @@ import { requireUserPage } from "@/lib/auth/guard";
 import { getCurrentAccount } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
-import { personalizationResponses } from "@/lib/action-plan/personalization";
 import { getDiscoverySnapshot } from "@/lib/discovery/service";
 import { isDiscoveryMember } from "@/lib/discovery/policy";
-import { homeNextStep } from "@/lib/dashboard/home";
 import { actionProgress } from "@/lib/dashboard/next-steps";
+import { homeNextStep } from "@/lib/dashboard/home";
 import { getEvents } from "@/lib/cms/content";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
@@ -36,8 +35,6 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
   ]);
   const next = homeNextStep({ plan, isPaying, discovery });
   const milestone = plan?.roadmap?.milestones.find(m => !m.achievedAt);
-  const answers = plan?.personalization || discovery?.setup?.personalization;
-  const goal = plan?.roadmap?.goal || (answers ? personalizationResponses(answers, l)[4].answer : null);
   const labels = zh ? {
     action: "繼續今日任務", outcome: "確認本階段成果", next: "開啟下一階段", complete: "查看已完成的成果", blocked: "查看前置條件",
     setup: "完成五題，找出下一步", conversation: "記錄客戶對話", prospects: "查看優先聯絡公司", starter: "查看起步建議", upgrade: "查看方案與試用狀態",
@@ -62,7 +59,6 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
   const task = (<section aria-labelledby="home-task-title" className="rounded-2xl bg-black p-4 text-white sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-semibold tracking-[0.18em] text-white/60">{zh ? "今日任務 · 目前這一步" : "TODAY'S TASK · YOUR CURRENT STEP"}</p></div>
       <h2 id="home-task-title" className="mt-2 max-w-4xl break-words text-xl font-semibold leading-snug tracking-tight sm:text-2xl">{next.action ? <PlanCopyText value={next.action.title} /> : (completedFlow ? (zh ? "已完成驗證" : "Validation complete") : labels[next.kind])}</h2>
-      <p className="mt-3 break-words text-xs text-white/60">{goal}{progress !== null ? ` · ${progress}%` : ''}</p>
       <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-white/20 pt-3 text-xs sm:grid-cols-[1.5fr_1fr_1fr]"><div className="col-span-2 sm:col-span-1"><dt className="text-white/50">{next.action ? (zh ? '完成標準' : 'Completion criteria') : (zh ? '接下來' : 'What’s next')}</dt><dd className="mt-2 whitespace-pre-wrap break-words leading-5">{next.action ? <PlanCopyText value={next.action.expectedOutcome.text} /> : descriptions[next.kind]}</dd></div><div><dt className="text-white/50">{zh?'目前進度':'Saved progress'}</dt><dd className="mt-2 font-semibold tabular-nums">{next.action?.metric?.target != null ? `${next.action.metric.current ?? 0} / ${next.action.metric.target}` : next.kind==='conversation' ? `${discovery?.total ?? 0} / ${discovery?.target ?? 0}` : progress !== null ? `${progress}%` : '—'}</dd></div><div><dt className="text-white/50">{zh?'截止日期':'Due date'}</dt><dd className="mt-2 font-semibold">{milestone?.targetDate || plan?.roadmap?.deadline || '—'}</dd></div></dl>
       <Link href={pathForLocale(next.href, l)} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">{labels[next.kind]} →</Link>
     </section>);

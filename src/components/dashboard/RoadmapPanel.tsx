@@ -1,4 +1,5 @@
 "use client";
+import ActionPlanBuilder from "./ActionPlanBuilder";
 import { PlanLocalizationProvider, PlanCopyText, usePlanDisplay } from "@/components/dashboard/PlanLocalization";
 import { personalizationResponses } from "@/lib/action-plan/personalization";
 import ValidationWorkspace from "./ValidationWorkspace";
@@ -31,6 +32,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
   const { planText, displayTaskReference } = usePlanDisplay();
   const t = useTranslations("Dashboard.roadmap"), locale = useLocale() === "zh-tw" ? "zh-tw" : "en", router = useRouter();
   const tools = useRef<HTMLDetailsElement>(null), planTrigger = useRef<HTMLButtonElement>(null), dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLElement | null>(null), busyRef = useRef(false);
+  const [prospectPrefill, setProspectPrefill] = useState<{ company: string; name: string; prospectOrderId: string; prospectCompanyId: string }>();
   const [toolsOpen, setToolsOpen] = useState(false), [referencesOpen, setReferencesOpen] = useState(false);
   const [mounted, setMounted] = useState(false), [opened, setOpened] = useState(false), [busy, setBusy] = useState(false);
   const [correction, setCorrection] = useState<StageCorrection | null>(null);
@@ -194,7 +196,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     if (tools.current) tools.current.open = commercialFeatured;
     function revealTools() {
       const hash = window.location.hash;
-      if (hash !== "#prospects" && hash !== `#validation-${initialPlan?.id}`) return;
+      if (hash !== `#validation-${initialPlan?.id}`) return;
       if (tools.current) { tools.current.open = true; setToolsOpen(true); }
       requestAnimationFrame(() => (document.getElementById(hash.slice(1)) || tools.current)?.scrollIntoView({ block: "start" }));
     }
@@ -221,12 +223,12 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged }: { userI
     {featured && <section className="space-y-3"><h3 className="text-sm font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">01</span>{locale === "zh-tw" ? "本日優先行動" : "Today’s priority"}</h3>{taskRow(featured)}</section>}
     {stageAction && current && <section id="current-outcome" data-next-step="record" className="scroll-mt-6 space-y-5"><div data-today-priority className="space-y-3 rounded-xl bg-black p-5 text-white sm:p-6"><p className="text-xs text-white/55">{locale === "zh-tw" ? "里程碑" : "Milestone"} {current.position + 1} · {planText(current.title || "", locale)}</p><h2 className="text-xl font-bold">{locale === "zh-tw" ? "確認成果，繼續下一步" : "Confirm outcomes, then continue"}</h2><p className="whitespace-pre-wrap break-words text-sm leading-7">{planText(current.acceptanceCriteria || "", locale)}</p></div>{milestoneCard(current)}</section>}
     {initialPlan && !featured && !stageAction && <section data-today-priority className="space-y-4 rounded-xl bg-black p-5 text-white sm:p-6"><h2 className="text-xl font-bold">{!initialPlan.actions.length ? (locale === "zh-tw" ? "這份計畫尚無任務" : "This plan has no tasks yet") : initialPlan.actions.every(a => a.done) ? (locale === "zh-tw" ? "目前計畫的任務已完成" : "All tasks in this plan are complete") : (locale === "zh-tw" ? "先處理前置條件，再繼續任務" : "Resolve prerequisites to continue")}</h2><button type="button" className="min-h-11 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2" onClick={() => { if (!initialPlan.actions.length) { void open(); return; } const map = document.getElementById("action-map") as HTMLDetailsElement | null; if (map) { map.open = true; map.scrollIntoView({ block: "start" }); map.querySelector("summary")?.focus(); } }}>{!initialPlan.actions.length ? (locale === "zh-tw" ? "設定目標與任務" : "Set a goal and tasks") : (locale === "zh-tw" ? "查看行動地圖" : "View action map")}</button></section>}
-    {initialPlan && <details ref={tools} id="legacy-tools" onToggle={event => setToolsOpen(event.currentTarget.open)} className="rounded-xl border border-dark/10 bg-white p-4"><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">{locale === "zh-tw" ? "公司跟進、搜尋與付款紀錄" : "Company follow-up, search and payment records"}</summary><ValidationWorkspace active={toolsOpen} userId={userId} planId={initialPlan.id} revision={initialPlan.revision} /></details>}
+    {initialPlan && <details ref={tools} id="legacy-tools" onToggle={event => setToolsOpen(event.currentTarget.open)} className="rounded-xl border border-dark/10 bg-white p-4"><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">{locale === "zh-tw" ? "公司跟進與付款紀錄" : "Company follow-up and payment records"}</summary><ValidationWorkspace hideSearch prefill={prospectPrefill} active={toolsOpen} userId={userId} planId={initialPlan.id} revision={initialPlan.revision} /></details>}
     {completion && <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-black p-4 text-white motion-safe:animate-[fadeIn_.3s_ease-out]"><p>✓ {completion}</p><button className="min-h-11 px-3 text-sm underline" onClick={() => setCompletion("")}>{locale === "zh-tw" ? "關閉" : "Dismiss"}</button></div>}
     {error && !opened && <div role="alert" className="mt-3 space-y-3 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
     {notice && !opened && <p role="status" className="rounded-xl bg-dark/5 p-4 text-sm">{notice}</p>}
-    {initialPlan && featured && workspaceKind(featured) === "interview" && <ProspectSearch userId={userId} compact />}
-    {initialPlan && <ActionMap userId={userId} plan={initialPlan} event={mapEvent} compact>
+    {initialPlan && <div id="prospects"><ProspectSearch userId={userId} compact onSelect={company=>{setProspectPrefill({company:company.name,name:company.contact.name || "",prospectOrderId:company.orderId,prospectCompanyId:company.id});if(tools.current)tools.current.open=true;setToolsOpen(true);requestAnimationFrame(()=>{tools.current?.querySelector<HTMLElement>(":scope > summary")?.focus();tools.current?.scrollIntoView({block:"start"});});}} /></div>}
+    {initialPlan && <ActionMap userId={userId} plan={initialPlan} event={mapEvent} compact tools={<ActionPlanBuilder variant="regenerate" triggerClassName="min-h-11 rounded-xl border border-dark/20 bg-white px-3 py-2 text-xs font-semibold" />}>
     {initialPlan && <div id="action-plan-list" tabIndex={-1} className="mt-7 scroll-mt-6">
       <details className="mt-3 text-sm"><summary className="min-h-11 cursor-pointer font-semibold">{locale === "zh-tw" ? "搜尋與篩選" : "Search and filter"}</summary><div className="mt-2 flex flex-wrap gap-2">
         <input aria-label={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} placeholder={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} value={search} onChange={e => setSearch(e.target.value)} className={`${input} min-h-11 sm:w-auto`} />

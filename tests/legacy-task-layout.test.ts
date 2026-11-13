@@ -32,7 +32,7 @@ test('Compact maps use real legacy milestone and action counts, including no roa
   const load = runtime('en'), Map = load<typeof import('../src/components/dashboard/ActionMap')>('src/components/dashboard/ActionMap.tsx').default;
   for (const milestones of [null, plan.roadmap]) {
     const html = renderToStaticMarkup(React.createElement(Map, { userId: 'owner', plan: { ...plan, roadmap: milestones }, event: null, compact: true } as React.ComponentProps<typeof Map>, 'Original steps'));
-    assert(html.includes(milestones ? 'View all 1 milestone' : 'View all 2 steps')); assert(html.includes('1 / 2 steps completed'));
+    assert(html.includes('Expand steps')); assert.equal((html.match(/<li/g) || []).length, milestones?.milestones.length || 0); assert(html.includes('1 / 2 steps completed'));
     assert(!html.includes('16 steps')); assert(!html.includes('View all 5 milestones'));
   }
 });

@@ -19,7 +19,6 @@ export function ActionDiagnosis({ plan }: { plan: ActionPlanDto }) {
     <div className="mt-3 space-y-4"><dl className="space-y-3 text-sm"><div><dt className="font-semibold">{t("diagnosis.stage")}</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{planText(plan.diagnosis.stageReason, locale)}</dd></div><div><dt className="font-semibold">{t("diagnosis.bottleneck")}</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{planText(plan.diagnosis.bottleneckReason, locale)}</dd></div></dl>
       {plan.personalization && <PersonalizationSummary value={plan.personalization} locale={locale} />}
       {plan.diagnosticAnswers?.length === 3 ? <dl className="space-y-4 text-sm">{plan.diagnosticAnswers.map((row, i) => <div key={i}><dt className="font-semibold">{planText(row.question, locale)}</dt><dd className="mt-2 whitespace-pre-wrap text-dark/65">{row.answer}</dd></div>)}</dl> : <p className="text-sm text-dark/60">{t("diagnosis.missingAnswers")}</p>}
-      <ActionPlanBuilder variant="regenerate" />
     </div>
   </details>;
 }

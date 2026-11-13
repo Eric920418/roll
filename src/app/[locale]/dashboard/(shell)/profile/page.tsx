@@ -29,7 +29,7 @@ export default async function CompanyProfilePage({ params }: Props) {
       <Link href={pathForLocale("/dashboard/account#profile", l)} className="rounded-xl border border-dark/15 px-5 py-3 text-sm font-semibold text-dark hover:bg-dark/[0.03]">{t("profile.edit")}</Link>
     </div>
     <div className="mt-7 grid items-start gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
-      <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6">
+      <div className="min-w-0 space-y-5"><section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6">
         <h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("icp.company")}</h2>
         <dl className="mt-4 divide-y divide-dark/10">
           <Row label={t("account.companyName")} value={p?.companyName || na} />
@@ -41,7 +41,8 @@ export default async function CompanyProfilePage({ params }: Props) {
           <Row label={t("icp.homeMarket")} value={p?.country ? countryLabel(p.country, locale) : na} />
         </dl>
       </section>
-      <div className="min-w-0 space-y-5"><EvidencePanel userId={account.id} /><details className="rounded-xl border p-5"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{l === "zh-tw" ? "既有目標客戶資料與進階整理" : "Saved customer profile and advanced tools"}</summary><IcpPanel userId={account.id} saved={p?.icpDetails || null} legacy={p?.icp || null} version={p?.icpVersion || 0} canUseAi={planAtLeast(getEffectivePlan(account), "pro")} /></details></div>
+      <IcpPanel userId={account.id} saved={p?.icpDetails || null} legacy={p?.icp || null} version={p?.icpVersion || 0} canUseAi={planAtLeast(getEffectivePlan(account), "pro")} /></div>
+      <EvidencePanel userId={account.id} />
     </div>
   </div>;
 }
