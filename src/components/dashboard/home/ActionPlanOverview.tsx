@@ -147,9 +147,6 @@ export default async function ActionPlanOverview({
       <section id="next-three-moves" tabIndex={-1} aria-labelledby="next-moves-heading" className={`scroll-mt-6 rounded-2xl border border-primary/20 bg-primary/[0.025] p-5 sm:p-6 ${nextFirst ? "order-1" : ""}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary font-[family-name:var(--font-heading)]">
-              {t("next.eyebrow")}
-            </p>
             <h2
               id="next-moves-heading"
               className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]"

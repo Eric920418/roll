@@ -96,7 +96,7 @@ export default function WeeklyCheckIn({ userId, plan, canShare, onChanged, compa
     {mounted && createPortal(<dialog ref={dialog} aria-labelledby="weekly-title" onClose={() => { setOpened(false); if (trigger.current?.isConnected) trigger.current.focus(); }} className="nova-theme fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[920px] overflow-y-auto rounded-l-2xl border-0 bg-white p-0 text-dark shadow-2xl backdrop:bg-black/35">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-5"><h2 id="weekly-title" className="text-xl font-bold">Weekly Check-in</h2><button type="button" className={button} onClick={() => dialog.current?.close()}>{zh ? "關閉" : "Close"}</button></header>
       <div className="space-y-5 p-5 sm:p-8">
-        <p className="text-sm text-dark/60">{view?.weekStart} · {zh ? "台北時間，週一至週日；本週可修訂，歷史唯讀。" : "Asia/Taipei, Monday–Sunday. Current week editable; history read-only."}</p>
+        <p className="text-sm text-dark">{view?.weekStart} · {zh ? "台北時間" : "Taipei time"}</p>
         <label className="block text-sm font-semibold">{zh ? "查看計畫" : "View plan"}<select className={input} value={historyPlan} onChange={e => { setHistoryPlan(e.target.value); void reload(true, e.target.value || plan?.id); }}><option value="">{zh ? "目前計畫" : "Current plan"}</option>{historyOptions.map(p => <option key={p.id} value={p.id}>{p.goal || (zh ? "舊計畫" : "Previous plan")} · {p.createdAt.slice(0, 10)}</option>)}</select></label>
         {!view?.readOnly && <form onSubmit={e => { e.preventDefault(); void run("save"); }} className="space-y-4">
           <fieldset disabled={disabled} className="space-y-3"><legend className="font-bold">1. {zh ? "這週完成了什麼？" : "What did you complete?"}</legend>

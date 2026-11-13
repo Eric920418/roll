@@ -23,15 +23,14 @@ export default async function MetricsRow({
   const percent =
     checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
 
-  const cards: { label: string; value: string; hint: string }[] = [
-    { label: t("companies"), value: String(companies), hint: t("companiesHint") },
-    { label: t("videos"), value: String(videos), hint: t("videosHint") },
+  const cards: { label: string; value: string }[] = [
+    { label: t("companies"), value: String(companies) },
+    { label: t("videos"), value: String(videos) },
     {
       label: t("checklist"),
       value: checklistTotal > 0 ? `${percent}%` : "—",
-      hint: t("checklistHint", { done: checklistDone, total: checklistTotal }),
     },
-    { label: t("events"), value: String(events), hint: t("eventsHint") },
+    { label: t("events"), value: String(events) },
   ];
 
   return (
@@ -51,7 +50,6 @@ export default async function MetricsRow({
             <p className="mt-2 text-2xl font-extrabold tracking-[-0.02em] text-dark font-[family-name:var(--font-heading)]">
               {c.value}
             </p>
-            <p className="mt-1 text-xs text-dark/50">{c.hint}</p>
           </div>
         ))}
       </div>

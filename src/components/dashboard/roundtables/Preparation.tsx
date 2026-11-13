@@ -17,7 +17,7 @@ export function AutoGroup({ userId, disabled, write }: {
 }) {
     const zh = useLocale() === 'zh-tw', w = (a: string, b: string) => zh ? a : b;
     const { draft, change, clear, warning } = useDraft('nova:auto-group:' + userId, { name: '', question: '', language: zh ? 'zh-tw' : 'en', consent: false, requestId: '' }, autoForm);
-    return <details className="space-y-3 rounded-xl border p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w('依階段、產業與時區自動配組', 'Find a group by stage, industry and time zone')}</summary><p className="text-sm">{w('只選真實已開放的導師場次；沿用導師審核與候補，不會建立虛構會議。', 'Matches actual sessions created by certified hosts. Host approval and waitlists still apply.')}</p><form className="space-y-3" onSubmit={e => {
+    return <details className="space-y-3 rounded-xl border p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w('依階段、產業與時區自動配組', 'Find a group by stage, industry and time zone')}</summary><form className="space-y-3" onSubmit={e => {
             e.preventDefault();
             const requestId = draft.requestId || crypto.randomUUID();
             change({ ...draft, requestId });

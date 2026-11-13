@@ -72,7 +72,7 @@ export default function GettingStartedHome({ initial, overview, copilot, investo
     <div className="min-w-0 lg:col-span-2">{overview}</div>
   </div>;
   const guide = view.visible && <section id="getting-started" aria-labelledby="getting-started-title" className="min-w-0 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7">
-      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-wider text-sky-800">{t("eyebrow")}</p>{!view.hasPlan && <span className="text-xs text-dark/60">{t("progress", { done: view.missingFields.length ? 0 : 1, total: 3 })}</span>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3">{!view.hasPlan && <span className="text-xs text-dark/60">{t("progress", { done: view.missingFields.length ? 0 : 1, total: 3 })}</span>}</div>
       <h2 id="getting-started-title" className="mt-2 text-2xl font-extrabold">{view.hasPlan ? t("firstMoveTitle") : t("title")}</h2>
       {!view.hasPlan && <ol className="mt-5 grid gap-3 md:grid-cols-3">{[1, 2, 3].map(step => <li key={step} className={`rounded-2xl border p-4 ${step === view.currentStep ? "border-sky-400 bg-white" : "border-dark/10 bg-white/60"}`} aria-current={step === view.currentStep ? "step" : undefined}>
         <p className="text-xs font-bold text-sky-800">{t("step", { number: step })}{step === 1 && !view.missingFields.length ? ` · ${t("done")}` : ""}</p>

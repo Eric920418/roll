@@ -75,7 +75,6 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
         </div>
       </details>)}</div>
       {step !== "02-1" && <button type="button" className={button} onClick={() => { const row = emptyContact(crypto.randomUUID()); onChange({ ...data, contacts: [...data.contacts, row] }); setEditing(row.id); }}>{w("新增聯絡公司", "Add a company contact")}</button>}
-      {step === "02-1" && <p className="text-sm text-dark/65">{w("名單直接沿用上一步確認的 A 級客戶。", "These are the A leads confirmed in the previous step.")}</p>}
     </>}
     {data.kind === "document" && <GuidedFields guided={guided && !readOnly} locale={locale}>{(CHAPTERS[step] || []).map((title, i) => {
       const chapter = data.sections.find(s => s.id === String(i));

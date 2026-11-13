@@ -116,7 +116,7 @@ export function ActionEditor({ action, plan, onClose, onSaved }: { action: Actio
     <dialog ref={dialogRef} aria-labelledby="action-editor-title" onCancel={event => { if (busy) event.preventDefault(); }} onClose={onClose} className="nova-theme fixed inset-0 m-auto max-h-[94dvh] w-[calc(100%-1.5rem)] max-w-5xl overflow-y-auto rounded-[1.75rem] border-0 bg-white p-0 shadow-2xl backdrop:bg-black/45">
       <form onSubmit={save} className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-[1.75rem] bg-[#fffdf8] p-5 shadow-2xl sm:p-7">
         <div className="flex items-start justify-between gap-4">
-          <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">8 core dimensions</p><h2 id="action-editor-title" className="mt-1 text-2xl font-extrabold text-dark">{action ? t("editor.editTitle") : t("editor.addTitle")}</h2></div>
+          <div><h2 id="action-editor-title" className="mt-1 text-2xl font-extrabold text-dark">{action ? t("editor.editTitle") : t("editor.addTitle")}</h2></div>
           <button type="button" onClick={onClose} disabled={busy} aria-label={t("builder.close")} className="min-h-11 min-w-11 rounded-full border border-dark/10 text-xl text-dark/50">×</button>
         </div>
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
