@@ -23,7 +23,7 @@ export function useDraft<T>(key: string, initial: T, schema: z.ZodType<T>) {
   return { draft, change, clear, warning };
 }
 const short = z.string().max(4000), strings = z.array(short).max(16);
-const mentorForm = z.object({ publicName: short, bio: short, expertise: short, references: short, languages: strings, industries: strings, consent: z.boolean() });
+const mentorForm = z.object({ publicName: short, bio: short, expertise: short, references: short, languages: strings, industries: strings, consent: z.boolean(), revision: z.number().int().nonnegative().optional() });
 const sessionForm = z.object({ topic: short, description: short, steps: strings, industry: short, languages: strings, start: short, duration: short, capacity: short, repeatCount: short.default("1"), frameworkStages: strings.default([]), registrationMode: short, meetingUrl: short, requestId: short });
 const outcomesForm = z.array(z.object({ registrationId: short, attendance: short, title: short, criteria: short, dueDate: short })).max(5);
 type Write = (input: unknown) => Promise<boolean>;
@@ -36,38 +36,51 @@ function Checks({ label, values, options, onChange }: { label: string; values: s
 export function languageLabel(value: string, zh: boolean) { return ({ "zh-tw": zh ? "繁體中文" : "Traditional Chinese", en: "English", ja: zh ? "日文" : "Japanese", ko: zh ? "韓文" : "Korean", other: zh ? "其他（請在說明註明）" : "Other (specify in description)" })[value] || value; }
 export function MentorForm({ userId, cert, disabled, write, error = "", notice = "" }: { userId: string; cert: RoundtableState["certification"]; disabled: boolean; write: Write; error?: string; notice?: string }) {
   const zh = useLocale() === "zh-tw", w = (a: string, b: string) => zh ? a : b;
-  const { draft, change, clear, warning } = useDraft("nova:mentor:" + userId, { publicName: cert?.draft.publicName || "", bio: cert?.draft.bio || "", expertise: cert?.draft.expertise || "", references: cert?.draft.references.join("\n") || "", languages: cert?.draft.languages || ["en"], industries: cert?.draft.industries || ["all"], consent: false }, mentorForm);
+  const { draft, change, clear, warning } = useDraft("nova:mentor:" + userId, { publicName: cert?.draft.publicName || "", bio: cert?.draft.bio || "", expertise: cert?.draft.expertise || "", references: cert?.draft.references.join("\n") || "", languages: cert?.draft.languages || ["en"], industries: cert?.draft.industries || ["all"], consent: false, revision: cert?.revision || 0 } as z.infer<typeof mentorForm>, mentorForm);
   const [validation, setValidation] = useState("");
   const feedback = useRef<HTMLDivElement>(null), message = validation || error;
+  const revision = draft.revision ?? (cert ? -1 : 0), conflict = revision !== (cert?.revision || 0);
   useEffect(() => { if (message) feedback.current?.focus(); }, [message]);
-  return <form className="space-y-4" onSubmit={async e => {
+  return <form className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" onSubmit={async e => {
     e.preventDefault();
+    if (conflict) { setValidation(w("HTTP 409\n請先比較最新申請，再確認使用最新版本重試。", "HTTP 409\nCompare the latest application before retrying.")); return; }
     const parsed = mentorDraftSchema.safeParse({ publicName: draft.publicName, bio: draft.bio, expertise: draft.expertise, references: draft.references.split("\n").map(v => v.trim()).filter(Boolean), languages: draft.languages, industries: draft.industries });
     if (!parsed.success) {
       const labels: Record<string, string> = { publicName: w("公開導師名稱", "Public mentor name"), bio: w("專業簡介", "Professional bio"), expertise: w("專業經驗", "Expertise"), references: w("佐證網址", "Evidence URLs"), languages: w("可用語言", "Languages"), industries: w("專業產業", "Industries") };
-      setValidation("HTTP 400\n" + parsed.error.issues.map(i => (labels[String(i.path[0])] || i.path.join(".")) + (i.path[0] === "references" && typeof i.path[1] === "number" ? w(" · 第 " + (i.path[1] + 1) + " 行", " · line " + (i.path[1] + 1)) : "") + ": " + i.message).join("\n"));
+      setValidation("HTTP 400\n" + parsed.error.issues.map(i => (labels[String(i.path[0])] || i.path.join(".")) + (i.path[0] === "references" && typeof i.path[1] === "number" ? w(" · 第 " + (i.path[1] + 1) + " 行", " · line " + (i.path[1] + 1)) : "") + ": " + (i.code === "too_small" ? w(`至少提供 ${i.minimum} ${["references","languages","industries"].includes(String(i.path[0])) ? "項" : "字"}。`, `Provide at least ${i.minimum} ${["references","languages","industries"].includes(String(i.path[0])) ? "items" : "characters"}.`) : i.code === "too_big" ? w(`最多 ${i.maximum} ${["references","languages","industries"].includes(String(i.path[0])) ? "項" : "字"}。`, `Use at most ${i.maximum} items or characters.`) : i.message.includes(" / ") ? i.message.split(" / ")[zh ? 0 : 1] : i.path[0] === "references" ? w("請提供可驗證的 HTTPS 網址。", "Provide a valid HTTPS reference URL.") : i.message)).join("\n"));
       return;
     }
     setValidation("");
-    if (await write({ action: "mentorApply", revision: cert?.revision || 0, draft: parsed.data, consent: draft.consent })) {
-      change({ ...draft, ...parsed.data, references: parsed.data.references.join("\n") });
+    if (await write({ action: "mentorApply", revision, draft: parsed.data, consent: draft.consent })) {
+      change({ ...draft, ...parsed.data, references: parsed.data.references.join("\n"), revision: revision + 1 });
       clear();
     }
   }}>
-    <fieldset disabled={disabled} className="space-y-4">
+    <div className="min-w-0 space-y-4">
+    <fieldset disabled={disabled} className="min-w-0 space-y-5">
       <TextField label={w("公開導師名稱", "Public mentor name")} value={draft.publicName} onChange={v => change({ ...draft, publicName: v })} />
-      <TextField multiline label={w("專業簡介（至少 20 字）", "Professional bio (at least 20 characters)")} value={draft.bio} onChange={v => change({ ...draft, bio: v })} />
-      <TextField multiline label={w("可協助的問題與經驗（至少 10 字）", "Expertise and experience (at least 10 characters)")} value={draft.expertise} onChange={v => change({ ...draft, expertise: v })} />
+      <section className="space-y-3"><h4 className="text-sm font-bold">{w("01 · LinkedIn／其他可驗證連結", "01 · LinkedIn / verifiable references")}</h4>
       <TextField multiline label={w("佐證網址（每行一個，僅本人及管理員可見）", "Evidence URLs (one per line; private to you and administrators)")} value={draft.references} onChange={v => change({ ...draft, references: v })} />
-      <p className="text-sm text-dark/65">{w("可直接貼上 www.linkedin.com/...；未填協定的完整網域會自動補上 https://。最多 5 個網址。", "You may paste www.linkedin.com/...; full domains without a protocol use https:// automatically. Up to five URLs.")}</p>
+      <p className="text-xs leading-6 text-dark/65">{w("可提供 LinkedIn、公司介紹、個人官網或案例連結；至少 1 個、最多 5 個。可貼上 www.linkedin.com/...，完整網域會補上 https://。", "Use LinkedIn, a company page, personal website or case study. Provide one to five URLs; full domains without a protocol use https://.")}</p></section>
+      <section className="space-y-3"><h4 className="text-sm font-bold">{w("02 · 專業領域", "02 · Areas of expertise")}</h4>
+      <TextField multiline label={w("可協助的問題與經驗（至少 10 字）", "Expertise and experience (at least 10 characters)")} value={draft.expertise} onChange={v => change({ ...draft, expertise: v })} />
+      <p className="text-xs leading-6 text-dark/65">{w("例如 B2B 銷售、募資、進入台灣市場；請填寫實際能協助的問題。", "For example: B2B sales, fundraising or Taiwan market entry. Describe problems you can help with.")}</p></section>
+      <section className="space-y-3"><h4 className="text-sm font-bold">{w("03 · 公開簡介與可驗證的經歷", "03 · Public bio and verifiable experience")}</h4>
+      <TextField multiline label={w("專業簡介（至少 20 字）", "Professional bio (at least 20 characters)")} value={draft.bio} onChange={v => change({ ...draft, bio: v })} />
+      <p className="text-xs leading-6 text-dark/65">{w("可寫曾任職公司與職稱、帶過的新創或案例。通過認證後，這段簡介會顯示於你主持的場次。", "Include roles, companies, startups you advised or relevant cases. After certification, this bio appears on sessions you host.")}</p></section>
+      <details className="rounded-xl border border-dark/15 p-3"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{w("其他設定", "Other settings")} · {draft.languages.map(v=>languageLabel(v,zh)).join(" / ")} · {draft.industries.map(v=>v==='all'?w('不限產業','All industries'):industryLabel(v,zh?'zh-tw':'en')).join(" / ")}</summary><div className="space-y-4 pt-3">
       <Checks label={w("可用語言", "Languages")} values={draft.languages} options={LANGUAGES.map(k => [k, languageLabel(k, zh)])} onChange={v => change({ ...draft, languages: v })} />
       <Checks label={w("專業產業", "Industries")} values={draft.industries} options={INDUSTRIES.map(k => [k, k === "all" ? w("不限產業", "All industries") : industryLabel(k, zh ? "zh-tw" : "en")])} onChange={v => change({ ...draft, industries: v })} />
+      </div></details>
       <label className="flex min-h-11 items-start gap-3 py-2 text-sm"><input aria-label={w("同意認證資料使用", "Consent to certification use")} className="mt-1 h-5 w-5 shrink-0" type="checkbox" checked={draft.consent} onChange={e => change({ ...draft, consent: e.target.checked })} />{w("同意管理員核對佐證，通過後在主持場次公開名稱與簡介；不自動變更會員角色、照片或方案。", "Allow administrators to review references and publish my name and bio on hosted sessions after approval. My member role, photo and plan stay under my control.")}</label>
-      <button className={button + " bg-black text-white"} disabled={disabled || !draft.consent}>{w("送出導師認證申請", "Submit mentor application")}</button>
+      <button className={button + " bg-black text-white"} disabled={disabled || !draft.consent || conflict}>{w("送出導師認證申請", "Submit mentor application")}</button>
     </fieldset>
+    {conflict && <section aria-label={w("最新導師申請比較", "Compare latest mentor application")} className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm"><h4 className="font-bold">{w("申請已更新，請先比較", "Your application changed. Compare before retrying.")}</h4><p>{w("目前輸入完整保留；以下是伺服器最新資料。", "Your input is retained. The latest server record is shown below.")}</p>{cert ? <><p>{cert.status === "pending" ? w("待 NOVA 審核", "Awaiting NOVA review") : cert.status === "rejected" ? w("需補正", "More information required") : cert.status === "approved" ? w("已認證", "Certified") : w("已撤銷", "Revoked")} · {cert.note}</p><dl className="space-y-2"><div><dt>{w("公開導師名稱", "Public mentor name")}</dt><dd>{cert.draft.publicName}</dd></div><div><dt>{w("佐證網址", "Evidence URLs")}</dt><dd className="whitespace-pre-wrap break-all">{cert.draft.references.join("\n")}</dd></div><div><dt>{w("專業經驗", "Expertise")}</dt><dd className="whitespace-pre-wrap">{cert.draft.expertise}</dd></div><div><dt>{w("專業簡介", "Professional bio")}</dt><dd className="whitespace-pre-wrap">{cert.draft.bio}</dd></div><div><dt>{w("語言／產業", "Languages / industries")}</dt><dd>{cert.draft.languages.map(v=>languageLabel(v,zh)).join(" / ")} · {cert.draft.industries.map(v=>v==='all'?w('不限產業','All industries'):industryLabel(v,zh?'zh-tw':'en')).join(" / ")}</dd></div></dl></> : <p>{w("目前尚無已送出的申請。", "No application has been submitted yet.")}</p>}<button type="button" className={button} disabled={disabled} onClick={()=>{change({...draft,revision:cert?.revision||0});setValidation("");}}>{w("已比較，使用最新版本重試", "Compared; use latest version to retry")}</button></section>}
     {message && <div ref={feedback} tabIndex={-1} role="alert" className="whitespace-pre-wrap break-words rounded-xl bg-red-50 p-4 text-sm text-red-800">{message}</div>}
     {!message && notice && <p role="status" className="rounded-xl bg-dark/5 p-4 text-sm">{notice}</p>}
-    {warning && <p role="status" className="text-sm">{warning}</p>}
+    {warning && <p role="status" className="text-sm">{warning.split(" / ")[zh ? 0 : 1] || warning}</p>}
+    </div>
+    <aside className="min-w-0 space-y-4 rounded-xl bg-dark/5 p-4 sm:p-5"><h4 className="text-base font-bold">{w("NOVA 會審核這 3 項", "What NOVA reviews")}</h4><ol className="list-decimal space-y-3 pl-5 text-sm leading-7"><li>{w("能核對身分或經歷的公開連結。", "Public links that verify your identity or experience.")}</li><li>{w("與創辦人需求相關的專業領域。", "Expertise relevant to founders' needs.")}</li><li>{w("至少一項可驗證的專業經歷或案例。", "At least one verifiable role, experience or case.")}</li></ol><p className="text-sm leading-7">{w("送出後由 NOVA 團隊人工審核，通過前不能建立圓桌；選擇會員卡的「導師」身分不等於通過認證。", "The NOVA team reviews applications manually. You can host after approval. Selecting Mentor on your member card does not certify you.")}</p><p className="text-sm leading-7">{w("佐證網址僅本人與管理員可見。認證不會自動公開會員卡、照片或變更方案。", "References remain private to you and administrators. Certification does not publish your card or photo, or change your plan.")}</p></aside>
   </form>;
 }
 export function SessionForm({ userId, initial, disabled, write }: { userId: string; initial?: RoundtableState["sessions"][number]; disabled: boolean; write: Write }) {

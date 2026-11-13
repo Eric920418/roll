@@ -58,6 +58,22 @@ test("Mentor form keeps errors next to submit, preserves failed drafts and norma
     assert.equal(storage.size, 0);
   }
 });
+test("Mentor drafts keep their version across reload and require explicit latest-record comparison", async () => {
+  for (const revision of [undefined, 1]) {
+    const draft={...mentor,references:mentor.references.join("\n"),consent:true,...(revision===undefined?{}:{revision})},slots: unknown[]=[draft, ""],saved: unknown[]=[];
+    let cursor=0;
+    const load=pdfRuntime({react:{...React,useEffect(){},useRef:()=>({current:null}),useState(initial:unknown){const i=cursor++;if(!(i in slots))slots[i]=initial;return[slots[i],(value:unknown)=>{slots[i]=value;}];}},"next-intl":{useLocale:()=>"en"}},{localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
+    const {MentorForm}=load<typeof import("../src/components/dashboard/roundtables/Forms")>("src/components/dashboard/roundtables/Forms.tsx");
+    const props={userId:"owner",cert:{status:"pending",revision:2,draft:{...mentor,bio:"Newest server biography, preserved during comparison."},note:"Review updated"},disabled:false,write:async(input:unknown)=>{saved.push(input);return false;}};
+    const render=()=>{cursor=0;return MentorForm(props) as React.ReactElement<{onSubmit(e:{preventDefault():void}):Promise<void>}>;};
+    await render().props.onSubmit({preventDefault(){}});assert.equal(saved.length,0);assert.deepEqual(slots[0],draft);
+    const html=renderToStaticMarkup(render());assert.match(html,/Newest server biography/);assert.match(html,/Compare before retrying/);
+    function find(node:React.ReactNode):React.ReactElement<{onClick():void}>|undefined{let found:React.ReactElement<{onClick():void}>|undefined;React.Children.forEach(node,child=>{if(!React.isValidElement<{children?:React.ReactNode;onClick():void}>(child))return;if(child.type==="button"&&child.props.children==="Compared; use latest version to retry")found=child;else found=found||find(child.props.children);});return found;}
+    find(render())!.props.onClick();assert.equal((slots[0] as typeof draft).bio,draft.bio);await render().props.onSubmit({preventDefault(){}});
+    assert.equal(saved.length,1);assert.equal((saved[0] as {revision:number}).revision,2);
+  }
+});
+
 test("Roundtable boundaries reject forged certifications, capacity outside 4–6, unsafe links and unconsented applications", () => {
   assert(!mentorDraftSchema.safeParse({ ...mentor, status: "approved" }).success);
   assert(!mentorDraftSchema.safeParse({ ...mentor, references: ["javascript:alert(1)"] }).success);

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale } from "next-intl";
 import { z } from "zod";
-import { memberFetch } from "@/lib/member-fetch";
+import { MemberFetchError, memberFetch } from "@/lib/member-fetch";
 import { pathForLocale } from "@/lib/routes";
 import { INDUSTRIES, LANGUAGES, roundtableMutationSchema } from "@/lib/roundtables/schema";
 import type { RoundtableState } from "@/lib/roundtables/service";
@@ -39,20 +39,35 @@ function HostTools({ userId, session, now, disabled, write }: { userId: string; 
     <details><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w("取消場次並保留紀錄", "Cancel session and retain history")}</summary><div className="space-y-3"><TextField multiline label={w("取消原因", "Cancellation reason")} value={cancelReason} onChange={setCancelReason} /><button className={button + " text-red-800"} disabled={disabled || cancelReason.trim().length < 3} onClick={() => { if (window.confirm(w("確認取消本場？報名與理由會保留。", "Cancel this session? Registrations and the reason will be retained."))) void write({ action: "cancel", id: session.id, revision: session.revision, reason: cancelReason }); }}>{w("確認取消圓桌", "Confirm cancellation")}</button></div></details>{warning && <p role="status">{warning}</p>}
   </fieldset>;
 }
-export default function RoundtablesPanel({ userId, active = true, compact = false }: { userId: string; active?: boolean; compact?: boolean }) {
+export default function RoundtablesPanel({ userId, active = true, compact = false, mentorRequest = 0 }: { userId: string; active?: boolean; compact?: boolean; mentorRequest?: number }) {
   const locale = useLocale() as "en" | "zh-tw", zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;
   const [data, setData] = useState<RoundtableState | null>(null), [selected, setSelected] = useState(""), [error, setError] = useState(""), [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false), [busy, setBusy] = useState(false), [view, setView] = useState("upcoming"), [industry, setIndustry] = useState(""), [language, setLanguage] = useState(""), [step, setStep] = useState("");
+  const mentorTitle = useRef<HTMLHeadingElement>(null), openedMentor = useRef(0);
   const request = useRef(0), writing = useRef(false), mentorDetails = useRef<HTMLDetailsElement>(null), detail = useRef<HTMLHeadingElement>(null);
   const load = useCallback(async (id?: string, signal?: AbortSignal) => { const n = ++request.current; setLoading(true); try { const next = await memberFetch<RoundtableState>("/api/roundtables" + (id ? "?id=" + encodeURIComponent(id) : ""), { signal }); if (!signal?.aborted && n === request.current) { setData(next); setError(""); if (id) setSelected(id); } } catch (e) { if (!signal?.aborted && n === request.current) setError(e instanceof Error ? e.message : String(e)); } finally { if (!signal?.aborted && n === request.current) setLoading(false); } }, []);
   useEffect(() => { if (!active) return; const abort = new AbortController(); const timer = setTimeout(() => void load(new URL(window.location.href).searchParams.get("roundtable") || undefined, abort.signal), 0); return () => { clearTimeout(timer); abort.abort(); }; }, [active, load]);
+  useEffect(() => {
+    if (!active || compact || !data || !mentorRequest || openedMentor.current === mentorRequest) return;
+    openedMentor.current = mentorRequest;
+    if (mentorDetails.current) mentorDetails.current.open = true;
+    const frame = requestAnimationFrame(() => { mentorTitle.current?.focus(); mentorTitle.current?.scrollIntoView({ block: "start" }); });
+    return () => cancelAnimationFrame(frame);
+  }, [active, compact, data, mentorRequest]);
   async function write(input: unknown) {
     if (writing.current || loading) return false;
     const parsed = roundtableMutationSchema.safeParse(input);
     if (!parsed.success) { setError("HTTP 400\n" + parsed.error.issues.map(i => i.path.join(".") + ": " + i.message).join("\n")); return false; }
     request.current++; writing.current = true; setBusy(true); setError(""); setNotice("");
     try { const next = await memberFetch<RoundtableState & { selectedId: string | null }>("/api/roundtables", { method: "POST", body: JSON.stringify(parsed.data) }); setData(next); if (next.selectedId) { if (parsed.data.action === "create") { if (mentorDetails.current) mentorDetails.current.open = false; choose(next.selectedId); } else setSelected(next.selectedId); } setNotice(parsed.data.action === "mentorApply" ? w("導師申請已送出，等待管理員審核。", "Mentor application submitted. Awaiting administrator review.") : w("已保存，名額與狀態已重新核對。", "Saved. Seats and status have been checked.")); return true; }
-    catch (e) { setError(e instanceof Error ? e.message : String(e)); return false; }
+    catch (e) {
+      const message = e instanceof Error ? e.message : String(e); setError(message);
+      if (parsed.data.action === "mentorApply" && e instanceof MemberFetchError && e.status === 409) {
+        try { setData(await memberFetch<RoundtableState>("/api/roundtables")); }
+        catch (latestError) { setError(message + "\n" + (latestError instanceof Error ? latestError.message : String(latestError))); }
+      }
+      return false;
+    }
     finally { writing.current = false; setBusy(false); }
   }
   const disabled = busy || loading, session = data?.sessions.find(s => s.id === selected);
@@ -64,7 +79,14 @@ export default function RoundtablesPanel({ userId, active = true, compact = fals
     <header><p className="text-xs font-semibold tracking-widest text-dark/55">{w("帶著證據，一起推進", "BRING EVIDENCE, MOVE FORWARD")}</p><h2 id={compact ? "home-roundtables-title" : "roundtables-title"} className={compact ? "mt-2 text-lg font-semibold" : "mt-4 text-2xl font-semibold"}>{w("圓桌會議", "Roundtables")}</h2><p className="mt-3 text-sm leading-7 text-dark/70">{w("每場 4–6 人（含主持導師），交流實際問題，會後把可衡量承諾帶回今日任務。", "4–6 people including a certified host. Discuss real problems and carry measurable commitments into today's tasks.")}</p></header>
     {error && <div role="alert" className="space-y-3 rounded-xl bg-red-50 p-4 text-sm text-red-800"><p className="whitespace-pre-wrap break-words">{error}</p><button className={button} disabled={disabled} onClick={() => void load(selected || undefined)}>{w("載入最新狀態並保留草稿", "Load latest state and keep draft")}</button></div>}
     {notice && <p role="status" className="rounded-xl bg-dark/5 p-4 text-sm">{notice}</p>}
-    {!data ? <p role="status">{w("載入圓桌…", "Loading roundtables…")}</p> : compact ? <>{sessions.slice(0, 2).map(s => <article key={s.id} className="space-y-2 border-t pt-4"><h3 className="font-semibold">{s.topic}</h3><p className="text-sm">{date(s.startsAt)} · {s.mentor.name} · {s.confirmed}/{s.capacity}</p><Link className={button} href={href + "&roundtable=" + encodeURIComponent(s.id)}>{w("查看場次", "View session")}</Link></article>)}{!sessions.length && <p className="text-sm">{w("目前沒有公開場次。認證導師可建立第一場圓桌。", "No upcoming sessions yet. Certified mentors can create the first roundtable.")}</p>}<Link href={href} className={button}>{w("查看圓桌與導師認證", "Roundtables and mentor certification")}</Link></> : <>
+    {!data ? <p role="status">{w("載入圓桌…", "Loading roundtables…")}</p> : compact ? <>{sessions.slice(0, 2).map(s => <article key={s.id} className="space-y-2 border-t pt-4"><h3 className="font-semibold">{s.topic}</h3><p className="text-sm">{date(s.startsAt)} · {s.mentor.name} · {s.confirmed}/{s.capacity}</p><Link className={button} href={href + "&roundtable=" + encodeURIComponent(s.id)}>{w("查看場次", "View session")}</Link></article>)}{!sessions.length && <p className="text-sm">{w("目前沒有公開場次。認證導師可建立第一場圓桌。", "No upcoming sessions yet. Certified mentors can create the first roundtable.")}</p>}<div className="flex flex-wrap gap-2"><Link href={href + "&mentor=apply"} className={button + " bg-black text-white"}>{data.certification?.status === "approved" ? w("建立圓桌會議", "Create roundtable") : data.certification ? w("查看認證狀態", "View certification status") : w("申請成為導師", "Apply to become a mentor")}</Link><Link href={href} className={button}>{w("查看圓桌與導師認證", "Roundtables and mentor certification")}</Link></div></> : <>
+      <section id="mentor-certification" aria-labelledby="mentor-certification-title" className="min-w-0 space-y-4 rounded-2xl border border-dark/20 p-4 sm:p-5">
+        <h3 id="mentor-certification-title" ref={mentorTitle} tabIndex={-1} className="scroll-mt-6 text-lg font-bold focus-visible:outline-2">{!data.certification ? w("申請成為 NOVA 認證導師", "Apply to become a NOVA certified mentor") : data.certification.status === "approved" ? w("已認證導師", "Certified mentor") : data.certification.status === "pending" ? w("導師申請待 NOVA 審核", "Mentor application awaiting NOVA review") : data.certification.status === "rejected" ? w("導師申請需補正", "More information required") : w("導師認證已撤銷", "Mentor certification revoked")}</h3>
+        <p className="text-sm leading-7">{w("分享你的經驗，陪創辦人用證據推進下一步。申請不需先升級方案。", "Share your experience and help founders move forward with evidence. You can apply without upgrading your plan.")}</p>
+        <ol className="grid gap-2 text-xs font-semibold sm:grid-cols-3">{(zh ? ["01 填寫資料", "02 NOVA 人工審核", "03 通過後開設圓桌"] : ["01 Submit your details", "02 NOVA reviews", "03 Host after approval"]).map(label=><li key={label} className="rounded-lg bg-dark/5 p-3">{label}</li>)}</ol>
+        {data.certification?.note && <p role="status" className="whitespace-pre-wrap break-words rounded-xl bg-dark/5 p-3 text-sm">{data.certification.note}</p>}
+      <details ref={mentorDetails} className="border-t border-dark/10 pt-3"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w("導師認證與主持", "Mentor certification and hosting")} · {data.certification?.status === "approved" ? w("建立圓桌會議", "Create roundtable") : data.certification ? w("查看／更新申請", "View / update application") : w("申請成為導師", "Apply to become a mentor")}{data.certification ? " · " + (data.certification.status === "pending" ? w("待管理員審核", "Awaiting administrator review") : statusLabel(data.certification.status, zh)) : ""}</summary><div className="space-y-5 pt-3">{data.certification?.status === "approved" ? <><p className="text-sm">{w("認證已通過，可建立圓桌；認證不代表投資人驗證或新增付費權益。", "Your mentor certification is approved. You may host sessions; this grants no investor verification or additional paid access.")}</p><SessionForm userId={userId} disabled={disabled} write={write} /></> : <MentorForm key={userId} userId={userId} cert={data.certification} disabled={disabled} write={write} error={error} notice={notice} />}</div></details>
+      </section>
       <div className="flex flex-wrap gap-3"><button className={button} disabled={disabled} onClick={() => void load(selected || undefined)}>{w("更新場次與名額", "Refresh sessions and seats")}</button><Choice label={w("顯示場次", "Session view")} value={view} options={[["upcoming", w("近期場次", "Upcoming sessions")], ["mine", w("我的報名／主持紀錄", "My applications / hosted sessions")]]} onChange={setView} /></div>
       {data.canApply && <AutoGroup userId={userId} disabled={disabled} write={write} />}
       <div className="grid gap-3 sm:grid-cols-3"><Choice label={w("篩選產業", "Filter industry")} value={industry} options={[["", w("全部", "All")], ...INDUSTRIES.filter(k => k !== "all").map(k => [k, industryLabel(k, locale)] as const)]} onChange={setIndustry} /><Choice label={w("篩選語言", "Filter language")} value={language} options={[["", w("全部", "All")], ...LANGUAGES.map(k => [k, languageLabel(k, zh)] as const)]} onChange={setLanguage} /><Choice label={w("篩選步驟", "Filter task step")} value={step} options={[["", w("全部", "All")], ...STEPS.map(s => [s.id, s.id + " " + words(s.title, locale)] as const)]} onChange={setStep} /></div>
@@ -85,7 +107,7 @@ export default function RoundtablesPanel({ userId, active = true, compact = fals
         {session.host && session.status === "scheduled" && session.mentor.certified && <HostTools key={session.id} userId={userId} session={session} now={data.serverTime} disabled={disabled} write={write} />}
         {session.host && session.status === "completed" && <div className="space-y-3">{session.people.filter(p => p.status === "confirmed").map(p => <p key={p.id} className="whitespace-pre-wrap break-words rounded-xl border p-4 text-sm">{p.name} · {p.attendance === "attended" ? w("出席", "Attended") : w("未出席", "Absent")}{p.commitment ? "\n" + p.commitment.title + "\n" + p.commitment.criteria + " · " + p.commitment.dueDate + (p.commitment.done ? w(" · 已完成", " · Done") : "") : ""}</p>)}</div>}
       </article>}
-      <details ref={mentorDetails} className="rounded-xl border border-dark/15 p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w("導師認證與主持", "Mentor certification and hosting")}{data.certification ? " · " + (data.certification.status === "pending" ? w("待管理員審核", "Awaiting administrator review") : statusLabel(data.certification.status, zh)) : ""}</summary><div className="space-y-5 pt-3">{data.certification?.note && <p role="status" className="whitespace-pre-wrap break-words text-sm">{data.certification.note}</p>}{data.certification?.status === "approved" ? <><p className="text-sm">{w("認證已通過，可建立圓桌；認證不代表投資人驗證或新增付費權益。", "Your mentor certification is approved. You may host sessions; this grants no investor verification or additional paid access.")}</p><SessionForm userId={userId} disabled={disabled} write={write} /></> : <MentorForm key={userId} userId={userId} cert={data.certification} disabled={disabled} write={write} error={error} notice={notice} />}</div></details>
+
     </>}
   </section>;
 }

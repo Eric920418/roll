@@ -18,7 +18,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout', 'sales', 'starter'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout', 'sales', 'starter', 'mentors'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -678,6 +678,42 @@ async function flowDocumentAndReview() {
 }
 
 const createdRoundtables = [];
+async function mentorEntryQA() {
+  const draft={publicName:'QA guide mentor',bio:'Experienced operator helping founders verify actual customer demand.',expertise:'B2B customer discovery and international market entry.',references:['https://example.com/private-mentor-reference'],languages:['en'],industries:['all']};
+  await db.user.update({where:{id:users.newpaid.id},data:{plan:'free',subscriptionStatus:null,paypalSubscriptionId:null,currentPeriodEnd:null}});
+  const admin=await browser.newContext();contexts.push(admin);const token=await new SignJWT({email:'qa-reviewer@example.invalid',role:'admin'}).setProtectedHeader({alg:'HS256'}).setIssuedAt().setExpirationTime('1h').sign(new TextEncoder().encode(authSecret));await admin.addCookies([{name:'admin_session',value:token,url:origin,httpOnly:true,sameSite:'Lax'}]);
+  const fingerprint=async id=>JSON.stringify({user:await db.user.findUnique({where:{id},select:{plan:true,subscriptionStatus:true,paypalSubscriptionId:true,trialPlan:true,trialStartsAt:true,trialEndsAt:true,featurePolicy:true,rollonMember:true}}),card:await db.matchmakingProfile.findUnique({where:{userId:id},select:{role:true,visible:true,visibleFields:true,verified:true,originalPhoto:true,blurredPhoto:true}}),actions:await db.actionItem.findMany({where:{actionPlan:{userId:id}},orderBy:{id:'asc'}})});
+  for(const key of ['newpaid','investor']){const {context,page}=await session(key,390);await page.goto(origin+'/dashboard/matchmaking');await page.getByRole('button',{name:'Mentor application & certification',exact:true}).click();await page.locator('#mentor-certification-title').waitFor();check('Free or paid account can reach mentor application '+key,await page.getByRole('button',{name:'Submit mentor application',exact:true}).isVisible());await context.close();}
+  for(const [key,locale] of [['trial','zh-tw'],['expired','en']]){
+    const owner=users[key],zh=locale==='zh-tw',w=(a,b)=>zh?a:b,prefix=zh?'/zh-tw':'',before=await fingerprint(owner.id),{context,page}=await session(key,390),url=origin+prefix+'/dashboard/matchmaking?tab=roundtables&mentor=apply';
+    const cert=page.locator('#mentor-certification'),form=cert.locator('form').first(),submit=form.getByRole('button',{name:w('送出導師認證申請','Submit mentor application'),exact:true});
+    const labels={name:w('公開導師名稱','Public mentor name'),references:w('佐證網址（每行一個，僅本人及管理員可見）','Evidence URLs (one per line; private to you and administrators)'),expertise:w('可協助的問題與經驗（至少 10 字）','Expertise and experience (at least 10 characters)'),bio:w('專業簡介（至少 20 字）','Professional bio (at least 20 characters)')};
+    for(const width of [390,768,1440]){
+      await page.setViewportSize({width,height:1000});await page.goto(origin+prefix+'/dashboard');const entry=page.getByRole('link',{name:w('申請成為導師','Apply to become a mentor'),exact:true});await entry.waitFor();await entry.scrollIntoViewIfNeeded();await page.waitForFunction(()=>{const link=[...document.querySelectorAll('a')].find(el=>el.href.includes('mentor=apply'));return link&&link.getBoundingClientRect().height>=43.9;});check('Home mentor link is explicit '+locale+width,(await entry.getAttribute('href')).includes('mentor=apply')&&(await entry.boundingBox()).height>=43.9);await entry.click();await submit.waitFor();await page.waitForFunction(()=>document.activeElement?.id==='mentor-certification-title');
+      check('Mentor entry focuses heading without keyboard '+locale+width,await cert.locator('details').first().evaluate(el=>el.open)&&await page.locator('#mentor-certification').count()===1);await layout(page,'Mentor application '+locale+width,locale);
+      await page.addStyleTag({content:'[data-custom-cursor]{visibility:hidden!important}'});await page.mouse.move(-100,-100);await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(400);await screenshot(page,'mentor-entry-'+locale+'-'+width);
+    }
+    const tabs=page.getByRole('tab');for(let i=0;i<4;i++){await tabs.nth(i).click();const entry=page.getByRole('button',{name:w('導師申請與認證','Mentor application & certification'),exact:true});check('Header entry visible on tab '+locale+i,await entry.isVisible()&&(await entry.boundingBox()).height>=44);}
+    await page.getByRole('button',{name:w('導師申請與認證','Mentor application & certification'),exact:true}).click();await page.waitForFunction(()=>document.activeElement?.id==='mentor-certification-title');
+    await form.getByLabel(labels.name,{exact:true}).fill(draft.publicName);await form.getByLabel(labels.references,{exact:true}).fill('not a URL');await form.getByLabel(labels.expertise,{exact:true}).fill(draft.expertise);await form.getByLabel(labels.bio,{exact:true}).fill(draft.bio);await form.getByRole('checkbox',{name:w('同意認證資料使用','Consent to certification use'),exact:true}).check();await submit.click();await form.getByRole('alert').filter({hasText:'HTTP 400'}).waitFor();check('Bad URL does not create an application '+locale,await db.mentorCertification.count({where:{userId:owner.id}})===0);
+    await form.getByLabel(labels.references,{exact:true}).fill(draft.references[0]);await page.reload();await submit.waitFor();check('Mentor draft survives reload '+locale,await form.getByLabel(labels.bio,{exact:true}).inputValue()===draft.bio);
+    let fail=true,lost=false;const sent=[];await page.route('**/api/roundtables',async route=>{if(route.request().method()!=='POST')return route.continue();sent.push(route.request().postDataJSON());if(fail)return route.fulfill({status:503,json:{error:'Controlled mentor outage',code:'mentor_qa',requestId:'mentor-guide-reference'}});if(lost){lost=false;assert.equal((await route.fetch()).status(),200);return route.abort();}return route.continue();});
+    await submit.click();await form.getByRole('alert').filter({hasText:'mentor-guide-reference'}).waitFor();check('503 keeps draft, HTTP and safe details '+locale,(await form.getByRole('alert').innerText()).includes('HTTP 503')&&await form.getByLabel(labels.bio,{exact:true}).inputValue()===draft.bio);
+    fail=false;lost=true;await submit.click();await form.getByRole('alert').filter({hasText:'fetch'}).waitFor();await submit.click();await page.getByRole('heading',{name:w('導師申請待 NOVA 審核','Mentor application awaiting NOVA review'),exact:true}).waitFor();check('Lost acknowledgement retries identical application '+locale,JSON.stringify(sent.at(-1))===JSON.stringify(sent.at(-2))&&(await db.mentorCertification.findUniqueOrThrow({where:{userId:owner.id}})).history.length===1);await page.unroute('**/api/roundtables');
+    let saved=await db.mentorCertification.findUniqueOrThrow({where:{userId:owner.id}});assert.equal((await context.request.post(origin+'/api/roundtables',{headers:{origin},data:{action:'mentorApply',revision:saved.revision,draft:{...draft,bio:'Another tab saved these professional details for review.'},consent:true}})).status(),200);
+    await form.getByLabel(labels.bio,{exact:true}).fill('My unsaved professional details should remain intact.');let response=waitResponse(page,r=>r.url().endsWith('/api/roundtables')&&r.request().method()==='POST');await submit.click();check('Server detects stale mentor version '+locale,(await response).status()===409);const comparison=form.getByRole('region',{name:w('最新導師申請比較','Compare latest mentor application'),exact:true});await comparison.waitFor();check('409 shows latest while retaining local draft '+locale,(await comparison.innerText()).includes('Another tab saved')&&await form.getByLabel(labels.bio,{exact:true}).inputValue()==='My unsaved professional details should remain intact.'&&await submit.isDisabled());
+    await page.reload();await comparison.waitFor();check('409 draft version survives reload '+locale,await form.getByLabel(labels.bio,{exact:true}).inputValue()==='My unsaved professional details should remain intact.'&&await submit.isDisabled());
+    await form.getByRole('button',{name:w('已比較，使用最新版本重試','Compared; use latest version to retry'),exact:true}).click();response=waitResponse(page,r=>r.url().endsWith('/api/roundtables')&&r.request().method()==='POST');await submit.click();check('Explicit comparison permits retry '+locale,(await response).status()===200);
+    async function review(status,note){saved=await db.mentorCertification.findUniqueOrThrow({where:{userId:owner.id}});assert.equal((await admin.request.patch(origin+'/api/admin/mentors',{headers:{origin},data:{id:saved.id,revision:saved.revision,status,note}})).status(),200);await page.goto(url);await cert.waitFor();}
+    await review('rejected','Please add verifiable experience.');await page.getByRole('heading',{name:w('導師申請需補正','More information required'),exact:true}).waitFor();check('Correction note visible without opening form '+locale,await cert.getByText('Please add verifiable experience.',{exact:true}).isVisible());await form.getByRole('checkbox',{name:w('同意認證資料使用','Consent to certification use'),exact:true}).check();await submit.click();await page.getByRole('heading',{name:w('導師申請待 NOVA 審核','Mentor application awaiting NOVA review'),exact:true}).waitFor();
+    await review('approved','Professional references checked.');await page.getByRole('heading',{name:w('已認證導師','Certified mentor'),exact:true}).waitFor();check('Approved mentor sees existing host form '+locale,await cert.getByRole('button',{name:w('建立圓桌會議','Create roundtable'),exact:true}).isVisible()&&await cert.getByRole('button',{name:w('送出導師認證申請','Submit mentor application'),exact:true}).count()===0);
+    await page.goto(origin+prefix+'/dashboard');await page.getByRole('link',{name:w('建立圓桌會議','Create roundtable'),exact:true}).waitFor();check('Home entry reflects approval '+locale,true);await review('revoked','Certification needs another review.');await page.getByRole('heading',{name:w('導師認證已撤銷','Mentor certification revoked'),exact:true}).waitFor();check('Revoked mentor cannot host '+locale,await cert.getByRole('button',{name:w('建立圓桌會議','Create roundtable'),exact:true}).count()===0);
+    const outsider=await session('requester',390),foreign=await (await outsider.context.request.get(origin+'/api/roundtables')).json();check('Other member cannot read mentor references '+locale,!JSON.stringify(foreign).includes(draft.references[0]));check('Member cannot review applications '+locale,(await context.request.get(origin+'/api/admin/mentors')).status()===401);
+    check('Original role, plan, privacy and tasks unchanged '+locale,before===await fingerprint(owner.id));check('Mentor application consumes no AI or Tokens '+locale,await db.aiUsage.count({where:{userId:owner.id}})===0&&await db.tokenReservation.count({where:{userId:owner.id}})===0);await context.close();await outsider.context.close();
+  }
+  await admin.close();
+}
+
 async function roundtableCore(hostKey, memberKey, width, locale, approvalMode) {
   const zh = locale === 'zh-tw', w = (a, b) => zh ? a : b, prefix = zh ? '/zh-tw' : '';
   const { context: host, page } = await session(hostKey, width, true);
@@ -686,7 +722,7 @@ async function roundtableCore(hostKey, memberKey, width, locale, approvalMode) {
   await page.goto(origin + prefix + '/dashboard/matchmaking?tab=roundtables');
   const panel = page.locator('#matchmaking-panel-roundtables');
   const mentorSection = panel.locator('details').filter({ has: page.locator('summary').filter({ hasText: w('導師認證與主持', 'Mentor certification and hosting') }) });
-  await mentorSection.locator('summary').click();
+  await mentorSection.locator(':scope > summary').click();
   await mentorSection.getByLabel(w('公開導師名稱', 'Public mentor name'), { exact: true }).fill(publicName);
   await mentorSection.getByLabel(w('專業簡介（至少 20 字）', 'Professional bio (at least 20 characters)'), { exact: true }).fill('Experienced founder helping teams test real customer demand and pilot offers.');
   await mentorSection.getByLabel(w('可協助的問題與經驗（至少 10 字）', 'Expertise and experience (at least 10 characters)'), { exact: true }).fill('Customer interviews, qualification criteria and paid pilots.');
@@ -1327,11 +1363,12 @@ async function commerceSettingsQA() {
 }
 
 try {
-  if(['localization','layout','sales'].includes(scenario)) await startCopyProvider();
+  if(['localization','layout','sales','mentors'].includes(scenario)) await startCopyProvider();
   await startServer(); await redirects();
   if (mode === 'start') {
     if(scenario!=='homepage') await fixtures(); browser = await chromium.launch({ headless: true });
-    if (scenario === 'starter') { await starterPlanQA(); }
+    if (scenario === 'mentors') { await mentorEntryQA(); }
+    else if (scenario === 'starter') { await starterPlanQA(); }
     else if (scenario === 'sales') { await salesSaveQA(); }
     else if (scenario === 'layout') { await layoutQA(); }
     else if (scenario === 'localization') { await localizationQA(); }
