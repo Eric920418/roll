@@ -33,7 +33,7 @@ export default function FaqList({
           >
             <summary className="list-none cursor-pointer px-5 py-4 flex items-center justify-between font-semibold text-dark hover:bg-dark/[0.02]">
               <span>{f.q}</span>
-              <span className="text-primary transition-transform group-open:rotate-45">
+              <span className="ml-3 shrink-0 text-primary transition-transform group-open:rotate-45">
                 +
               </span>
             </summary>

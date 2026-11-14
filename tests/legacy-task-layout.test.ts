@@ -32,7 +32,7 @@ test('Compact maps use real legacy milestone and action counts, including no roa
   const load = runtime('en'), Map = load<typeof import('../src/components/dashboard/ActionMap')>('src/components/dashboard/ActionMap.tsx').default;
   for (const milestones of [null, plan.roadmap]) {
     const html = renderToStaticMarkup(React.createElement(Map, { userId: 'owner', plan: { ...plan, roadmap: milestones }, event: null, compact: true } as React.ComponentProps<typeof Map>, 'Original steps'));
-    assert(html.includes('Expand steps')); assert.equal((html.match(/<li/g) || []).length, milestones?.milestones.length || 0); assert(html.includes('1 / 2 steps completed'));
+    assert(html.includes('Expand steps')); assert.equal((html.match(/<li/g) || []).length, milestones?.milestones.length || 0); assert(!html.includes('steps completed')); assert(html.includes(milestones ? 'Milestone 1' : 'Current plan'));
     assert(!html.includes('16 steps')); assert(!html.includes('View all 5 milestones'));
   }
 });
@@ -45,6 +45,7 @@ test('Legacy plan rendering preserves steps and records for current, blocked, co
   for (const current of states) {
     const before = JSON.stringify(current), html = renderToStaticMarkup(React.createElement(Panel, { userId: 'owner', initialPlan: current, onChanged: () => { throw Error('Rendering must not rewrite a plan'); } }));
     assert(html.includes('data-today-priority')); assert(html.includes('data-next-step="goal"')); assert(html.includes('id="action-map"'));
+    assert(!html.includes('Goal: ')); assert(!/\d+ \/ \d+ steps completed/.test(html));
     assert.equal(JSON.stringify(current), before);
   }
 });

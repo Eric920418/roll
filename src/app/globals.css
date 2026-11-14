@@ -405,6 +405,61 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Reserve indicator space independently of browser-native control padding. */
+select:not([multiple]):not([size]),
+select:not([multiple])[size="1"] {
+  appearance: none;
+  padding-inline-end: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 0.875rem;
+}
+
+select:dir(rtl):not([multiple]):not([size]),
+select:dir(rtl):not([multiple])[size="1"] {
+  background-position: left 0.875rem center;
+}
+
+summary::marker {
+  content: "";
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary:not(.list-none) {
+  position: relative;
+  list-style: none;
+  padding-inline-end: 2.5rem;
+}
+
+summary:not(.list-none)::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: 0.875rem;
+  top: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-50%) rotate(45deg);
+  pointer-events: none;
+}
+
+details[open] > summary:not(.list-none)::after {
+  transform: translateY(-50%) rotate(225deg);
+}
+
+@media (forced-colors: active) {
+  select:not([multiple]):not([size]),
+  select:not([multiple])[size="1"] {
+    appearance: auto;
+    background-image: none;
+  }
+}
+
 /* When the custom red-dot cursor is active, hide the native cursor everywhere
    except inside text-editable fields where the I-beam is needed. */
 html.custom-cursor-active,
