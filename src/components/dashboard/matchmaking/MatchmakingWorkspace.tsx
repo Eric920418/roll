@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLocale } from "next-intl";
 import MatchmakingPage from "./MatchmakingPage";
 import RoundtablesPanel from "./RoundtablesPanel";
+import ViewerOverview, { ViewerPrivacySettings } from "../network/ViewerOverview";
 import { MessagesPage, useNetwork } from "../network/NetworkPanels";
 import { memberFetch } from "@/lib/member-fetch";
 import { MATCHMAKING_TABS, matchmakingTab, type MatchmakingTab } from "@/lib/dashboard/home";
@@ -39,7 +40,7 @@ export default function MatchmakingWorkspace({ userId, initialTab, initialMentor
     const url = new URL(window.location.href); url.searchParams.set("tab", id); if (id !== "roundtables") url.searchParams.delete("mentor");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }
-  const labels = zh ? ["推薦給你", "所有會員", "圓桌會議", "訊息"] : ["For you", "All members", "Roundtables", "Messages"];
+  const labels = zh ? ["推薦給你", "所有會員", "圓桌會議", "誰看過我", "訊息"] : ["For you", "All members", "Roundtables", "Viewed you", "Messages"];
   return <div className="min-w-0 space-y-6">
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-dark/10 pb-4"><div><h1 className="text-2xl font-semibold tracking-tight">{zh ? "商機媒合" : "Business matching"}</h1></div></header>
     <div role="tablist" aria-label={zh ? "商機媒合" : "Business matching"} className="flex min-w-0 gap-1 border-b border-dark/10 sm:gap-4">
@@ -51,7 +52,7 @@ export default function MatchmakingWorkspace({ userId, initialTab, initialMentor
     </div>
     {(networkError || error) && <div role="alert" className="whitespace-pre-wrap break-words rounded-xl bg-red-50 p-4 text-sm text-red-800"><p>{networkError || error}</p><button className="mt-2 min-h-11 underline" type="button" onClick={() => void (networkError ? reloadNetwork() : loadUnread())}>{zh ? "重試" : "Retry"}</button></div>}
     {MATCHMAKING_TABS.map(id => <div key={id} role="tabpanel" id={`matchmaking-panel-${id}`} aria-labelledby={`matchmaking-tab-${id}`} hidden={tab !== id}>
-      {visited.has(id) && (id === "roundtables" ? <RoundtablesPanel userId={userId} active={tab === id} mentorRequest={mentorRequest} /> : id === "messages" ? <div className="space-y-5"><div className="flex flex-wrap justify-end gap-3"><Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/notifications", locale)}>{zh ? "通知" : "Notifications"}</Link>{network?.portal && <Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/business-plan", locale)}>{zh ? "公司資料 PDF" : "Company information PDF"}</Link>}</div><Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/account#notifications", locale)}>{zh ? "通知設定" : "Notification settings"}</Link><MessagesPage key={userId} embedded active={tab === id} onUnreadChange={setUnread} /></div> : <MatchmakingPage active={tab === id} memberView={id} />)}
+      {visited.has(id) && (id === "visitors" ? (tab === id && (network?.enabled ? <div className="space-y-5"><ViewerOverview /><ViewerPrivacySettings /></div> : <p role="status" className="text-sm">{network ? (zh ? "訪客紀錄目前未開放。" : "Visitor records are currently unavailable.") : (zh ? "載入訪客權益…" : "Loading visitor access…")}</p>)) : id === "roundtables" ? <RoundtablesPanel userId={userId} active={tab === id} mentorRequest={mentorRequest} /> : id === "messages" ? <div className="space-y-5"><div className="flex flex-wrap justify-end gap-3"><Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/notifications", locale)}>{zh ? "通知" : "Notifications"}</Link>{network?.portal && <Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/business-plan", locale)}>{zh ? "公司資料 PDF" : "Company information PDF"}</Link>}</div><Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href={pathForLocale("/dashboard/account#notifications", locale)}>{zh ? "通知設定" : "Notification settings"}</Link><MessagesPage key={userId} embedded active={tab === id} onUnreadChange={setUnread} /></div> : <MatchmakingPage active={tab === id} memberView={id} />)}
     </div>)}
   </div>;
 }

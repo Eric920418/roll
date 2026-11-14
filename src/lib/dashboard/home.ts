@@ -30,7 +30,7 @@ export function homeNextStep({ plan, isPaying, discovery }: {
     : { kind: "upgrade" as const, href: "/dashboard/account#plan" };
 }
 
-export const MATCHMAKING_TABS = ["recommendations", "all", "roundtables", "messages"] as const;
+export const MATCHMAKING_TABS = ["recommendations", "all", "roundtables", "visitors", "messages"] as const;
 export type MatchmakingTab = typeof MATCHMAKING_TABS[number];
 export function matchmakingTab(value?: string): MatchmakingTab {
   return MATCHMAKING_TABS.includes(value as MatchmakingTab) ? value as MatchmakingTab
