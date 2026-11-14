@@ -1,6 +1,6 @@
 # 訊息頁合併通知入口（2026-11-14）
 
-訊息工具列只保留一個「Notifications／通知」入口，移除重複的 Notification settings／通知設定按鈕。統一進入通知頁後即可找到設定入口；公司資料 PDF 繼續依既有權限呈現。中英文同步，不改通知偏好、未讀紀錄、聊天資料或 API。驗收：10／10 項既有訊息分頁回歸、範圍 ESLint、pnpm build 與 diff 檢查通過；正式版面與設定流程待部署後核對。
+訊息工具列只保留一個「Notifications／通知」入口，移除重複的 Notification settings／通知設定按鈕。統一進入通知頁後即可找到設定入口；公司資料 PDF 繼續依既有權限呈現。中英文同步，不改通知偏好、未讀紀錄、聊天資料或 API。驗收：10／10 項既有訊息分頁回歸、範圍 ESLint、pnpm build 與 diff 檢查通過；正式部署 dpl_4wPMkV76s2ZDWb74ta9HyuGYush1 已 Ready 並綁定 rollon.com.tw；中英文 1440px／390px 訊息工具列均僅一個通知入口，手機無水平溢位、操作區高 55px。實際由通知入口進入通知頁，再開啟設定，已確認偏好表單可編輯，未儲存或變更會員偏好。截圖：/Users/eric/.codex/visualizations/2026/11/14/nova-single-notifications/desktop.png 與 mobile.png。手機採尺寸模擬，未做實機驗收。
 
 # 訊息區標題與重新載入精簡（2026-11-14）
 
