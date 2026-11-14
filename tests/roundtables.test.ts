@@ -281,3 +281,29 @@ test("Roundtables in isolated PostgreSQL: certification, concurrent seats, appro
     await db.$disconnect();
   }
 });
+
+test("Roundtable step labels stay readable in both languages without changing selected IDs", async () => {
+  for (const locale of ["en", "zh-tw"]) {
+    const slots: unknown[] = [], submitted: Array<{ draft: { steps: string[] } }> = [];
+    let cursor = 0;
+    const load = pdfRuntime({ react: { ...React, useEffect() {}, useRef: () => ({ current: false }), useState(initial: unknown) {
+      const i = cursor++; if (!(i in slots)) slots[i] = initial;
+      return [slots[i], (value: unknown) => { slots[i] = value; }];
+    } }, "next-intl": { useLocale: () => locale } }, { localStorage: { setItem() {}, removeItem() {} }, crypto: { randomUUID } });
+    const { SessionForm } = load<typeof import("../src/components/dashboard/roundtables/Forms")>("src/components/dashboard/roundtables/Forms.tsx");
+    const render = () => { cursor = 0; return SessionForm({ userId: "short-step-labels", disabled: false, write: async input => { submitted.push(input as typeof submitted[number]); return false; } }); };
+    const first = renderToStaticMarkup(render()), firstSummary = first.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)![1]!;
+    assert.match(firstSummary, locale === "en" ? /01-1 Customer conversations/ : /01-1 客戶訪談/);
+    const chosen = ["01-1", "02-2", "05-3"];
+    slots[0] = { ...slots[0] as object, steps: chosen };
+    const form = render(), html = renderToStaticMarkup(form), details = html.match(/<details[^>]*>([\s\S]*?)<\/details>/)![1]!, summary = details.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)![1]!;
+    assert.match(summary, locale === "en" ? /02-2 Payment evidence/ : /02-2 付款證據/);
+    assert.match(summary, locale === "en" ? /05-3 Market validation report/ : /05-3 市場驗證報告/);
+    assert.equal((details.match(/type="checkbox"/g) || []).length, 16);
+    assert.equal((details.match(/checked=""/g) || []).length, chosen.length);
+    assert.doesNotMatch(details, /Talk with 10 target|Write a positioning statement|與 10 位目標客戶對話|寫出一句話定位/);
+    form.props.onSubmit({ preventDefault() {} } as React.FormEvent<HTMLFormElement>);
+    await Promise.resolve();
+    assert.deepEqual(submitted[0]!.draft.steps, chosen);
+  }
+});
