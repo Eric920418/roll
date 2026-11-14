@@ -60,13 +60,13 @@ export function MentorForm({ userId, cert, disabled, write, error = "", notice =
     <fieldset disabled={disabled} className="min-w-0 space-y-5">
       <TextField label={w("公開導師名稱", "Public mentor name")} value={draft.publicName} onChange={v => change({ ...draft, publicName: v })} />
       <section className="space-y-3"><h4 className="text-sm font-bold">{w("01 · LinkedIn／其他可驗證連結", "01 · LinkedIn / verifiable references")}</h4>
-      <TextField multiline label={w("佐證網址", "Evidence URLs")} value={draft.references} onChange={v => change({ ...draft, references: v })} />
+      <TextField multiline hideLabel label={w("佐證網址", "Evidence URLs")} value={draft.references} onChange={v => change({ ...draft, references: v })} />
       </section>
       <section className="space-y-3"><h4 className="text-sm font-bold">{w("02 · 專業領域", "02 · Areas of expertise")}</h4>
-      <TextField multiline label={w("專業經驗", "Expertise")} value={draft.expertise} onChange={v => change({ ...draft, expertise: v })} />
+      <TextField multiline hideLabel label={w("專業經驗", "Expertise")} value={draft.expertise} onChange={v => change({ ...draft, expertise: v })} />
       </section>
       <section className="space-y-3"><h4 className="text-sm font-bold">{w("03 · 公開簡介與可驗證的經歷", "03 · Public bio and verifiable experience")}</h4>
-      <TextField multiline label={w("專業簡介", "Professional bio")} value={draft.bio} onChange={v => change({ ...draft, bio: v })} />
+      <TextField multiline hideLabel label={w("專業簡介", "Professional bio")} value={draft.bio} onChange={v => change({ ...draft, bio: v })} />
       </section>
       <details className="rounded-xl border border-dark/15 p-3"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{w("其他設定", "Other settings")} · {draft.languages.map(v=>languageLabel(v,zh)).join(" / ")} · {draft.industries.map(v=>v==='all'?w('不限產業','All industries'):industryLabel(v,zh?'zh-tw':'en')).join(" / ")}</summary><div className="space-y-4 pt-3">
       <Checks label={w("可用語言", "Languages")} values={draft.languages} options={LANGUAGES.map(k => [k, languageLabel(k, zh)])} onChange={v => change({ ...draft, languages: v })} />
