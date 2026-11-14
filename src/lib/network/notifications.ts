@@ -1,4 +1,4 @@
-import { evidenceEmailAllowed,evidenceToken } from "@/lib/evidence/reminders";
+import { evidenceEmailAllowed,evidenceToken,followupReminderValid } from "@/lib/evidence/reminders";
 import type { EvidenceCategory } from "@/lib/evidence/reminders";
 import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
@@ -84,7 +84,7 @@ export async function runNotifications(now = new Date(), budgetMs = 240000) {
           if(!(await evidenceEmailAllowed(row.notification.userId,category,Number(payload.preferenceVersion))).enabled)return false;
           if(category==="connection"){const connection=await db.networkConnection.findFirst({where:{id:String(payload.connectionId),OR:[{senderId:row.notification.userId},{recipientId:row.notification.userId}]}});return Boolean(connection && connection.status!=="blocked" && (row.notification.kind!=="invitation"||connection.status==="pending"));}
           if(category==="roundtable"){const registration=await db.roundtableRegistration.findFirst({where:{id:String(payload.registrationId),userId:row.notification.userId,status:"confirmed",roundtable:{status:"scheduled",startsAt:{gt:now},host:{mentorCertification:{status:"approved"}}}}});return Boolean(registration);}
-          if(category==="task"){const action=await db.actionItem.findFirst({where:{id:String(payload.actionId),done:false,actionPlan:{id:String(payload.planId),userId:row.notification.userId,activeKey:row.notification.userId,archivedAt:null}}});if(!action)return false;if(payload.contactId){const saved=(await import("@/lib/action-plan/flow/catalog")).flowStoredSchema.safeParse(action.taskWorkspace).data;return Boolean(saved?.data.kind==="outreach"&&saved.data.contacts.some(c=>c.id===payload.contactId&&c.status==="sent"&&c.date===payload.contactDate));}return true;}
+          if(category==="task"){if(payload.contactId)return followupReminderValid(row.notification.userId,payload);const action=await db.actionItem.findFirst({where:{id:String(payload.actionId),done:false,actionPlan:{id:String(payload.planId),userId:row.notification.userId,activeKey:row.notification.userId,archivedAt:null}}});return Boolean(action);}
           return true;
         }
         const current = await db.memberNotificationPreference.findUnique({ where: { userId: row.notification.userId } });

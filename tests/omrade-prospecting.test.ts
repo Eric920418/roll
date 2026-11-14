@@ -196,6 +196,16 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
   const due = (id: string) => db.prospectingOrder.update({ where: { id }, data: { nextAttemptAt: new Date(0) } });
   const clean = async (id: string) => { await db.user.delete({ where: { id } }); };
   try {
+    await t.test("Search plan attribution is private and retained through full refund", async () => {
+      const user=await member(), other=await member(); mode="insufficient";
+      const plan=await db.actionPlan.create({data:{userId:user.id,activeKey:user.id,locale:"en",companyStage:"MVP",stageReason:"Private QA",bottleneckGroup:"Sales",bottleneckCode:"no_leads",bottleneckReason:"Private QA",stageConfidence:70,bottleneckConfidence:70,requestId:randomUUID()}});
+      await assert.rejects(service.createProspectOrder(other.id,{...input(),planId:plan.id}),/not found/);
+      const order=await service.createProspectOrder(user.id,{...input(),planId:plan.id});
+      const reserved=await db.tokenReservation.findFirstOrThrow({where:{resourceId:order.id}});assert.equal((reserved.metadata as {planId:string}).planId,plan.id);
+      await worker.runProspecting();assert.deepEqual(await balance(user.id),[150,0]);
+      const entries=await db.tokenLedger.findMany({where:{reservationId:reserved.id}});assert.equal(entries.reduce((n,e)=>n+e.availableDelta+e.reservedDelta,0),0);
+      await clean(user.id);await clean(other.id);mode="complete";
+    });
     await t.test("Failed full-count research releases all quota with a safe specific reason; UTC admission month accepts offsets", async () => {
       const user = await member(); mode = "insufficient";
       const failed = await service.createProspectOrder(user.id, input()); await worker.runProspecting();

@@ -89,6 +89,7 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     await lockMember(tx, userId);
     const replay = await tx.prospectingOrder.findUnique({ where: { userId_requestId: { userId, requestId: input.requestId } } });
     if (replay) { if (replay.payloadHash !== payloadHash) throw new ProspectingError("同一次提交已使用不同內容；請比較最新版 / Request ID already used with different content", 409, "idempotency_conflict"); return { id: replay.id, status: replay.status }; }
+    if (input.planId && !await tx.actionPlan.findFirst({ where: { id: input.planId, userId, activeKey: userId, archivedAt: null }, select: { id: true } })) throw new ProspectingError("找不到本人有效計畫 / Active plan not found", 404, "plan_not_found");
     const pricing = await tokenQuote(tx);
     if (input.pricingVersion !== pricing.version || input.count !== 5) throw new ProspectingError(`新搜尋固定五家公司，請重新載入確認報價 / New searches require five companies; reload and confirm current pricing`, input.pricingVersion && input.pricingVersion !== pricing.version ? 409 : 400, "pricing_confirmation_required");
     if (!configured()) throw new ProspectingError("公司搜尋尚未開放，已存名單仍可查看 / Company search is not configured; saved lists remain readable", 503, "not_configured");
@@ -108,7 +109,7 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
       audienceRequest: json({ name: "NOVA confirmed buyer criteria", definition }), audienceKey: randomUUID(), audienceParentId: workspace?.omradeIcpId || null,
       omradeIcpId: sameAudience ? workspace!.omradeIcpId : null, omradeIcpVersion: sameAudience ? workspace!.omradeIcpVersion : null, orderKey: randomUUID() } });
     if (rights.poc && !await tx.tokenLedger.findUnique({ where: { eventKey: `poc:${userId}` } })) await grantTokens(tx, userId, pricing.searchFee, `poc:${userId}`, "一次公司搜尋 POC 贈額 / One-time search POC grant");
-    await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash, kind: "search", poc: rights.poc, resourceId: order.id, expiresAt: new Date(Date.now() + 86400000), metadata: { exclusions: context.names } });
+    await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash, kind: "search", poc: rights.poc, resourceId: order.id, expiresAt: new Date(Date.now() + 86400000), metadata: { exclusions: context.names, ...(input.planId ? { planId: input.planId } : {}) } });
     return { id: order.id, status: order.status };
   }, { timeout: 15000 });
 }

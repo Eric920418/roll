@@ -1,6 +1,6 @@
 import { companyKey } from "@/lib/customer-insights/interviews";
 import { today } from "@/lib/roadmap/schema";
-import { STEPS, CHAPTERS, emptyFlowData, emptyRecord, emptyContact, flowStoredSchema, flowStep, words, type FlowData, type StepId } from "./catalog";
+import { STEPS, CHAPTERS, followupSchema, emptyFlowData, emptyRecord, emptyContact, flowStoredSchema, flowStep, words, type FlowData, type StepId } from "./catalog";
 
 export type FlowAction = { id: string; clientKey: string; done: boolean; completedAt: Date | string | null; taskWorkspace: unknown; taskFinding: unknown };
 export type FlowProof = { id: string; company: string; name: string; kind: "signed" | "paid"; amount: string; currency: string; date: string; approved: boolean; revoked: boolean; reviewStatus?: "pending" | "approved" | "rejected"; reviewNote?: string };
@@ -8,7 +8,24 @@ export type FlowContext = { actions: FlowAction[]; proofs: FlowProof[]; locale: 
 export type Confirmation = { version: string; leadId: string; statement: string; answer: "yes" | "no"; at: string };
 export function storedData(action?: FlowAction) { return flowStoredSchema.safeParse(action?.taskWorkspace).data?.data; }
 export function dataAt(context: FlowContext, step: StepId) { return storedData(context.actions.find(a => flowStep(a)?.id === step)) || emptyFlowData(STEPS.find(s => s.id === step)!.kind); }
-export function records(context: FlowContext) { const data = dataAt(context, "01-1"); return data.kind === "conversation" ? data.records.filter(r => r.fit == null || ["yes","possible"].includes(r.fit)) : []; }
+export function validConversation(r: ReturnType<typeof emptyRecord>, day = today()) { return Boolean(["yes", "possible"].includes(r.fit || "") && r.company && r.name && r.relationship && r.pain && r.severity && r.solution && r.wtp && r.wtp !== "not_asked" && r.date && r.date <= day); }
+export function supplementalRecords(context: FlowContext) {
+  const data = dataAt(context, "01-4");
+  return data.kind === "organize" ? (data.supplements || []).filter(round => round.records.length === 3 && round.records.every(r => validConversation(r, today(context.now)))).flatMap(round => round.records) : [];
+}
+export function records(context: FlowContext) { const data = dataAt(context, "01-1"); return [...(data.kind === "conversation" ? data.records.filter(r => r.fit == null || ["yes","possible"].includes(r.fit)) : []), ...supplementalRecords(context)]; }
+export function contactFollowups(action: FlowAction) {
+  const raw = action.taskFinding as { followups?: unknown[] } | null;
+  return (Array.isArray(raw?.followups) ? raw.followups : []).flatMap(value => { const parsed = followupSchema.safeParse(value); return parsed.success ? [parsed.data] : []; });
+}
+export function followupContacts(context: FlowContext) {
+  return context.actions.flatMap(action => { const data = storedData(action); if (data?.kind !== "outreach") return [];
+    const updates = contactFollowups(action);
+    return data.contacts.filter(c => c.status !== "draft" && c.date).map(c => { const latest = updates.filter(u => u.contactId === c.id).at(-1);
+      return { actionId: action.id, step: flowStep(action)!.id, contactId: c.id, company: c.company, name: c.name, status: latest?.status || c.status, date: latest?.date || c.date, note: latest?.note || "", resolved: approvedProofs(context).some(p => companyKey(p.company) === companyKey(c.company)) };
+    });
+  });
+}
 export function positioningReplies(context: FlowContext) {
   const action = context.actions.find(a => flowStep(a)?.id === "01-2"), data = dataAt(context, "01-2");
   const meta = action?.taskFinding as { responses?: Confirmation[]; positioningVersion?: string } | null;
@@ -66,6 +83,7 @@ function week(date: string) {
 function completedText(text: string) { return text.trim().length >= 3 && !/\[[^\]]+\]|待補|TBD|TODO/i.test(text); }
 function unique(values: string[]) { return new Set(values).size === values.length; }
 export function evaluateStep(context: FlowContext, step: StepId, override?: FlowData) {
+  if (override && step === "01-4") context = { ...context, actions: context.actions.map(a => flowStep(a)?.id === step ? { ...a, taskWorkspace: { version: 2, step, data: override } } : a) };
   const data = override || dataAt(context, step), spec = STEPS.find(s => s.id === step)!;
   const w = (zh: string, en: string) => context.locale === "zh-tw" ? zh : en;
   const reasons: string[] = [], summary: string[] = [];
@@ -105,6 +123,7 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       summary.push(w("少於 3 份佐證的條件只作觀察，不計入分數。", "Criteria with fewer than three sources are observations and do not score."));
     }
     if (step === "01-4") {
+      require((data.supplements || []).every(r => r.records.length === 3 && r.records.every(v => validConversation(v, day))), "請先完成本輪三次有效補訪", "Complete all three valid supplemental conversations in this round");
       current = data.tiers.filter(t => t.confirmed && ids.has(t.leadId)).length; target = first.length;
       require(first.length >= 10 && current === target && unique(data.tiers.map(t => t.leadId)) && data.tiers.length === target, "請完成全部受訪者分級", "Tier every interviewee");
       require(data.tiers.every(t => unique(t.matches) && t.matches.every(id => cids.has(id)) && (!t.override || completedText(t.reason))), "分級條件無效或手動調整缺少理由", "Invalid criterion or missing override reason");
@@ -143,13 +162,8 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       require(current >= target, "須向 3 位本計畫 A 級客戶實際寄出提案", "Send proposals to three A leads from this plan");
     }
     if (step === "03-1") {
-      const previous = context.actions.find(a => flowStep(a)?.id === "02-3"), since = previous?.completedAt ? today(new Date(previous.completedAt)) : day;
-      const qualified = sent.filter(c => c.date >= since && score(context, c.matches) >= 60 && unique(c.matches) && c.matches.every(id => cids.has(id)));
-      const seen = new Set<string>(), weeks = new Map<string, typeof qualified>();
-      for (const row of [...qualified].sort((a, b) => a.date.localeCompare(b.date))) {
-        const key = companyKey(row.company); if (seen.has(key)) continue; seen.add(key);
-        const start = week(row.date); weeks.set(start, [...(weeks.get(start) || []), row]);
-      }
+      const weeks = new Map<string, typeof data.contacts>();
+      for (const row of weeklyContacts(context, data)) { const start = week(row.date); weeks.set(start, [...(weeks.get(start) || []), row]); }
       let bestContacts = 0, bestConversations = 0, valid = false;
       for (const start of [...weeks.keys()].sort()) {
         const slots = Array.from({ length: 4 }, (_, i) => { const d = new Date(start); d.setUTCDate(d.getUTCDate() + i * 7); return d.toISOString().slice(0, 10); });
@@ -249,4 +263,26 @@ export function flowView(context: FlowContext) {
     const data = storedData(action) || seedData(context, spec.id);
     return { ...spec, title: words(spec.title, context.locale), criteria: words(spec.criteria, context.locale), guide: words(spec.guide, context.locale), actionId: action?.id || "", done: Boolean(action?.done), completedAt: action?.completedAt ? new Date(action.completedAt).toISOString() : null, data, saved: Boolean(storedData(action)), draft: seedData(context, spec.id), ...evaluateStep(context, spec.id, data) };
   });
+}
+
+function weeklyContacts(context: FlowContext, data: Extract<FlowData, {kind:"outreach"}>) {
+  const opened = context.actions.find(a => flowStep(a)?.id === "02-3")?.completedAt, since = opened ? today(new Date(opened)) : today(context.now), ids = new Set(criteria(context).map(c=>c.id));
+  const seen = new Set<string>();
+  return [...data.contacts].sort((a,b)=>a.date.localeCompare(b.date)).filter(c=>{
+    const key=companyKey(c.company);
+    if(seen.has(key) || !c.company || !c.name || !c.channel || !completedText(c.offer) || c.status==="draft" || !c.date || c.date<since || c.date>today(context.now) || score(context,c.matches)<60 || !unique(c.matches) || !c.matches.every(id=>ids.has(id)))return false;
+    seen.add(key);return true;
+  });
+}
+export function outreachWeeks(context: FlowContext) {
+  const data = dataAt(context, "03-1"); if (data.kind !== "outreach") return [];
+  const opened = context.actions.find(a => flowStep(a)?.id === "02-3")?.completedAt;
+  const start = week(opened ? today(new Date(opened)) : today(context.now));
+  const last = week(today(context.now)), qualified=weeklyContacts(context,data);
+  const rows = [];
+  for (let date = start; date <= last && rows.length < 520; date = new Date(Date.parse(date) + 7 * 86400000).toISOString().slice(0, 10)) {
+    const contacts = qualified.filter(c=>week(c.date)===date), count=contacts.length;
+    rows.push({ date, contacts: count, missing: Math.max(0, 20 - count), conversations: contacts.filter(c => c.status === "conversation" && c.pain && c.solution && c.wtp && c.wtp !== "not_asked").length });
+  }
+  return rows;
 }

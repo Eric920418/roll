@@ -9,8 +9,9 @@ import { prepareActionReward, awardReward } from "@/lib/rewards/service";
 import { completeGettingStarted } from "@/lib/getting-started/service";
 import { salesRecordSchema, sameScope } from "@/lib/validation/schema";
 import { today } from "@/lib/roadmap/schema";
-import { STEPS, flowKey, flowStep, flowStoredSchema, flowDataSchema, stepIdSchema, flowMilestones, emptyFlowData } from "./catalog";
-import { flowView, dataAt, records, positioningReplies, criteria, tiers, channels, paidCompanies, customerMetrics, weeklyTarget, evaluateStep, type FlowContext, type Confirmation } from "./evaluate";
+import { companyKey } from "@/lib/customer-insights/interviews";
+import { STEPS, flowKey, flowStep, flowStoredSchema, flowDataSchema, stepIdSchema, flowMilestones, emptyFlowData, followupSchema } from "./catalog";
+import { flowView, dataAt, records, positioningReplies, criteria, tiers, channels, paidCompanies, customerMetrics, weeklyTarget, evaluateStep, type FlowContext, type Confirmation, validConversation, followupContacts, contactFollowups, outreachWeeks } from "./evaluate";
 
 type DB = Prisma.TransactionClient;
 const include = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, commercialValidation: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
@@ -20,7 +21,7 @@ export async function readPlan(userId: string, planId?: string, tx: DB = prisma 
   if (!plan) throw new PlanWriteError("找不到本人計畫 / Your plan was not found", 404);
   return plan;
 }
-export async function flowContext(plan: Record, tx: DB = prisma as unknown as DB): Promise<FlowContext> {
+export async function flowContext(plan: { id: string; userId: string; locale: string; actions: FlowContext["actions"] }, tx: DB = prisma as unknown as DB): Promise<FlowContext> {
   const deals = await tx.deal.findMany({ where: { userId: plan.userId, validation: { not: Prisma.DbNull } }, select: { validation: true } });
   const proofs = deals.flatMap(d => { const record = salesRecordSchema.safeParse(d.validation).data; return record && sameScope(record.scope, { planId: plan.id }) ? record.proofs.map(p => ({ ...p, company: record.company, name: record.name, approved: p.review?.status === "approved", reviewStatus: p.review?.status || "pending", reviewNote: p.review?.note || "", revoked: Boolean(p.revokedAt) })) : []; });
   return { actions: plan.actions, proofs, locale: plan.locale };
@@ -41,7 +42,9 @@ export async function getFlow(userId: string, planId?: string, locale?: string) 
   const steps = isV2 ? flowView(context) : [];
   const financial = metadata(plan.actions.find(a => flowStep(a)?.id === "04-3" && a.done)?.taskFinding).outcome as { metrics?: ReturnType<typeof customerMetrics> } | undefined;
   const growth = metadata(plan.actions.find(a => flowStep(a)?.id === "05-1" && a.done)?.taskFinding).outcome as { weekly?: ReturnType<typeof weeklyTarget> } | undefined;
-  return { plan: serializePlan(plan), archived: Boolean(plan.archivedAt), steps, current: steps.find(s => !s.done)?.id || null,
+  const reservations = await prisma.tokenReservation.findMany({ where: { userId, kind: "search", metadata: { path: ["planId"], equals: plan.id } }, include: { ledger: true } });
+  const searchTokens = { recordedOrders: reservations.length, spent: -reservations.flatMap(r => r.ledger).reduce((n, e) => n + e.availableDelta + e.reservedDelta, 0), reserved: reservations.filter(r => r.status === "reserved").reduce((n, r) => n + r.amount, 0) };
+  return { searchTokens, followups: followupContacts(context), weeks: outreachWeeks(context), plan: serializePlan(plan), archived: Boolean(plan.archivedAt), steps, current: steps.find(s => !s.done)?.id || null,
     positioningReplies: positioningReplies(context), leads: records(context), criteria: criteria(context), tiers: tiers(context), channels: channels(context), payments: paidCompanies(context).map(p => ({ company: p.company, name: p.name, currency: p.currency })),
     metrics: financial?.metrics || customerMetrics(context), weekly: growth?.weekly || weeklyTarget(context),
     proofStatus: context.proofs.map(p => ({ company: p.company, kind: p.kind, approved: p.approved, revoked: p.revoked, status: p.reviewStatus || "pending", note: p.reviewNote || "" })),
@@ -53,6 +56,8 @@ export async function getFlow(userId: string, planId?: string, locale?: string) 
 }
 export type FlowView = Awaited<ReturnType<typeof getFlow>>;
 export const flowMutationSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("supplement"), planId: z.string().min(1), revision: z.number().int().nonnegative(), requestId: z.string().uuid() }).strict(),
+  z.object({ action: z.literal("followup"), planId: z.string().min(1), revision: z.number().int().nonnegative(), sourceActionId: z.string().min(1), update: followupSchema }).strict(),
   z.object({ action: z.literal("save"), planId: z.string().min(1), revision: z.number().int().nonnegative(), step: stepIdSchema, data: flowDataSchema }).strict(),
   z.object({ action: z.literal("complete"), planId: z.string().min(1), revision: z.number().int().nonnegative(), step: stepIdSchema, requestId: z.string().uuid() }).strict(),
   z.object({ action: z.literal("confirmLink"), planId: z.string().min(1), revision: z.number().int().nonnegative(), leadId: z.string().min(1) }).strict(),
@@ -65,9 +70,28 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
     const tx = raw as DB, found = await readPlan(userId, input.planId, tx);
     if (found.archivedAt || found.activeKey !== userId || !found.actions.some(a => flowStep(a))) throw new PlanWriteError("只可修改目前新版計畫 / Only the active new workflow can be changed", 409);
     if (input.action === "complete" && found.actions.some(a => flowStep(a)?.id === input.step && a.done)) return;
+    if (input.action === "supplement") { const data = dataAt(await flowContext(found, tx), "01-4"); if (data.kind === "organize" && data.supplements?.some(r => r.id === input.requestId)) return; }
+    if (input.action === "followup") {
+      const source = found.actions.find(a => a.id === input.sourceActionId), prior = source && contactFollowups(source).find(u => u.id === input.update.id);
+      if (prior) { if (JSON.stringify(prior) !== JSON.stringify(input.update)) throw new PlanWriteError("同次跟進內容不同，請比較版本 / Follow-up request content changed", 409); return; }
+    }
     await lockActivePlan(tx, userId, found.id, input.revision);
     const plan = await readPlan(userId, input.planId, tx), context = await flowContext(plan, tx);
     const current = STEPS.find(s => !plan.actions.find(a => a.clientKey === flowKey(s.id))?.done);
+    if (input.action === "supplement") {
+      const action = plan.actions.find(a => flowStep(a)?.id === "01-4"), data = dataAt(context, "01-4"), leads = records(context), graded = tiers(context);
+      if (current?.id !== "01-4" || !action || data.kind !== "organize" || graded.filter(t => t.confirmed && t.tier === "A").length >= 3 || leads.some(r => !graded.some(t => t.leadId === r.id && t.confirmed)) || (data.supplements || []).some(r => r.records.length !== 3 || !r.records.every(v => validConversation(v)))) throw new PlanWriteError("先完成現有分級及補訪；A 級不足三位時才可開新一輪 / Finish existing tiers and supplemental conversations before starting a round with fewer than three A leads", 409);
+      if (leads.length + 3 > 250) throw new PlanWriteError("工作區最多保留 250 位對象，無法再新增一輪 / The workspace limit is 250 participants; another round cannot be added", 409);
+      const next = flowDataSchema.parse({ ...data, supplements: [...(data.supplements || []), { id: input.requestId, records: [] }] });
+      await tx.actionItem.update({ where: { id: action.id }, data: { taskWorkspace: { version: 2, step: "01-4", data: next } as Prisma.InputJsonValue } }); return;
+    }
+    if (input.action === "followup") {
+      const source = plan.actions.find(a => a.id === input.sourceActionId), contact = followupContacts(context).find(c => c.actionId === input.sourceActionId && c.contactId === input.update.contactId);
+      if (!current || !source || !contact || contact.resolved || input.update.date < contact.date || input.update.date > today()) throw new PlanWriteError("跟進對象或日期無效 / Invalid follow-up contact or date", 409);
+      const updates = contactFollowups(source);
+      if (updates.length >= 2000) throw new PlanWriteError("此步跟進紀錄已達上限 / Follow-up record limit reached", 409);
+      await tx.actionItem.update({ where: { id: source.id }, data: { taskFinding: { ...metadata(source.taskFinding), followups: [...updates, input.update] } as Prisma.InputJsonValue } }); return;
+    }
     if (input.action === "goal") {
       if (!plan.goalStartsAt || !Number.isFinite(Date.parse(input.deadline)) || new Date(input.deadline).toISOString().slice(0, 10) !== input.deadline || input.deadline <= today() || Date.parse(input.deadline) - plan.goalStartsAt.getTime() < 35 * 86400000) throw new PlanWriteError("請選擇有效未來日期，規劃至少 35 天 / Choose a valid future deadline with at least 35 days", 400);
       await tx.actionPlan.update({ where: { id: plan.id }, data: { goal: input.goal, goalDeadline: new Date(input.deadline) } });
@@ -110,6 +134,20 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
         const workspace=await tx.evidenceWorkspace.findUnique({where:{userId}}),state=evidenceStateSchema.parse(workspace?.data||{});let updated=false;
         for(const r of input.data.records){const prior=old.find(v=>v.id===r.id);if((!prior || prior.fit!=null) && r.fit==null)throw new PlanWriteError("新增對話請選擇客群符合度 / Select customer fit for each new conversation",400);if(prior?.hypothesisId&&r.hypothesisId!==prior.hypothesisId)throw new PlanWriteError("原假設關聯不可覆寫 / Original hypothesis link cannot be overwritten",409);if(!prior&&state.selectedId){r.hypothesisId=state.selectedId;state.links.push({id:action.id+":"+r.id,hypothesisId:state.selectedId,fit:r.fit||"uncertain",relationship:["friend","colleague","stranger","prospect"].includes(r.relationship)?r.relationship as "friend"|"colleague"|"stranger"|"prospect":"prospect"});updated=true;}}
         if(workspace&&updated){evidenceStateSchema.parse(state);const moved=await tx.evidenceWorkspace.updateMany({where:{userId,revision:workspace.revision},data:{data:state as Prisma.InputJsonValue,revision:{increment:1}}});if(!moved.count)throw new PlanWriteError("假設已更新，對話草稿保留 / Hypothesis changed; conversation draft retained",409);}
+      }
+      if (input.data.kind === "organize") {
+        const prior = dataAt(context, input.step), rounds = input.data.supplements || [], previous = prior.kind === "organize" ? prior.supplements || [] : [];
+        if (input.step !== "01-4" && rounds.length) throw new PlanWriteError("補訪只適用客戶分級步驟 / Supplements belong to the tiering step", 400);
+        if (rounds.length !== previous.length || rounds.some((r, i) => r.id !== previous[i]?.id || (i < rounds.length - 1 && JSON.stringify(r) !== JSON.stringify(previous[i])))) throw new PlanWriteError("補訪輪次不能改寫，請重新載入比較 / Supplemental rounds changed; reload and compare", 409);
+        const original = dataAt(context, "01-1"), all = [...(original.kind === "conversation" ? original.records : []), ...rounds.flatMap(r => r.records)];
+        const keys = all.map(r => companyKey(r.company) + "|" + companyKey(r.name));
+        if (rounds.length && (new Set(all.map(r => r.id)).size !== all.length || new Set(keys).size !== keys.length)) throw new PlanWriteError("補訪對象不能與原對話或其他輪次重複 / Supplemental participants must be distinct from all saved conversations", 400);
+        const last = previous.at(-1);
+        if (last?.records.length === 3 && last.records.every(r => validConversation(r)) && JSON.stringify(last) !== JSON.stringify(rounds.at(-1))) throw new PlanWriteError("已完成補訪保留，不能覆寫 / Completed supplemental conversations are retained", 409);
+        if (input.step === "01-4") {
+          const nextContext = { ...context, actions: context.actions.map(a => a.id === action.id ? { ...a, taskWorkspace: { version: 2, step: input.step, data: input.data } } : a) };
+          for (const lead of records(nextContext)) if (!input.data.tiers.some(t => t.leadId === lead.id)) input.data.tiers.push({ leadId: lead.id, matches: criteria(context).filter(c => c.sources.includes(lead.id)).map(c => c.id), override: "", reason: "", confirmed: false });
+        }
       }
       const result = evaluateStep(context, input.step, input.data);
       const previous = flowStoredSchema.safeParse(action.taskWorkspace).data?.data;

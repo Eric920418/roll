@@ -1,4 +1,5 @@
 "use client";
+import { useLocale } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { memberFetch } from "@/lib/member-fetch";
 import { SalesEditor } from "../ValidationWorkspace";
@@ -8,7 +9,7 @@ import { companyKey } from "@/lib/customer-insights/interviews";
 import { button, TextField } from "./Templates";
 type Snapshot = Awaited<ReturnType<typeof validationSnapshot>>;
 export default function Proofs({ userId, view, onChanged }: { userId: string; view: FlowView; onChanged(): void }) {
-  const zh = view.plan.locale === "zh-tw", [data, setData] = useState<Snapshot | null>(null), [company, setCompany] = useState(""), [selected, setSelected] = useState(""), [error, setError] = useState("");
+  const zh = useLocale() === "zh-tw", [data, setData] = useState<Snapshot | null>(null), [company, setCompany] = useState(""), [selected, setSelected] = useState(""), [error, setError] = useState("");
   const load = useCallback(async () => { try { setData(await memberFetch<Snapshot>("/api/pipeline?planId=" + view.plan.id)); setError(""); } catch (error) { setError(error instanceof Error ? error.message : String(error)); } }, [view.plan.id]);
   useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
   const companies = [...new Map([...(data?.deals || []).map(d => ({ company: d.company, name: d.name })), ...view.leads, ...view.payments, ...(company ? [{ company, name: "" }] : [])].map(c => [companyKey(c.company), c])).values()];

@@ -29,7 +29,7 @@ test('Guided fields navigate nested groups, retain field values and recover afte
 });
 
 test('Task templates show single-page work without mutating unconfirmed or completed records', () => {
-  const load = pdfRuntime({ react: { ...React, useState: (initial: unknown) => [initial, () => {}], useRef: () => ({ current: null }) } });
+  const load = pdfRuntime({ react: { ...React, useState: (initial: unknown) => [typeof initial === "function" ? initial() : initial, () => {}], useRef: () => ({ current: null }) } }, { crypto: globalThis.crypto });
   const Templates = load<typeof import('../src/components/dashboard/flow/Templates')>('src/components/dashboard/flow/Templates.tsx').default;
   const catalog = load<typeof import('../src/lib/action-plan/flow/catalog')>('src/lib/action-plan/flow/catalog.ts');
   const cases = [
@@ -37,18 +37,21 @@ test('Task templates show single-page work without mutating unconfirmed or compl
     { step: '01-3', data: { kind: 'organize', values: {}, selections: [], confirmed: [], tiers: [], criteria: [1, 2].map(i => ({ id: String(i), label: 'Criterion ' + i, weight: 50, sources: [], confirmed: false })) } },
     { step: '02-1', data: { kind: 'outreach', market: '', contacts: [{ ...catalog.emptyContact('contact'), company: 'Saved company', offer: 'Reviewed offer', channel: 'Previously typed channel' }] } },
     { step: '03-3', data: { kind: 'document', sections: [0, 1, 2, 3].map(i => ({ id: String(i), body: 'Saved chapter ' + i, confirmed: false })) } },
+    {step:'03-2',data:{kind:'organize',values:{},selections:['Email'],confirmed:[],tiers:[],criteria:[]}},
   ];
-  const view = { steps: [], leads: [], criteria: [], tiers: [], channels: [], payments: [] };
+  const view = { steps: [], leads: [], criteria: [], tiers: [], channels: [{channel:'Email',total:20,reply:10,conversation:4,paid:1}], payments: [] };
   for (const locale of ['en', 'zh-tw']) for (const item of cases) {
     const original = JSON.stringify(item.data);
     const props = { ...item, locale, view, onChange: () => { throw new Error('Rendering must not change a draft'); } } as unknown as React.ComponentProps<typeof Templates>;
     const guided = renderToStaticMarkup(React.createElement(Templates, props));
     assert(!guided.includes('data-guided-fields'));
     if (item.data.kind !== 'conversation') assert(guided.includes(locale === 'en' ? 'Switch to guided work' : '切換逐題整理'));
-    assert(guided.includes('Saved') || guided.includes('Criterion'));
+    if(item.step==='03-2'){assert(guided.includes('<table'));assert(guided.includes('50%'));assert(guided.includes('20%'));assert(guided.includes('5%'));assert(guided.includes('checked'));}
+    else assert(guided.includes('Saved') || guided.includes('Criterion'));
     assert.equal(JSON.stringify(item.data), original);
     const readOnly = renderToStaticMarkup(React.createElement(Templates, { ...props, disabled: true, readOnly: true }));
     assert(!readOnly.includes('data-guided-fields')); assert(!readOnly.includes('Switch to complete form'));
+    if (item.step === '03-3') { assert.equal((guided.match(/<textarea/g)||[]).length,1); assert.equal((readOnly.match(/aria-pressed=/g)||[]).length,4); }
     if (item.step === '02-1') assert(guided.includes('Previously typed channel'));
   }
 });

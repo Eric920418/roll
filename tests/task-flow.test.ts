@@ -9,7 +9,7 @@ import ts from "typescript";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { STEPS, flowActions, flowDataSchema, emptyRecord, emptyContact, type FlowData, type StepId } from "../src/lib/action-plan/flow/catalog";
-import { evaluateStep, type FlowContext } from "../src/lib/action-plan/flow/evaluate";
+import { evaluateStep, validConversation, type FlowContext } from "../src/lib/action-plan/flow/evaluate";
 import { salesMutationSchema, salesRecordSchema, validProofs } from "../src/lib/validation/schema";
 const diagnosis = { companyStage: "MVP" as const, stageReason: "Saved evidence", stageConfidence: 70, bottleneckGroup: "Sales" as const, bottleneckCode: "no_leads", bottleneckReason: "Find customers", bottleneckConfidence: 60 };
 
@@ -25,6 +25,9 @@ test("New completion rejects bare counts, duplicate people, future dates and own
   const rows = Array.from({ length: 10 }, (_, i) => ({ ...emptyRecord("r" + i), company: "Company " + i, name: "Person " + i, fit: "yes" as const, relationship: "Customer", date: "2026-08-03", pain: "Slow reporting", severity: "high" as const, solution: "Spreadsheets", wtp: "willing" as const }));
   const context: FlowContext = { actions: [], proofs: [], locale: "en", now: new Date("2026-09-07") };
   assert(evaluateStep(context, "01-1", { kind: "conversation", market: "TW", records: rows }).ready);
+  assert(validConversation(rows[0], "2026-09-07"));
+  assert(!validConversation({ ...rows[0], fit: undefined }, "2026-09-07"));
+  assert(!validConversation({ ...rows[0], fit: "uncertain" }, "2026-09-07"));
   assert(!evaluateStep(context, "01-1", { kind: "conversation", market: "TW", records: [...rows.slice(0, 9), rows[0]] }).ready);
   assert(!evaluateStep(context, "01-1", { kind: "conversation", market: "TW", records: rows.map(r => ({ ...r, date: "2027-01-01" })) }).ready);
   assert(!evaluateStep(context, "04-1", { kind: "outreach", market: "TW", contacts: [] }).ready);
@@ -93,6 +96,26 @@ test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replie
       await assert.rejects(flow.getFlow(other.id, current.plan.id), /not found/);
       await assert.rejects(flow.mutateFlow(other.id, { action: "complete", planId: current.plan.id, revision: 0, step: "01-1", requestId: randomUUID() }), /not found/);
     });
+    await t.test("Supplement rounds cannot overflow the existing participant capacity", async () => {
+      const plan=await plans.persistGeneratedPlan({userId:other.id,locale:"en",requestId:randomUUID(),workflowVersion:2,diagnosis,actions:flowActions(diagnosis,"en"),answers:[],basePlan:null});
+      const rows=Array.from({length:250},(_,i)=>({...emptyRecord("capacity-"+i),company:"Company "+i,name:"Person "+i,fit:"yes" as const,date:"2026-08-03",relationship:"prospect",pain:"Slow reporting",severity:"high" as const,solution:"Spreadsheets",wtp:"willing" as const}));
+      await db.actionItem.updateMany({where:{actionPlanId:plan.id,clientKey:{in:["nova_v2_01-1","nova_v2_01-2","nova_v2_01-3"]}},data:{done:true,completedAt:new Date(now)}});
+      await db.actionItem.update({where:{id:plan.actions.find(a=>a.clientKey==="nova_v2_01-1")!.id},data:{taskWorkspace:{version:2,step:"01-1",data:{kind:"conversation",market:"TW",records:rows}}}});
+      await db.actionItem.update({where:{id:plan.actions.find(a=>a.clientKey==="nova_v2_01-4")!.id},data:{taskWorkspace:{version:2,step:"01-4",data:{kind:"organize",values:{},confirmed:[],criteria:[],selections:[],tiers:rows.map(r=>({leadId:r.id,matches:[],override:"C",reason:"Needs more evidence",confirmed:true}))}}}});
+      const view=await flow.getFlow(other.id),before=JSON.stringify(view.plan);
+      await assert.rejects(flow.mutateFlow(other.id,{action:"supplement",planId:plan.id,revision:view.plan.revision!,requestId:randomUUID()}),/250 participants/);
+      assert.equal(JSON.stringify((await flow.getFlow(other.id)).plan),before);
+    });
+    await t.test("Plan search usage separates holds, net captures, refunds and unattributed history", async () => {
+      const frozen=JSON.stringify(await db.actionPlan.findUnique({where:{id:current.plan.id}}));
+      for(const [userId,planId,status] of [[owner.id,current.plan.id,"reserved"],[owner.id,current.plan.id,"captured"],[owner.id,current.plan.id,"refunded"],[owner.id,old.id,"captured"],[owner.id,"","captured"],[other.id,current.plan.id,"captured"]]) {
+        const row=await db.tokenReservation.create({data:{userId,requestId:randomUUID(),payloadHash:"qa-usage",kind:"search",resourceId:randomUUID(),amount:20,status,expiresAt:new Date(now+86400000),metadata:planId?{planId}:{}}});
+        const entries=[["reserve",-20,20],...(status!=="reserved"?[["capture",0,-20]]:[]),...(status==="refunded"?[["refund",20,0]]:[])];
+        await db.tokenLedger.createMany({data:entries.map(([kind,availableDelta,reservedDelta])=>({userId,reservationId:row.id,eventKey:randomUUID(),kind:String(kind),availableDelta:Number(availableDelta),reservedDelta:Number(reservedDelta),reason:"Isolated usage fixture"}))});
+      }
+      await refresh();assert.deepEqual(JSON.parse(JSON.stringify(current.searchTokens)),{recordedOrders:3,spent:20,reserved:20});
+      assert.equal(JSON.stringify(await db.actionPlan.findUnique({where:{id:current.plan.id}})),frozen);
+    });
     await t.test("Empty completion, jumping and stale versions fail; failed writes retain records", async () => {
       await assert.rejects(complete("01-1"), /Save this step/);
       await assert.rejects(flow.mutateFlow(owner.id, { action: "complete", planId: current.plan.id, revision: current.plan.revision!, step: "02-1", requestId: randomUUID() }), /current step/);
@@ -132,12 +155,55 @@ test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replie
     await t.test("Confirmed criteria and tiers carry the exact A lead IDs into proposals", async () => {
       const criteria = Array.from({ length: 4 }, (_, i) => ({ id: "c" + i, label: "Qualification condition " + i, weight: 25, sources: Array.from({ length: 10 }, (_, n) => "r" + n), confirmed: true }));
       await save("01-3", { kind: "organize", values: {}, confirmed: [], criteria, tiers: [], selections: [] }); await complete("01-3");
-      await save("01-4", { kind: "organize", values: {}, confirmed: [], criteria: [], tiers: Array.from({ length: 10 }, (_, i) => ({ leadId: "r" + i, matches: criteria.map(c => c.id), override: "" as const, reason: "", confirmed: true })), selections: [] }); await complete("01-4");
+      const frozen = JSON.stringify(await db.actionItem.findMany({where:{actionPlanId:current.plan.id,clientKey:{in:["nova_v2_01-1","nova_v2_01-2","nova_v2_01-3"]}},orderBy:{id:"asc"}}));
+      const base: Extract<FlowData,{kind:"organize"}> = {kind:"organize",values:{},confirmed:[],criteria:[],tiers:Array.from({length:10},(_,i)=>({leadId:"r"+i,matches:[],override:"C",reason:"Not the right fit",confirmed:true})),selections:[]};
+      await save("01-4",base); await assert.rejects(complete("01-4"),/three A/);
+      const round = {action:"supplement" as const,planId:current.plan.id,revision:current.plan.revision!,requestId:randomUUID()};
+      await assert.rejects(flow.mutateFlow(other.id,round),/not found/);
+      current=await flow.mutateFlow(owner.id,round); current=await flow.mutateFlow(owner.id,round);
+      let tierData=current.steps.find(s=>s.id==="01-4")!.data as Extract<FlowData,{kind:"organize"}>;
+      assert.equal(tierData.supplements!.length,1); await assert.rejects(complete("01-4"),/supplemental/);
+      const originalRows=(current.steps[0].data as Extract<FlowData,{kind:"conversation"}>).records;
+      await assert.rejects(save("01-4",{...tierData,supplements:[{id:round.requestId,records:[originalRows[0]]}]}),/distinct/);
+      await refresh();
+      const extra=Array.from({length:3},(_,i)=>({...originalRows[0],id:"s"+i,company:"Supplement "+i,name:"Additional person "+i}));
+      await save("01-4",{...tierData,supplements:[{id:round.requestId,records:extra.slice(0,2)}]});assert.equal(current.leads.length,10);
+      tierData=current.steps.find(s=>s.id==="01-4")!.data as typeof tierData;
+      await save("01-4",{...tierData,supplements:[{id:round.requestId,records:extra}]});assert.equal(current.leads.length,13);
+      tierData=current.steps.find(s=>s.id==="01-4")!.data as typeof tierData;
+      await assert.rejects(save("01-4",{...tierData,supplements:[]}),/rounds changed/);
+      await assert.rejects(save("01-4",{...tierData,supplements:[{id:round.requestId,records:extra.map(r=>({...r,pain:"Changed"}))}]}),/retained/);
+      await refresh(); await save("01-4",{...tierData,tiers:current.leads.map(r=>({leadId:r.id,matches:criteria.map(c=>c.id),override:"",reason:"",confirmed:true}))});
+      assert.equal(JSON.stringify(await db.actionItem.findMany({where:{actionPlanId:current.plan.id,clientKey:{in:["nova_v2_01-1","nova_v2_01-2","nova_v2_01-3"]}},orderBy:{id:"asc"}})),frozen);
+      await complete("01-4");
       assert.equal(current.plan.roadmap!.milestones[0].status, "achieved");
       const proposals = current.steps.find(s => s.id === "02-1")!.data; assert.equal(proposals.kind, "outreach");
       if (proposals.kind !== "outreach") throw Error("Wrong proposal template");
       assert.equal(proposals.contacts[0].leadId, "r0");
       await save("02-1", { ...proposals, contacts: proposals.contacts.slice(0, 3).map(c => ({ ...c, date: "2026-08-03", channel: "Email", status: "sent", offer: "USD100 paid pilot, reporting setup, fourteen days" })) }); await complete("02-1");
+    });
+    await t.test("Follow-up is append-only after proposal completion, retries once and rejects other owners", async () => {
+      const source=await db.actionItem.findUniqueOrThrow({where:{id:current.steps.find(s=>s.id==="02-1")!.actionId}}), before=JSON.stringify([source.taskWorkspace,source.done,source.completedAt]);
+      const contact=current.followups[0], update={id:randomUUID(),contactId:contact.contactId,date:"2026-08-03",status:"replied" as const,note:"Customer requested a receipt"};
+      const input={action:"followup" as const,planId:current.plan.id,revision:current.plan.revision!,sourceActionId:source.id,update};
+      await assert.rejects(flow.mutateFlow(other.id,input),/not found/);
+      current=await flow.mutateFlow(owner.id,input);current=await flow.mutateFlow(owner.id,input);
+      const after=await db.actionItem.findUniqueOrThrow({where:{id:source.id}});
+      assert.equal(JSON.stringify([after.taskWorkspace,after.done,after.completedAt]),before);
+      assert.equal((after.taskFinding as {followups:unknown[]}).followups.length,1);
+      assert.equal(current.followups[0].status,"replied");
+      const reminders=load<typeof import("../src/lib/evidence/reminders")>("src/lib/evidence/reminders.ts");
+      const evidenceState=load<typeof import("../src/lib/evidence/schema")>("src/lib/evidence/schema.ts").evidenceStateSchema.parse({preferences:{task:true,weekly:false,timeZone:"Asia/Taipei",locale:"en"}});
+      await db.evidenceWorkspace.upsert({where:{userId:owner.id},create:{userId:owner.id,data:evidenceState as unknown as Prisma.InputJsonValue},update:{data:evidenceState as unknown as Prisma.InputJsonValue}});
+      now=Date.parse("2026-08-11T04:00:00Z");
+      await reminders.runEvidenceReminders(new Date(now));await reminders.runEvidenceReminders(new Date(now));
+      const alerts=await db.memberNotification.findMany({where:{userId:owner.id,eventKey:{startsWith:"evidence-followup:"}}});
+      assert.equal(alerts.length,2,"Only the two unanswered contacts from the completed proposal step receive one reminder each");
+      assert(await reminders.followupReminderValid(owner.id, alerts[0].payload as Record<string,unknown>));
+      assert(!await reminders.followupReminderValid(other.id, alerts[0].payload as Record<string,unknown>));
+      assert(!await reminders.followupReminderValid(owner.id,{planId:current.plan.id,sourceActionId:source.id,contactId:contact.contactId,contactDate:"2026-08-03"}));
+      now=Date.parse("2026-08-03T04:00:00Z");
+      await assert.rejects(flow.mutateFlow(owner.id,{...input,update:{...update,note:"Different request"}}),/changed/);
     });
     await t.test("Pending, self-reviewed and stale proof cannot unlock a step; approved evidence can", async () => {
       const proof = await paid("Customer 0");

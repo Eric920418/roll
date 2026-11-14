@@ -15,7 +15,7 @@ type Order = Snapshot["orders"][number];
 type Selected = PublicProspect & { orderId: string };
 const button = "inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/25 px-4 py-2 text-sm font-semibold disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
 const field = "min-h-11 w-full rounded-xl border border-dark/20 bg-white p-3 text-sm focus-visible:outline-2";
-export default function ProspectSearch({ userId, active = true, onSelect, compact = false }: { userId: string; active?: boolean; compact?: boolean; onSelect?: (company: Selected) => void }) {
+export default function ProspectSearch({ userId, planId, active = true, onSelect, compact = false }: { userId: string; planId?: string; active?: boolean; compact?: boolean; onSelect?: (company: Selected) => void }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw";
   const [data, setData] = useState<Snapshot | null>(null), [country, setCountry] = useState("TW"), [description, setDescription] = useState(""), [count, setCount] = useState<5 | 10>(5);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(""), [consent, setConsent] = useState(false), [conflict, setConflict] = useState(false), [adding, setAdding] = useState<Selected | null>(null), [storageReady, setStorageReady] = useState(false);
@@ -23,7 +23,7 @@ export default function ProspectSearch({ userId, active = true, onSelect, compac
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null), selectedForFollowup = useRef<Selected | null>(null);
   const dirty = useRef(false), sending = useRef(false), loaded = useRef(false), attempt = useRef<{ key: string; body: ReturnType<typeof orderInputSchema.parse> } | null>(null);
   const observedOrders = useRef(new Set<string>()), observedPricing = useRef<number | null>(null);
-  const storageKey = `nova:prospects:${userId}`;
+  const storageKey = `nova:prospects:${userId}${planId ? ":" + planId : ""}`;
   const load = useCallback(async (cursor?: string) => {
     try {
       const fresh = await memberFetch<Snapshot>(`/api/prospects${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`);
@@ -39,12 +39,16 @@ export default function ProspectSearch({ userId, active = true, onSelect, compac
     const timer = setTimeout(() => {
       try {
         const cached = JSON.parse(localStorage.getItem(storageKey) || "null");
+        if (!cached && planId) {
+          const prior = JSON.parse(localStorage.getItem(`nova:prospects:${userId}`) || "null");
+          if (prior && !prior.attempt && typeof prior.description === "string" && prior.description.length <= 4000 && typeof prior.country === "string") { dirty.current = true; setDescription(prior.description); setCountry(prior.country); }
+        }
         if (cached && typeof cached.description === "string" && cached.description.length <= 4000 && typeof cached.country === "string") { dirty.current = true; setDescription(cached.description); setCountry(cached.country); setCount(cached.count === 10 ? 10 : 5); const body = orderInputSchema.safeParse(cached.attempt?.body); if (body.success && typeof cached.attempt.key === "string") attempt.current = { key: cached.attempt.key, body: body.data }; }
       } catch { setNotice(zh ? "本機草稿無法讀取；伺服器名單保留。" : "Local draft unavailable; server lists are retained."); }
       if (!cancelled) setStorageReady(true);
     }, 0);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [storageKey, zh]);
+  }, [storageKey, zh, planId, userId]);
   useEffect(() => { if (active && storageReady && !loaded.current) { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); } }, [active, storageReady, load]);
   const pending = Boolean(data?.pending);
   const effectiveCount = 5;
@@ -72,8 +76,8 @@ export default function ProspectSearch({ userId, active = true, onSelect, compac
   async function submit() {
     if (!data || sending.current || conflict) return;
     setError(""); setNotice("");
-    const key = JSON.stringify({ country, description: description.trim(), count: effectiveCount });
-    if (attempt.current?.key !== key) attempt.current = { key, body: { requestId: crypto.randomUUID(), pricingVersion: data.pricing.version, revision: data.workspace.revision, country, description: description.trim(), count: effectiveCount } };
+    const key = JSON.stringify({ planId, country, description: description.trim(), count: effectiveCount });
+    if (attempt.current?.key !== key) attempt.current = { key, body: { ...(planId ? { planId } : {}), requestId: crypto.randomUUID(), pricingVersion: data.pricing.version, revision: data.workspace.revision, country, description: description.trim(), count: effectiveCount } };
     const parsed = orderInputSchema.safeParse(attempt.current.body);
     if (!parsed.success) { setError(parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("\n")); return; }
     store(country, description, effectiveCount); sending.current = true; setBusy(true);

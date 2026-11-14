@@ -18,7 +18,7 @@ const database = new URL(connectionString);
 assert(['localhost', '127.0.0.1', '[::1]'].includes(database.hostname) && database.pathname.startsWith('/roll_rewards_qa'), 'English QA only accepts an isolated loopback roll_rewards_qa database.');
 const scenario = process.argv[2] || 'start';
 const mode = scenario === 'dev' ? 'dev' : 'start';
-assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout', 'sales', 'starter', 'mentors', 'ux'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
+assert(['start', 'dev', 'flow', 'roundtables', 'tokens', 'pdf', 'commerce', 'coupons', 'homepage', 'guided', 'legacy', 'language', 'localization', 'layout', 'sales', 'starter', 'mentors', 'ux', 'task16'].includes(scenario), 'Use pnpm test:english [start|dev|flow|roundtables].');
 const require = createRequire(import.meta.url);
 const { default: { chromium } } = await import(pathToFileURL(require.resolve('playwright')).href);
 const output = process.env.NOVA_QA_OUTPUT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'nova-english-'));
@@ -576,30 +576,60 @@ async function flowCore(key, width, locale) {
   for (const checkbox of await article.getByRole('checkbox', { name: w('確認條件與權重', 'Confirm criterion and weight'), exact: true }).all()) await checkbox.check();
   await saved(); await screenshot(page, 'flow-organize-' + locale + '-' + width);
   await completed(w('將已對話的客戶分級', 'Score and tier your conversation participants'));
-  const tierCards = article.locator('fieldset > section');
-  for (let i = 0; i < await tierCards.count(); i++) {
-    const checks = tierCards.nth(i).getByRole('checkbox');
-    if (i < 3) for (let n = 0; n < 4; n++) await checks.nth(n).check();
-    else { await tierCards.nth(i).getByLabel(w('手動調整（選填）','Manual override (optional)'),{exact:true}).selectOption('C');await tierCards.nth(i).getByLabel(w('調整理由','Override reason'),{exact:true}).fill('QA: explicitly defer these leads while testing the three-priority-lead path'); }
-    await checks.last().check();
+  const tierNav = article.getByRole('group',{name:w('客戶分級表','Customer tier table'),exact:true}).getByRole('button');
+  for (let i=0;i<await tierNav.count();i++) {
+    await tierNav.nth(i).click(); const card=article.locator('#task-work > fieldset section').filter({has:page.getByLabel(w('手動調整（選填）','Manual override (optional)'),{exact:true})});
+    const checks=card.getByRole('checkbox');
+    if(i<3)for(let n=0;n<4;n++)await checks.nth(n).check();
+    else {await card.getByLabel(w('手動調整（選填）','Manual override (optional)'),{exact:true}).selectOption('C');await card.getByLabel(w('調整理由','Override reason'),{exact:true}).fill('QA deferred lead with explicit reason');}
+    await card.getByRole('checkbox',{name:w('確認分級','Confirm tier'),exact:true}).check();
   }
   await saved();
+  if(zh) {
+    for(let i=0;i<3;i++){await tierNav.nth(i).click();await article.getByLabel('手動調整（選填）',{exact:true}).selectOption('C');await article.getByLabel('調整理由',{exact:true}).fill('Need more customer evidence');}
+    await saved();const prior=JSON.stringify(await db.actionItem.findMany({where:{actionPlanId:plan.id,clientKey:{in:['nova_v2_01-1','nova_v2_01-2','nova_v2_01-3']}},orderBy:{id:'asc'}}));
+    check('Begin supplemental round in the current step',await postClick('補做三次對話')===200);
+    await article.getByRole('button',{name:'新增補訪對象',exact:true}).waitFor();
+    for(let i=0;i<3;i++) {
+      await article.getByRole('button',{name:'新增補訪對象',exact:true}).click();const form=article.locator('[data-conversation-form]');
+      await form.getByLabel('公司',{exact:true}).fill('Supplement company '+i);await form.getByLabel('對象姓名',{exact:true}).fill('New participant '+i);await form.getByLabel('對話日期',{exact:true}).fill(date);
+      for(const name of ['潛在客戶','符合','高','願意'])await form.getByRole('button',{name,exact:true}).click();
+      await form.getByLabel('目前的解決方式',{exact:true}).fill('Manual spreadsheet reports');await form.getByLabel('主要痛點與原話',{exact:true}).fill('Need faster weekly reporting');await saved();
+      const current=(await (await context.request.get(origin+'/api/action-plans/flow')).json()).data;
+      check('Only complete supplemental rounds enter tiering '+i,current.leads.length===(i===2?13:10));
+    }
+    check('Supplement preserves earlier completion records',JSON.stringify(await db.actionItem.findMany({where:{actionPlanId:plan.id,clientKey:{in:['nova_v2_01-1','nova_v2_01-2','nova_v2_01-3']}},orderBy:{id:'asc'}}))===prior);
+    for(let i=10;i<13;i++){await tierNav.nth(i).click();const card=article.locator('#task-work > fieldset section').filter({has:page.getByLabel('手動調整（選填）',{exact:true})});for(let n=0;n<4;n++)await card.getByRole('checkbox').nth(n).check();await card.getByRole('checkbox',{name:'確認分級',exact:true}).check();}
+    for(let i=10;i<13;i++){await tierNav.nth(i).click();await article.getByLabel('手動調整（選填）',{exact:true}).selectOption('C');await article.getByLabel('調整理由',{exact:true}).fill('Supplement saved for future targeting');}
+    for(let i=0;i<3;i++){await tierNav.nth(i).click();await article.getByLabel('手動調整（選填）',{exact:true}).selectOption('');}
+    await saved();await screenshot(page,'flow-supplement-zh-tw');
+  }
   await completed(w('向 3 位 A 級客戶提出付費試點', 'Send paid pilot proposals to three A leads'));
   check('Milestone completion expands map ' + width, await page.locator('#action-map').evaluate(e => e.open));
-  check('Only confirmed A leads carried to proposals ' + width, await article.locator('fieldset > div > details').count() === 3);
-  const proposals = article.locator('fieldset > div > details');
-  for (let i = 0; i < await proposals.count(); i++) {
-    await proposals.nth(i).locator('summary').click();
-    const row = proposals.nth(i);
-    await row.getByLabel(w('實際聯絡日期', 'Actual contact date'), { exact: true }).fill(date);
-    await row.getByLabel(w('管道', 'Channel'), { exact: true }).selectOption('Email');
-    await row.getByLabel(w('聯絡狀態', 'Contact status'), { exact: true }).selectOption('sent');
-    await row.getByLabel(w('聯絡訊息／價格、範圍與期間', 'Message / price, scope and duration'), { exact: true }).fill('USD100 reporting pilot for fourteen days, with agreed success criteria.');
+  const proposals=article.getByRole('group',{name:w('公司聯絡表','Company outreach table'),exact:true}).getByRole('button');
+  check('Only confirmed A leads carried to proposals '+width,await proposals.count()===3);
+  for(let i=0;i<await proposals.count();i++) {
+    await proposals.nth(i).click();const row=article.locator('#task-work > fieldset');
+    await row.getByLabel(w('實際聯絡日期','Actual contact date'),{exact:true}).fill(date);
+    await row.getByLabel(w('管道','Channel'),{exact:true}).selectOption('Email');
+    await row.getByLabel(w('聯絡狀態','Contact status'),{exact:true}).selectOption('sent');
+    await row.getByLabel(w('聯絡訊息／價格、範圍與期間','Message / price, scope and duration'),{exact:true}).fill('USD100 reporting pilot for fourteen days, with agreed success criteria.');
   }
   await saved(); await responsive('Outreach template'); await screenshot(page, 'flow-outreach-' + locale + '-' + width);
   await completed(w('取得付款或簽約證據', 'Obtain payment or signed contract evidence'));
   await page.getByRole('heading', { name: w('付款與合約證明', 'Payment and contract proof'), exact: true }).waitFor();
   await responsive('Document template');
+  const followups=article.getByRole('region',{name:w('提案跟進','Proposal follow-up'),exact:true});
+  await followups.getByRole('button').first().click();await followups.getByLabel(w('跟進紀錄','Follow-up note'),{exact:true}).fill('Customer replied with a request for details');
+  await followups.getByLabel(w('最新狀態','Latest status'),{exact:true}).selectOption('replied');
+  await page.reload();await article.locator('#task-work').waitFor();await followups.getByRole('button').first().click();
+  check('Follow-up draft survives reload '+locale,await followups.getByLabel(w('跟進紀錄','Follow-up note'),{exact:true}).inputValue()==='Customer replied with a request for details');
+  await page.route('**/api/action-plans/flow?*',async route=>route.request().method()==='POST'?route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Controlled follow-up retry',code:'qa_retry',requestId:'qa-followup'})}):route.continue());
+  check('Follow-up failure is surfaced '+locale,await postClick(w('儲存跟進','Save follow-up'))===503);
+  check('Follow-up failure retains input '+locale,await followups.getByLabel(w('跟進紀錄','Follow-up note'),{exact:true}).inputValue()==='Customer replied with a request for details');
+  await page.unroute('**/api/action-plans/flow?*');check('Follow-up retry saves '+locale,await postClick(w('儲存跟進','Save follow-up'))===200);
+  await followups.getByLabel(w('跟進紀錄','Follow-up note'),{exact:true}).waitFor({state:'hidden'});
+  check('Replied contact leaves pending follow-up list '+locale,await followups.getByRole('button').count()===2);
   check('No proof cannot complete ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
   await page.getByLabel(w('選擇證明所屬公司', "Select the proof's company"), { exact: true }).selectOption('Flow company 0');
   await page.getByLabel(w('目前狀態', 'Current status'), { exact: true }).selectOption('paid');
@@ -621,6 +651,74 @@ async function flowCore(key, width, locale) {
   await page.clock.install();await page.goto(origin+prefix+'/dashboard/matchmaking?tab=prospects');await page.waitForURL(/dashboard\/agenda#prospects/);await page.getByRole('dialog',{name:w('尋找新公司','Find new companies'),exact:true}).waitFor();await page.getByRole('region',{name:w('找新公司','Find new companies'),exact:true}).waitFor();check('Legacy prospect link opens search dialog '+locale,true);
   const beforeActivePoll=prospectRequests,poll=waitResponse(page,response=>new URL(response.url()).pathname==='/api/prospects'&&response.request().method()==='GET');await page.clock.fastForward(61000);await poll;check('Visible prospect search polls '+locale,prospectRequests>beforeActivePoll);await page.getByRole('button',{name:w('關閉搜尋','Close search'),exact:true}).click();await page.goto(origin+prefix+'/dashboard/matchmaking?tab=messages');await page.locator('#matchmaking-panel-messages').waitFor();const requestsBeforeHidden=prospectRequests;await page.clock.fastForward(61000);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await page.waitForTimeout(150);check('Leaving task workspace stops prospect polling '+locale,prospectRequests===requestsBeforeHidden);
   await context.close();
+}
+
+async function task16QA() {
+  const ids=['01-1','01-2','01-3','01-4','02-1','02-2','02-3','03-1','03-2','03-3','04-1','04-2','04-3','05-1','05-2','05-3'];
+  const day=n=>new Date(Date.now()-n*86400000).toISOString().slice(0,10), opened=day(42);
+  for(const [key,locale] of [['mobile','zh-tw'],['desktop','en']]) {
+    const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'',w=(a,b)=>zh?a:b,{context,page}=await session(key,1440);
+    const generated=await context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale,requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:w('隔離驗收的客戶證據','Isolated screenshot fixture'),stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:w('驗證客戶需求','Customer validation'),bottleneckConfidence:65},answers:[{question:'Progress',answer:'Working prototype'},{question:'Bottleneck',answer:'Validate buyer demand'},{question:'Goal',answer:'Win repeat customers'}]}});
+    assert.equal(generated.status(),201);const plan=(await generated.json()).data;users[key].flowActionIds=plan.actions.map(a=>a.id);
+    await db.actionPlan.update({where:{id:plan.id},data:{goal:w('驗證需求並建立穩定付費客戶','Validate demand and build repeat customers')}});
+    const action=id=>plan.actions.find(a=>a.clientKey==='nova_v2_'+id);
+    const empty=()=>({kind:'organize',values:{},confirmed:[],criteria:[],tiers:[],selections:[]});
+    const records=Array.from({length:10},(_,i)=>({id:'person-'+i,company:w('驗收公司 ','QA company ')+(i+1),name:w('受訪者 ','Participant ')+(i+1),date:opened,relationship:'prospect',fit:'yes',pain:w('每週手動整理報表耗時','Manual weekly reporting takes too long'),severity:'high',solution:w('用試算表整理','Spreadsheets'),wtp:i<6?'willing':'considering',reason:'',missing:'',referral:''}));
+    const criteria=Array.from({length:4},(_,i)=>({id:'c'+i,label:w(['需要每週報表','痛點嚴重','已有替代做法','願意試用付費方案'][i],['Needs weekly reporting','High pain severity','Existing workaround','Willing to try a paid pilot'][i]),weight:25,sources:records.slice(0,6).map(r=>r.id),confirmed:true}));
+    const tiers=records.map((r,i)=>({leadId:r.id,matches:i<3?criteria.map(c=>c.id):['c0'],override:'',reason:'',confirmed:true}));
+    const positioning=w('為需要每週報表的小型團隊，減少手動彙整時間。','Help small teams reduce manual weekly reporting.');
+    const contact=(id,company,i=0)=>({id,company,name:w('聯絡人 ','Contact ')+(i+1),leadId:'',date:day(7),channel:i%2?'LinkedIn':'Email',status:'sent',offer:w('報表試點：USD 100，為期十四天，交付每週報表與回顧。','Reporting pilot: USD 100 for fourteen days, weekly reports and a review.'),matches:criteria.map(c=>c.id),pain:records[0].pain,solution:records[0].solution,wtp:'willing'});
+    const states={
+      '01-1':{kind:'conversation',market:'TW',records},
+      '01-2':{...empty(),values:{positioning,positioningMode:'direct',positioningWho:w('需要每週報表的小型團隊','Small teams needing weekly reports'),positioningWhen:w('每週整理資料時','When compiling weekly data'),positioningPain:records[0].pain,positioningMethod:w('依客戶紀錄整理固定格式','Consistent reports from customer records')},confirmed:['positioning']},
+      '01-3':{...empty(),criteria},'01-4':{...empty(),tiers},
+      '02-1':{kind:'outreach',market:'TW',contacts:records.slice(0,3).map((r,i)=>({...contact('proposal-'+i,r.company,i),leadId:r.id,name:r.name,date:opened}))},
+      '02-2':{kind:'document',sections:[]},
+      '02-3':{...empty(),values:{price:'USD 100',scope:w('十四天報表試點','Fourteen-day reporting pilot'),terms:w('開始前付款，結束時檢視成果','Payment before starting; review at completion')},confirmed:['price','scope','terms']},
+      '03-1':{kind:'outreach',market:'TW',contacts:Array.from({length:80},(_,i)=>({...contact('outreach-'+i,w('開發公司 ','Outreach company ')+(i+1),i),date:day(35-Math.floor(i/20)*7),status:i%20<3?'conversation':'sent'}))},
+      '03-2':{...empty(),selections:['Email','LinkedIn'],confirmed:['channels']},
+      '03-3':{kind:'document',sections:[w('依已確認條件篩選公司，保留 Email 與 LinkedIn 兩個管道。','Qualify companies with the confirmed criteria, using Email and LinkedIn.'),w('提及客戶目前的報表問題，說明試點範圍與費用。','Reference the customer reporting problem and explain the pilot scope and price.'),w('詢問最近一次問題、目前做法、損失與付費意願。','Ask about the latest problem, current workaround, impact and willingness to pay.'),w('確認範圍，寄送提案，收到付款後安排交付。','Confirm scope, send a proposal, and schedule delivery after payment.')].map((body,i)=>({id:String(i),body,confirmed:true}))},
+      '04-1':{kind:'outreach',market:'TW',contacts:records.slice(0,5).map((r,i)=>({...contact('paid-'+i,r.company,i),leadId:r.id,status:'agreed'}))},
+      '04-2':{kind:'conversation',market:'TW',records:records.slice(0,5).map(r=>({...r,date:day(2),reason:w('每週節省整理時間','Saves reporting time each week'),missing:w('希望增加匯出格式','Additional export format'),referral:w('同類型營運團隊','Other operations teams')}))},
+      '04-3':{...empty(),values:{currency:'USD',spend:'200'},selections:[records[0].company.toLowerCase()],confirmed:['renewal','revenue','cost']},
+      '05-1':{...empty(),values:{target:'12000',conversion:'0.1'},confirmed:['target','activity','assumption']},
+      '05-2':{kind:'outreach',market:'JP',contacts:Array.from({length:10},(_,i)=>({...contact('second-'+i,w('日本公司 ','Japan company ')+(i+1),i),date:day(1),status:'conversation'}))},
+      '05-3':{kind:'document',sections:[w('已記錄十位目標客戶對話，並確認需求與定位。','Ten target-customer conversations support the confirmed needs and positioning.'),w('五家公司有審核通過的付款證明，收入按幣別計算。','Five companies have approved payment evidence; revenue is separated by currency.'),w('四週聯絡八十家公司，保留 Email 與 LinkedIn 管道。','Eighty companies contacted over four weeks; Email and LinkedIn retained.'),w('依季度目標安排每週開發，第二市場已有實際對話與付款。','Weekly activity follows the quarterly target; the second market has conversations and payment evidence.')].map((body,i)=>({id:String(i),body,confirmed:true}))},
+    };
+    async function proof(company,offset=7){const id=randomUUID();await db.deal.create({data:{userId:users[key].id,title:company,stage:'won',validation:{scope:{planId:plan.id},company,name:'QA buyer',version:1,status:'paid',events:[],proofs:[{id,kind:'paid',amount:'100',currency:'USD',date:day(offset),pathname:'commercial-evidence/'+users[key].id+'/'+id+'.pdf',filename:'isolated-fixture.pdf',confirmed:true,review:{status:'approved',note:'Isolated QA evidence'}}]}}});}
+    for(const id of ids) {
+      if(id==='02-2')await proof(records[0].company,14);
+      if(id==='04-1')for(const r of records.slice(1,5))await proof(r.company,7);
+      if(id==='04-3')await proof(records[0].company,1);
+      if(id==='05-2')await proof(w('日本公司 ','Japan company ')+'1',1);
+      await db.actionItem.update({where:{id:action(id).id},data:{taskWorkspace:{version:2,step:id,data:states[id]},...(id==='01-2'?{taskFinding:{positioningVersion:'qa-version',responses:records.slice(0,5).map(r=>({version:'qa-version',leadId:r.id,statement:positioning,answer:'yes',at:new Date().toISOString()}))}}:{})}});
+      const frozen=JSON.stringify(await db.actionItem.findMany({where:{actionPlanId:plan.id},orderBy:{id:'asc'}}));
+      for(const width of [390,768,1440]) {
+        // Pace screenshot reloads to respect the existing shared member-read limit.
+        await page.waitForTimeout(2000);
+        await page.setViewportSize({width,height:width===390?844:1000});await page.goto(origin+prefix+'/dashboard/agenda');if(id===ids[0]&&width===390)await closeTour(page,locale);await page.locator('#task-work').waitFor();
+        await page.waitForFunction(()=>!document.querySelector('#goal-roadmap')?.textContent.includes('Loading your sixteen-step'));
+        if(states[id].kind!=='conversation'){await page.locator('#prospects').getByRole('button',{name:w('尋找 5 家公司','Find 5 companies'),exact:true}).waitFor();await page.locator('#prospects form').waitFor({state:'attached'});}
+        const heading=await page.locator('[data-today-priority] h2').innerText();check('Correct step '+id+locale+width,heading.length>0);
+        await layout(page,'Task '+id+locale+width,locale);
+        check('44px task controls '+id+locale+width,await page.locator('#goal-roadmap button:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=43)));
+        const alerts=(await page.locator('main [role=alert]').allInnerTexts()).filter(t=>t.trim());check('No runtime alerts '+id+locale+width+(alerts.length?' '+alerts.join(' | '):''),alerts.length===0);
+        if(id==='03-2')check('Earlier proposals remain actionable on comparison step '+locale+width,await page.getByRole('region',{name:w('提案跟進','Proposal follow-up'),exact:true}).isVisible());
+        const map=page.locator('#action-map');if(await map.evaluate(e=>e.open))await map.locator(':scope > summary').click();
+        await map.locator(':scope > summary').focus();await page.keyboard.press('Enter');check('Keyboard map '+id+locale+width,await map.evaluate(e=>e.open));await page.keyboard.press('Enter');
+        if(id==='03-3'||id==='05-3'){const chapters=page.getByRole('group',{name:w('文件章節','Document chapters'),exact:true}).getByRole('button');await chapters.nth(3).click();check('Single chapter editor '+id+locale+width,await page.locator('#task-work > fieldset textarea').count()===1);await chapters.first().click();}
+        await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0);});await page.evaluate(()=>document.fonts.ready);
+        if(width!==768)await screenshot(page,'task16-'+id+'-'+locale+'-'+width);
+      }
+      check('Viewing retains records '+id+locale,JSON.stringify(await db.actionItem.findMany({where:{actionPlanId:plan.id},orderBy:{id:'asc'}}))===frozen);
+      await db.actionItem.update({where:{id:action(id).id},data:{done:true,completedAt:new Date(opened+'T00:00:00Z')}});
+      if(['01-4','02-3','03-3','04-3','05-3'].includes(id))await db.planMilestone.updateMany({where:{actionPlanId:plan.id,position:Number(id.slice(0,2))-1},data:{achievedAt:new Date(opened+'T00:00:00Z'),outcomeNote:w('隔離驗收成果','Isolated screenshot fixture')}});
+    }
+    await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('#flow-report').waitFor();
+    check('Completed plan retains PDF and share entry '+locale,await page.locator('#flow-report').getByRole('link',{name:w('預覽／列印為 PDF','Preview / print to PDF'),exact:true}).isVisible()&&await page.locator('#flow-report').getByRole('button',{name:w('建立報告分享連結','Create report sharing link'),exact:true}).isVisible());
+    check('Completed plan cannot complete or overwrite again '+locale,await page.getByRole('button',{name:w('確認並完成','Confirm and complete'),exact:true}).count()===0&&await page.getByRole('button',{name:w('儲存本步成果','Save this step'),exact:true}).count()===0);
+    await context.close();
+  }
 }
 
 async function flowDocumentAndReview() {
@@ -1436,6 +1534,7 @@ try {
     else if (scenario === 'pdf') { await pdfCompletion(); }
     else if (scenario === 'tokens') { await tokenCore('newpaid', 'blocked', 1440, 'en', 'accept'); await tokenCore('complete', 'outcome', 390, 'zh-tw', 'decline'); await tokenCore('desktop', 'newpaid', 390, 'en', 'cancel'); await tokenCore('mobile', 'complete', 1440, 'zh-tw', 'expire'); await tokenAdminAndSearch(); }
     else if (scenario === 'roundtables') { await roundtableCore('investor', 'desktop', 1440, 'en', false); await roundtableCore('requester', 'mobile', 390, 'zh-tw', true); }
+    else if (scenario === 'task16') { await task16QA(); }
     else if (scenario === 'flow') { await flowCore('mobile', 390, 'zh-tw'); await flowCore('desktop', 1440, 'en'); await flowDocumentAndReview(); }
     else { await core('mobile', 390); await core('desktop', 1440); await tablet(); await states(); }
     check('No browser runtime errors', report.browserErrors.length === 0);

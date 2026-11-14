@@ -8,7 +8,8 @@ import { evidenceStateSchema } from './schema';
 import { evidenceSnapshot, weeklyEvidence } from './service';
 import { queueNotification } from '@/lib/network/notifications';
 import { nextWeeklyAt } from '@/lib/rewards/policy';
-import { flowStoredSchema } from '@/lib/action-plan/flow/catalog';
+import { followupContacts } from '@/lib/action-plan/flow/evaluate';
+import { flowContext } from '@/lib/action-plan/flow/service';
 export type EvidenceCategory = 'weekly' | 'task' | 'roundtable' | 'connection';
 export function evidenceToken(userId: string, version: number, category: EvidenceCategory) {
     if (!process.env.AUTH_SECRET)
@@ -73,9 +74,9 @@ export async function runEvidenceReminders(now = new Date()) {
             const plan = await prisma.actionPlan.findFirst({ where: { userId: row.userId, activeKey: row.userId, archivedAt: null }, include: { actions: { orderBy: { executionOrder: 'asc' } }, milestones: true } });
             const action = plan?.actions.find(a => !a.done);
             if (action && plan) {
-                const stored = flowStoredSchema.safeParse(action.taskWorkspace).data, contacts = stored?.data.kind === 'outreach' ? stored.data.contacts : [];
-                for (const c of contacts.filter(c => c.status === 'sent' && c.date && c.date <= today(new Date(now.getTime() - 7 * 86400000)))) {
-                    await notify(row.userId, `evidence-followup:${action.id}:${c.id}:${c.date}`, 'task', '七天未回覆，記得安排跟進', 'Seven days without a reply: plan a follow-up', { actionId: action.id, planId: plan.id, contactId: c.id, contactDate: c.date });
+                const contacts = followupContacts(await flowContext(plan));
+                for (const c of contacts.filter(c => !c.resolved && c.status === 'sent' && c.date <= today(new Date(now.getTime() - 7 * 86400000)))) {
+                    await notify(row.userId, `evidence-followup:${c.actionId}:${c.contactId}:${c.date}`, 'task', '七天未回覆，記得安排跟進', 'Seven days without a reply: plan a follow-up', { actionId: action.id, sourceActionId: c.actionId, planId: plan.id, contactId: c.contactId, contactDate: c.date });
                     queued++;
                 }
                 const milestone = plan.milestones.find(m => m.id === action.milestoneId);
@@ -95,4 +96,10 @@ export async function runEvidenceReminders(now = new Date()) {
         queued++;
     }
     return { prepared, queued };
+}
+
+export async function followupReminderValid(userId: string, payload: Record<string, unknown>) {
+    const plan = await prisma.actionPlan.findFirst({ where: { id: String(payload.planId), userId, activeKey: userId, archivedAt: null }, include: { actions: true } });
+    if (!plan || !plan.actions.some(a=>!a.done)) return false;
+    return followupContacts(await flowContext(plan)).some(c=>c.actionId===String(payload.sourceActionId || payload.actionId) && c.contactId===payload.contactId && c.status==="sent" && !c.resolved && c.date===payload.contactDate);
 }
