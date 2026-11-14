@@ -4,7 +4,7 @@ const text = z.string().trim().max(2000), id = z.string().min(1).max(200);
 export const evidencePolicySchema = z.object({ conversations: z.number().int().min(1).max(50).default(3), painConversations: z.number().int().min(1).max(100).default(5), painShare: z.number().min(.1).max(1).default(.5), highStrength: z.number().min(.1).max(1).default(.6), mediumStrength: z.number().min(.01).max(.99).default(.3), paidCommitments: z.number().int().min(1).max(100).default(1) }).strict().refine(v => v.highStrength > v.mediumStrength && v.painConversations >= v.conversations, 'Invalid evidence thresholds');
 export const hypothesisSchema = z.object({ id, description: text.min(3), why: text, test: text, who: text, size: text, buyer: text, pain: text, alternatives: text }).strict();
 export const sourceLinkSchema = z.object({ id, fit: z.enum(['yes', 'possible', 'uncertain', 'no']), relationship: z.enum(['friend', 'colleague', 'stranger', 'prospect']), hypothesisId: id }).strict();
-export const evidencePreferencesSchema = z.object({ benchmarkShare: z.boolean().default(false), weekly: z.boolean().default(false), task: z.boolean().default(false), roundtable: z.boolean().default(false), connection: z.boolean().default(false), timeZone: z.string().max(100).refine(v => {
+export const evidencePreferencesSchema = z.object({ acceptMessages: z.boolean().optional(), benchmarkShare: z.boolean().default(false), weekly: z.boolean().default(false), task: z.boolean().default(false), roundtable: z.boolean().default(false), connection: z.boolean().default(false), timeZone: z.string().max(100).refine(v => {
         try {
             new Intl.DateTimeFormat('en', { timeZone: v });
             return true;

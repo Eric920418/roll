@@ -149,6 +149,33 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
       assert.equal((await service.messages(owner.id, linkId)).messages.length, 2);
       assert.equal((await service.listConnections(owner.id))[0]!.unread, 2);
     });
+    await t.test("Receiving opt-out blocks new invitations before holds, prevents acceptance and new messages, and preserves history and replays", async () => {
+      const recipient = await user(), evidence = load<typeof import("../src/lib/evidence/service")>("src/lib/evidence/service.ts"), schema = load<typeof import("../src/lib/evidence/schema")>("src/lib/evidence/schema.ts");
+      const preference = async (acceptMessages: boolean) => {const view = await evidence.evidenceSnapshot(recipient.id); return evidence.mutateEvidence(recipient.id, schema.evidenceMutationSchema.parse({action:"preferences",requestId:randomUUID(),revision:view.revision,preferences:{...view.state.preferences,acceptMessages}}));};
+      const input = {profileId:recipient.matchmakingProfile!.id,opening:"A real opt-in test",pricingVersion:1,requestId:randomUUID(),conditions:[]};
+      const before = await db.tokenWallet.findUniqueOrThrow({where:{userId:investor.id}}), reservations = await db.tokenReservation.count({where:{userId:investor.id}});
+      let disabled = await preference(false);
+      await assert.rejects(service.invite(investor.id,input), (e: WriteError) => e.status === 403);
+      assert.equal(await db.tokenReservation.count({where:{userId:investor.id}}),reservations);
+      assert.equal((await db.tokenWallet.findUniqueOrThrow({where:{userId:investor.id}})).available,before.available);
+      const legacy = {...disabled.state.preferences}; delete legacy.acceptMessages;
+      disabled = await evidence.mutateEvidence(recipient.id,schema.evidenceMutationSchema.parse({action:"preferences",requestId:randomUUID(),revision:disabled.revision,preferences:legacy}));
+      assert.equal(disabled.state.preferences.acceptMessages,false,"An old client cannot reset the opt-out");
+      await preference(true);const pending = await service.invite(investor.id,input);
+      await preference(false);await assert.rejects(service.changeConnection(recipient.id,pending.id,{action:"accept",revision:1}), (e: WriteError) => e.status === 403);
+      const fee = await db.tokenReservation.findUniqueOrThrow({where:{userId_requestId:{userId:investor.id,requestId:input.requestId}}});assert.equal(fee.status,"reserved");
+      await preference(true);await service.changeConnection(recipient.id,pending.id,{action:"accept",revision:1});
+      const message = {requestId:randomUUID(),body:"Accepted message"};const sent = await service.sendMessage(investor.id,pending.id,message);
+      await preference(false);const count = await db.networkMessage.count({where:{connectionId:pending.id}});
+      await assert.rejects(service.sendMessage(investor.id,pending.id,{requestId:randomUUID(),body:"Must not arrive"}), (e: WriteError) => e.status === 403);
+      assert.equal((await service.sendMessage(investor.id,pending.id,message)).id,sent.id,"Retry acknowledges the existing message without a new delivery");
+      assert.equal(await db.networkMessage.count({where:{connectionId:pending.id}}),count);
+      assert.equal((await service.messages(recipient.id,pending.id)).messages.length,count);
+      const other = await user();const another = await service.invite(investor.id,{...input,profileId:other.matchmakingProfile!.id,requestId:randomUUID()});
+      await db.evidenceWorkspace.create({data:{userId:other.id,data:{preferences:{acceptMessages:false}}}});
+      await service.changeConnection(other.id,another.id,{action:"decline",revision:1});assert.equal((await db.tokenReservation.findFirstOrThrow({where:{resourceId:another.id}})).status,"released");
+      assert.equal(await db.memberNotification.count({where:{userId:other.id,kind:"message"}}),0);
+    });
     await t.test("Private Portal requires consent, survives no kill-switch downgrade, and rejects foreign workspaces", async () => {
       const p = await db.investorPortal.create({ data: { userId: owner.id, shareProfile: true } });
       await db.investorInvitation.create({ data: { portalId: p.id, invitedEmail: investor.email, acceptedByUserId: investor.id, status: "accepted", networkPolicy: 2, expiresAt: new Date(Date.now() + 86400000) } });

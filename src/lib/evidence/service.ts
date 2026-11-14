@@ -93,7 +93,7 @@ export async function mutateEvidence(userId: string, input: z.infer<typeof evide
         if (input.action === 'preferences') {
             if (!input.preferences)
                 throw new MemberError('缺少通知偏好 / Missing preferences', 400);
-            state.preferences = input.preferences;
+            state.preferences = { ...input.preferences, acceptMessages: input.preferences.acceptMessages ?? state.preferences.acceptMessages };
             state.preferenceVersion++;
             state.nextWeeklyAt = input.preferences.weekly ? nextWeeklyAt(input.preferences.timeZone).toISOString() : null;
         }

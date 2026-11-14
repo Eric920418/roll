@@ -14,6 +14,7 @@ import { CONDITIONS, connectionSchema, inviteSchema, messageSchema, networkEnabl
 import { progressSnapshot, evaluateWatches } from "./watches";
 import { queueNotification } from "./notifications";
 import type { z } from "zod";
+import { evidenceStateSchema } from "@/lib/evidence/schema";
 type DB = Prisma.TransactionClient;
 export function requireEnabled() { if (!networkEnabled()) throw new MemberError("會員網絡新功能尚未開放 / Member network is not available yet", 503); }
 async function connection(db: DB, userId: string, id: string, lock = false) {
@@ -21,6 +22,11 @@ async function connection(db: DB, userId: string, id: string, lock = false) {
   const row = await db.networkConnection.findUnique({ where: { id } });
   if (!row || ![row.senderId, row.recipientId].includes(userId)) throw new MemberError("找不到連結 / Connection not found", 404);
   return row;
+}
+async function requireReceiving(db: DB, userId: string) {
+  await db.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+  const preference = await db.evidenceWorkspace.findUnique({ where: { userId }, select: { data: true } });
+  if (evidenceStateSchema.parse(preference?.data || {}).preferences.acceptMessages === false) throw new MemberError("此會員已關閉訊息接收 / This member is not accepting messages", 403);
 }
 export async function invite(userId: string, input: z.infer<typeof inviteSchema>) {
   requireEnabled(); await expireTokens(userId);
@@ -45,6 +51,7 @@ export async function invite(userId: string, input: z.infer<typeof inviteSchema>
     if (row?.status === "blocked") throw new MemberError("此連結無法接受邀請 / Connection unavailable", 403);
     if (row?.status === "declined" && Date.now() - row.updatedAt.getTime() < 7 * DAY_MS) throw new MemberError("邀請已拒絕，七天後可再試 / Invitation declined; retry after seven days", 409);
     if (!row || ["declined", "expired", "cancelled"].includes(row.status)) {
+      await requireReceiving(tx, target.userId);
       const pricing = await tokenQuote(tx);
       if (!input.requestId || !input.opening) throw new MemberError("請確認開場訊息與費用 / Confirm your opening message and fee", 400);
       if (input.pricingVersion !== pricing.version) throw new MemberError(`報價已更新，請重新載入並確認 ${pricing.inviteFee} Token 費用 / Pricing changed; reload and confirm the ${pricing.inviteFee} Token fee`, input.pricingVersion ? 409 : 400);
@@ -97,6 +104,7 @@ export async function changeConnection(userId: string, id: string, input: z.infe
     if (row.revision !== input.revision) throw changed();
     if (input.action === "cancel" && (row.senderId !== userId || row.status !== "pending")) throw new MemberError("只有寄件者可撤回待接受邀請 / Only the sender can cancel a pending invitation", 403);
     if (input.action !== "block" && input.action !== "cancel" && (row.recipientId !== userId || row.status !== "pending")) throw new MemberError("只有收件者能處理待接受邀請 / Only the recipient can respond to a pending invitation", 403);
+    if (status === "accepted") await requireReceiving(tx, row.recipientId);
     await tx.networkConnection.update({ where: { id }, data: { status, revision: { increment: 1 }, ...(status === "accepted" ? { acceptedAt: new Date() } : {}), ...(status === "blocked" ? { blockedBy: userId } : {}) } });
     if (row.status === "pending" && fee?.status === "reserved") {
       await settleTokens(tx, fee.id, status === "accepted" ? "capture" : "refund", status === "accepted" ? "交流邀請已接受 / Invitation accepted" : "邀請未接受，退回預扣 / Invitation not accepted; hold released");
@@ -126,6 +134,7 @@ export async function sendMessage(userId: string, id: string, input: z.infer<typ
     const previous = await tx.networkMessage.findUnique({ where: { senderId_requestId: { senderId: userId, requestId: input.requestId } } });
     if (previous) { if (previous.connectionId !== id || previous.body !== input.body) throw changed(); return { id: previous.id }; }
     if (row.status !== "accepted") throw new MemberError("聊天尚未接受或已封鎖 / Chat is pending or blocked", 403);
+    await requireReceiving(tx, row.senderId === userId ? row.recipientId : row.senderId);
     const saved = await tx.networkMessage.create({ data: { connectionId: id, senderId: userId, ...input } });
     await tx.networkConnection.update({ where: { id }, data: { updatedAt: new Date() } });
     await queueNotification(tx,row.senderId === userId ? row.recipientId : row.senderId,`message:${saved.id}`,"message",{connectionId:id,messageId:saved.id});
