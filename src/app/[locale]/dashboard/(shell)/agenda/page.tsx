@@ -23,6 +23,11 @@ export default async function AgendaPage({ params, searchParams }: Props) {
   setRequestLocale(locale);
   const l = locale as Locale;
   const t = await getTranslations({ locale, namespace: "Dashboard.agenda" });
+  const title = (
+    <h1 className="text-2xl font-bold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
+      {t("title")}
+    </h1>
+  );
 
   // layout 已確保登入；null → 方案不足（付費牆）
   const account = await requirePlan("pro");
@@ -33,9 +38,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
     return (
       <div className="font-[family-name:var(--font-body)]">
 
-        <h1 className="text-2xl font-bold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
-          {t("title")}
-        </h1>
+        {title}
         <RoundtableCommitments />
         {discovery && current ? <><div className="mt-7"><DiscoveryJourney userId={current.id} compactTrial /></div><details className="mt-6 rounded-2xl border border-dark/10 bg-white p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "歷史對話紀錄" : "Conversation history"}</summary><ConversationHistory /></details><InvestorProgress confirmationOnly /></> : <PlanPaywall locale={l} />}
       </div>
@@ -49,11 +52,7 @@ export default async function AgendaPage({ params, searchParams }: Props) {
   return (
     <div className="font-[family-name:var(--font-body)]">
 
-      <h1 className="text-2xl font-bold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
-        {t("title")}
-      </h1>
-
-      <AgendaBoard guided={guided || !actionPlan} userId={account.id}
+      <AgendaBoard title={title} guided={guided || !actionPlan} userId={account.id}
         actionPlan={actionPlan}
       />
       <GettingStartedHint mode="next" />

@@ -2,7 +2,7 @@
 
 import NextStepsTour from "./NextStepsTour";
 import { PlanLocalizationProvider } from "./PlanLocalization";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import PlanRefresh, { notifyPlanChanged } from "./PlanRefresh";
 import FlowWorkspace from "./flow/Workspace";
@@ -12,11 +12,12 @@ import { useLocale } from "next-intl";
 
 type Props = {
   userId: string;
+  title?: ReactNode;
   guided?: boolean;
   actionPlan: ActionPlanDto | null;
 };
 
-export default function AgendaBoard({ userId, actionPlan, guided = false }: Props) {
+export default function AgendaBoard({ userId, actionPlan, guided = false, title }: Props) {
   const zh = useLocale() === "zh-tw";
   const [planState, setPlanState] = useState({ source: actionPlan, current: actionPlan });
   if (planState.source !== actionPlan) {
@@ -32,10 +33,10 @@ export default function AgendaBoard({ userId, actionPlan, guided = false }: Prop
   }
 
   return (
-    <PlanLocalizationProvider planId={currentPlan?.id} revision={currentPlan?.revision}><div className="mt-4 flex flex-col gap-4">
+    <PlanLocalizationProvider planId={currentPlan?.id} revision={currentPlan?.revision}><div className="flex flex-col gap-4">
       <PlanRefresh userId={userId} />
-      {!currentPlan && <><ActionPlanManager guided={guided} initialPlan={null} onChanged={acceptPlan} /><RoadmapPanel userId={userId} initialPlan={null} onChanged={acceptPlan} /></>}
-      {currentPlan && <>{currentPlan.workflowVersion === 2 ? <FlowWorkspace key={currentPlan.id} userId={userId} plan={currentPlan} onChanged={acceptPlan} /> : <RoadmapPanel key={currentPlan.id} userId={userId} initialPlan={currentPlan} onChanged={acceptPlan} />}<ActionDiagnosis plan={currentPlan} /></>}
+      {!currentPlan && <>{title}<ActionPlanManager guided={guided} initialPlan={null} onChanged={acceptPlan} /><RoadmapPanel userId={userId} initialPlan={null} onChanged={acceptPlan} /></>}
+      {currentPlan && <>{currentPlan.workflowVersion === 2 ? <FlowWorkspace key={currentPlan.id} title={title} userId={userId} plan={currentPlan} onChanged={acceptPlan} /> : <RoadmapPanel key={currentPlan.id} title={title} userId={userId} initialPlan={currentPlan} onChanged={acceptPlan} />}<ActionDiagnosis plan={currentPlan} /></>}
 
     </div>{currentPlan && <NextStepsTour workflowVersion={currentPlan.workflowVersion} mission={currentTask?.title || (awaitingOutcome ? (zh ? "確認本階段成果並繼續" : "Confirm this stage’s outcomes and continue") : (zh ? "驗證你的目標客戶" : "Validate your target customer"))} target={currentTask?.metric?.target} reward={Boolean(currentTask)} />}</PlanLocalizationProvider>
   );

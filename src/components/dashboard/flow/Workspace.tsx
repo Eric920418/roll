@@ -1,5 +1,5 @@
 "use client";
-import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { memberFetch } from "@/lib/member-fetch";
@@ -18,7 +18,7 @@ import Followups from "./Followups";
 const ProspectSearch = lazy(() => import("../prospecting/ProspectSearch"));
 const ThisWeekCalendar = lazy(() => import("../home/ThisWeekCalendar"));
 
-export default function Workspace({ userId, plan, onChanged }: { userId: string; plan: ActionPlanDto; onChanged(plan: ActionPlanDto): void }) {
+export default function Workspace({ userId, plan, onChanged, title }: { title?: ReactNode; userId: string; plan: ActionPlanDto; onChanged(plan: ActionPlanDto): void }) {
   const locale = useLocale() as "zh-tw" | "en", zh = locale === "zh-tw", router = useRouter(), w = (a: string, b: string) => zh ? a : b;
   const [view, setView] = useState<FlowView | null>(null), [selected, setSelected] = useState<StepId | null>(null), [draft, setDraft] = useState<FlowData | null>(null);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [link, setLink] = useState(""), [leadId, setLeadId] = useState(""), [editingGoal, setEditingGoal] = useState(false);
@@ -111,7 +111,7 @@ export default function Workspace({ userId, plan, onChanged }: { userId: string;
     try { localStorage.setItem(key,requestId); } catch { setNotice(w("無法暫存重試識別碼，請保持此頁開啟。", "Retry identity could not be cached; keep this page open.")); }
     if (await mutate({action:"supplement",requestId})) { supplementRequest.current=null;try{localStorage.removeItem(key);}catch{/* A saved round is recognised before the next request. */} }
   }
-  if (!view) return <section className="rounded-2xl border border-dark/15 p-5"><p role="status">{w("載入 16 步行動計畫…", "Loading your sixteen-step plan…")}</p>{error && <p role="alert" className="whitespace-pre-wrap break-words text-red-800">{error}</p>}<button className={button} disabled={loading} type="button" onClick={() => void load()}>{w("重試", "Retry")}</button></section>;
+  if (!view) return <div className="space-y-4">{title}<section className="rounded-2xl border border-dark/15 p-5"><p role="status">{w("載入 16 步行動計畫…", "Loading your sixteen-step plan…")}</p>{error && <p role="alert" className="whitespace-pre-wrap break-words text-red-800">{error}</p>}<button className={button} disabled={loading} type="button" onClick={() => void load()}>{w("重試", "Retry")}</button></section></div>;
   const displayPlan = view.steps.length === 0 ? view.plan : { ...view.plan, actions: view.plan.actions.map(a => {
     const evaluated = view.steps.find(s => s.actionId === a.id);
     return evaluated ? { ...a, metric: { unit: a.metric?.unit || null, current: evaluated.done || evaluated.id === view.current ? evaluated.current : 0, target: evaluated.target } } : a;
@@ -122,9 +122,10 @@ export default function Workspace({ userId, plan, onChanged }: { userId: string;
   const confirmationText = step?.id === "01-2" && step.data.kind === "organize" ? w("您好，想請您確認這句話是否描述您的情況：", "Hello, does this statement describe your situation? ") + "\n" + (step.data.values.positioning || "") + "\n" + w("請開啟連結選擇符合或不符合，謝謝。", "Please open the link and choose yes or no. Thank you.") + "\n" + link : link;
   const linkPanel = link && <div role="status" className="space-y-3 rounded-xl border border-dark/20 p-4"><label className="block text-sm">{w("專屬連結（可複製）", "Dedicated link (copy to share)")}<input readOnly className="mt-1 min-h-11 w-full rounded-xl border px-3 text-sm" value={link} onFocus={e => e.target.select()} /></label><button type="button" className={button} disabled={disabled} onClick={() => { void navigator.clipboard.writeText(confirmationText).then(() => setNotice(w("連結已複製", "Link copied"))).catch(() => setError(w("無法使用剪貼簿，請手動複製上方連結。", "Clipboard unavailable; copy the link manually."))); }}>{step?.id === "01-2" ? w("複製確認訊息與連結", "Copy confirmation message and link") : w("複製連結", "Copy link")}</button></div>;
   return <section id="goal-roadmap" className="min-w-0 space-y-4">
-    <header data-next-step="goal" className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 border-b border-dark/10 pb-3">
+    <header data-next-step="goal" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-dark/10 pb-3">
+      {title}
       {view.archived && <p role="status" className="text-xs text-dark/55">{w("歷史版本，唯讀", "Archived, read only")}</p>}
-      <div className="ml-auto flex min-h-11 items-center gap-3 text-xs text-dark/55"><span>{w("步驟完成率", "Steps completed")} {Math.round(view.plan.actions.filter(s => s.done).length / Math.max(1, view.plan.actions.length) * 100)}%</span><progress className="h-1 w-28 overflow-hidden border-0 bg-dark/10 accent-black [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" aria-label={w("步驟完成率", "Steps completed")} value={view.plan.actions.filter(s => s.done).length} max={Math.max(1, view.plan.actions.length)} />{!view.archived && <button type="button" className="min-h-11 px-2 underline" onClick={() => { setGoal(view.plan.roadmap?.goal || ""); setDeadline(view.plan.roadmap?.deadline || ""); setEditingGoal(v => !v); }}>{w("修改目標", "Edit goal")}</button>}</div>
+      <div className="ml-auto flex min-h-11 max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-dark/55"><span className="whitespace-nowrap">{w("步驟完成率", "Steps completed")} {Math.round(view.plan.actions.filter(s => s.done).length / Math.max(1, view.plan.actions.length) * 100)}%</span><progress className="h-1 w-20 shrink-0 overflow-hidden sm:w-28 border-0 bg-dark/10 accent-black [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" aria-label={w("步驟完成率", "Steps completed")} value={view.plan.actions.filter(s => s.done).length} max={Math.max(1, view.plan.actions.length)} />{!view.archived && <button type="button" className="min-h-11 shrink-0 whitespace-nowrap px-2 underline" onClick={() => { setGoal(view.plan.roadmap?.goal || ""); setDeadline(view.plan.roadmap?.deadline || ""); setEditingGoal(v => !v); }}>{w("修改目標", "Edit goal")}</button>}</div>
       {editingGoal && <form className="w-full space-y-3 rounded-xl border p-4" onSubmit={e => { e.preventDefault(); void mutate({ action: "goal", goal, deadline }).then(next => { if (next) setEditingGoal(false); }); }}><TextField label={w("目標", "Goal")} value={goal} onChange={setGoal} /><TextField type="date" label={w("期限", "Deadline")} value={deadline} onChange={setDeadline} /><button className={button} disabled={disabled}>{w("保存目標與日期", "Save goal and dates")}</button></form>}
     </header>
     {view.integrity.length > 0 && <div role="alert" className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm"><p>{w("部分先前證據已失效，歷史紀錄保留；請補正證明再繼續或分享。", "Some earlier evidence is no longer valid. History is retained; correct the proof before continuing or sharing.")}</p>{view.integrity.map(v => <p key={v.step}>{v.step} · {v.reasons.join("；")}</p>)}</div>}
