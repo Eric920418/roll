@@ -42,7 +42,7 @@ export default function MatchmakingWorkspace({ userId, initialTab, initialMentor
   }
   const labels = zh ? ["推薦給你", "所有會員", "圓桌會議", "誰看過我", "訊息"] : ["For you", "All members", "Roundtables", "Viewed you", "Messages"];
   return <div className="min-w-0 space-y-6">
-    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-dark/10 pb-4"><div><h1 className="text-2xl font-semibold tracking-tight">{zh ? "商機媒合" : "Business matching"}</h1></div></header>
+    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-dark/10 pb-4"><div><h1 className="text-2xl font-semibold tracking-tight">{zh ? "商機媒合" : "Business matching"}</h1></div><Link href={pathForLocale("/dashboard/matchmaking/me/edit", locale)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2">{zh ? "編輯我的卡片" : "Edit my card"}</Link></header>
     <div role="tablist" aria-label={zh ? "商機媒合" : "Business matching"} className="flex min-w-0 gap-1 border-b border-dark/10 sm:gap-4">
       {MATCHMAKING_TABS.map((id, index) => <button key={id} id={`matchmaking-tab-${id}`} role="tab" type="button" aria-selected={tab === id} aria-controls={`matchmaking-panel-${id}`} tabIndex={tab === id ? 0 : -1} className={`min-h-11 min-w-0 flex-1 border-b-2 px-1 py-3 text-[11px] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 sm:flex-none sm:px-2 sm:text-sm ${tab === id ? "border-black text-black" : "border-transparent text-dark/50"}`} onClick={() => select(id)} onKeyDown={e => {
         const direction = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
