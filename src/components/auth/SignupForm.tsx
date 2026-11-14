@@ -12,6 +12,9 @@ import GoogleButton from "./GoogleButton";
 import { resolveAuthError } from "./error-codes";
 import { safeLoginReturnPath } from "@/lib/auth/return-path";
 
+import MemberRoles from "./MemberRoles";
+import { memberRolesSchema, type MemberRole } from "@/lib/matchmaking/roles";
+
 type Mode = "email" | "google";
 
 export default function SignupForm() {
@@ -21,6 +24,7 @@ export default function SignupForm() {
   const locale = useLocale() as Locale;
   const router = useRouter();
 
+  const [roles, setRoles] = useState<MemberRole[]>(["founder"]);
   const [mode, setMode] = useState<Mode>("email");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -38,12 +42,13 @@ export default function SignupForm() {
     e.preventDefault();
     if (loading) return;
     setError("");
+    if (!memberRolesSchema.safeParse(roles).success) { setError(locale === "zh-tw" ? "請至少選擇一種身份" : "Select at least one role"); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/google/authorize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ next, rollonCode, referralCode }),
+        body: JSON.stringify({ next, rollonCode, referralCode, roles }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error([`HTTP ${res.status}`, json.error || tErr("generic"), json.code, json.requestId].filter(Boolean).join("\n"));
@@ -70,12 +75,13 @@ export default function SignupForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!memberRolesSchema.safeParse(roles).success) { setError(locale === "zh-tw" ? "請至少選擇一種身份" : "Select at least one role"); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, email, password, rollonCode, referralCode }),
+        body: JSON.stringify({ firstName, lastName, email, password, rollonCode, referralCode, roles }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -145,6 +151,7 @@ export default function SignupForm() {
         <p className="mt-2 text-xs leading-5 text-dark/60">{t("referralHint")}</p>
       </div>
 
+      <div className="mt-6"><MemberRoles value={roles} onChange={setRoles} disabled={loading} /></div>
       {mode === "email" ? (
         <form method="post" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">

@@ -1,3 +1,4 @@
+import { memberRoles } from "@/lib/matchmaking/roles";
 import { evidenceStateSchema } from "@/lib/evidence/schema";
 import { weeklyEvidence } from "@/lib/evidence/service";
 import "server-only";
@@ -18,7 +19,7 @@ const include = { host: { select: { mentorCertification: true } }, registrations
 const activeStatuses = ["pending", "confirmed", "waitlisted"];
 async function eligible(userId: string, tx: DB) {
   const account = await networkAccount(userId, tx);
-  return account.effectivePlan !== "free" && account.matchmakingProfile?.role === "founder" && (await features(userId, tx)).network;
+  return account.effectivePlan !== "free" && Boolean(account.matchmakingProfile && memberRoles(account.matchmakingProfile).includes("founder")) && (await features(userId, tx)).network;
 }
 async function blocked(tx: DB, a: string | null, b: string) {
   return a && await tx.networkConnection.findFirst({ where: { status: "blocked", OR: [{ senderId: a, recipientId: b }, { senderId: b, recipientId: a }] }, select: { id: true } });
@@ -125,7 +126,7 @@ function project(row: Awaited<ReturnType<typeof lockSession>>, userId: string, b
 export async function getRoundtables(userId: string, id?: string) {
   const [cert, access, card, account, connections, upcoming, own, selected] = await Promise.all([
     prisma.mentorCertification.findUnique({ where: { userId } }), features(userId),
-    prisma.matchmakingProfile.findUnique({ where: { userId }, select: { role: true } }),
+    prisma.matchmakingProfile.findUnique({ where: { userId }, select: { role: true, roles: true } }),
     networkAccount(userId),
     prisma.networkConnection.findMany({ where: { status: "blocked", OR: [{ senderId: userId }, { recipientId: userId }] }, select: { senderId: true, recipientId: true } }),
     prisma.roundtable.findMany({ where: { status: "scheduled", endsAt: { gt: new Date() }, host: { mentorCertification: { status: "approved" } } }, orderBy: { startsAt: "asc" }, take: 30, include }),
@@ -137,7 +138,7 @@ export async function getRoundtables(userId: string, id?: string) {
   return {
     serverTime: new Date().toISOString(),
     certification: cert ? { status: cert.status, revision: cert.revision, draft: mentorDraftSchema.parse(cert.draft), note: cert.note } : null,
-    canApply: account.effectivePlan !== "free" && access.network && card?.role === "founder",
+    canApply: account.effectivePlan !== "free" && access.network && Boolean(card && memberRoles(card).includes("founder")),
     sessions: rows.map(row => project(row, userId, blockedPeers)),
   };
 }

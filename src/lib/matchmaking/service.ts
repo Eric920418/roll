@@ -1,3 +1,4 @@
+import { memberRoles, verificationRoles } from "./roles";
 import { weightedMatch } from "./rank";
 import { COMPANY_STAGES } from "@/lib/action-plan/constants";
 import { awardProfile, rewardTransaction } from "@/lib/rewards/service";
@@ -27,7 +28,7 @@ export async function getMyCard(userId: string): Promise<CardOwner> {
     prisma.onboardingProfile.findUnique({ where: { userId } }), statsFor([userId]),
   ]);
   return {
-    id: row?.id ?? null, sourcePolicy: row?.sourcePolicy, draft: row ? cardDraftSchema.parse({ displayName: row.displayName || "", role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }) : {
+    id: row?.id ?? null, sourcePolicy: row?.sourcePolicy, draft: row ? cardDraftSchema.parse({ displayName: row.displayName || "", role: row.role, roles: memberRoles(row), categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }) : {
       role: "founder", categories: ["collaboration"], country: profile?.country || "", industry: profile?.industry || "", slogan: profile?.oneLinePitch || "", offers: "", looksFor: profile?.primaryNeed || "", visibleFields: ["country", "industry", "slogan", "offers", "looksFor"],
     },
     sourceVersion: profile?.updatedAt.toISOString() ?? null,
@@ -61,18 +62,19 @@ export async function writeMyCard(userId: string, input: CardWrite) {
       await awardProfile(tx, userId);
     }
     if (row?.sourcePolicy !== 2 && ["country", "industry", "slogan", "offers"].some(key => !String(input.draft[key as keyof typeof input.draft] || "").length)) throw new MemberError("請填妥手動卡片必填欄位 / Complete the required manual-card fields", 400);
+    const roles = input.draft.roles ?? (row?.role === input.draft.role ? memberRoles(row) : [input.draft.role]);
     // A visible founder cannot bypass the evidence gate through edits or a role change.
     let visible = input.action === "publish" || Boolean(row?.visible);
-    if (visible && input.draft.role === "founder" && !networkEnabled()) {
+    if (visible && roles.includes("founder") && !networkEnabled()) {
       const notes = await tx.meetingNote.findMany({ where: { userId }, select: { insight: true } });
       if (interviewCompanies(notes.map(n => n.insight)) < 3) throw new MemberError("創辦人須先完成三家不同公司的有效客戶訪談 / Founders need valid customer interviews with three different companies", 403);
     }
     if (visible && networkEnabled() && row?.sourcePolicy === 2) { const profile = await tx.onboardingProfile.findUnique({ where: { userId } }); if (!profile?.companyName || !profile.industry || !profile.country) visible = false; }
-    const draft = { ...input.draft };
+    const draft = { ...input.draft, roles };
     if (draft.country && !countryCode(draft.country) && draft.country !== row?.country) throw new MemberError("請從選單選擇國家 / Select a country from the list", 400);
     if (draft.industry && !industryCode(draft.industry) && draft.industry !== row?.industry) throw new MemberError("請從選單選擇產業 / Select an industry from the list", 400);
     draft.country = canonicalCountry(draft.country); draft.industry = industryCode(draft.industry) || draft.industry;
-    const data = { ...draft, visible, ...(networkEnabled() && input.action === "publish" ? { hiddenByUserAt: null } : {}), ...(input.action === "publish" ? { optedInAt: new Date() } : {}), ...(row?.role !== input.draft.role ? { verified: false, reviewedAt: null } : {}), lastRequestId: input.requestId, lastRequestHash: hash };
+    const data = { ...draft, visible, ...(networkEnabled() && input.action === "publish" ? { hiddenByUserAt: null } : {}), ...(input.action === "publish" ? { optedInAt: new Date() } : {}), ...((!row || verificationRoles(row) !== verificationRoles(draft)) ? { verified: false, reviewedAt: null } : {}), lastRequestId: input.requestId, lastRequestHash: hash };
     if (row) await tx.matchmakingProfile.update({ where: { userId }, data: { ...data, revision: { increment: 1 } } });
     else await tx.matchmakingProfile.create({ data: { ...data, userId, revision: 1 } });
   });
@@ -95,14 +97,14 @@ export async function listCards(userId: string, category: string | null, page: n
   let cursor: string | undefined;
   // shortcut: rank public projections in batches; index a public search projection when the network grows.
   for (;;) {
-    const rows = await prisma.matchmakingProfile.findMany({ where: { userId: { notIn: excluded }, visible: true, ...(!networkEnabled() ? { sourcePolicy: null } : {}), ...(filters.category !== "all" ? { categories: { has: filters.category } } : {}), ...(filters.role !== "all" ? { role: filters.role } : {}) }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }], take: 100, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), include: { user: { select: { profile: { select: sourceSelect }, mentorCertification: { select: { status: true } } } } } });
+    const rows = await prisma.matchmakingProfile.findMany({ where: { userId: { notIn: excluded }, visible: true, ...(!networkEnabled() ? { sourcePolicy: null } : {}), ...(filters.category !== "all" ? { categories: { has: filters.category } } : {}), ...(filters.role !== "all" ? { OR: [{ roles: { array_contains: [filters.role] } }, { role: filters.role }] } : {}) }, orderBy: [{ lastActiveAt: { sort: "desc", nulls: "last" } }, { id: "asc" }], take: 100, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), include: { user: { select: { profile: { select: sourceSelect }, mentorCertification: { select: { status: true } } } } } });
     const stats = networkEnabled() ? null : await statsFor(rows.map(r => r.userId));
     const replies = await prisma.networkConnection.groupBy({ by:["recipientId","status"], where:{ recipientId:{in:rows.map(r=>r.userId)},createdAt:{gte:new Date(Date.now()-30*86400000)},status:{in:["pending","accepted","declined","expired"]}},_count:true });
     for (const row of rows) {
-      const card = publicCard({ ...cardDraftSchema.parse({ displayName: row.displayName || "", role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, sourcePolicy: row.sourcePolicy, displayName: row.displayName, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended, mentorCertified: row.user.mentorCertification?.status === "approved" }, row.user.profile, stats?.get(row.userId) || { interviews: 0, payingCustomers: null, milestones: 0 }, viewer, new Date(), networkEnabled());
+      const card = publicCard({ ...cardDraftSchema.parse({ displayName: row.displayName || "", role: row.role, roles: memberRoles(row), categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, sourcePolicy: row.sourcePolicy, displayName: row.displayName, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended, mentorCertified: row.user.mentorCertification?.status === "approved" }, row.user.profile, stats?.get(row.userId) || { interviews: 0, payingCustomers: null, milestones: 0 }, viewer, new Date(), networkEnabled());
       const history=replies.filter(r=>r.recipientId===row.userId),total=history.reduce((sum,r)=>sum+r._count,0),rate=total>=3?history.filter(r=>["accepted","declined"].includes(r.status)).reduce((sum,r)=>sum+r._count,0)/total:null;
       const match=weightedMatch(viewer,card,rate);card.matchReasons=match.reasons;
-      if (matchesPublicCard(card, filters) && (filters.view !== "recommendations" || match.relevant)) selected.push({ userId: row.userId, card, rank: match.score, at: row.lastActiveAt?.getTime() || 0 });
+      if ((filters.role === "all" || memberRoles(card).includes(filters.role)) && matchesPublicCard(card, filters) && (filters.view !== "recommendations" || match.relevant)) selected.push({ userId: row.userId, card, rank: match.score, at: row.lastActiveAt?.getTime() || 0 });
     }
     if (rows.length < 100) break;
     cursor = rows.at(-1)!.id;
@@ -117,7 +119,7 @@ export async function getMemberCard(userId: string, id: string) {
   const blocked = await prisma.networkConnection.findFirst({ where: { status: "blocked", OR: [{ senderId: userId, recipientId: row.userId }, { senderId: row.userId, recipientId: userId }] } });
   if (blocked) throw new MemberError("找不到可見卡片 / Visible card not found", 404);
   const [stats, viewer] = await Promise.all([statsFor([row.userId]), viewerSources(userId)]);
-  const card = publicCard({ ...cardDraftSchema.parse({ role: row.role, categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, displayName: row.displayName, sourcePolicy: row.sourcePolicy, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended, mentorCertified: row.user.mentorCertification?.status === "approved" }, row.user.profile, stats.get(row.userId)!, viewer, new Date(), networkEnabled());
+  const card = publicCard({ ...cardDraftSchema.parse({ role: row.role, roles: memberRoles(row), categories: row.categories, country: row.country, industry: row.industry, slogan: row.slogan, offers: row.offers, looksFor: row.looksFor, visibleFields: row.visibleFields }), id: row.id, displayName: row.displayName, sourcePolicy: row.sourcePolicy, revision: row.revision, blurredPhoto: row.blurredPhoto, lastActiveAt: row.lastActiveAt, verified: row.verified, recommended: row.recommended, mentorCertified: row.user.mentorCertification?.status === "approved" }, row.user.profile, stats.get(row.userId)!, viewer, new Date(), networkEnabled());
   card.matchReasons=weightedMatch(viewer,card).reasons;
   return (await withChat(userId, [{ userId: row.userId, card }]))[0]!;
 }

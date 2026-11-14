@@ -1,0 +1,1 @@
+ALTER TABLE "MatchmakingProfile" ADD COLUMN IF NOT EXISTS "roles" JSONB;

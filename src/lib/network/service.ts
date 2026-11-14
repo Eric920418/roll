@@ -1,3 +1,4 @@
+import { memberRoles } from "@/lib/matchmaking/roles";
 import { tokenQuote } from "@/lib/billing/commerce";
 import "server-only";
 import { reserveTokens, resourceFee, settleTokens, tokenHash } from "@/lib/tokens/service";
@@ -60,7 +61,7 @@ export async function invite(userId: string, input: z.infer<typeof inviteSchema>
 }
 export async function listConnections(userId: string) {
   await expireTokens(userId);
-  const rows = await prisma.networkConnection.findMany({ where: { OR: [{ senderId: userId }, { recipientId: userId }] }, orderBy: { updatedAt: "desc" }, take: 50, include: { sender: { select: { profile: { select: { companyName: true } }, matchmakingProfile: { select: { id: true, role: true, verified: true, blurredPhoto: true } } } }, recipient: { select: { profile: { select: { companyName: true } }, matchmakingProfile: { select: { id: true, role: true, verified: true, blurredPhoto: true } } } }, shares: true, watches: { select: { id: true, condition: true, status: true, investorId: true } } } });
+  const rows = await prisma.networkConnection.findMany({ where: { OR: [{ senderId: userId }, { recipientId: userId }] }, orderBy: { updatedAt: "desc" }, take: 50, include: { sender: { select: { profile: { select: { companyName: true } }, matchmakingProfile: { select: { id: true, role: true, roles: true, verified: true, blurredPhoto: true } } } }, recipient: { select: { profile: { select: { companyName: true } }, matchmakingProfile: { select: { id: true, role: true, roles: true, verified: true, blurredPhoto: true } } } }, shares: true, watches: { select: { id: true, condition: true, status: true, investorId: true } } } });
   return Promise.all(rows.map(async r => {
     const outgoing = r.senderId === userId, peer = outgoing ? r.recipient : r.sender;
     const peerId = outgoing ? r.recipientId : r.senderId;
@@ -73,7 +74,7 @@ export async function listConnections(userId: string) {
     if (signalScope.success) { try { privateProgress = await progressSnapshot(prisma as unknown as DB, peerId, signalScope.data); } catch { /* An archived workspace grants no current progress. */ } }
     const fee = await resourceFee(prisma as unknown as DB, "invite", r.id);
     const opening = fee?.metadata as { opening?: string } | undefined;
-    return { tokenFee: fee ? { amount: fee.amount, status: fee.status, expiresAt: fee.expiresAt, opening: opening?.opening || "" } : null, portalId: portal?.id, privateProgress, photo: r.status === "accepted" && peer.matchmakingProfile?.blurredPhoto ? `/api/matchmaking/members/${peer.matchmakingProfile.id}/photo` : null, id: r.id, status: r.status, revision: r.revision, outgoing, company: peer.profile?.companyName || "Member", profileId: peer.matchmakingProfile?.id, verified: peer.matchmakingProfile?.verified, role: peer.matchmakingProfile?.role, unread: r.status === "accepted" ? await prisma.networkMessage.count({ where: { connectionId: r.id, senderId: { not: userId }, createdAt: { gt: (outgoing ? r.senderReadAt : r.recipientReadAt) || new Date(0) } } }) : 0, sharing: r.shares.filter(s => s.ownerId === userId).map(s => ({ revision: s.revision, sections: s.revokedAt ? [] : s.sections, scope: s.scope }))[0] || { revision: 0, sections: [], scope: null }, watches: r.watches.map(w => ({ id: w.id, condition: w.condition, status: w.status, mine: w.investorId === userId })) };
+    return { tokenFee: fee ? { amount: fee.amount, status: fee.status, expiresAt: fee.expiresAt, opening: opening?.opening || "" } : null, portalId: portal?.id, privateProgress, photo: r.status === "accepted" && peer.matchmakingProfile?.blurredPhoto ? `/api/matchmaking/members/${peer.matchmakingProfile.id}/photo` : null, id: r.id, status: r.status, revision: r.revision, outgoing, company: peer.profile?.companyName || "Member", profileId: peer.matchmakingProfile?.id, verified: peer.matchmakingProfile?.verified, role: peer.matchmakingProfile?.role, roles: peer.matchmakingProfile ? memberRoles(peer.matchmakingProfile) : [], unread: r.status === "accepted" ? await prisma.networkMessage.count({ where: { connectionId: r.id, senderId: { not: userId }, createdAt: { gt: (outgoing ? r.senderReadAt : r.recipientReadAt) || new Date(0) } } }) : 0, sharing: r.shares.filter(s => s.ownerId === userId).map(s => ({ revision: s.revision, sections: s.revokedAt ? [] : s.sections, scope: s.scope }))[0] || { revision: 0, sections: [], scope: null }, watches: r.watches.map(w => ({ id: w.id, condition: w.condition, status: w.status, mine: w.investorId === userId })) };
   }));
 }
 export async function changeConnection(userId: string, id: string, input: z.infer<typeof connectionSchema>) {
@@ -176,7 +177,7 @@ export async function recordVisit(userId: string, input: { profileId?: string; p
     const privacy = privacyState((await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { viewerPrivacy: true } })).viewerPrivacy);
     const identity = identifiedViewsEnabled() && privacy.enabled && privacy.consentAt ? { identityConsentAt: new Date(privacy.consentAt), identifiedAt: new Date(Math.max(Date.now(), Date.parse(privacy.consentAt))) } : {};
     await tx.memberVisit.upsert({ where: { viewerId_ownerId_week: { ownerId, viewerId: userId, week: weekKey() } },
-      create: { ownerId, viewerId: userId, week: weekKey(), role: viewer.verifiedInvestor ? "investor" : viewer.matchmakingProfile?.role === "founder" ? "founder" : "other", ...identity }, update: identity });
+      create: { ownerId, viewerId: userId, week: weekKey(), role: viewer.verifiedInvestor ? "investor" : viewer.matchmakingProfile && memberRoles(viewer.matchmakingProfile).includes("founder") ? "founder" : "other", ...identity }, update: identity });
   });
   return { recorded: true };
 }

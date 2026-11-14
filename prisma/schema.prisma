@@ -1168,6 +1168,7 @@ model CustomerStageOutcome {
 
 /// Anonymous discovery card. Private identity stays on User / OnboardingProfile.
 model MatchmakingProfile {
+  roles Json?
   displayName String?
   hiddenByUserAt DateTime?
   sourcePolicy Int?

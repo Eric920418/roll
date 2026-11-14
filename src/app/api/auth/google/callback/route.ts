@@ -1,3 +1,4 @@
+import { memberRolesSchema } from "@/lib/matchmaking/roles";
 import { registerWithReferral } from "@/lib/referrals/registration";
 import { referralCode } from "@/lib/referrals/policy";
 import { ReferralError } from "@/lib/referrals/policy";
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
 
   // 先解析 state cookie（取得 next，決定錯誤導回的語系）
-  let saved: { state: string; next: string; rollonCode?: unknown; referralCode?: unknown } | null = null;
+  let saved: { state: string; next: string; rollonCode?: unknown; referralCode?: unknown; roles?: unknown } | null = null;
   try {
     const raw = req.cookies.get(GOOGLE_STATE_COOKIE)?.value;
     if (raw) saved = JSON.parse(raw);
@@ -84,6 +85,8 @@ export async function GET(req: NextRequest) {
       if (!profile.emailVerified) {
         return redirectError("你的 Google 帳號 Email 尚未驗證，無法以此註冊");
       }
+      const roles = memberRolesSchema.optional().safeParse(saved.roles);
+      if (!roles.success) return redirectError("身份選項無效，請重新選擇 / Invalid roles; select your roles again");
       let membership;
       try {
         membership = rollonSignupData(saved.rollonCode);
@@ -99,7 +102,7 @@ export async function GET(req: NextRequest) {
           emailVerified: new Date(), // Google 已驗證
           onboardingStep: 2, // Google 註冊即完成帳號步驟
           ...(membership ?? newDiscoveryTrial()),
-      }, saved.referralCode);
+      }, saved.referralCode, roles.data);
     }
 
     const token = await createUserSession(user.id, user.email, user.sessionVersion);

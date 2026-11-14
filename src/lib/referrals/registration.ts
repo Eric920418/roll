@@ -1,5 +1,6 @@
 import { autoCardData, networkEnabled } from "@/lib/network/policy";
 import "server-only";
+import { memberRolesSchema } from "@/lib/matchmaking/roles";
 import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -17,9 +18,10 @@ export async function validateReferralCode(value: unknown) {
   if (!inviter) throw new ReferralError("邀請碼不存在或已停用 / Referral code not found or unavailable", 400, "invalid_referral_code");
   return code;
 }
-export async function registerWithReferral(data: Prisma.UserCreateInput, value: unknown) {
+export async function registerWithReferral(data: Prisma.UserCreateInput, value: unknown, selectedRoles?: unknown) {
   const code = referralCode(value);
-  if (networkEnabled()) data = { ...data, matchmakingProfile: { create: autoCardData } };
+  const roles = selectedRoles === undefined ? undefined : memberRolesSchema.parse(selectedRoles);
+  if (networkEnabled() || roles) data = { ...data, matchmakingProfile: { create: { ...autoCardData, ...(roles ? { role: roles[0], roles } : {}) } } };
   if (!code) return prisma.user.create({ data });
   requireReferralConfig();
   return rewardTransaction(async tx => {

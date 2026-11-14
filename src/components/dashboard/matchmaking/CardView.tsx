@@ -1,4 +1,5 @@
 "use client";
+import { memberRoles } from "@/lib/matchmaking/roles";
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { pathForLocale } from "@/lib/routes";
@@ -47,7 +48,7 @@ export default function CardView({ card, detail = false, footer, row = false }: 
   if (!detail) return <article className={row ? "flex min-w-0 items-center gap-3 border-t border-dark/10 py-2" : "flex min-w-0 flex-1 flex-col rounded-xl border border-dark/10 bg-white p-4"}>
     <div className={row ? "flex min-w-0 flex-1 items-center gap-3" : "flex items-start gap-3"}>
       <div className="w-11 shrink-0 rounded-full" aria-label={card.photo ? undefined : t("noPhoto")}>{card.photo ? <PrivatePhoto url={card.photo} alt={t("blurredPhoto")} avatar /> : <div className="flex size-11 items-center justify-center rounded-full bg-neutral-200 text-base font-semibold">{(card.displayName || card.companyName || t(`roles.${card.role}`)).slice(0, 1)}</div>}</div>
-      <div className="min-w-0 flex-1"><h2 className="break-words text-sm font-semibold">{card.displayName || card.companyName || t(`roles.${card.role}`)}</h2><p className="mt-1 text-[11px] text-dark/55">{t(`roles.${card.role}`)}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}</p></div>
+      <div className="min-w-0 flex-1"><h2 className="break-words text-sm font-semibold">{card.displayName || card.companyName || t(`roles.${card.role}`)}</h2><p className="mt-1 text-[11px] text-dark/55">{memberRoles(card).map(role => t(`roles.${role}`)).join(" · ")}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}</p></div>
       {!row && card.activity && card.activity !== "inactive" && <span className="text-[10px] text-green-800">{card.activity === "week" ? (zh ? "一週內活躍" : "Active this week") : (zh ? "本月活躍" : "Active this month")}</span>}
     </div>
     {!row && <><p className="mt-4 line-clamp-3 whitespace-pre-wrap break-words text-[11px] leading-5 text-dark/70">{card.slogan || card.companyPitch || (zh ? "介紹尚未公開" : "Introduction not public")}</p>{card.mentorCertified && <p className="mt-1 text-[11px] font-semibold">{zh ? "認證導師" : "Certified mentor"}</p>}
@@ -59,7 +60,7 @@ export default function CardView({ card, detail = false, footer, row = false }: 
     <div className={card.activity === "inactive" ? "opacity-60" : ""}>{card.photo ? <PrivatePhoto url={card.photo} alt={t("blurredPhoto")} /> : <div className="flex aspect-square items-center justify-center rounded-xl bg-neutral-100 text-4xl font-semibold" aria-label={t("noPhoto")}>{(card.displayName || card.companyName || t(`roles.${card.role}`)).slice(0, 1)}</div>}</div>
     <h2 className="mt-4 break-words text-xl font-semibold">{card.displayName || card.companyName || t(`roles.${card.role}`)}</h2>
     {card.displayName && card.companyName && <p className="mt-1 break-words text-sm">{card.companyName}</p>}
-    <p className="mt-2 text-sm text-dark/65">{t(`roles.${card.role}`)}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}{card.verified ? " · ✓" : ""}{card.mentorCertified ? (locale === "zh-tw" ? " · 認證導師" : " · Certified mentor") : ""}</p>
+    <p className="mt-2 text-sm text-dark/65">{memberRoles(card).map(role => t(`roles.${role}`)).join(" · ")}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}{card.verified ? " · ✓" : ""}{card.mentorCertified ? (locale === "zh-tw" ? " · 認證導師" : " · Certified mentor") : ""}</p>
     <p className="mt-4 text-sm font-semibold">{t("fields.looksFor")}</p><div className="mt-2 flex flex-wrap gap-2">{card.categories.map(c => <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs" key={c}>{t(`categories.${c}`)}</span>)}</div>
     {copy.reasons[0] && <p className="mt-4 rounded-xl bg-neutral-50 p-3 text-sm">{zh ? "為何適合交流" : "Why connect"} · {copy.reasons.join(zh ? "；" : "; ")}</p>}
     {detail && <dl className="mt-5 space-y-4 border-t border-dark/10 pt-4 text-sm">

@@ -9,6 +9,7 @@ import sharp from "sharp";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as rank from "../src/lib/matchmaking/rank";
+import * as roles from "../src/lib/matchmaking/roles";
 import * as cards from "../src/lib/matchmaking/schema";
 import * as mindset from "../src/lib/mindset/schema";
 import { emptyInsight } from "../src/lib/customer-insights/schema";
@@ -37,7 +38,7 @@ test("Public projection strips private identity, blob paths, hidden fields and u
   const row = { ...draft, id: "card", revision: 1, name: "Secret Person", org: "Secret Company", email: "secret@invalid.test", originalPhoto: "private/original", blurredPhoto: "private/blurred", verified: true, recommended: true, lastActiveAt: new Date(), visibleFields: ["industry", "photo"] as cards.CardDraft["visibleFields"] };
   const result = cards.publicCard(row, { oneLinePitch: "Private pitch", icp: "Private ICP", targetMarkets: ["Taiwan"] }, { interviews: 3, milestones: 1, payingCustomers: 4 }, { industry: " SaaS ", targetMarkets: ["Taiwan"] });
   assert.deepEqual(result.reasons, ["industry"]); assert.equal(result.verified, false);
-  assert.deepEqual(Object.keys(result).sort(), ["activity", "categories", "id", "industry", "photo", "reasons", "recommended", "role", "verified"].sort());
+  assert.deepEqual(Object.keys(result).sort(), ["activity", "categories", "id", "industry", "photo", "reasons", "recommended", "role", "roles", "verified"].sort());
   assert.equal(result.photo, "/api/matchmaking/members/card/photo?v=1");
   const replaced = cards.publicCard({ ...row, revision: 2 }, null, { interviews: 0, milestones: 0, payingCustomers: null }, null);
   assert.equal(replaced.photo, "/api/matchmaking/members/card/photo?v=2");
@@ -72,7 +73,7 @@ test("Matchmaking and Mindset integration in isolated PostgreSQL", { skip: !conn
   const api = { ok: (data: unknown, status = 200) => Response.json({ data }, { status }), fail: (error: string, status = 400) => Response.json({ error }, { status }), failFromError: () => Response.json({ error: "Server failure", code: "internal", requestId: "safe-trace" }, { status: 500 }), unauthorized: () => Response.json({ error: "Login required" }, { status: 401 }), rateLimited: () => Response.json({ error: "Limited" }, { status: 429 }) };
   const mocks = { "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/api": api, "@/lib/auth/guard": { getUserSession: async () => state.uid ? { uid: state.uid } : null, getAdminSession: async () => state.admin ? { role: "admin" } : null }, "@/lib/rate-limit": { MINUTE_MS: 60000, checkRateLimit: async () => ({ ok: !state.limited }) } };
   const http = load<typeof import("../src/lib/member-http")>("src/lib/member-http.ts", mocks);
-  const base = { ...mocks, "@/lib/rewards/service": { rewardTransaction: <T>(work: (tx: unknown) => Promise<T>) => db.$transaction(tx => work(tx)), awardProfile: () => { throw new Error("Unexpected profile award for legacy card-only edits"); } }, "@/lib/member-http": http, "./schema": cards, "./rank":rank };
+  const base = { ...mocks, "@/lib/rewards/service": { rewardTransaction: <T>(work: (tx: unknown) => Promise<T>) => db.$transaction(tx => work(tx)), awardProfile: () => { throw new Error("Unexpected profile award for legacy card-only edits"); } }, "@/lib/member-http": http, "./schema": cards, "./rank":rank, "./roles": roles };
   const service = load<typeof import("../src/lib/matchmaking/service")>("src/lib/matchmaking/service.ts", base);
   const reflections = load<typeof import("../src/lib/mindset/service")>("src/lib/mindset/service.ts", { ...base, "./schema": mindset });
   const routes = { ...base, "@/lib/matchmaking/service": service, "@/lib/mindset/service": reflections };

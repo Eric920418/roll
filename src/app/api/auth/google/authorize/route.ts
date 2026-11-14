@@ -1,3 +1,4 @@
+import { memberRolesSchema, type MemberRole } from "@/lib/matchmaking/roles";
 import { validateReferralCode } from "@/lib/referrals/registration";
 import { referralFailure } from "@/lib/referrals/http";
 import { ReferralError } from "@/lib/referrals/policy";
@@ -11,7 +12,7 @@ import { buildAuthUrl, localePrefixFromNext } from "@/lib/auth/google";
 
 const GOOGLE_STATE_COOKIE = "g_oauth";
 
-function authorize(req: NextRequest, nextParam: string, rollonCode?: string, referralCode?: string) {
+function authorize(req: NextRequest, nextParam: string, rollonCode?: string, referralCode?: string, roles?: MemberRole[]) {
   // 防 open redirect：只接受站內相對路徑
   const next = nextParam.startsWith("/") ? nextParam : "/";
 
@@ -19,7 +20,7 @@ function authorize(req: NextRequest, nextParam: string, rollonCode?: string, ref
     const state = crypto.randomUUID();
     const url = buildAuthUrl(state);
     const res = req.method === "POST" ? NextResponse.json({ data: { url } }) : NextResponse.redirect(url);
-    res.cookies.set(GOOGLE_STATE_COOKIE, JSON.stringify({ state, next, rollonCode, referralCode }), {
+    res.cookies.set(GOOGLE_STATE_COOKIE, JSON.stringify({ state, next, rollonCode, referralCode, roles }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -48,13 +49,15 @@ export async function POST(req: NextRequest) {
     const rl = await checkRateLimit(`signup:${clientIp(req)}`, 10, 15 * MINUTE_MS);
     if (!rl.ok) return rateLimited(rl.retryAfterMs);
     const body = await req.json();
+    const roles = memberRolesSchema.optional().safeParse(body.roles);
+    if (!roles.success) return fail("請選擇至少一種有效身份，不可重複 / Select at least one valid role without duplicates", 400);
     try {
       rollonSignupData(body.rollonCode);
     } catch {
       return fail(INVALID_ROLLON_CODE, 400);
     }
     const referralCode = await validateReferralCode(body.referralCode);
-    return authorize(req, typeof body.next === "string" ? body.next : "/", body.rollonCode, referralCode);
+    return authorize(req, typeof body.next === "string" ? body.next : "/", body.rollonCode, referralCode, roles.data);
   } catch (error) {
     if (error instanceof ReferralError) return referralFailure(error);
     return failFromError(error);

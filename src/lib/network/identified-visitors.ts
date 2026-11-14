@@ -1,3 +1,4 @@
+import { memberRoles } from "@/lib/matchmaking/roles";
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { changed, MemberError } from "@/lib/member-http";
@@ -41,7 +42,7 @@ export async function identifiedVisitors(userId: string, cursor?: string) {
     for (const row of rows) {
       const card = row.viewer.matchmakingProfile;
       if (!card?.visible || excluded.has(row.viewerId) || !identityIsCurrent(row.viewer.viewerPrivacy, row.identityConsentAt, row.identifiedAt)) continue;
-      members.push({ card: publicCard({ ...card, ...cardDraftSchema.parse({ displayName: card.displayName || "", role: card.role, categories: card.categories, country: card.country, industry: card.industry, slogan: card.slogan, offers: card.offers, looksFor: card.looksFor, visibleFields: card.visibleFields }) }, row.viewer.profile, { interviews: 0, payingCustomers: null, milestones: 0 }, null, new Date(), true), viewedAt: row.identifiedAt!.toISOString(), role: row.role, cursor: row.id });
+      members.push({ card: publicCard({ ...card, ...cardDraftSchema.parse({ displayName: card.displayName || "", role: card.role, roles: memberRoles(card), categories: card.categories, country: card.country, industry: card.industry, slogan: card.slogan, offers: card.offers, looksFor: card.looksFor, visibleFields: card.visibleFields }), roles: memberRoles(card) }, row.viewer.profile, { interviews: 0, payingCustomers: null, milestones: 0 }, null, new Date(), true), viewedAt: row.identifiedAt!.toISOString(), role: row.role, cursor: row.id });
       if (members.length > 24) return { members: members.slice(0, 24).map(v => ({ card: v.card, viewedAt: v.viewedAt, role: v.role })), next: members[23]!.cursor, available: true };
     }
     if (rows.length < 100) return { members: members.map(v => ({ card: v.card, viewedAt: v.viewedAt, role: v.role })), next: null, available: true };

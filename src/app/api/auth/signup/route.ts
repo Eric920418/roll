@@ -1,3 +1,4 @@
+import { memberRolesSchema } from "@/lib/matchmaking/roles";
 import { registerWithReferral } from "@/lib/referrals/registration";
 import { referralFailure } from "@/lib/referrals/http";
 import { ReferralError } from "@/lib/referrals/policy";
@@ -35,6 +36,8 @@ export async function POST(req: NextRequest) {
   if (blocked) return blocked;
   try {
     const body = await req.json();
+    const roles = memberRolesSchema.optional().safeParse(body.roles);
+    if (!roles.success) return bad("invalidRoles", "請選擇至少一種有效身份，不可重複 / Select at least one valid role without duplicates", 400);
     const firstName =
       typeof body.firstName === "string" ? body.firstName.trim() : "";
     const lastName =
@@ -87,7 +90,7 @@ export async function POST(req: NextRequest) {
         lastName: lastName || null,
         onboardingStep: 2, // 帳號建立完成 → 進入 Step 2（公司資訊）
         ...(membership ?? newDiscoveryTrial()),
-    }, body.referralCode);
+    }, body.referralCode, roles.data);
 
     const token = await createUserSession(user.id, user.email, user.sessionVersion);
     const res = ok({ nextStep: "company" }, 201);
