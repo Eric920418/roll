@@ -17,10 +17,14 @@ test('Legacy priority layout retains original data and checkbox gates; other cal
   for (const locale of ['en', 'zh-tw']) {
     const load = runtime(locale);
     const Row = load<typeof import('../src/components/dashboard/ActionTaskRow')>('src/components/dashboard/ActionTaskRow.tsx').default;
-    const props = { action, plan, compact: true, featured: true, focusMode: true, workspace: React.createElement('div', null, 'Original work'), onToggle: () => { throw Error('Rendering must not complete a task'); } };
+    const props = { action, plan, compact: true, featured: true, focusMode: true, workspace: React.createElement('div', null, 'Original work'), onEdit: () => {}, onDelete: () => {}, onToggle: () => { throw Error('Rendering must not complete a task'); } };
     const original = JSON.stringify(plan), html = renderToStaticMarkup(React.createElement(Row, props));
     assert(html.includes('data-today-priority')); assert(html.includes('data-task-columns')); assert(html.includes('Original completion criterion')); assert(html.includes('2026-12-01'));
     assert.match(html, /<input[^>]* disabled=""/); assert.equal(JSON.stringify(plan), original);
+    assert.doesNotMatch(html, /Show more|Show less|Expected outcome|Estimated time|Why now|Stage fit|Blocked by \/ Prerequisites|顯示更多|收起|預估時間|為何現在做|階段適合度/);
+    assert(!html.includes(action.bottleneckFit.reason)); assert(!html.includes(action.stageFit.reason));
+    assert(html.includes('Original work')); assert(html.includes(locale === 'en' ? 'Edit' : '編輯')); assert(html.includes(locale === 'en' ? 'Delete' : '刪除'));
+    assert(html.includes(locale === 'en' ? 'How to approach it' : '方法指引'));
     const ready = { ...action, taskWorkspace: { kind: 'positioning' as const, who: 'Founders', pain: 'Manual work', outcome: 'Less work', how: 'Evidence', tested: 3, reaction: 'Actual feedback' } };
     assert(!renderToStaticMarkup(React.createElement(Row, { ...props, action: ready })).match(/<input[^>]* disabled=""/));
     assert.match(renderToStaticMarkup(React.createElement(Row, { ...props, action: { ...ready, dependency: { ...ready.dependency, blocked: true } } })), /<input[^>]* disabled=""/);

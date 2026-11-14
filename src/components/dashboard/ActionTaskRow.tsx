@@ -11,7 +11,6 @@ import LearningResources from "./LearningResources";
 import { workspaceKind, workspaceComplete } from "@/lib/action-plan/workspace";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { priorityTier } from "@/lib/action-plan/ranking";
-import { formatActionTime } from "@/lib/action-plan/time";
 
 export default function ActionTaskRow({ action, busy = false, readOnly = false, onToggle, onMetric, onDependencyChange, revision, onEdit, onDelete, href, compact = false, featured = false, focusMode = false, workspace, results, plan }: { results?: ReactNode; plan?: ActionPlanDto; focusMode?: boolean; workspace?: ReactNode; action: ActionPlanActionDto; busy?: boolean; readOnly?: boolean; revision?: number; onDependencyChange?: (thresholds: Record<string, number | null>, revision?: number) => Promise<boolean | void>; onToggle?: () => void; onMetric?: (metric: { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number }) => Promise<boolean | void>; onEdit?: () => void; onDelete?: () => void; href?: string; compact?: boolean; featured?: boolean }) {
   const { planText, planUnit, displayTaskReference } = usePlanDisplay();
@@ -20,18 +19,10 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
   const status = action.done ? (zh ? "已完成" : "Done") : action.dependency.blocked ? (zh ? "受阻擋" : "Blocked") : (zh ? "可執行" : "Ready");
   const blockedReason = `${zh ? "前置條件" : "Requires"}: ${(action.dependency.milestoneTitle ? planText(action.dependency.milestoneTitle, locale) : "") || (action.dependency.missingLink ? (zh ? "請設定前置任務" : "Link prerequisites") : action.dependency.actionRefs.filter(d => !(d.resolved ?? d.done)).map(d => displayTaskReference(d, locale)).join(", "))}`;
   const button = "min-h-11 rounded-xl border border-dark/15 bg-white px-3 py-2 text-sm disabled:opacity-50";
-  const fullDetails = <>    <details className="group mt-3 text-sm">
-      <summary className="flex min-h-11 w-fit cursor-pointer items-center font-bold text-dark"><span className="group-open:hidden">{zh ? "顯示更多" : "Show more"} ↓</span><span className="hidden group-open:inline">{zh ? "收起" : "Show less"} ↑</span></summary>
-      <dl className="mt-3 space-y-3 whitespace-pre-wrap text-dark/70">
-        <div><dt className="font-semibold">{zh ? "預期成果" : "Expected outcome"}</dt><dd>{outcome}</dd></div>
-        <div><dt className="font-semibold">{zh ? "預估時間" : "Estimated time"}</dt><dd>{action.expectedOutcome.estimatedTime.minDays}–{action.expectedOutcome.estimatedTime.maxDays} {zh ? "天" : "days"} · {formatActionTime(action.difficulty.actionTime, zh ? "zh-tw" : "en")}</dd></div>
-        <div><dt className="font-semibold">{zh ? "為何現在做" : "Why now"}</dt><dd>{planText(action.bottleneckFit.reason, locale)}</dd></div>
-        <div><dt className="font-semibold">{zh ? "階段適合度" : "Stage fit"}</dt><dd>{planText(action.stageFit.reason, locale)}</dd></div>
-        <div><dt className="font-semibold">{zh ? "前置任務" : "Blocked by / Prerequisites"}</dt><dd>{(action.dependency.milestoneTitle ? planText(action.dependency.milestoneTitle, locale) : "") || action.dependency.actionRefs.map(d => displayTaskReference(d, locale)).join(", ") || (zh ? "無" : "None")}{action.dependency.notes ? `\n${planText(action.dependency.notes, locale)}` : ""}</dd></div>
-      </dl>
+  const taskActions = <>
       {!readOnly && onDependencyChange && action.dependency.actionRefs.length > 0 && <TaskDependencyEditor action={action} revision={revision} busy={busy} onSave={onDependencyChange} />}
       <div className="mt-3 flex flex-wrap gap-2">{onEdit && <button type="button" disabled={busy} onClick={onEdit} className={button}>{zh ? "編輯" : "Edit"}</button>}{onDelete && <button type="button" disabled={busy} onClick={onDelete} className={`${button} text-red-700`}>{zh ? "刪除" : "Delete"}</button>}{href && <a href={href} className={button}>{zh ? "開啟今日任務" : "Open today's tasks"} →</a>}</div>
-    </details></>;
+    </>;
   const interviewPending = focusMode && action.recordingMode === "interview" && action.metric?.target != null && (action.metric.current ?? 0) < action.metric.target;
   const workspacePending = focusMode && Boolean(workspaceKind(action)) && workspaceKind(action) !== "interview" && !commercialTask(action) && !workspaceComplete(action.taskWorkspace ?? null);
   const lockReason = interviewPending ? (zh ? "達到有效訪談公司數目標後，才能確認完成" : "Reach the valid company conversation target before confirming completion") : workspacePending ? (zh ? "請先儲存符合完成標準的紀錄" : "Save records that meet the completion criteria first") : blockedReason;
@@ -61,9 +52,9 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
         </dl>
       </section>
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" data-task-columns>
-        <section id={workId} className="min-w-0 scroll-mt-6 space-y-3 rounded-xl border border-dark/10 bg-white p-4 sm:p-5" aria-label={zh ? "本步操作" : "Current step work"}><h3 className="text-base font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">02</span>{zh ? "操作區" : "Your work"}</h3>{metric}{workspace}{fullDetails}
+        <section id={workId} className="min-w-0 scroll-mt-6 space-y-3 rounded-xl border border-dark/10 bg-white p-4 sm:p-5" aria-label={zh ? "本步操作" : "Current step work"}><h3 className="text-base font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">02</span>{zh ? "操作區" : "Your work"}</h3>{metric}{workspace}{taskActions}
         {checkbox && !action.done && (action.dependency.blocked || interviewPending || workspacePending) && <p className="text-sm">{lockReason}</p>}{checkbox && <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}</section>
-        <aside className="min-w-0 space-y-4 rounded-xl border border-dark/10 bg-white p-5"><h3 className="font-bold">{zh ? "方法指引" : "How to approach it"}</h3><p className="whitespace-pre-wrap break-words text-sm leading-6">{planText(action.bottleneckFit.reason, locale)}</p><LearningResources visual kind={workspaceKind(action)} question={title} /></aside>
+        <aside className="min-w-0 space-y-4 rounded-xl border border-dark/10 bg-white p-5"><h3 className="font-bold">{zh ? "方法指引" : "How to approach it"}</h3><LearningResources visual kind={workspaceKind(action)} question={title} /></aside>
       </div>
       {results}
     </article>;
@@ -77,7 +68,7 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
           <span aria-hidden="true" className="ml-auto shrink-0 text-dark/50 group-open/task:rotate-180">⌄</span>
           <span className="sr-only">{zh ? "展開或收合任務" : "Expand or collapse task"}</span>
         </summary>
-        {badges}<div className="mt-4 border-t border-dark/10 pt-4">{focusMode && <p className="text-xs font-semibold tracking-wide text-dark/55">{zh ? "完成標準" : "COMPLETION CRITERIA"}</p>}<p className="mt-2 whitespace-pre-wrap text-base leading-7 text-dark/75">{outcome}</p></div>{focusMode && !workspace && <div className="mt-5"><LearningResources kind={workspaceKind(action)} question={title} /></div>}{metric}{workspace}{fullDetails}{featured && checkbox && <label className="mt-5 inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}
+        {badges}<div className="mt-4 border-t border-dark/10 pt-4">{focusMode && <p className="text-xs font-semibold tracking-wide text-dark/55">{zh ? "完成標準" : "COMPLETION CRITERIA"}</p>}<p className="mt-2 whitespace-pre-wrap text-base leading-7 text-dark/75">{outcome}</p></div>{focusMode && !workspace && <div className="mt-5"><LearningResources kind={workspaceKind(action)} question={title} /></div>}{metric}{workspace}{taskActions}{featured && checkbox && <label className="mt-5 inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}
       </details>
     </div>
   </article>;
@@ -86,6 +77,6 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
       <h3 className={`font-bold ${action.done ? "line-through text-dark/50" : "text-dark"}`}>{title}</h3>{badges}
       <p className="mt-2 line-clamp-3 text-sm leading-6 text-dark/60">{outcome}</p>
       {action.dependency.blocked && <p className="mt-2 text-xs font-semibold text-amber-800">{blockedReason}</p>}{metric}
-    </div></div>{fullDetails}
+    </div></div>{taskActions}
   </article>;
 }
