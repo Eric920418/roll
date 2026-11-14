@@ -29,12 +29,12 @@ export default function MatchmakingPage({ active = true, editOnly = false, membe
   const [selectedView, setView] = useState("recommendations");
   const view = memberView ?? selectedView;
   const [company, setCompany] = useState<{ companyName: string; country: string; industry: string; oneLinePitch: string; companyStage: string } | null>(null);
-  const [role, setRole] = useState("all"), [country, setCountry] = useState(""), [query, setQuery] = useState(""), [q, setQ] = useState("");
+  const [role, setRole] = useState("all");
   const t = useTranslations("Matchmaking"), locale = useLocale() as Locale;
   const [owner, setOwner] = useState<CardOwner | null>(null), [draft, setDraft] = useState<CardDraft | null>(null);
   const [listLoading, setListLoading] = useState(false);
   const listRequest = useRef(0), listAbort = useRef<AbortController | null>(null);
-  const [listing, setListing] = useState<Listing | null>(null), [category, setCategory] = useState("all"), [page, setPage] = useState(1);
+  const [listing, setListing] = useState<Listing | null>(null), [page, setPage] = useState(1);
   const [error, setError] = useState(""), [listError, setListError] = useState(""), [busy, setBusy] = useState(false), [notice, setNotice] = useState("");
   const [editing, setEditing] = useState(editOnly), [previewing, setPreviewing] = useState(false), [consent, setConsent] = useState(false);
   const [latest, setLatest] = useState<CardOwner | null>(null), [conflict, setConflict] = useState(false);
@@ -46,11 +46,11 @@ export default function MatchmakingPage({ active = true, editOnly = false, membe
     listAbort.current?.abort(); const abort = new AbortController(); listAbort.current = abort;
     const signal = callerSignal ? AbortSignal.any([callerSignal, abort.signal]) : abort.signal;
     const request = ++listRequest.current; setListLoading(true); setListError("");
-    return memberFetch<Listing>(`/api/matchmaking?${new URLSearchParams({ view, category, page: String(page), role, country, q })}`, { signal, timeoutMs: 20000 })
+    return memberFetch<Listing>(`/api/matchmaking?${new URLSearchParams({ view, page: String(page), role })}`, { signal, timeoutMs: 20000 })
     .then(result => { if (!result || !Array.isArray(result.cards) || typeof result.hasMore !== "boolean") throw new MemberFetchError(`HTTP 200\n${locale === "zh-tw" ? "會員名單回應格式不正確" : "Invalid member list response"}\ninvalid_response`, 200); if (!signal?.aborted && request === listRequest.current) { setListing(result); setListError(""); track(result.cards.length ? "flow_success" : "search_empty", { feature: "matchmaking" }); } })
     .catch(cause => { if (!signal?.aborted && request === listRequest.current) { setListing(null); setListError(cause instanceof Error ? cause.message : String(cause)); } })
     .finally(() => { if (!signal?.aborted && request === listRequest.current) setListLoading(false); });
-  }, [canBrowse, view, category, page, role, country, q, locale]);
+  }, [canBrowse, view, page, role, locale]);
   const loadOwner = useCallback((signal?: AbortSignal) => memberFetch<CardOwner>("/api/matchmaking/me", { signal })
     .then(result => { if (!signal?.aborted) { setOwner(result); setDraft(result.draft); setCompany({ companyName: result.source?.companyName || "", country: result.source?.country || "", industry: result.source?.industry || "", oneLinePitch: result.source?.oneLinePitch || "", companyStage: result.source?.companyStage || "" }); } })
     .catch(cause => { if (!signal?.aborted) setError(cause instanceof Error ? cause.message : String(cause)); }), []);
@@ -143,15 +143,7 @@ export default function MatchmakingPage({ active = true, editOnly = false, membe
       <div className="flex flex-wrap gap-3"><Link className={`${button} inline-flex items-center bg-black! text-white!`} href={pathForLocale("/dashboard/account#plan", locale)}>{locale === "zh-tw" ? "查看方案與試用狀態" : "View plans & trial status"}</Link><Link className={`${button} inline-flex items-center`} href={pathForLocale("/dashboard/messages", locale)}>{locale === "zh-tw" ? "邀請與聊天" : "Invitations & chats"}</Link><button className={button} onClick={() => void reloadNetwork()}>{locale === "zh-tw" ? "重新確認權益" : "Recheck access"}</button></div>
     </section> : <>
     {!memberView && <div className="flex flex-wrap gap-2" aria-label={locale === "zh-tw" ? "推薦模式" : "Member view"}>{["recommendations", "all"].map(v => <button key={v} type="button" className={`${button} ${view === v ? "bg-black! text-white!" : ""}`} aria-pressed={view === v} onClick={() => { setView(v); setPage(1); }}>{v === "recommendations" ? (locale === "zh-tw" ? "推薦給你" : "Recommendations") : (locale === "zh-tw" ? "所有會員" : "All members")}</button>)}</div>}
-    <div className="flex flex-wrap items-start justify-between gap-2"><nav aria-label={t("role")} className="flex flex-wrap gap-2">{["all", ...ROLES].map(v => <button key={v} className={`min-h-11 rounded-full border px-4 py-2 text-xs font-semibold focus-visible:outline-2 ${role === v ? "border-black bg-black text-white" : "border-dark/15 bg-white"}`} aria-pressed={role === v} onClick={() => { setRole(v); setPage(1); }}>{v === "all" ? (locale === "zh-tw" ? "全部" : "All") : t(`roles.${v}`)}</button>)}</nav>
-    <form className="w-full space-y-3" role="search" onSubmit={e => { e.preventDefault(); setPage(1); setQ(query.trim()); }}>
-      <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="col-span-2 flex items-end gap-2 sm:col-span-1"><label className="min-w-0 flex-1 text-xs">{locale === "zh-tw" ? "搜尋會員" : "Search members"}<input aria-label={locale === "zh-tw" ? "搜尋公開公司卡片" : "Search public company cards"} type="search" maxLength={100} className={input} value={query} onChange={e => setQuery(e.target.value)} placeholder={locale === "zh-tw" ? "公司、簡介或需求" : "Company, pitch or needs"} /></label><button className={`${button} bg-black! text-white!`} type="submit">{locale === "zh-tw" ? "搜尋" : "Search"}</button></div>
-        <CountrySelect compact label={t("fields.country")} value={country} onChange={v => { setCountry(v); setPage(1); }} locale={locale} />
-        <label className="text-xs">{locale === "zh-tw" ? "需求" : "Need"}<select className={input} value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>{["all", ...CATEGORIES].map(v => <option value={v} key={v}>{v === "all" ? (locale === "zh-tw" ? "所有需求" : "All needs") : t(`categories.${v}`)}</option>)}</select></label>
-      </div>
-      {(q || country || category !== "all" || role !== "all") && <button type="button" className={button} onClick={() => { setQ(""); setQuery(""); setCountry(""); setRole("all"); setCategory("all"); setPage(1); }}>{locale === "zh-tw" ? "清除篩選" : "Clear filters"}</button>}
-    </form></div>
+    <nav aria-label={t("role")} className="flex flex-wrap gap-2">{["all", ...ROLES].map(v => <button key={v} className={`min-h-11 rounded-full border px-4 py-2 text-xs font-semibold focus-visible:outline-2 ${role === v ? "border-black bg-black text-white" : "border-dark/15 bg-white"}`} aria-pressed={role === v} onClick={() => { setRole(v); setPage(1); }}>{v === "all" ? (locale === "zh-tw" ? "全部" : "All") : t(`roles.${v}`)}</button>)}</nav>
     {listError && <div role="alert" className="whitespace-pre-wrap break-words rounded-xl bg-red-50 p-4 text-sm text-red-800"><p>{listError}</p>{network?.enabled && !network.network && <Link className={`${button} mt-3 inline-flex items-center`} href={pathForLocale("/dashboard/account#plan", locale)}>{locale === "zh-tw" ? "查看會員網絡方案" : "View network plans"}</Link>}<button className={`${button} mt-3`} onClick={() => void loadList()}>{t("retry")}</button></div>}
     {listLoading && <p role="status" className="text-sm">{t("loading")}</p>}
     {!listing ? null : listing.cards.length ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{listing.cards.map(card => <CardView key={card.id} card={card} footer={<><Link className="inline-flex min-h-11 items-center text-xs font-semibold underline" href={pathForLocale(`/dashboard/matchmaking/${card.id}`, locale)}>{locale === "zh-tw" ? "查看檔案" : "View profile"} →</Link><CardChatAction card={card} network={network} /></>} />)}</div> : <p className="rounded-2xl border border-dark/15 bg-white p-8 text-sm text-dark/70">{t("empty")}</p>}

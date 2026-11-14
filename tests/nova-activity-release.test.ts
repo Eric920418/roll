@@ -129,6 +129,7 @@ test("Switching tabs retains the mounted inbox, marks it inactive and supports k
 
 test("Inactive roundtable panel starts no requests; visible panel loads actual server records", async () => {
   const calls: string[] = [], effects: Array<() => unknown> = [];
+  const events = new EventTarget(), doc = Object.assign(new EventTarget(), { visibilityState: "visible" });
   const component = load<{ default(p: object): ReactNode }>("src/components/dashboard/matchmaking/RoundtablesPanel.tsx", {
     react: { useCallback: (fn: unknown) => fn, useRef: (value: unknown) => ({ current: value }), useEffect: (fn: () => unknown) => effects.push(fn), useState: (value: unknown) => [value, () => {}] },
     "./ReportDraft": {default:()=>null}, "../evidence/Preferences": {default:()=>null}, "next-intl": intl, "next/link": { default: "a" },
@@ -137,11 +138,15 @@ test("Inactive roundtable panel starts no requests; visible panel loads actual s
     "@/lib/action-plan/flow/catalog": { STEPS: [] }, "@/lib/member-options": {},
     "../flow/Templates": {}, "../roundtables/Preparation": { Preparation: () => null, SessionCalendar: () => null, SessionFeedback: () => null },
     "../roundtables/Forms": {},
-  }, { window: { location: { href: "https://nova.test/dashboard/matchmaking?tab=roundtables" } }, setTimeout, clearTimeout, AbortController, AbortSignal });
+  }, { window: Object.assign(events, { location: { href: "https://nova.test/dashboard/matchmaking?tab=roundtables" } }), document: doc, setTimeout, clearTimeout, AbortController, AbortSignal });
   component.default({ userId: "owner", active: false }); effects.splice(0).forEach(fn => fn());
   await new Promise(r => setTimeout(r, 10)); assert.equal(calls.length, 0);
-  component.default({ userId: "owner", active: true }); effects.splice(0).forEach(fn => fn());
+  component.default({ userId: "owner", active: true }); const cleanup = effects.splice(0).map(fn => fn());
   await new Promise(r => setTimeout(r, 10)); assert.deepEqual(calls, ["/api/roundtables"]);
+  events.dispatchEvent(new Event("focus")); await Promise.resolve(); assert.equal(calls.length, 2);
+  doc.visibilityState = "hidden"; events.dispatchEvent(new Event("focus")); doc.dispatchEvent(new Event("visibilitychange")); assert.equal(calls.length, 2);
+  doc.visibilityState = "visible"; doc.dispatchEvent(new Event("visibilitychange")); await Promise.resolve(); assert.equal(calls.length, 3);
+  cleanup.forEach(fn => { if (typeof fn === "function") fn(); }); events.dispatchEvent(new Event("focus")); assert.equal(calls.length, 3);
 });
 
 test("An inactive inbox starts no requests or polling; activating it resumes real inbox data", async () => {

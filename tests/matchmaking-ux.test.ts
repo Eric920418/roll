@@ -235,6 +235,6 @@ test("Member browsing waits for entitlement; restricted accounts retain own-card
   for (const state of [{ enabled: true, network: true }, { enabled: false, network: false }]) {
     const { html, requests } = await render(state);
     assert(requests.some(url => url.startsWith("/api/matchmaking?")));
-    assert.match(html, /role="search"/); assert.doesNotMatch(html, /Your current access does not include/);
+    assert.doesNotMatch(html, /role="search"|Your current access does not include/); assert.match(html, /<nav/);
   }
 });
