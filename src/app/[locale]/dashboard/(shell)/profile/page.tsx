@@ -6,10 +6,7 @@ import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import EvidencePanel from "@/components/dashboard/evidence/EvidencePanel";
-import IcpPanel from "@/components/dashboard/IcpPanel";
 import { getCurrentAccount } from "@/lib/auth/account";
-import { getEffectivePlan } from "@/lib/billing/gate";
-import { planAtLeast } from "@/lib/billing/plans";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
@@ -44,7 +41,7 @@ export default async function CompanyProfilePage({ params }: Props) {
           <Row label={t("icp.homeMarket")} value={p?.country ? countryLabel(p.country, locale) : <MissingProfileField field="country" label={t("icp.homeMarket")} />} />
         </dl>
       </section>
-      <IcpPanel userId={account.id} saved={p?.icpDetails || null} legacy={p?.icp || null} version={p?.icpVersion || 0} canUseAi={planAtLeast(getEffectivePlan(account), "pro")} /></div>
+      </div>
       <EvidencePanel userId={account.id} />
     </div>
   </div>;
