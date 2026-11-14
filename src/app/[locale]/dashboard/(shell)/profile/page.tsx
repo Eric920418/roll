@@ -1,3 +1,6 @@
+import MissingProfileField from "@/components/dashboard/MissingProfileField";
+import { COMPANY_STAGES } from "@/lib/action-plan/constants";
+import { INDUSTRIES, COMPANY_SIZES } from "@/components/auth/onboarding-options";
 import { countryLabel } from "@/lib/member-options";
 import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -32,13 +35,13 @@ export default async function CompanyProfilePage({ params }: Props) {
       <div className="min-w-0 space-y-5"><section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6">
         <h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("icp.company")}</h2>
         <dl className="mt-4 divide-y divide-dark/10">
-          <Row label={t("account.companyName")} value={p?.companyName || na} />
-          <Row label={t("icp.pitch")} value={p?.oneLinePitch || na} />
-          <Row label={t("account.industry")} value={opt("industry", p?.industry)} />
-          <Row label={t("icp.companyStage")} value={p?.companyStage ? t.has(`icp.stages.${p.companyStage}`) ? t(`icp.stages.${p.companyStage}`) : p.companyStage : na} />
-          <Row label={t("account.companySize")} value={opt("companySize", p?.companySize)} />
-          <Row label={t("account.website")} value={p?.website ? <a href={p.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{p.website}</a> : na} />
-          <Row label={t("icp.homeMarket")} value={p?.country ? countryLabel(p.country, locale) : na} />
+          <Row label={t("account.companyName")} value={p?.companyName || <MissingProfileField field="companyName" label={t("account.companyName")} maxLength={300} />} />
+          <Row label={t("icp.pitch")} value={p?.oneLinePitch || <MissingProfileField field="oneLinePitch" label={t("icp.pitch")} maxLength={500} />} />
+          <Row label={t("account.industry")} value={p?.industry ? opt("industry", p.industry) : <MissingProfileField field="industry" label={t("account.industry")} options={INDUSTRIES.map(value => ({ value, label: tOpt(`industry.${value}`) }))} />} />
+          <Row label={t("icp.companyStage")} value={p?.companyStage ? t.has(`icp.stages.${p.companyStage}`) ? t(`icp.stages.${p.companyStage}`) : p.companyStage : <MissingProfileField field="companyStage" label={t("icp.companyStage")} options={COMPANY_STAGES.map(value => ({ value, label: t(`icp.stages.${value}`) }))} />} />
+          <Row label={t("account.companySize")} value={p?.companySize ? opt("companySize", p.companySize) : <MissingProfileField field="companySize" label={t("account.companySize")} options={COMPANY_SIZES.map(value => ({ value, label: tOpt(`companySize.${value}`) }))} />} />
+          <Row label={t("account.website")} value={p?.website ? <a href={p.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{p.website}</a> : <MissingProfileField field="website" label={t("account.website")} maxLength={2000} />} />
+          <Row label={t("icp.homeMarket")} value={p?.country ? countryLabel(p.country, locale) : <MissingProfileField field="country" label={t("icp.homeMarket")} />} />
         </dl>
       </section>
       <IcpPanel userId={account.id} saved={p?.icpDetails || null} legacy={p?.icp || null} version={p?.icpVersion || 0} canUseAi={planAtLeast(getEffectivePlan(account), "pro")} /></div>
