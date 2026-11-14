@@ -9,24 +9,7 @@ import { button, TextField } from '../flow/Templates';
 import { useDraft, Choice } from './Forms';
 type Session = RoundtableState['sessions'][number];
 type Write = (v: unknown) => Promise<boolean>;
-const prep = z.object({ question: z.string().max(2000), share: z.boolean() }), autoForm = z.object({ name: z.string().max(100), question: z.string().max(2000), language: z.string(), consent: z.boolean(), requestId: z.string() });
-export function AutoGroup({ userId, disabled, write }: {
-    userId: string;
-    disabled: boolean;
-    write: Write;
-}) {
-    const zh = useLocale() === 'zh-tw', w = (a: string, b: string) => zh ? a : b;
-    const { draft, change, clear, warning } = useDraft('nova:auto-group:' + userId, { name: '', question: '', language: zh ? 'zh-tw' : 'en', consent: false, requestId: '' }, autoForm);
-    return <details className="space-y-3 rounded-xl border p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w('依階段、產業與時區自動配組', 'Find a group by stage, industry and time zone')}</summary><form className="space-y-3" onSubmit={e => {
-            e.preventDefault();
-            const requestId = draft.requestId || crypto.randomUUID();
-            change({ ...draft, requestId });
-            void write({ action: 'autoApply', ...draft, requestId, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }).then(ok => {
-                if (ok)
-                    clear();
-            });
-        }}><fieldset disabled={disabled} className="space-y-3"><TextField label={w('本場顯示名稱', 'Name for this session')} value={draft.name} onChange={name => change({ ...draft, name })}/><TextField multiline label={w('想請小組回饋的問題', 'Question for the group')} value={draft.question} onChange={question => change({ ...draft, question })}/><Choice label={w('會議語言', 'Session language')} value={draft.language} options={[["zh-tw", "繁體中文"], ["en", "English"], ["ja", "日本語"], ["ko", "한국어"], ["other", w('其他', 'Other')]]} onChange={language => change({ ...draft, language })}/><label className="flex min-h-11 items-start gap-3 py-2 text-sm"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={draft.consent} onChange={e => change({ ...draft, consent: e.target.checked })}/>{w('同意依現有資格提交一場配組申請，主持可查看問題；正式入選後與同組分享顯示名稱及承諾。', 'Apply to one matching session under my existing access. The host may review my question; confirmed group members may see my name and commitments.')}</label><button className={button} disabled={disabled || !draft.consent}>{w('配組並提交申請', 'Match and submit application')}</button></fieldset></form>{warning && <p role="status">{warning}</p>}</details>;
-}
+const prep = z.object({ question: z.string().max(2000), share: z.boolean() });
 export function Preparation({ userId, session, disabled, write }: {
     userId: string;
     session: Session;
