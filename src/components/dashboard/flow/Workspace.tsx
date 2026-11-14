@@ -1,5 +1,5 @@
 "use client";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { memberFetch } from "@/lib/member-fetch";
@@ -27,6 +27,7 @@ export default function Workspace({ userId, plan, onChanged }: { userId: string;
   const [savedVersion, setSavedVersion] = useState(0);
   const [comparison, setComparison] = useState(false), [weeklyOpen, setWeeklyOpen] = useState(false);
   const loadRequest = useRef(0);
+  const backgroundRequest = useRef(false);
   const supplementRequest = useRef<string | null>(null);
   const busyRef = useRef(false), heading = useRef<HTMLHeadingElement>(null);
   const base = "/api/action-plans/flow?locale=" + locale;
@@ -42,8 +43,8 @@ export default function Workspace({ userId, plan, onChanged }: { userId: string;
     }
     setDraft(data); setComparison(false); setLink("");
   }, [cacheKey, zh]);
-  const load = useCallback(async (id = plan.id, preserve = false) => {
-    const request = ++loadRequest.current; setLoading(true);
+  const load = useCallback(async (id = plan.id, preserve = false, background = false) => {
+    const request = ++loadRequest.current; if (!background) setLoading(true);
     try {
       const next = await memberFetch<FlowView>(base + "&planId=" + encodeURIComponent(id));
       if (request !== loadRequest.current) return null;
@@ -51,15 +52,32 @@ export default function Workspace({ userId, plan, onChanged }: { userId: string;
       if (!preserve) { requestAnimationFrame(() => { const id = window.location.hash.slice(1); if (id) document.getElementById(id)?.scrollIntoView({ block: "start" }); }); const linked = next.steps.find(s => window.location.hash === "#action-" + s.actionId && (s.done || s.id === next.current)); choose(next, linked?.id || next.current || next.steps.at(-1)?.id || null); }
       return next;
     } catch (error) { if (request === loadRequest.current) setError(error instanceof Error ? error.message : String(error)); return null; }
-    finally { if (request === loadRequest.current) setLoading(false); }
+    finally { if (!background && request === loadRequest.current) setLoading(false); }
   }, [base, plan.id, choose]);
-  useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+  useEffect(() => { const request = loadRequest, timer = setTimeout(() => void load(), 0); return () => { clearTimeout(timer); request.current++; }; }, [load]);
   const step = view?.steps.find(s => s.id === selected), spec = STEPS.find(s => s.id === selected);
+  const refreshProgress = useEffectEvent((newerVersionOnly = false) => {
+    if (!view || view.archived || busyRef.current || loading || backgroundRequest.current || document.visibilityState !== "visible") return;
+    if (newerVersionOnly && (view.plan.id !== plan.id || (view.plan.revision || 0) >= (plan.revision || 0))) return;
+    // Keep the editing revision with unsaved input so a refresh cannot bypass conflict checks.
+    if (JSON.stringify(draft) !== JSON.stringify(step?.data || null)) return;
+    backgroundRequest.current = true;
+    void load(view.plan.id, true, true).then(next => {
+      if (next) choose(next, selected === view.current ? next.current || selected : selected, false);
+    }).finally(() => { backgroundRequest.current = false; });
+  });
+  useEffect(() => { const timer = setTimeout(() => refreshProgress(true), 0); return () => clearTimeout(timer); }, [plan.revision, busy, loading]);
+  useEffect(() => {
+    const refresh = () => refreshProgress();
+    window.addEventListener("focus", refresh); document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, []);
   const disabled = busy || loading;
   const readOnly = Boolean(view?.archived || step?.done || selected !== view?.current);
   const saved = step?.id === "02-2" || Boolean(step?.saved && JSON.stringify(draft) === JSON.stringify(step.data));
   function change(data: FlowData) {
     if (!view || !selected) return;
+    if (backgroundRequest.current) loadRequest.current++;
     setDraft(data);
     try { localStorage.setItem(cacheKey(view.plan.id, selected), JSON.stringify(data)); }
     catch { setNotice(w("本機暫存失敗，離開前請先儲存。", "Local draft could not be saved; save before leaving.")); }
@@ -95,7 +113,10 @@ export default function Workspace({ userId, plan, onChanged }: { userId: string;
     if (await mutate({action:"supplement",requestId})) { supplementRequest.current=null;try{localStorage.removeItem(key);}catch{/* A saved round is recognised before the next request. */} }
   }
   if (!view) return <section className="rounded-2xl border border-dark/15 p-5"><p role="status">{w("載入 16 步行動計畫…", "Loading your sixteen-step plan…")}</p>{error && <p role="alert" className="whitespace-pre-wrap break-words text-red-800">{error}</p>}<button className={button} disabled={loading} type="button" onClick={() => void load()}>{w("重試", "Retry")}</button></section>;
-  const displayPlan = view.steps.length === 0 ? view.plan : { ...view.plan, roadmap: view.plan.roadmap ? { ...view.plan.roadmap, milestones: view.plan.roadmap.milestones.map(m => ({ ...m, title: words(MILESTONES[m.position], locale) })) } : null };
+  const displayPlan = view.steps.length === 0 ? view.plan : { ...view.plan, actions: view.plan.actions.map(a => {
+    const evaluated = view.steps.find(s => s.actionId === a.id);
+    return evaluated ? { ...a, metric: { unit: a.metric?.unit || null, current: evaluated.done || evaluated.id === view.current ? evaluated.current : 0, target: evaluated.target } } : a;
+  }), roadmap: view.plan.roadmap ? { ...view.plan.roadmap, milestones: view.plan.roadmap.milestones.map(m => ({ ...m, title: words(MILESTONES[m.position], locale) })) } : null };
   const preview = draft?.kind === "organize" && selected === "01-2" ? positioningPreview(draft.values, zh) : "";
   const unappliedPositioning = Boolean(preview && draft?.kind === "organize" && preview !== draft.values.positioning);
   const lastMilestone = view.plan.roadmap?.milestones.filter(m => m.achievedAt).at(-1);
