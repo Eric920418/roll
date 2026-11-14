@@ -138,7 +138,7 @@ test("Inactive roundtable panel starts no requests; visible panel loads actual s
     "@/lib/action-plan/flow/catalog": { STEPS: [] }, "@/lib/member-options": {},
     "../flow/Templates": {}, "../roundtables/Preparation": { Preparation: () => null, SessionCalendar: () => null, SessionFeedback: () => null },
     "../roundtables/Forms": {},
-  }, { window: Object.assign(events, { location: { href: "https://nova.test/dashboard/matchmaking?tab=roundtables" } }), document: doc, setTimeout, clearTimeout, AbortController, AbortSignal });
+  }, { window: Object.assign(events, { location: { href: "https://nova.test/dashboard/matchmaking?tab=roundtables" } }), document: doc, setTimeout, clearTimeout, setInterval: () => 1, clearInterval() {}, AbortController, AbortSignal });
   component.default({ userId: "owner", active: false }); effects.splice(0).forEach(fn => fn());
   await new Promise(r => setTimeout(r, 10)); assert.equal(calls.length, 0);
   component.default({ userId: "owner", active: true }); const cleanup = effects.splice(0).map(fn => fn());

@@ -74,6 +74,55 @@ test("Mentor drafts keep their version across reload and require explicit latest
   }
 });
 
+function certificationPanel(locale: string, compact = false) {
+  const slots: unknown[] = [], effects: Array<() => void> = [], timers = new Map<number, () => void>(), intervals = new Map<number, () => void>();
+  const events = new EventTarget(), documentEvents = new EventTarget();
+  let cursor = 0, timerId = 0, reads = 0, active = true, failure = "";
+  const document = Object.assign(documentEvents, { visibilityState: "visible" });
+  let server = { certification: { status: "pending", revision: 1, draft: mentor, note: "" }, sessions: [], serverTime: new Date().toISOString(), canApply: false };
+  const changed = (a: unknown[] | undefined, b: unknown[]) => !a || a.length !== b.length || b.some((v, i) => v !== a[i]);
+  const hooks = { ...React,
+    useState(value: unknown) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === "function" ? value() : value; return [slots[i], (v: unknown) => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
+    useRef(value: unknown) { const i = cursor++; if (!(i in slots)) slots[i] = { current: value }; return slots[i]; },
+    useCallback(fn: unknown, deps: unknown[]) { const i = cursor++, old = slots[i] as { fn: unknown; deps: unknown[] } | undefined; if (changed(old?.deps, deps)) slots[i] = { fn, deps }; return (slots[i] as { fn: unknown }).fn; },
+    useEffect(fn: () => (() => void) | void, deps: unknown[]) { const i = cursor++, old = slots[i] as { deps: unknown[]; cleanup?: () => void } | undefined; if (changed(old?.deps, deps)) { slots[i] = { deps }; effects.push(() => { old?.cleanup?.(); Object.assign(slots[i]!, { cleanup: fn() }); }); } },
+  };
+  const load = pdfRuntime({ react: hooks, "next-intl": { useLocale: () => locale }, "next/link": { __esModule: true, default: "Link" },
+    "@/lib/member-fetch": { MemberFetchError: Error, memberFetch: async () => { reads++; if (failure) throw new Error(failure); return structuredClone(server); } },
+    "../roundtables/Forms": { MentorForm: "MentorForm", SessionForm: "SessionForm", Choice: "Choice", languageLabel: (v: string) => v }, "../roundtables/Preparation": {}, "../flow/Templates": { button: "", TextField: "Field" },
+  }, { AbortController, window: Object.assign(events, { location: { href: "https://qa.invalid/dashboard/matchmaking?tab=roundtables" } }), document,
+    setTimeout: (fn: () => void) => { timers.set(++timerId, fn); return timerId; }, clearTimeout: (id: number) => timers.delete(id),
+    setInterval: (fn: () => void, ms: number) => { assert.equal(ms, 30000); intervals.set(++timerId, fn); return timerId; }, clearInterval: (id: number) => intervals.delete(id),
+  });
+  const Panel = load<typeof import("../src/components/dashboard/matchmaking/RoundtablesPanel")>("src/components/dashboard/matchmaking/RoundtablesPanel.tsx").default;
+  type Node = React.ReactElement<{ children?: React.ReactNode; ref?: { current: unknown }; open?: boolean; onClick?: () => void; role?: string }>;
+  function render() { cursor = 0; const nodes: Node[] = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (!React.isValidElement<Node["props"]>(child)) return; nodes.push(child); if (child.type === "details" && child.props.ref && !child.props.ref.current) child.props.ref.current = { open: false }; visit(child.props.children); }); } visit(Panel({ userId: "qa", active, compact })); return nodes; }
+  async function settle() { for (let i = 0; i < 8; i++) { render(); effects.splice(0).forEach(fn => fn()); const pending = [...timers.values()]; timers.clear(); pending.forEach(fn => fn()); await Promise.resolve(); } return render(); }
+  return { render, settle, reads: () => reads, intervals, status: (status: string) => { server = { ...server, certification: { ...server.certification, status, revision: server.certification.revision + 1 } }; },
+    tick: async () => { [...intervals.values()].forEach(fn => fn()); return settle(); }, active: (v: boolean) => { active = v; }, visible: (v: string) => { document.visibilityState = v; }, fail: (v: string) => { failure = v; } };
+}
+
+test("Mentor approval reaches an open foreground panel without reload and exposes hosting; revocation removes it", async () => {
+  for (const locale of ["en", "zh-tw"]) for (const compact of [false, true]) {
+    const h = certificationPanel(locale, compact); await h.settle();
+    assert.equal(h.reads(), 1); h.status("approved"); const nodes = await h.tick();
+    assert.equal(h.reads(), 2, "Read the administrator decision without navigation or a focus event");
+    if (compact) assert(nodes.some(n => n.props.children === (locale === "en" ? "Create roundtable" : "建立圓桌會議")));
+    else { assert(nodes.some(n => n.type === "SessionForm")); assert.equal((nodes.find(n => n.type === "details")!.props.ref!.current as { open: boolean }).open, true, "Approved host form must be visible outside the application deep link"); }
+    h.status("revoked"); assert(!(await h.tick()).some(n => n.type === "SessionForm"));
+    h.visible("hidden"); const reads = h.reads(); await h.tick(); assert.equal(h.reads(), reads);
+    h.active(false); await h.settle(); assert.equal(h.intervals.size, 0);
+  }
+});
+
+test("Certification refresh retains complete errors until an explicit retry", async () => {
+  const h = certificationPanel("zh-tw"); await h.settle(); h.fail("HTTP 503\n審核狀態讀取失敗\nmentor-trace");
+  let nodes = await h.tick(); assert(nodes.some(n => typeof n.props.children === "string" && n.props.children.includes("HTTP 503\n審核狀態讀取失敗\nmentor-trace")));
+  const reads = h.reads(); h.fail(""); await h.tick(); assert.equal(h.reads(), reads, "Polling cannot erase a failure or draft conflict");
+  nodes.find(n => n.type === "button" && n.props.children === "載入最新狀態並保留草稿")!.props.onClick!(); nodes = await h.settle();
+  assert.equal(h.reads(), reads + 1); assert(!nodes.some(n => n.props.role === "alert"));
+});
+
 test("Roundtable boundaries reject forged certifications, capacity outside 4–6, unsafe links and unconsented applications", () => {
   assert(!mentorDraftSchema.safeParse({ ...mentor, status: "approved" }).success);
   assert(!mentorDraftSchema.safeParse({ ...mentor, references: ["javascript:alert(1)"] }).success);
@@ -134,6 +183,10 @@ test("Roundtables in isolated PostgreSQL: certification, concurrent seats, appro
       await assert.rejects(service.reviewMentor(host.email, { id: cert.id, revision: 1, status: "approved", note: "Own review" }), /own/);
       const race = await Promise.allSettled(Array.from({ length: 2 }, () => service.reviewMentor("reviewer@qa.invalid", { id: cert.id, revision: 1, status: "approved", note: "Professional references verified" })));
       assert.equal(race.filter(r => r.status === "fulfilled").length, 1);
+      const refreshed = await service.getRoundtables(host.id);
+      assert.equal(refreshed.certification?.status, "approved", "Member reads the same persisted decision as the admin queue");
+      assert.equal(refreshed.certification?.revision, 2);
+      assert.equal((await service.getRoundtables(outsider.id)).certification, null, "Approval belongs only to its applicant");
       await assert.rejects(run(host.id, { action: "mentorApply", revision: 2, draft: { ...mentor, publicName: "Unreviewed name" }, consent: true }), /overwritten/);
       await certify(otherHost.id);
       assert.equal(JSON.stringify(await db.user.findUnique({ where: { id: host.id }, include: { matchmakingProfile: true } })), beforeHost, "Certification cannot change investor verification, roles or plans");

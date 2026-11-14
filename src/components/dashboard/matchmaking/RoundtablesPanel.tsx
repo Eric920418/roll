@@ -49,6 +49,14 @@ export default function RoundtablesPanel({ userId, active = true, compact = fals
   useEffect(() => { if (!active) return; const abort = new AbortController(); const timer = setTimeout(() => void load(new URL(window.location.href).searchParams.get("roundtable") || undefined, abort.signal), 0); return () => { clearTimeout(timer); abort.abort(); }; }, [active, load]);
   useEffect(() => {
     if (!active) return;
+    const timer = setInterval(() => { if (document.visibilityState === "visible" && !writing.current && !loading && !error) void load(selected || undefined); }, 30000);
+    return () => clearInterval(timer);
+  }, [active, error, load, loading, selected]);
+  useEffect(() => {
+    if (active && !compact && data?.certification?.status === "approved" && mentorDetails.current) mentorDetails.current.open = true;
+  }, [active, compact, data?.certification?.status]);
+  useEffect(() => {
+    if (!active) return;
     const refresh = () => { if (document.visibilityState === "visible" && !writing.current && !error) void load(selected || undefined); };
     window.addEventListener("focus", refresh); document.addEventListener("visibilitychange", refresh);
     return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
