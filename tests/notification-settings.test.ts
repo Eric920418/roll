@@ -21,7 +21,7 @@ test('Short notification labels preserve separate receiving, email consent and t
     let index=0;const draft=evidencePreferencesSchema.parse({acceptMessages:false,task:true,timeZone:'Europe/Warsaw'});
     const load=pdfRuntime({react:{...React,useState:(v:unknown)=>[index++===1?draft:v,()=>{}],useEffect(){}},'next-intl':{useLocale:()=>locale}});
     const Preferences=load<typeof import('../src/components/dashboard/evidence/Preferences')>('src/components/dashboard/evidence/Preferences.tsx').default;
-    const html=renderToStaticMarkup(React.createElement(Preferences,{embedded:true}));assert.equal((html.match(/type="checkbox"/g)||[]).length,6);assert(html.includes('Europe/Warsaw'));assert(html.includes(locale==='en'?'Advanced settings':'進階設定'));assert(!html.includes('<details open'));
+    const html=renderToStaticMarkup(React.createElement(Preferences,{embedded:true}));assert.equal((html.match(/type="checkbox"/g)||[]).length,5);assert(html.includes('Europe/Warsaw'));assert(html.includes('<datalist'));assert(!html.includes('Share anonymous conversation counts'));
     assert(!evidencePreferencesSchema.safeParse({acceptMessages:'false'}).success);assert.equal(draft.connection,false);assert.equal(draft.task,true);
   }
 });
