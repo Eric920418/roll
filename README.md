@@ -1,3 +1,7 @@
+# 訊息頁合併通知入口（2026-11-14）
+
+訊息工具列只保留一個「Notifications／通知」入口，移除重複的 Notification settings／通知設定按鈕。統一進入通知頁後即可找到設定入口；公司資料 PDF 繼續依既有權限呈現。中英文同步，不改通知偏好、未讀紀錄、聊天資料或 API。驗收：10／10 項既有訊息分頁回歸、範圍 ESLint、pnpm build 與 diff 檢查通過；正式版面與設定流程待部署後核對。
+
 # 訊息區標題與重新載入精簡（2026-11-14）
 
 商機媒合的訊息分頁移除「Invitations & messages／邀請與訊息」視覺標題與常駐 Reload／重新載入按鈕，工具列下方直接顯示聊天清單，縮小工具列及訊息區間距。沿用分頁可見時的自動更新；讀取／傳送失敗仍顯示完整安全錯誤與重試，草稿及聊天紀錄保持原值。獨立元件保留頁面主標題，正式入口仍走原訊息分頁。不更動 API、權限或資料庫。驗收：本批獨立程式快照 28／28 項訊息與會員網絡回歸通過（隔離 PostgreSQL、零略過），範圍 ESLint、pnpm build、diff 檢查通過。正式部署 dpl_NNVyzcm8PdMeTeffQyr8T5h9F4FV 已 Ready 並綁定 rollon.com.tw；中英文 1440px／390px 實測訊息區無重複標題與常駐 Reload，工具列直接接聊天清單，無水平溢位。截圖：/Users/eric/.codex/visualizations/2026/11/14/nova-inbox-simple/desktop.png 與 mobile.png。未發送真實聊天或變更會員設定；手機採瀏覽器模擬，未做實機測試。
