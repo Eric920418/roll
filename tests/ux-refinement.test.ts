@@ -52,9 +52,11 @@ test('Compact country filters retain all choices and existing values in both lan
     const props = { locale, value, label: 'Country', onChange: () => { throw new Error('Rendering cannot change a country'); } };
     const full = renderToStaticMarkup(React.createElement(Country, props));
     const compact = renderToStaticMarkup(React.createElement(Country, { ...props, compact: true }));
-    assert(!compact.includes('type="search"')); assert(full.includes('type="search"'));
+    assert(!compact.includes('type="search"')); assert(!full.includes('type="search"'));
+    assert.equal((full.match(/<select/g) || []).length, 1);
+    if (value === 'Existing country') { assert(!full.includes('Existing country ·')); assert.match(full, /value="Existing country" disabled="" selected=""/); }
     assert.equal((compact.match(/<option/g) || []).length, (full.match(/<option/g) || []).length);
     assert((compact.match(/<option/g) || []).length > 200);
-    assert(compact.includes(`value="${value}" selected=""`));
+    assert.match(compact, new RegExp(`value="${value}"[^>]*selected=""`));
   }
 });

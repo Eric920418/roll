@@ -460,38 +460,6 @@ details[open] > summary:not(.list-none)::after {
   }
 }
 
-/* When the custom red-dot cursor is active, hide the native cursor everywhere
-   except inside text-editable fields where the I-beam is needed. */
-html.custom-cursor-active,
-html.custom-cursor-active * {
-  cursor: none !important;
-}
-html.custom-cursor-active input[type="text"],
-html.custom-cursor-active input[type="email"],
-html.custom-cursor-active input[type="search"],
-html.custom-cursor-active input[type="url"],
-html.custom-cursor-active input[type="tel"],
-html.custom-cursor-active input[type="password"],
-html.custom-cursor-active input[type="number"],
-html.custom-cursor-active textarea {
-  cursor: text !important;
-}
-
-/* Native modal dialogs sit above document overlays, including the custom cursor. */
-html.custom-cursor-active dialog:modal,
-html.custom-cursor-active dialog:modal *,
-html.custom-cursor-active dialog:modal::backdrop {
-  cursor: auto !important;
-}
-html.custom-cursor-active dialog:modal :is(a, button, summary, [role="button"], [role="link"]) {
-  cursor: pointer !important;
-}
-html.custom-cursor-active dialog:modal :is(textarea, [contenteditable="true"]) {
-  cursor: text !important;
-}
-html:has(dialog:modal) [data-custom-cursor] {
-  visibility: hidden;
-}
 
 body {
   font-family: var(--font-body);

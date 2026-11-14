@@ -356,9 +356,6 @@ async function openInputOptions(page) {
   await summary.waitFor({state:'visible'});if(!await summary.evaluate(e=>e.parentElement.open))await summary.click();
   await assist.waitFor({state:'visible'});
 }
-async function openTaskTools(page) {
-  const tools=page.locator('#task-tools');await tools.waitFor({state:'visible'});if(await tools.evaluate(e=>e.tagName==='DETAILS'&&!e.open))await tools.locator(':scope > summary').click();
-}
 async function languageQA() {
   const {context,page}=await session('desktop',1440),owner=users.desktop;
   const title='Run paid pilot offer with 3 prospects to test willingness to pay',criterion='At least 1 of 3 prospects agrees to a paid pilot, confirming a validated willingness-to-pay price point.',milestone='Validate ICP through structured customer discovery';
@@ -489,9 +486,7 @@ async function flowCore(key, width, locale) {
   }
   await responsive('Conversation template');
   await openInputOptions(page,locale);check('Talk entry opens source drafting '+locale,await article.locator('[data-task-assist]').isVisible());await article.locator('[data-conversation-form] > details > summary').click();
-  check('Initial goal expands map ' + width, await page.locator('#action-map').evaluate(e => e.open));
-  check('Only one actionable map step ' + width, await page.locator('#action-map button').count() === 1);
-  await page.locator('#action-map > summary').click();
+  check('Five milestones are visible without duplicate step list ' + width, await page.locator('#action-map li').count() === 5 && await page.locator('#action-map summary').count() === 0 && await page.locator('#action-map button').count() === 0);
   await article.getByLabel(w('目標市場／國家', 'Target market / country'), { exact: true }).fill('TW');
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   for (let i = 0; i < 10; i++) {
@@ -515,19 +510,17 @@ async function flowCore(key, width, locale) {
 
   check('Conflict keeps tenth conversation ' + width, await article.getByLabel(w('對象姓名', 'Person'), { exact: true }).last().inputValue() === 'Person 9');
   await saved(); await page.reload(); await article.getByRole('heading', { name: w('與 10 位目標客戶對話，確認痛點與付費意願', 'Talk with 10 target customers about pain and willingness to pay'), exact: true }).waitFor();
-  check('Goal expansion is shown once ' + width, !await page.locator('#action-map').evaluate(e => e.open));
+  check('All milestones survive reload ' + width, await page.locator('#action-map li').count() === 5);
   await screenshot(page, 'flow-conversation-' + locale + '-' + width);
   await completed(w('寫出一句話定位，並請 5 位受訪者確認', 'Write a positioning statement and confirm it with five conversation participants'));
   const originalCompleted = JSON.stringify(await db.actionItem.findUnique({where:{id:plan.actions[0].id}}));
-  if(!await page.locator('#action-map').evaluate(e=>e.open))await page.locator('#action-map > summary').click();
-  await page.locator('#action-map').getByRole('button',{name:/01-1/}).click();
+  await page.getByRole('button',{name:w('← 上一步','← Previous step'),exact:true}).click();
   const chooser=article.getByRole('region',{name:w('已儲存對話','Saved conversations'),exact:true}).getByRole('button').first();
   check('Completed conversations remain navigable '+locale,await chooser.isEnabled()); await chooser.click();
   check('Completed conversation fields stay read only '+locale,await article.getByLabel(w('公司','Company'),{exact:true}).isDisabled()&&await article.getByLabel(w('公司','Company'),{exact:true}).inputValue()==='Flow company 0');
   check('Reading another completed record does not mutate it '+locale,JSON.stringify(await db.actionItem.findUnique({where:{id:plan.actions[0].id}}))===originalCompleted);
   await page.getByRole('button',{name:w('回到目前一步','Return to the current step'),exact:true}).click();
   await article.getByRole('heading',{name:w('寫出一句話定位，並請 5 位受訪者確認','Write a positioning statement and confirm it with five conversation participants'),exact:true}).waitFor();
-  if(await page.locator('#action-map').evaluate(e=>e.open))await page.locator('#action-map > summary').click();
   const fourFields=[[w('目標客戶（誰）','Target customer (who)'),'B2B founders'],[w('情境（什麼時候最痛）','Situation (when it hurts)'),'before sales outreach'],[w('要解決的痛點','Problem to solve'),'unclear customer needs'],[w('與現有做法的差別','Difference from current solutions'),'reviewed customer evidence']];
   for(const [label,value] of fourFields)await article.getByLabel(label,{exact:true}).fill(value);
   const preview=await article.locator('[data-positioning-editor] blockquote').innerText();
@@ -561,7 +554,7 @@ async function flowCore(key, width, locale) {
     if(i===2){
       const table=article.locator('#positioning-confirmations');check('Priority shows three real confirmations '+locale,(await article.locator('[data-today-priority]').innerText()).includes('3 / 5'));
       for(const size of [390,768,1440]){await page.setViewportSize({width:size,height:1100});await page.locator('[data-next-step="goal"]').scrollIntoViewIfNeeded();check('Positioning layout '+locale+size,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));const boxes=await article.locator('[data-task-columns] > *').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));check('Work and guide columns '+locale+size,size===1440?Math.abs(boxes[0].y-boxes[1].y)<2:boxes[1].y>boxes[0].y);check('Real confirmation statuses '+locale+size,await table.getByText(w('符合','Fits'),{exact:true}).count()===3&&await table.getByText(w('未回覆','No response'),{exact:true}).count()===7);check('Task touch targets '+locale+size,await article.locator('button:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=43)));if(size<=768)check('Mobile and tablet priority title has full width '+locale,await article.locator('[data-today-priority]').evaluate(e=>e.querySelector('h2').getBoundingClientRect().width>=e.getBoundingClientRect().width*.7));await screenshot(page,'flow-positioning-'+locale+'-'+size);}
-      const map=page.locator('#action-map');await map.locator(':scope > summary').focus();await page.keyboard.press('Enter');check('Action map opens with keyboard '+locale,await map.evaluate(e=>e.open));await page.keyboard.press('Enter');check('Action map closes with keyboard '+locale,!await map.evaluate(e=>e.open));
+      check('All five milestone names and dates remain visible '+locale,await page.locator('#action-map li').count()===5&&await page.locator('#action-map summary').count()===0);
       await page.setViewportSize({width,height:1000});
     }
 
@@ -605,7 +598,7 @@ async function flowCore(key, width, locale) {
     await saved();await screenshot(page,'flow-supplement-zh-tw');
   }
   await completed(w('向 3 位 A 級客戶提出付費試點', 'Send paid pilot proposals to three A leads'));
-  check('Milestone completion expands map ' + width, await page.locator('#action-map').evaluate(e => e.open));
+  check('Milestone completion advances overview ' + width, (await page.locator('#action-map li[aria-current=step]').innerText()).startsWith('02'));
   const proposals=article.getByRole('group',{name:w('公司聯絡表','Company outreach table'),exact:true}).getByRole('button');
   check('Only confirmed A leads carried to proposals '+width,await proposals.count()===3);
   for(let i=0;i<await proposals.count();i++) {
@@ -636,17 +629,13 @@ async function flowCore(key, width, locale) {
   await screenshot(page, 'flow-document-' + locale + '-' + width);
   check('Old completed records remain byte-identical ' + width, JSON.stringify(await db.actionItem.findMany({ where: { actionPlanId: oldPlan }, orderBy: { id: 'asc' } })) === before);
   check('Old plan is archived ' + width, Boolean((await db.actionPlan.findUnique({ where: { id: oldPlan } })).archivedAt));
-  const history = page.getByText(w('計畫歷史與新計畫', 'Plan history and a new plan'), {exact:true}).locator('..');
-  await openTaskTools(page);await history.locator('summary').click();
-  const historyResponse = waitResponse(page, r => r.request().method() === 'GET' && r.url().includes('planId=' + oldPlan));
-  await history.getByRole('button').nth(1).click(); await historyResponse;
-  const goalHeader = page.locator('header[data-next-step="goal"]');
-  await goalHeader.getByText(w('歷史版本，唯讀','Archived, read only'), { exact: false }).waitFor();
-  check('Archived plan shows its actual task count ' + width, !(await goalHeader.innerText()).includes('16') && (await goalHeader.innerText()).includes('/ ' + JSON.parse(before).length));
-  const activeResponse = waitResponse(page, r => r.request().method() === 'GET' && r.url().includes('planId=' + plan.id));
-  await page.getByRole('button', { name: w('回到目前計畫', 'Return to the active plan'), exact: true }).click(); await activeResponse;
+  check('Plan history controls removed ' + locale, await page.getByText(w('計畫歷史與新計畫', 'Plan history and a new plan'), {exact:true}).count() === 0 && await page.getByRole('button', {name:w('回到目前計畫','Return to the active plan'),exact:true}).count() === 0);
+  await page.getByRole('button', {name:w('← 上一步','← Previous step'),exact:true}).click();
+  await page.getByRole('heading', {name:w('向 3 位 A 級客戶提出付費試點','Send paid pilot proposals to three A leads'),exact:true}).waitFor();
+  check('Previous step preserves completed records ' + locale, await article.getByText(w('此步驟的完成成果已保留，不能覆寫。','This completed result is retained and cannot be overwritten.'), {exact:false}).isVisible());
+  await page.getByRole('button', {name:w('回到目前一步','Return to the current step'),exact:true}).click();
   await page.getByRole('heading', { name: w('取得付款或簽約證據', 'Obtain payment or signed contract evidence'), exact: true }).waitFor();
-  check('Return from history preserves the active step ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
+  check('Return to current step preserves the active task ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
   let prospectRequests=0;page.on('request',request=>{if(new URL(request.url()).pathname==='/api/prospects'&&request.method()==='GET')prospectRequests++;});
   await page.clock.install();await page.goto(origin+prefix+'/dashboard/matchmaking?tab=prospects');await page.waitForURL(/dashboard\/agenda#prospects/);await page.getByRole('dialog',{name:w('尋找新公司','Find new companies'),exact:true}).waitFor();await page.getByRole('region',{name:w('找新公司','Find new companies'),exact:true}).waitFor();check('Legacy prospect link opens search dialog '+locale,true);
   const beforeActivePoll=prospectRequests,poll=waitResponse(page,response=>new URL(response.url()).pathname==='/api/prospects'&&response.request().method()==='GET');await page.clock.fastForward(61000);await poll;check('Visible prospect search polls '+locale,prospectRequests>beforeActivePoll);await page.getByRole('button',{name:w('關閉搜尋','Close search'),exact:true}).click();await page.goto(origin+prefix+'/dashboard/matchmaking?tab=messages');await page.locator('#matchmaking-panel-messages').waitFor();const requestsBeforeHidden=prospectRequests;await page.clock.fastForward(61000);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await page.waitForTimeout(150);check('Leaving task workspace stops prospect polling '+locale,prospectRequests===requestsBeforeHidden);
@@ -704,8 +693,7 @@ async function task16QA() {
         check('44px task controls '+id+locale+width,await page.locator('#goal-roadmap button:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=43)));
         const alerts=(await page.locator('main [role=alert]').allInnerTexts()).filter(t=>t.trim());check('No runtime alerts '+id+locale+width+(alerts.length?' '+alerts.join(' | '):''),alerts.length===0);
         if(id==='03-2')check('Earlier proposals remain actionable on comparison step '+locale+width,await page.getByRole('region',{name:w('提案跟進','Proposal follow-up'),exact:true}).isVisible());
-        const map=page.locator('#action-map');if(await map.evaluate(e=>e.open))await map.locator(':scope > summary').click();
-        await map.locator(':scope > summary').focus();await page.keyboard.press('Enter');check('Keyboard map '+id+locale+width,await map.evaluate(e=>e.open));await page.keyboard.press('Enter');
+        check('Five milestones without repeated step list '+id+locale+width,await page.locator('#action-map li').count()===5&&await page.locator('#action-map summary').count()===0);
         if(id==='03-3'||id==='05-3'){const chapters=page.getByRole('group',{name:w('文件章節','Document chapters'),exact:true}).getByRole('button');await chapters.nth(3).click();check('Single chapter editor '+id+locale+width,await page.locator('#task-work > fieldset textarea').count()===1);await chapters.first().click();}
         await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0);});await page.evaluate(()=>document.fonts.ready);
         if(width!==768)await screenshot(page,'task16-'+id+'-'+locale+'-'+width);
@@ -1454,9 +1442,9 @@ async function commerceSettingsQA() {
   for(const locale of ['en','zh-tw']){const zh=locale==='zh-tw',prefix=zh?'/zh-tw':'';await member.page.goto(origin+prefix+'/product');await member.page.locator('#pricing').getByText(zh?'搜尋每 5 家 25 Token':'Search five companies for 25 Token',{exact:false}).waitFor();for(const width of [390,768,1440]){await member.page.setViewportSize({width,height:1000});check('Published public pricing '+locale+width,await member.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(member.page,'commerce-public-'+locale+'-'+width);}}
   const card=await db.matchmakingProfile.findUniqueOrThrow({where:{userId:users.newpaid.id}});await member.page.goto(origin+'/dashboard/matchmaking/'+card.id);const invite=member.page.getByRole('button',{name:'Request to chat',exact:true});await invite.waitFor();check('Member invitation displays published fee',(await invite.locator('..').innerText()).includes('9 Token'));
   await member.page.goto(origin+'/dashboard/account#plan');check('Billing page stays available after token-only policy publish',await member.page.getByRole('heading',{level:1}).count()===1);response=waitResponse(member.page,r=>r.url().endsWith('/api/billing/subscribe')&&r.request().method()==='POST');await member.page.getByTestId('subscribe-pro').click();assert.equal((await response).status(),503);await member.page.getByRole('alert').filter({hasText:'HTTP 503'}).waitFor();check('Unavailable PayPal checkout shows full HTTP error',true);
-  const generated=await member.context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale:'en',requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:'Private pricing QA',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Verify pricing without provider calls',bottleneckConfidence:65},answers:[{question:'Progress',answer:'Private prototype'},{question:'Bottleneck',answer:'Customer research'},{question:'Goal',answer:'Verify pricing settings'}]}});assert.equal(generated.status(),201);const plan=(await generated.json()).data;users.desktop.flowActionIds=plan.actions.map(a=>a.id);await member.page.goto(origin+'/dashboard/agenda');await closeTour(member.page,'en');await member.page.getByRole('region',{name:'Find new companies',exact:true}).getByRole('button',{name:'Find 5 companies',exact:true}).click();const search=member.page.getByRole('dialog',{name:'Find new companies',exact:true});const find=search.getByRole('button',{name:'Find 5 new companies',exact:true});await find.waitFor();check('Task search shows published fee and quota',(await search.innerText()).includes('0/15')&&(await search.innerText()).includes('25 Token held'));
+  const generated=await member.context.request.post(origin+'/api/action-plans/generate',{headers:{origin},data:{locale:'en',requestId:randomUUID(),candidateCount:5,diagnosis:{companyStage:'MVP',stageReason:'Private pricing QA',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Verify pricing without provider calls',bottleneckConfidence:65},answers:[{question:'Progress',answer:'Private prototype'},{question:'Bottleneck',answer:'Customer research'},{question:'Goal',answer:'Verify pricing settings'}]}});assert.equal(generated.status(),201);const plan=(await generated.json()).data;users.desktop.flowActionIds=plan.actions.map(a=>a.id);await member.page.goto(origin+'/dashboard/agenda');await closeTour(member.page,'en');await member.page.getByRole('region',{name:'Find new companies',exact:true}).getByRole('button',{name:'Find 5 companies',exact:true}).click();const search=member.page.getByRole('dialog',{name:'Find new companies',exact:true});const find=search.getByRole('button',{name:'Find 5 new companies',exact:true});await find.waitFor();await search.getByText('Billing and refund rules',{exact:true}).click();check('Task search keeps billing rules without quota clutter',!(await search.innerText()).includes('Delivered this month')&&!(await search.innerText()).includes('Token held; charged only')&&(await search.innerText()).includes('25 Token'));
   await search.getByRole('textbox',{name:'Target buyer description',exact:true}).fill('Private QA buyer criteria without supplier submission');await search.getByRole('checkbox').check();response=waitResponse(member.page,r=>r.url().endsWith('/api/prospects/orders')&&r.request().method()==='POST');await find.click();const created=await response;assert.equal(created.status(),202);check('Task search sends the published quote version',created.request().postDataJSON().pricingVersion===2);const orderId=(await created.json()).data.id,fee=await db.tokenReservation.findFirstOrThrow({where:{resourceId:orderId}}),wallet=await db.tokenWallet.findUniqueOrThrow({where:{userId:users.desktop.id}});check('Task search reserves the configured amount once',fee.amount===25&&wallet.available===125&&wallet.reserved===25);const local=await db.prospectingOrder.findUniqueOrThrow({where:{id:orderId}});check('Pricing QA never submits to the supplier',local.providerOrderId===null&&local.submittedAt===null);
-  await member.page.goto(origin+'/zh-tw/dashboard/agenda');await closeTour(member.page,'zh-tw');await member.page.getByRole('region',{name:'找新公司',exact:true}).getByRole('button',{name:'尋找 5 家公司',exact:true}).click();const chineseSearch=member.page.getByRole('dialog',{name:'尋找新公司',exact:true});await chineseSearch.getByRole('button',{name:'搜尋 5 家新公司',exact:true}).waitFor();check('Chinese task search shows published fee and quota',(await chineseSearch.innerText()).includes('0/15')&&(await chineseSearch.innerText()).includes('預扣 25 Token'));
+  await member.page.goto(origin+'/zh-tw/dashboard/agenda');await closeTour(member.page,'zh-tw');await member.page.getByRole('region',{name:'找新公司',exact:true}).getByRole('button',{name:'尋找 5 家公司',exact:true}).click();const chineseSearch=member.page.getByRole('dialog',{name:'尋找新公司',exact:true});await chineseSearch.getByRole('button',{name:'搜尋 5 家新公司',exact:true}).waitFor();await chineseSearch.getByText('計費與退款規則',{exact:true}).click();check('Chinese task search keeps billing rules without quota clutter',!(await chineseSearch.innerText()).includes('本月交付')&&!(await chineseSearch.innerText()).includes('確定未交付則退回')&&(await chineseSearch.innerText()).includes('25 Token'));
   // Simulate a lost acknowledgement after the server saves, then retry the same request.
   await page.getByLabel('交流邀請預扣 Token',{exact:true}).fill('11');const requests=[];await page.route('**/api/admin/billing/settings',async route=>{if(route.request().method()!=='POST')return route.continue();requests.push(route.request().postDataJSON());if(requests.length===1){const saved=await route.fetch();assert.equal(saved.status(),200);await route.abort();}else await route.continue();});
   await page.getByRole('button',{name:'儲存草稿',exact:true}).click();await page.getByRole('alert').filter({hasText:'fetch'}).waitFor();check('Lost save acknowledgement keeps editor input',await page.getByLabel('交流邀請預扣 Token',{exact:true}).inputValue()==='11');response=waitResponse(page,r=>r.url().endsWith('/api/admin/billing/settings')&&r.request().method()==='POST');await page.getByRole('button',{name:'儲存草稿',exact:true}).click();assert.equal((await response).status(),200);check('Lost save retries the same request',requests.length===2&&JSON.stringify(requests[0])===JSON.stringify(requests[1]));await page.unroute('**/api/admin/billing/settings');

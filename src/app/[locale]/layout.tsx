@@ -8,7 +8,6 @@ import { routing, type Locale } from "@/i18n/routing";
 import { Noto_Sans_TC, Archivo_Black } from "next/font/google";
 import { SITE_URL } from "@/lib/routes";
 import { localBusinessSchema } from "@/lib/schema";
-import RedDotCursor from "@/components/ui/RedDotCursor";
 import "../globals.css";
 
 export async function generateMetadata({
@@ -177,7 +176,6 @@ export default async function LocaleLayout({ children, params }: Props) {
         />
         <NextIntlClientProvider messages={messages}>
           {children}
-          <RedDotCursor />
           <Analytics />
         </NextIntlClientProvider>
       </body>
