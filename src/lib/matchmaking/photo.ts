@@ -5,6 +5,7 @@ import { get, put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { MemberError, changed } from "@/lib/member-http";
 import { requestHash } from "./service";
+import { googlePhotoUrl } from "./schema";
 
 export const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 function privateToken() {
@@ -44,14 +45,36 @@ export async function savePhoto(userId: string, revision: number, requestId: str
   return { saved: true };
 }
 export async function readPhoto(userId: string, id?: string, ownBlurred = false) {
-  const row = id ? await prisma.matchmakingProfile.findFirst({ where: { id, visibleFields: { has: "photo" } }, select: { sourcePolicy: true, userId: true, visible: true, blurredPhoto: true, originalPhoto: true } }) : await prisma.matchmakingProfile.findUnique({ where: { userId }, select: { blurredPhoto: true, originalPhoto: true } });
+  const user = { select: { googleId: true, image: true } } as const;
+  const row = id ? await prisma.matchmakingProfile.findFirst({ where: { id, visibleFields: { has: "photo" } }, select: { sourcePolicy: true, userId: true, visible: true, blurredPhoto: true, originalPhoto: true, user } }) : await prisma.matchmakingProfile.findUnique({ where: { userId }, select: { blurredPhoto: true, originalPhoto: true, user } });
   if (id && row && "sourcePolicy" in row && row.sourcePolicy === 2 && !networkEnabled()) throw new MemberError("照片尚未公開 / Photo not available", 404);
   const peer = id && row && "userId" in row && networkEnabled() ? await (await import("@/lib/network/access")).acceptedConnection(String(row.userId), userId) : null;
   if (id && row && "visible" in row && !row.visible && !peer) throw new MemberError("找不到照片 / Photo not found", 404);
   if (id && row && "userId" in row && networkEnabled() && row.userId !== userId && !peer) await (await import("@/lib/network/access")).requireNetwork(userId);
   const path = id ? (peer ? row?.originalPhoto : row?.blurredPhoto) : ownBlurred ? row?.blurredPhoto : row?.originalPhoto;
-  if (!path) throw new MemberError("找不到照片 / Photo not found", 404);
-  const blob = await get(path, { access: "private", token: privateToken(), useCache: false });
-  if (!blob || blob.statusCode !== 200) throw new MemberError("照片暫時無法讀取 / Photo is temporarily unavailable", 502);
-  return new Response(blob.stream, { headers: { "Content-Type": "image/webp", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
+  let body: BodyInit;
+  if (path) {
+    const blob = await get(path, { access: "private", token: privateToken(), useCache: false });
+    if (!blob || blob.statusCode !== 200) throw new MemberError("照片暫時無法讀取 / Photo is temporarily unavailable", 502);
+    body = blob.stream;
+  } else {
+    const image = googlePhotoUrl(row?.user.googleId ? row.user.image : null);
+    if (!image) throw new MemberError("找不到照片 / Photo not found", 404);
+    try {
+      const response = await fetch(image, { redirect: "error", cache: "no-store", signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw new Error(`Google avatar HTTP ${response.status}`);
+      if (Number(response.headers.get("content-length")) > MAX_PHOTO_BYTES) { await response.body?.cancel(); throw new Error("Google avatar exceeds 3 MiB"); }
+      if (!response.body) throw new Error("Google avatar response is empty");
+      const reader = response.body.getReader(), chunks: Uint8Array[] = []; let size = 0;
+      for (;;) {
+        const { done, value } = await reader.read(); if (done) break;
+        size += value.byteLength;
+        if (size > MAX_PHOTO_BYTES) { await reader.cancel(); throw new Error("Google avatar exceeds 3 MiB"); }
+        chunks.push(value);
+      }
+      const buffers = await photoBuffers(Buffer.concat(chunks), response.headers.get("content-type")?.split(";")[0] || "");
+      body = new Uint8Array(id && !peer || ownBlurred ? buffers.blurred : buffers.original);
+    } catch (cause) { throw new MemberError("Google 頭像讀取失敗 / Google photo unavailable\n" + (cause instanceof Error ? cause.message : String(cause)), 502); }
+  }
+  return new Response(body, { headers: { "Content-Type": "image/webp", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
 }

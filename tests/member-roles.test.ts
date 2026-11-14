@@ -47,12 +47,13 @@ test("Signup and card identities persist in PostgreSQL, filter in both categorie
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) }), ids: string[] = [];
   const env = { MEMBER_NETWORK_ENABLED: "true", BILLING_REQUIRE_EXPLICIT_ENTITLEMENT: "true", DISCOVERY_TRIAL_ENABLED: "true", GOOGLE_CLIENT_ID: "test", GOOGLE_CLIENT_SECRET: "test" };
   const googleEmail = `roles-google-${randomUUID()}@example.invalid`;
+  let googleImage = "https://lh3.googleusercontent.com/a/first=s96-c";
   const load = pdfRuntime({
     "server-only": {}, "@/lib/prisma": { prisma: db },
     "@/lib/auth/account": { getBetaAccess: async () => false },
     "@/lib/auth/password": { hashPassword: async () => "qa-password-hash" },
     "@/lib/auth/session": { createUserSession: async () => "qa-session", USER_SESSION_COOKIE: "user_session", SESSION_MAX_AGE: 600 },
-    "@/lib/auth/google": { buildAuthUrl: (s: string) => `https://accounts.google.com/auth?state=${s}`, localePrefixFromNext: () => "", exchangeCodeForProfile: async () => ({ sub: "roles-" + googleEmail, email: googleEmail, emailVerified: true }) },
+    "@/lib/auth/google": { buildAuthUrl: (s: string) => `https://accounts.google.com/auth?state=${s}`, localePrefixFromNext: () => "", exchangeCodeForProfile: async () => ({ sub: "roles-" + googleEmail, email: googleEmail, emailVerified: true, picture: googleImage }) },
     "@/lib/rate-limit": { MINUTE_MS: 60000, clientIp: () => "127.0.0.1", checkRateLimit: async () => ({ ok: true }) },
     "@/lib/security/log": { logSecurityError: () => "qa-reference", publicErrorMessage: () => "QA safe error" },
     "@/lib/action-plan/service": {}, "@/lib/evidence/service": {},
@@ -82,9 +83,12 @@ test("Signup and card identities persist in PostgreSQL, filter in both categorie
     assert.equal((await callback.GET(req)).status, 307);
     const google = await db.user.findUniqueOrThrow({ where: { email: googleEmail }, include: { matchmakingProfile: true } }); ids.push(google.id);
     assert.deepEqual(google.matchmakingProfile!.roles, ["mentor", "investor"]);
+    assert.equal((await cards.getMyCard(google.id)).hasPhoto, true);
+    googleImage = "https://lh3.googleusercontent.com/a/updated=s96-c";
     assert.equal((await access.features(google.id)).verifiedInvestor, false); assert.equal((await access.features(google.id)).network, false);
     req.cookies.set("g_oauth", JSON.stringify({ ...saved, roles: ["buyer"] })); await callback.GET(req);
     assert.deepEqual((await db.matchmakingProfile.findUniqueOrThrow({ where: { userId: google.id } })).roles, ["mentor", "investor"], "Existing Google login must not overwrite identities");
+    assert.equal((await db.user.findUniqueOrThrow({ where: { id: google.id } })).image, googleImage);
     env.MEMBER_NETWORK_ENABLED = "false";
     const off = await registration.registerWithReferral({ email: `roles-off-${randomUUID()}@example.invalid` }, undefined, ["buyer", "partner"]); ids.push(off.id);
     assert.deepEqual((await db.matchmakingProfile.findUniqueOrThrow({ where: { userId: off.id } })).roles, ["buyer", "partner"]);
@@ -107,6 +111,12 @@ test("Signup and card identities persist in PostgreSQL, filter in both categorie
     before = await cards.writeMyCard(owner.id, { action: "save", revision: before.revision, requestId: randomUUID(), draft: oldDraft });
     assert.deepEqual(Array.from(before.draft.roles!), ["mentor", "founder"], "Legacy editor does not remove secondary roles");
     await db.user.update({ where: { id: owner.id }, data: { plan: "business", subscriptionStatus: "ACTIVE", paypalSubscriptionId: `qa-${randomUUID()}`, currentPeriodEnd: new Date(Date.now() + 86400000) } });
+    const googleCompany = `Google photo ${randomUUID()}`;
+    await db.onboardingProfile.create({ data: { userId: google.id, companyName: googleCompany, country: "TW", industry: "saas", targetMarkets: [], needs: [] } });
+    await db.matchmakingProfile.update({ where: { userId: google.id }, data: { visible: true } });
+    const imported = await cards.getMemberCard(owner.id, google.matchmakingProfile!.id);
+    assert(imported.photo?.startsWith('/api/matchmaking/members/')); assert(!JSON.stringify(imported).includes('googleusercontent'));
+    assert((await cards.listCards(owner.id, null, 1, { q: googleCompany })).cards[0].photo);
     const rounds = load<typeof import("../src/lib/roundtables/service")>("src/lib/roundtables/service.ts");
     assert.equal((await rounds.getRoundtables(owner.id)).canApply, true, "Founder secondary identity remains eligible");
     let investor = await cards.getMyCard(google.id);

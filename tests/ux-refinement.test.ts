@@ -60,3 +60,43 @@ test('Compact country filters retain all choices and existing values in both lan
     assert.match(compact, new RegExp(`value="${value}"[^>]*selected=""`));
   }
 });
+
+test('Chat invitation states the fee once while keeping refund terms, consent, action and full errors', () => {
+  for (const locale of ['en', 'zh-tw']) {
+    let index = 0;
+    const failure = 'HTTP 503 · invite_failed · trace-qa\nComplete failure detail';
+    const states = [{ enabled: true, invite: true, verifiedInvestor: false, pricing: { inviteFee: 7, version: 1 } }, '', { own: false, connection: null }, [], failure, false];
+    const load = pdfRuntime({
+      react: { ...React, useEffect() {}, useRef: () => ({ current: null }), useCallback: (fn: unknown) => fn, useState: () => [states[index++], () => {}] },
+      'next-intl': { useLocale: () => locale }, 'next/link': 'a', 'next/navigation': { useSearchParams: () => new URLSearchParams() },
+      './ReportDraft': {}, '../evidence/Preferences': {}, './ViewerOverview': {}, '../matchmaking/CardView': {},
+    });
+    const Invite = load<typeof import('../src/components/dashboard/network/NetworkPanels')>('src/components/dashboard/network/NetworkPanels.tsx').InvitePanel;
+    const html = renderToStaticMarkup(React.createElement(Invite, { profileId: 'qa', opening: 'Hello' }));
+    assert.equal((html.match(/7 Token/g) || []).length, 1);
+    for (const term of locale === 'en' ? ['acceptance', 'decline', 'cancellation', 'seven days', 'separate consent'] : ['接受後扣款', '拒絕', '撤回', '七日', '另行同意']) assert(html.includes(term));
+    assert(html.includes(locale === 'en' ? 'Request to chat' : '提出交流'));
+    assert(html.includes('role="alert"')); assert(html.includes(failure));
+    assert(!html.includes(locale === 'en' ? 'Fees and data use' : '費用與資料使用規則'));
+  }
+});
+
+test('Member detail explains a match once while retaining public facts, invitation and full errors', () => {
+  for (const locale of ['en', 'zh-tw']) {
+    let index = 0;
+    const failure = 'HTTP 503 · profile_failed · trace-member\nComplete profile failure';
+    const card = { id: 'qa', displayName: 'QA founder', companyName: 'QA company', role: 'founder', roles: ['founder'], categories: ['collaboration'], reasons: ['industry'], companyPitch: 'Original public pitch', offers: 'Original public offer', activity: 'week' };
+    const before = JSON.stringify(card);
+    const load = pdfRuntime({
+      react: { ...React, useEffect() {}, useCallback: (fn: unknown) => fn, useState: (value: unknown) => [index++ === 0 ? card : index === 2 ? failure : value, () => {}] },
+      'next-intl': { useLocale: () => locale, useTranslations: () => (key: string) => key }, 'next/link': 'a', 'next/image': 'img',
+      '../network/NetworkPanels': { InvitePanel: () => React.createElement('button', null, 'Invite'), VisitRecorder: () => null },
+    });
+    const Detail = load<typeof import('../src/components/dashboard/matchmaking/MemberDetail')>('src/components/dashboard/matchmaking/MemberDetail.tsx').default;
+    const html = renderToStaticMarkup(React.createElement(Detail, { id: 'qa' }));
+    const reason = locale === 'en' ? 'You share a public industry' : '你們公開的產業相同';
+    assert.equal(html.split(reason).length - 1, 1);
+    for (const fact of ['QA company', card.companyPitch, card.offers, 'Invite', failure]) assert(html.includes(fact));
+    assert(html.includes('role="alert"')); assert.equal(JSON.stringify(card), before);
+  }
+});

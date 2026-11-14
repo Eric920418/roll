@@ -32,3 +32,16 @@ test('Localized dependency references preserve identity, quantities and workflow
   assert.equal(JSON.stringify(action), before); assert.equal(workspaceKind(action), 'pilot');
   assert.equal(displayTaskReference(action, 'en'), 'Milestone 2 · #3 · '+sample[1][0]+' (0/1 companies)');
 });
+
+
+test('Stored long step titles and cached translations resolve to the same short names', () => {
+  for (const step of STEPS) for (const locale of ['en', 'zh-tw']) {
+    const expected = locale === 'zh-tw' ? step.title[0] : conversationCopy(step.title[1]);
+    for (const title of [...step.previousTitle, ...step.title, conversationCopy(step.previousTitle[1])]) {
+      assert.equal(planText(title, locale, { [title]: 'Outdated translated step heading' }), expected);
+    }
+    for (const text of [step.criteria[0], step.guide[0]]) assert.equal(planText(text, 'zh-tw'), text);
+    const quote = `Customer said: ${step.previousTitle[1]}`;
+    assert.equal(planText(quote, locale), quote);
+  }
+});

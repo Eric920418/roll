@@ -38,11 +38,11 @@ export async function identifiedVisitors(userId: string, cursor?: string) {
   const members: { card: ReturnType<typeof publicCard>; viewedAt: string; role: string; cursor: string }[] = [];
   let after = cursor;
   for (;;) {
-    const rows = await prisma.memberVisit.findMany({ where, orderBy: [{ identifiedAt: "desc" }, { id: "desc" }], take: 100, ...(after ? { cursor: { id: after }, skip: 1 } : {}), include: { viewer: { select: { viewerPrivacy: true, matchmakingProfile: true, profile: { select: sourceSelect } } } } });
+    const rows = await prisma.memberVisit.findMany({ where, orderBy: [{ identifiedAt: "desc" }, { id: "desc" }], take: 100, ...(after ? { cursor: { id: after }, skip: 1 } : {}), include: { viewer: { select: { viewerPrivacy: true, googleId: true, image: true, matchmakingProfile: true, profile: { select: sourceSelect } } } } });
     for (const row of rows) {
       const card = row.viewer.matchmakingProfile;
       if (!card?.visible || excluded.has(row.viewerId) || !identityIsCurrent(row.viewer.viewerPrivacy, row.identityConsentAt, row.identifiedAt)) continue;
-      members.push({ card: publicCard({ ...card, ...cardDraftSchema.parse({ displayName: card.displayName || "", role: card.role, roles: memberRoles(card), categories: card.categories, country: card.country, industry: card.industry, slogan: card.slogan, offers: card.offers, looksFor: card.looksFor, visibleFields: card.visibleFields }), roles: memberRoles(card) }, row.viewer.profile, { interviews: 0, payingCustomers: null, milestones: 0 }, null, new Date(), true), viewedAt: row.identifiedAt!.toISOString(), role: row.role, cursor: row.id });
+      members.push({ card: publicCard({ ...card, ...cardDraftSchema.parse({ displayName: card.displayName || "", role: card.role, roles: memberRoles(card), categories: card.categories, country: card.country, industry: card.industry, slogan: card.slogan, offers: card.offers, looksFor: card.looksFor, visibleFields: card.visibleFields }), roles: memberRoles(card), googlePhoto: row.viewer.googleId ? row.viewer.image : null }, row.viewer.profile, { interviews: 0, payingCustomers: null, milestones: 0 }, null, new Date(), true), viewedAt: row.identifiedAt!.toISOString(), role: row.role, cursor: row.id });
       if (members.length > 24) return { members: members.slice(0, 24).map(v => ({ card: v.card, viewedAt: v.viewedAt, role: v.role })), next: members[23]!.cursor, available: true };
     }
     if (rows.length < 100) return { members: members.map(v => ({ card: v.card, viewedAt: v.viewedAt, role: v.role })), next: null, available: true };

@@ -1,7 +1,7 @@
 import { MILESTONES, STEPS } from './flow/catalog';
 import { DIAGNOSTIC_QUESTIONS } from './builder-draft';
 import { taskReference } from './ranking';
-import { conversationCopy } from './constants';
+import { conversationCopy, shortStepTitle } from './constants';
 
 const legacy = [
     ['Validate ICP through structured customer discovery', '透過結構化客戶訪談，驗證目標客戶輪廓'],
@@ -43,6 +43,8 @@ export function planUnit(value: string, locale: string) {
 
 // Only complete known system phrases are localized; member content and unknown text stay verbatim.
 export function planText(value: string, locale: string, translations: Readonly<Record<string, string>> = {}): string {
+  const stepTitle = shortStepTitle(value, locale);
+  if (stepTitle) return stepTitle;
   if (Object.hasOwn(translations, value)) return translations[value];
   if (locale !== 'zh-tw') {
     const known = english.get(normalize(value));

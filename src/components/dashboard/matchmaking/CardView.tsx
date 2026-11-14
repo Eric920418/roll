@@ -11,7 +11,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { PublicCard } from "@/lib/matchmaking/schema";
 
 export function PrivatePhoto({ url, alt, avatar = false }: { url: string; alt: string; avatar?: boolean }) {
-  const t = useTranslations("Matchmaking");
+  const t = useTranslations("Matchmaking"), zh = useLocale() === "zh-tw";
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState({ url: "", attempt: -1, src: "", error: "" });
   const { src, error } = result.url === url && result.attempt === attempt ? result : { src: "", error: "" };
@@ -21,16 +21,20 @@ export function PrivatePhoto({ url, alt, avatar = false }: { url: string; alt: s
       try {
         const response = await fetch(url, { cache: "no-store", signal: abort.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}\n${await response.text()}`);
-        objectUrl = URL.createObjectURL(await response.blob());
+        const type = response.headers.get("content-type") || "";
+        if (!type.startsWith("image/")) throw new Error(`HTTP ${response.status}\n${type || "Missing Content-Type"}\ninvalid_photo_response`);
+        const blob = await response.blob();
+        if (!blob.size) throw new Error(`HTTP ${response.status}\nempty_photo_response`);
+        objectUrl = URL.createObjectURL(blob);
         if (!abort.signal.aborted) setResult({ url, attempt, src: objectUrl, error: "" }); else URL.revokeObjectURL(objectUrl);
       } catch (cause) { if (!abort.signal.aborted) setResult({ url, attempt, src: "", error: cause instanceof Error ? cause.message : String(cause) }); }
     })();
     return () => { abort.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [url, attempt]);
   return <div className={avatar ? "relative size-11 rounded-full bg-[#e9e9e6]" : "relative aspect-square overflow-hidden rounded-xl bg-[#e9e9e6]"}>
-    {src && <Image src={src} alt={alt} width={480} height={480} unoptimized className={"h-full w-full object-cover object-center " + (avatar ? "rounded-full" : "")} />}
+    {src && <Image src={src} alt={alt} width={480} height={480} unoptimized onError={() => setResult(previous => previous.url === url && previous.attempt === attempt ? { ...previous, src: "", error: (zh ? "圖片無法解碼，請重試或重新上傳。" : "Photo could not be decoded. Retry or upload it again.") + "\nimage_decode_failed" } : previous)} className={"h-full w-full object-cover object-center " + (avatar ? "rounded-full" : "")} />}
     {!src && !error && <p role="status" className={avatar ? "sr-only" : "absolute inset-0 flex items-center justify-center p-4 text-sm"}>{t("loadingPhoto")}</p>}
-    {error && <div role="alert" className={avatar ? "absolute left-0 top-0 z-20 max-h-64 w-64 max-w-[70vw] overflow-auto rounded-xl border border-red-200 bg-white p-3 whitespace-pre-wrap break-words text-xs text-red-800" : "absolute inset-0 overflow-auto whitespace-pre-wrap break-words p-4 text-xs text-red-800"}><p>{error}</p><button type="button" className="mt-3 min-h-11 rounded-lg border border-dark/20 bg-white px-4 text-sm" onClick={() => setAttempt(value => value + 1)}>{t("retry")}</button></div>}
+    {error && <div role="alert" className={avatar ? "absolute left-0 top-0 z-20 max-h-64 w-64 max-w-[70vw] overflow-auto rounded-xl border border-red-200 bg-white p-3 whitespace-pre-wrap break-words text-xs text-red-800" : "absolute inset-0 overflow-auto whitespace-pre-wrap break-words p-4 text-xs text-red-800"}><p>{error}</p><button type="button" className="mt-3 min-h-11 rounded-lg border border-dark/20 bg-white px-4 text-sm" onClick={event => { event.preventDefault(); event.stopPropagation(); setAttempt(value => value + 1); }}>{t("retry")}</button></div>}
   </div>;
 }
 const actionButton = "inline-flex min-h-11 items-center justify-center rounded-full border border-dark/20 bg-black px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -62,7 +66,6 @@ export default function CardView({ card, detail = false, footer, row = false }: 
     {card.displayName && card.companyName && <p className="mt-1 break-words text-sm">{card.companyName}</p>}
     <p className="mt-2 text-sm text-dark/65">{memberRoles(card).map(role => t(`roles.${role}`)).join(" · ")}{card.country ? ` · ${countryLabel(card.country, locale)}` : ""}{card.verified ? " · ✓" : ""}{card.mentorCertified ? (locale === "zh-tw" ? " · 導師" : " · Mentor") : ""}</p>
     <p className="mt-4 text-sm font-semibold">{t("fields.looksFor")}</p><div className="mt-2 flex flex-wrap gap-2">{card.categories.map(c => <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs" key={c}>{t(`categories.${c}`)}</span>)}</div>
-    {copy.reasons[0] && <p className="mt-4 rounded-xl bg-neutral-50 p-3 text-sm">{zh ? "為何適合交流" : "Why connect"} · {copy.reasons.join(zh ? "；" : "; ")}</p>}
     {detail && <dl className="mt-5 space-y-4 border-t border-dark/10 pt-4 text-sm">
       {card.industry && <div><dt className="font-semibold">{t("fields.industry")}</dt><dd>{industryLabel(card.industry, locale)}</dd></div>}
       {card.stage && <div><dt className="font-semibold">{zh ? "公司階段" : "Company stage"}</dt><dd>{card.stage}</dd></div>}

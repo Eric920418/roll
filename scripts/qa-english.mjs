@@ -260,6 +260,7 @@ async function core(key, width) {
   await page.getByRole('log').getByText(draft, { exact: true }).waitFor();
   check(`Message retry sends exactly once ${width}`, await db.networkMessage.count({ where: { connectionId: users[key].connectionId, body: draft } }) === 1);
   await screenshot(page, `messages-${width}`);
+  await page.getByText('More', { exact: true }).click();
   await page.getByRole('checkbox', { name: 'Company profile', exact: true }).check();
   const shareUrl = `/connections/${users[key].connectionId}/sharing`;
   let shared = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(shareUrl));
@@ -277,8 +278,9 @@ async function core(key, width) {
   await page.getByRole('button', { name: reply, exact: true }).click();
   check(`Invitation ${reply} ${width}`, (await invitation).status() === 200 && (await db.networkConnection.findUnique({ where: { id: users[key].invitationId } })).status === (reply === 'accept' ? 'accepted' : 'declined'));
   await page.getByRole('button', { name: reply, exact: true }).waitFor({ state: 'hidden' });
-  await page.getByRole('button', { name: /^QA investor ·/ }).click();
+  await page.getByRole('button', { name: /^QA investor(?: ·| \(|$)/ }).click();
   const blocked = waitResponse(page, r => r.request().method() === 'PATCH' && r.url().endsWith(`/connections/${users[key].connectionId}`));
+  await page.getByText('More', { exact: true }).click();
   await page.getByRole('button', { name: 'Block and stop private sharing', exact: true }).click();
   check(`Blocking stops new messages ${width}`, (await blocked).status() === 200);
   await page.getByRole('textbox', { name: 'Message', exact: true }).waitFor({ state: 'hidden' });
@@ -507,10 +509,10 @@ async function flowCore(key, width, locale) {
   await comparison; await page.unroute(delayedGet);
 
   check('Conflict keeps tenth conversation ' + width, await article.getByLabel(w('對象姓名', 'Person'), { exact: true }).last().inputValue() === 'Person 9');
-  await saved(); await page.reload(); await article.getByRole('heading', { name: w('與 10 位目標客戶對話，確認痛點與付費意願', 'Talk with 10 target customers about pain and willingness to pay'), exact: true }).waitFor();
+  await saved(); await page.reload(); await article.getByRole('heading', { name: w('客戶訪談', 'Customer conversations'), exact: true }).waitFor();
   check('All milestones survive reload ' + width, await page.locator('#action-map li').count() === 5);
   await screenshot(page, 'flow-conversation-' + locale + '-' + width);
-  await completed(w('寫出一句話定位，並請 5 位受訪者確認', 'Write a positioning statement and confirm it with five conversation participants'));
+  await completed(w('定位確認', 'Confirm positioning'));
   const originalCompleted = JSON.stringify(await db.actionItem.findUnique({where:{id:plan.actions[0].id}}));
   await page.getByRole('button',{name:w('← 上一步','← Previous step'),exact:true}).click();
   const chooser=article.getByRole('region',{name:w('已儲存對話','Saved conversations'),exact:true}).getByRole('button').first();
@@ -518,7 +520,7 @@ async function flowCore(key, width, locale) {
   check('Completed conversation fields stay read only '+locale,await article.getByLabel(w('公司','Company'),{exact:true}).isDisabled()&&await article.getByLabel(w('公司','Company'),{exact:true}).inputValue()==='Flow company 0');
   check('Reading another completed record does not mutate it '+locale,JSON.stringify(await db.actionItem.findUnique({where:{id:plan.actions[0].id}}))===originalCompleted);
   await page.getByRole('button',{name:w('回到目前一步','Return to the current step'),exact:true}).click();
-  await article.getByRole('heading',{name:w('寫出一句話定位，並請 5 位受訪者確認','Write a positioning statement and confirm it with five conversation participants'),exact:true}).waitFor();
+  await article.getByRole('heading',{name:w('定位確認','Confirm positioning'),exact:true}).waitFor();
   const fourFields=[[w('目標客戶（誰）','Target customer (who)'),'B2B founders'],[w('情境（什麼時候最痛）','Situation (when it hurts)'),'before sales outreach'],[w('要解決的痛點','Problem to solve'),'unclear customer needs'],[w('與現有做法的差別','Difference from current solutions'),'reviewed customer evidence']];
   for(const [label,value] of fourFields)await article.getByLabel(label,{exact:true}).fill(value);
   const preview=await article.locator('[data-positioning-editor] blockquote').innerText();
@@ -563,10 +565,10 @@ async function flowCore(key, width, locale) {
   await article.getByText(w('直接編輯一句話定位','Edit the full positioning statement'),{exact:true}).click();const original='We help founders replace manual reporting with reliable customer evidence.';
   await article.getByLabel(w('一句話定位','Positioning statement'),{exact:true}).fill(original+' ');await article.getByLabel(w('一句話定位','Positioning statement'),{exact:true}).fill(original);await article.getByRole('checkbox',{name:w('我已核對並確認這一項','I reviewed and confirm this item'),exact:true}).check();await saved();
   check('Keeping the original statement retains external replies '+locale,await article.getByRole('button',{name:completeLabel,exact:true}).isEnabled());
-  await completed(w('建立潛在客戶評分標準', 'Define lead qualification criteria'));
+  await completed(w('評分標準', 'Scoring criteria'));
   for (const checkbox of await article.getByRole('checkbox', { name: w('確認條件與權重', 'Confirm criterion and weight'), exact: true }).all()) await checkbox.check();
   await saved(); await screenshot(page, 'flow-organize-' + locale + '-' + width);
-  await completed(w('將已對話的客戶分級', 'Score and tier your conversation participants'));
+  await completed(w('客戶分級', 'Customer tiers'));
   const tierNav = article.getByRole('group',{name:w('客戶分級表','Customer tier table'),exact:true}).getByRole('button');
   for (let i=0;i<await tierNav.count();i++) {
     await tierNav.nth(i).click(); const card=article.locator('#task-work > fieldset section').filter({has:page.getByLabel(w('手動調整（選填）','Manual override (optional)'),{exact:true})});
@@ -595,7 +597,7 @@ async function flowCore(key, width, locale) {
     for(let i=0;i<3;i++){await tierNav.nth(i).click();await article.getByLabel('手動調整（選填）',{exact:true}).selectOption('');}
     await saved();await screenshot(page,'flow-supplement-zh-tw');
   }
-  await completed(w('向 3 位 A 級客戶提出付費試點', 'Send paid pilot proposals to three A leads'));
+  await completed(w('試點提案', 'Pilot proposals'));
   check('Milestone completion advances overview ' + width, (await page.locator('#action-map li[aria-current=step]').innerText()).startsWith('02'));
   const proposals=article.getByRole('group',{name:w('公司聯絡表','Company outreach table'),exact:true}).getByRole('button');
   check('Only confirmed A leads carried to proposals '+width,await proposals.count()===3);
@@ -607,7 +609,7 @@ async function flowCore(key, width, locale) {
     await row.getByLabel(w('聯絡訊息／價格、範圍與期間','Message / price, scope and duration'),{exact:true}).fill('USD100 reporting pilot for fourteen days, with agreed success criteria.');
   }
   await saved(); await responsive('Outreach template'); await screenshot(page, 'flow-outreach-' + locale + '-' + width);
-  await completed(w('取得付款或簽約證據', 'Obtain payment or signed contract evidence'));
+  await completed(w('付款證據', 'Payment evidence'));
   await page.getByRole('heading', { name: w('付款與合約證明', 'Payment and contract proof'), exact: true }).waitFor();
   await responsive('Document template');
   const followups=article.getByRole('region',{name:w('提案跟進','Proposal follow-up'),exact:true});
@@ -629,10 +631,10 @@ async function flowCore(key, width, locale) {
   check('Old plan is archived ' + width, Boolean((await db.actionPlan.findUnique({ where: { id: oldPlan } })).archivedAt));
   check('Plan history controls removed ' + locale, await page.getByText(w('計畫歷史與新計畫', 'Plan history and a new plan'), {exact:true}).count() === 0 && await page.getByRole('button', {name:w('回到目前計畫','Return to the active plan'),exact:true}).count() === 0);
   await page.getByRole('button', {name:w('← 上一步','← Previous step'),exact:true}).click();
-  await page.getByRole('heading', {name:w('向 3 位 A 級客戶提出付費試點','Send paid pilot proposals to three A leads'),exact:true}).waitFor();
+  await page.getByRole('heading', {name:w('試點提案','Pilot proposals'),exact:true}).waitFor();
   check('Previous step preserves completed records ' + locale, await article.getByText(w('此步驟的完成成果已保留，不能覆寫。','This completed result is retained and cannot be overwritten.'), {exact:false}).isVisible());
   await page.getByRole('button', {name:w('回到目前一步','Return to the current step'),exact:true}).click();
-  await page.getByRole('heading', { name: w('取得付款或簽約證據', 'Obtain payment or signed contract evidence'), exact: true }).waitFor();
+  await page.getByRole('heading', { name: w('付款證據', 'Payment evidence'), exact: true }).waitFor();
   check('Return to current step preserves the active task ' + width, await page.getByRole('button', { name: completeLabel, exact: true }).isDisabled());
   let prospectRequests=0;page.on('request',request=>{if(new URL(request.url()).pathname==='/api/prospects'&&request.method()==='GET')prospectRequests++;});
   await page.clock.install();await page.goto(origin+prefix+'/dashboard/matchmaking?tab=prospects');await page.waitForURL(/dashboard\/agenda#prospects/);await page.getByRole('dialog',{name:w('尋找新公司','Find new companies'),exact:true}).waitFor();await page.getByRole('region',{name:w('找新公司','Find new companies'),exact:true}).waitFor();check('Legacy prospect link opens search dialog '+locale,true);
@@ -716,7 +718,7 @@ async function flowDocumentAndReview() {
   const handbook = plan.actions.find(a => a.clientKey === 'nova_v2_03-3');
   await db.actionItem.update({ where: { id: handbook.id }, data: { taskWorkspace: { version: 2, step: '03-3', data: { kind: 'document', sections: [3, 1, 0, 2].map(i => ({ id: String(i), body: ('QA chapter ' + i + ': use reviewed customer evidence, record actual outreach, preserve private proof and review the next action.\n').repeat(8), confirmed: true })) } } } });
   await page.goto(origin + '/task-report/' + handbook.id);
-  await page.getByRole('heading', { name: 'Complete your acquisition playbook', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Acquisition playbook', exact: true }).waitFor();
   check('Document chapters use canonical ID order', (await page.locator('main > section h2').allInnerTexts()).map(v=>v.replace(/^\d+\s*·\s*/, '')).join('|') === 'Lead sources|Outreach message|Conversation script|Closing steps');
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -1110,7 +1112,7 @@ async function pdfCompletion() {
     response=waitResponse(page,r=>r.url().endsWith('/api/evidence')&&r.request().method()==='POST');await panel.getByRole('button',{name:w('確認並儲存佐證關聯','Save evidence links'),exact:true}).click();assert.equal((await response).status(),200);
     await panel.getByRole('heading',{name:zh?'你目前在第 4 階段：驗證付費意願':'Stage 4: Validate willingness to pay',exact:true}).waitFor();check('Server evidence stage '+locale,true);
     for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Evidence profile '+locale+width,await page.evaluate(()=>document.querySelectorAll('h1').length===1&&document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'pdf-evidence-'+locale+'-'+width);}
-    await page.goto(origin+prefix+'/dashboard/account#notifications');const pref=page.locator('#notifications section').filter({has:page.getByRole('button',{name:w('儲存設定','Save settings'),exact:true})});await pref.getByRole('button',{name:w('儲存設定','Save settings'),exact:true}).waitFor();check('One email preferences panel '+locale,await pref.count()===1);
+    await page.goto(origin+prefix+'/dashboard/notifications#notifications');const pref=page.locator('#notifications section').filter({has:page.getByRole('button',{name:w('儲存設定','Save settings'),exact:true})});await pref.getByRole('button',{name:w('儲存設定','Save settings'),exact:true}).waitFor();check('One email preferences panel '+locale,await pref.count()===1);
     check('Email categories default off '+locale,await pref.getByRole('checkbox').evaluateAll(nodes=>nodes.slice(1,5).every(n=>!n.checked)));check('Receiving defaults on '+locale,await pref.getByRole('checkbox',{name:w('接受站內訊息與交流邀請','Accept messages and chat invitations'),exact:true}).isChecked());
     await pref.getByRole('checkbox',{name:w('每週摘要','Weekly summary'),exact:true}).check();response=waitResponse(page,r=>r.url().endsWith('/api/evidence')&&r.request().method()==='POST');await pref.getByRole('button',{name:w('儲存設定','Save settings'),exact:true}).click();assert.equal((await response).status(),200);
     const diagnosis={companyStage:'MVP',stageReason:'Owned QA evidence',stageConfidence:70,bottleneckGroup:'Sales',bottleneckCode:'no_leads',bottleneckReason:'Find real customers',bottleneckConfidence:65};
@@ -1170,8 +1172,8 @@ async function starterPlanQA() {
     const cards=await form.locator(':scope > div > *').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width};}));
     check('Trial work and method placement '+locale+width,width>=1024?cards[1].x>cards[0].x+cards[0].width-1:cards[1].y>cards[0].y);
     const action=hero.getByRole('link',{name:zh?'記錄客戶對話':'Record a conversation',exact:true});
-    check('Trial priority CTA is at least 44px '+locale+width,(await action.boundingBox()).height>=44);
-    await action.click();check('Trial priority reaches form '+locale+width,new URL(page.url()).hash==='#discovery-record-'+journey.id);
+    check('Trial priority omits duplicate record CTA '+locale+width,await action.count()===0);
+    check('Trial conversation form remains available '+locale+width,await form.isVisible());
     await summary.focus();await page.keyboard.press('Enter');check('Starter background opens by keyboard '+locale+width,await summary.evaluate(el=>el.parentElement.open));
     check('Saved diagnosis retained without confidence '+locale+width,(await summary.locator('..').innerText()).includes('Saved prototype evidence')&&!/70%|65%/.test(await summary.locator('..').innerText()));
     await summary.press('Enter');await summary.evaluate(el=>el.blur());await layout(page,'Trial starter '+locale+width,locale);
@@ -1329,7 +1331,7 @@ async function layoutQA() {
     const fingerprint=async()=>JSON.stringify({actions:await db.actionItem.findMany({where:{actionPlanId:newPlan.id},orderBy:{id:'asc'}}),milestones:await db.planMilestone.findMany({where:{actionPlanId:newPlan.id},orderBy:{id:'asc'}})}),original=await fingerprint();
     for(const width of [390,768,1440]){
       await page.setViewportSize({width,height:width===390?844:1000});await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-conversation-form]').waitFor();await closeTour(page,locale);
-      if(width===390){await page.evaluate(()=>window.scrollTo(0,0));check('Task CTA fits the 844px first screen '+locale,await page.locator('[data-today-priority] button').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight));}
+      check('Conversation priority omits duplicate record CTA '+locale+width,await page.locator('[data-today-priority] button').count()===0);
       check('Single-page conversation is primary '+locale+width,await page.getByLabel(w('對象姓名','Person'),{exact:true}).isVisible()&&await page.getByRole('button',{name:w('高','High'),exact:true}).isVisible());
       check('Incomplete target remains locked '+locale+width,await page.getByRole('button',{name:w('確認並完成','Confirm and complete'),exact:true}).isDisabled());
       check('Evidence and delivered-company tables precede map '+locale+width,await page.locator('#current-findings-title').count()===1&&await page.locator('#prospects').isVisible());
@@ -1458,7 +1460,7 @@ async function commerceSettingsQA() {
 }
 
 async function notificationSettingsQA(page, context, locale) {
-  const owner=await session('mobile',390);page=owner.page;context=owner.context;await page.goto(origin+(locale==='zh-tw'?'/zh-tw':'')+'/dashboard/account#notifications');
+  const owner=await session('mobile',390);page=owner.page;context=owner.context;await page.goto(origin+(locale==='zh-tw'?'/zh-tw':'')+'/dashboard/notifications#notifications');
   const zh=locale==='zh-tw',w=(a,b)=>zh?a:b,prefix=zh?'/zh-tw':'',settings=page.locator('#notifications'),receiving=()=>settings.getByRole('checkbox',{name:w('接受站內訊息與交流邀請','Accept messages and chat invitations'),exact:true});
   const save=async()=>{const response=waitResponse(page,r=>new URL(r.url()).pathname==='/api/evidence'&&r.request().method()==='POST');await settings.getByRole('button',{name:w('儲存設定','Save settings'),exact:true}).click();return(await response).status();};
   await receiving().waitFor();await receiving().uncheck();
@@ -1477,7 +1479,7 @@ async function notificationSettingsQA(page, context, locale) {
   for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});await layout(page,'Compact notifications '+locale+width,locale);check('Time zone controls share one row '+locale+width,await settings.getByLabel(w('時區','Time zone'),{exact:true}).evaluate(input=>{const button=input.parentElement.querySelector('button');return button&&Math.abs(input.getBoundingClientRect().top-button.getBoundingClientRect().top)<2&&input.getBoundingClientRect().height>=43&&button.getBoundingClientRect().height>=43;}));await screenshot(page,'notification-settings-'+locale+'-'+width);}
   await bell.click();await page.getByRole('heading',{name:w('通知','Notifications'),exact:true}).waitFor();const read=waitResponse(page,r=>new URL(r.url()).pathname==='/api/network/notifications'&&r.request().method()==='PATCH');await page.getByRole('button',{name:w('全部標為已讀','Mark all read'),exact:true}).click();check('Mark read updates real notifications '+locale,(await read).status()===200);await page.waitForFunction(label=>document.querySelector('a[title="'+label+'"]')!==null,w('通知','Notifications'));check('Bell clears after marking read '+locale,(await db.memberNotification.count({where:{userId:users.mobile.id,readAt:null}}))===0);
   await page.route('**/api/network/unread',route=>route.fulfill({status:503,json:{error:'Unread unavailable',code:'qa_unread',requestId:'unread-trace'}}));await page.evaluate(()=>window.dispatchEvent(new Event('nova-notifications-changed')));await page.getByRole('alert').filter({hasText:'unread-trace'}).waitFor();check('Unread errors are visible '+locale,true);await page.unroute('**/api/network/unread');await page.getByRole('button',{name:w('重試通知','Retry notifications'),exact:true}).click();await page.getByRole('alert').filter({hasText:'unread-trace'}).waitFor({state:'hidden'});
-  await page.goto(origin+prefix+'/dashboard/account#notifications');await receiving().waitFor();const timezone=settings.getByLabel(w('時區','Time zone'),{exact:true});await timezone.fill('Europe/Warsaw');check('Time zone saves in advanced settings '+locale,await save()===200);await page.reload();await receiving().waitFor();check('Time zone persists '+locale,await timezone.inputValue()==='Europe/Warsaw');
+  await page.goto(origin+prefix+'/dashboard/notifications#notifications');await receiving().waitFor();const timezone=settings.getByLabel(w('時區','Time zone'),{exact:true});await timezone.fill('Europe/Warsaw');check('Time zone saves in advanced settings '+locale,await save()===200);await page.reload();await receiving().waitFor();check('Time zone persists '+locale,await timezone.inputValue()==='Europe/Warsaw');
   await peer.context.close();await next.context.close();await owner.context.close();
 }
 
@@ -1511,7 +1513,7 @@ async function uxRefinementQA() {
       for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});await page.evaluate(()=>document.fonts.ready);await page.addStyleTag({content:'[data-custom-cursor]{visibility:hidden!important}'});await page.mouse.move(-100,-100);await page.waitForTimeout(400);await layout(page,'UX '+label+' '+locale+width,locale);if(width!==768)await screenshot(page,'ux-'+label+'-'+locale+'-'+width);}
     }
     await page.goto(origin+prefix+'/dashboard/matchmaking?tab=roundtables&mentor=apply');await page.waitForFunction(()=>document.activeElement?.id==='mentor-certification-title');check('Mentor deep link still opens and focuses heading '+locale,true);await page.getByRole('button',{name:zh?'送出導師認證申請':'Submit mentor application',exact:true}).waitFor();
-    await page.goto(origin+prefix+'/dashboard/account#notifications');await page.locator('#notifications').waitFor();for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});await layout(page,'Notification settings '+locale+width,locale);}await page.getByRole('checkbox',{name:zh?'每週摘要':'Weekly summary',exact:true}).waitFor();check('Notification settings directly expanded '+locale,await page.getByRole('checkbox',{name:zh?'每週摘要':'Weekly summary',exact:true}).isVisible());await notificationSettingsQA(page,context,locale);
+    await page.goto(origin+prefix+'/dashboard/notifications#notifications');await page.locator('#notifications').waitFor();for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});await layout(page,'Notification settings '+locale+width,locale);}await page.getByRole('checkbox',{name:zh?'每週摘要':'Weekly summary',exact:true}).waitFor();check('Notification settings directly expanded '+locale,await page.getByRole('checkbox',{name:zh?'每週摘要':'Weekly summary',exact:true}).isVisible());await notificationSettingsQA(page,context,locale);
   }
   await page.goto(origin+'/dashboard/matchmaking');await page.locator('#matchmaking-panel-recommendations:visible nav, #matchmaking-panel-all:visible nav').first().waitFor();
   for(const [status,payload]of[[401,{error:'Sign in again',code:'qa_auth',requestId:'qa-auth'}],[403,{error:'No access',code:'qa_access',requestId:'qa-access'}],[503,{error:'Service unavailable',code:'qa_read',requestId:'qa-read'}],[200,{data:{cards:null,hasMore:false}}]]){await page.route('**/api/matchmaking?*',route=>route.fulfill({status,json:payload}));await page.reload();const alert=page.getByRole('alert').filter({hasText:status===200?'invalid_response':'HTTP '+status});await alert.first().waitFor();check('Finite safe member-list failure HTTP '+status,(await alert.first().innerText()).includes('HTTP '+status));await page.unroute('**/api/matchmaking?*');}

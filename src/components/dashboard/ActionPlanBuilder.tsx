@@ -216,7 +216,6 @@ export default function ActionPlanBuilder({
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">NOVA</p>
                 <h2 id="action-plan-builder-title" className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">
                   {t("title")}
                 </h2>

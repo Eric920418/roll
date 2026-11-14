@@ -649,7 +649,7 @@
       "pipeline": "Sales pipeline",
       "notes": "Meeting notes",
       "insights": "Customer insights",
-      "agenda": "Today's tasks",
+      "agenda": "Today's priority",
       "tools": "Milestones",
       "account": "Account and plan",
       "billing": "Billing",
@@ -1130,7 +1130,7 @@
       "bodyPlaceholder": "Write your conversation notes…"
     },
     "agenda": {
-      "title": "Today's tasks",
+      "title": "Today's priority",
       "subtitle": "Your ranked next moves, evidence, dependencies, and measurable outcomes.",
       "milestoneSection": "Weekly / Monthly",
       "milestoneSectionBody": "Mark a milestone done to update its progress automatically.",
@@ -2439,7 +2439,7 @@
     "ownHiddenPreview": "Your saved card preview. This card is hidden; only you can see this preview.",
     "uploadingPhoto": "Uploading and preparing your photo…",
     "loadingPhoto": "Loading photo…",
-    "photoNotice": "Other members see a blurred photo until your chat request is accepted. JPEG, PNG or WebP; up to 3 MiB and 20 million pixels. Uploading does not turn on photo visibility.",
+    "photoNotice": "Uses your Google photo unless you upload one. Others see a blurred photo until a chat is accepted. JPEG, PNG or WebP, up to 3 MiB. Photo visibility is controlled below.",
     "ownPhoto": "Your private original photo",
     "blurredPhoto": "Anonymous blurred member photo",
     "noPhoto": "No photo shared",

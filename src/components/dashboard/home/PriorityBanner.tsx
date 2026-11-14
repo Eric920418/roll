@@ -84,9 +84,6 @@ export default async function PriorityBanner({
       />
       <div className="relative flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70 font-[family-name:var(--font-heading)]">
-            {t("eyebrow")}
-          </p>
           <span
             className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide font-[family-name:var(--font-heading)] ${
               content.onTrack ? "bg-white/20 text-white" : "bg-accent text-dark"

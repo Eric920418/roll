@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import NovaLogo from "@/components/brand/NovaLogo";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
 import { Inter } from "next/font/google";
@@ -81,13 +82,7 @@ export default function DashboardSidebar({
           aria-label="NOVA AI"
           className="inline-flex min-h-6 items-center md:min-h-0"
         >
-          <span className="text-xl font-semibold leading-none tracking-[0.04em] md:text-[26px]">NOVA AI</span>
-        </Link>
-        <Link
-          href={pathForLocale("/", locale)}
-          className="block text-[10px] font-normal tracking-[0.06em] text-[#8A8A85] transition-colors hover:text-dark/70 md:mt-1.5 md:text-[11px]"
-        >
-          by ROLL ON
+          <NovaLogo variant="black" alt="NOVA AI" priority sizes="112px" className="h-auto w-28" />
         </Link>
         </div>
         <button ref={menuButton} type="button" aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)} className="min-h-11 rounded-lg border border-dark/15 px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 md:hidden">{locale === "zh-tw" ? (menuOpen ? "收合選單" : "選單") : (menuOpen ? "Close menu" : "Menu")}</button>

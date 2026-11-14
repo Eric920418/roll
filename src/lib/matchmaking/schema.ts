@@ -48,6 +48,12 @@ export function overlapReasons(viewer: { industry?: string | null; targetMarkets
 }
 export type CardSources = { companyName?: string | null; companyStage?: string | null; country?: string | null; industry?: string | null; oneLinePitch: string | null; icp: string | null; targetMarkets: string[] } | null;
 export type CardStats = { interviews: number; payingCustomers: number | null; milestones: number };
+export function googlePhotoUrl(image?: string | null) {
+  try {
+    const url = new URL(image || "");
+    return url.protocol === "https:" && /^lh[3-6]\.googleusercontent\.com$/.test(url.hostname) && !url.port && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
+}
 export type PublicCard = {
   id: string; displayName?: string; stage?: string; chat?: { id: string; status: string; outgoing: boolean } | null; companyName?: string; role: CardDraft["role"]; roles?: CardDraft["roles"]; categories: CardDraft["categories"]; country?: string; industry?: string; slogan?: string;
   companyPitch?: string; icp?: string; markets?: string[]; offers?: string; looksFor?: string; stats?: CardStats;
@@ -55,7 +61,7 @@ export type PublicCard = {
   matchReasons?: Array<{zh:string;en:string}>; reasons: ReturnType<typeof overlapReasons>;
 };
 // Build the whitelist explicitly: never spread a database member into a client response.
-export function publicCard(row: Omit<CardDraft, "displayName"> & { id: string; sourcePolicy?: number | null; revision?: number; displayName?: string | null; blurredPhoto?: string | null; lastActiveAt: Date | null; verified: boolean; recommended: boolean; mentorCertified?: boolean }, source: CardSources, stats: CardStats, viewer: Parameters<typeof overlapReasons>[0], now = new Date(), restricted = false): PublicCard {
+export function publicCard(row: Omit<CardDraft, "displayName"> & { id: string; sourcePolicy?: number | null; revision?: number; displayName?: string | null; blurredPhoto?: string | null; googlePhoto?: string | null; lastActiveAt: Date | null; verified: boolean; recommended: boolean; mentorCertified?: boolean }, source: CardSources, stats: CardStats, viewer: Parameters<typeof overlapReasons>[0], now = new Date(), restricted = false): PublicCard {
   const fields = new Set(row.visibleFields);
   const card: PublicCard = { id: row.id, role: row.role, roles: memberRoles(row), categories: row.categories, activity: activityGroup(row.lastActiveAt, now), verified: row.verified && Boolean(verificationRoles(row)), recommended: row.recommended, reasons: [] };
   if (row.mentorCertified) card.mentorCertified = true;
@@ -71,7 +77,7 @@ export function publicCard(row: Omit<CardDraft, "displayName"> & { id: string; s
     if (fields.has("country")) card.country = source.country || undefined;
     if (fields.has("industry")) card.industry = source.industry || undefined;
   }
-  if (fields.has("photo") && row.blurredPhoto) card.photo = `/api/matchmaking/members/${row.id}/photo?v=${row.revision ?? 0}`;
+  if (fields.has("photo") && (row.blurredPhoto || googlePhotoUrl(row.googlePhoto))) card.photo = `/api/matchmaking/members/${row.id}/photo?v=${row.revision ?? 0}`;
   card.reasons = overlapReasons(viewer, card);
   return card;
 }

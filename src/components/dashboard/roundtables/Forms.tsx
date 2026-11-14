@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useLocale } from "next-intl";
 import { TextField, button } from "../flow/Templates";
-import { STEPS, words, type StepId } from "@/lib/action-plan/flow/catalog";
+import { STEPS, words } from "@/lib/action-plan/flow/catalog";
 import { LANGUAGES, INDUSTRIES, mentorDraftSchema, type RoundtableMutation } from "@/lib/roundtables/schema";
 import { industryLabel } from "@/lib/member-options";
 import type { RoundtableState } from "@/lib/roundtables/service";
@@ -83,27 +83,9 @@ export function MentorForm({ userId, cert, disabled, write, error = "", notice =
     <aside className="min-w-0 space-y-4 rounded-xl bg-dark/5 p-4 sm:p-5"><h4 className="text-base font-bold">{w("NOVA 會審核這 3 項", "What NOVA reviews")}</h4><ol className="list-decimal space-y-3 pl-5 text-sm leading-7"><li>{w("能核對身分或經歷的公開連結。", "Public links that verify your identity or experience.")}</li><li>{w("與創辦人需求相關的專業領域。", "Expertise relevant to founders' needs.")}</li><li>{w("至少一項可驗證的專業經歷或案例。", "At least one verifiable role, experience or case.")}</li></ol></aside>
   </form>;
 }
-const shortStepNames: Record<StepId, readonly [string, string]> = {
-  "01-1": ["客戶訪談", "Customer conversations"],
-  "01-2": ["定位確認", "Confirm positioning"],
-  "01-3": ["評分標準", "Scoring criteria"],
-  "01-4": ["客戶分級", "Customer tiers"],
-  "02-1": ["試點提案", "Pilot proposals"],
-  "02-2": ["付款證據", "Payment evidence"],
-  "02-3": ["定價條件", "Pricing and terms"],
-  "03-1": ["每週開發", "Weekly outreach"],
-  "03-2": ["管道比較", "Compare channels"],
-  "03-3": ["開發手冊", "Acquisition playbook"],
-  "04-1": ["取得付費客戶", "Acquire paying customers"],
-  "04-2": ["客戶回顧", "Customer reviews"],
-  "04-3": ["續約與營收", "Renewals and revenue"],
-  "05-1": ["營收目標", "Revenue targets"],
-  "05-2": ["新市場開發", "New market outreach"],
-  "05-3": ["市場驗證報告", "Market validation report"],
-};
 export function SessionForm({ userId, initial, disabled, write }: { userId: string; initial?: RoundtableState["sessions"][number]; disabled: boolean; write: Write }) {
   const locale = useLocale(), zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;
-  const stepOptions = STEPS.map(step => [step.id, `${step.id} ${words(shortStepNames[step.id], locale)}`] as const);
+  const stepOptions = STEPS.map(step => [step.id, `${step.id} ${words(step.title, locale)}`] as const);
   // The local input uses the browser's time zone; the server receives explicit UTC instants.
   const localTime = (value: string) => { const d = new Date(value); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
   const { draft, change, clear, warning } = useDraft("nova:roundtable-form:" + userId + ":" + (initial?.id || "new"), { topic: initial?.topic || "", description: initial?.description || "", steps: initial?.steps || ["01-1"], industry: initial?.industry || "all", languages: initial?.languages || ["en"], start: initial ? localTime(initial.startsAt) : "", repeatCount: "1", frameworkStages: initial?.frameworkStages.map(String) || [], duration: initial ? String((Date.parse(initial.endsAt) - Date.parse(initial.startsAt)) / 60000) : "60", capacity: String(initial?.capacity || 6), registrationMode: initial?.registrationMode || "approval", meetingUrl: initial?.meetingUrl || "", requestId: "" }, sessionForm);

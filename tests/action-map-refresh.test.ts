@@ -24,11 +24,13 @@ test('Milestone bars reflect saved progress, retain confirmation gates, and adva
     assert.match(html(), /aria-valuenow="99"/, 'An unconfirmed legacy milestone cannot show 100%');
     plan.roadmap!.milestones[0].achievedAt = '2026-11-14';
     assert.match(html(), /aria-valuenow="100"/);
-    assert(html().includes(locale === 'en' ? 'Milestone 2' : '里程碑 2'));
+    const active = html().match(/<li\b[^>]*aria-current="step"[^>]*>[\s\S]*?<\/li>/)?.[0] || '';
+    assert(active.includes(plan.roadmap!.milestones[1].title));
+    assert(active.includes(locale === 'en' ? '02 · Current' : '02 · 目前階段'));
   }
 });
 
-function harness(initial = fixture()) {
+function harness(initial = fixture(), locale = 'en') {
   const slots: unknown[] = [], effects: Array<() => void> = [], timers: Array<() => void> = [];
   let cursor = 0, props = initial.plan, server = initial, reads = 0;
   let pending: ((value: FlowView) => void) | null = null;
@@ -41,7 +43,7 @@ function harness(initial = fixture()) {
     useEffect(fn: () => (() => void) | void, deps: unknown[]) { const i = cursor++, old = slots[i] as { deps: unknown[]; cleanup?: () => void } | undefined; if (depsChanged(old?.deps, deps)) { slots[i] = { deps }; effects.push(() => { old?.cleanup?.(); const cleanup = fn(); Object.assign(slots[i]!, { cleanup }); }); } },
     useEffectEvent(fn: (...args: unknown[]) => unknown) { const cell = hooks.useRef(fn) as { current: typeof fn }; cell.current = fn; return hooks.useCallback((...args: unknown[]) => cell.current(...args), []); },
   };
-  const load = pdfRuntime({ react: hooks, 'next-intl': { useLocale: () => 'en' }, 'next/navigation': { useRouter: () => ({ refresh() {} }) },
+  const load = pdfRuntime({ react: hooks, 'next-intl': { useLocale: () => locale }, 'next/navigation': { useRouter: () => ({ refresh() {} }) },
     '@/lib/member-fetch': { memberFetch: async (_url: string, init?: { method: string }) => { if (init?.method !== 'POST') { reads++; if (pending) return new Promise<FlowView>(resolve => { pending = resolve; }); } return structuredClone(server); } },
     '../ActionMap': { __esModule: true, default: 'Map' }, '../ActionPlanBuilder': { __esModule: true, default: 'Builder' }, './Templates': { __esModule: true, default: 'Templates', button: '', TextField: 'Field' }, './CurrentFindings': { __esModule: true, default: 'Findings' }, './PositioningEditor': { positioningPreview: () => '' }, '../LearningResources': { __esModule: true, default: 'Resources' }, './TaskAssist': { __esModule: true, default: 'Assist' }, './Proofs': { __esModule: true, default: 'Proofs' }, './Followups': { __esModule: true, default: 'Followups' },
   }, { window: Object.assign(events, { location: { hash: '', origin: 'http://localhost' } }), document: Object.assign(documentEvents, { visibilityState: 'visible', getElementById: () => null }), localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, requestAnimationFrame: (fn: () => void) => fn(), setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {}, crypto: { randomUUID: () => 'request' } });
@@ -61,6 +63,17 @@ test('Flow reloads refreshed parent progress and milestone without reloading the
   assert.equal(h.find('Map').plan.revision, 2);
   assert.equal(h.find('Templates').step, '02-1');
   assert.equal(h.find('Map').plan.actions[4].metric!.current, 2, 'Use server-evaluated progress, not stale stored counters');
+});
+
+test('Conversation priority omits its duplicate button while other step actions and forms remain available', async () => {
+  for (const locale of ['en', 'zh-tw']) for (const completed of [0, 1]) {
+    const h = harness(fixture(1, completed), locale); await h.settle();
+    const priority = h.render().find(n => Object.hasOwn(n.props, 'data-today-priority'))!;
+    const content = JSON.stringify(priority);
+    assert.equal(content.includes('"type":"button"'), completed === 1);
+    assert(!content.includes('Record a conversation')); assert(!content.includes('記錄客戶對話'));
+    assert.equal(h.find('Templates').step, STEPS[completed].id);
+  }
 });
 
 test('Flow refresh preserves unsaved input and its original revision, including an in-flight focus refresh', async () => {

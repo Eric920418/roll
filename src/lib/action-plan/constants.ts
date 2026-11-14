@@ -1,3 +1,29 @@
+export const STEP_NAMES = {
+  "01-1": { title: ["客戶訪談", "Customer conversations"], previousTitle: ["與 10 位目標客戶對話，確認痛點與付費意願", "Talk with 10 target customers about pain and willingness to pay"] },
+  "01-2": { title: ["定位確認", "Confirm positioning"], previousTitle: ["寫出一句話定位，並請 5 位受訪者確認", "Write a positioning statement and confirm it with five interviewees"] },
+  "01-3": { title: ["評分標準", "Scoring criteria"], previousTitle: ["建立潛在客戶評分標準", "Define lead qualification criteria"] },
+  "01-4": { title: ["客戶分級", "Customer tiers"], previousTitle: ["將已對話的客戶分級", "Score and tier your interviewees"] },
+  "02-1": { title: ["試點提案", "Pilot proposals"], previousTitle: ["向 3 位 A 級客戶提出付費試點", "Send paid pilot proposals to three A leads"] },
+  "02-2": { title: ["付款證據", "Payment evidence"], previousTitle: ["取得付款或簽約證據", "Obtain payment or signed contract evidence"] },
+  "02-3": { title: ["定價條件", "Pricing and terms"], previousTitle: ["確認定價與成交條件", "Confirm pricing and terms"] },
+  "03-1": { title: ["每週開發", "Weekly outreach"], previousTitle: ["連續 4 週，每週聯絡 20 家符合標準的公司", "Contact 20 qualified companies weekly for four consecutive weeks"] },
+  "03-2": { title: ["管道比較", "Compare channels"], previousTitle: ["比較各管道成效，保留最有效的 2 個", "Compare channels and retain the best two"] },
+  "03-3": { title: ["開發手冊", "Acquisition playbook"], previousTitle: ["完成開發流程手冊", "Complete your acquisition playbook"] },
+  "04-1": { title: ["取得付費客戶", "Acquire paying customers"], previousTitle: ["取得 5 位付費客戶", "Acquire five paying customers"] },
+  "04-2": { title: ["客戶回顧", "Customer reviews"], previousTitle: ["與付費客戶進行使用回顧，確認續約原因", "Review usage and renewal reasons with paying customers"] },
+  "04-3": { title: ["續約與營收", "Renewals and revenue"], previousTitle: ["計算續約率與每位客戶帶來的收入", "Calculate renewal rate, revenue per customer and acquisition cost"] },
+  "05-1": { title: ["營收目標", "Revenue targets"], previousTitle: ["設定季度營收目標與每週開發量", "Set a quarterly revenue target and weekly activity"] },
+  "05-2": { title: ["新市場開發", "New market outreach"], previousTitle: ["進入第二個市場", "Enter a second market"] },
+  "05-3": { title: ["市場驗證報告", "Market validation report"], previousTitle: ["產出市場驗證報告，用於募資", "Produce your market validation report"] },
+} as const;
+
+export function shortStepTitle(value: string, locale?: string): string | undefined {
+  const step = Object.values(STEP_NAMES).find(s => [...s.title, ...s.previousTitle, conversationCopy(s.previousTitle[1])].includes(value));
+  if (!step) return undefined;
+  const language = locale ?? (value === step.title[0] || value === step.previousTitle[0] ? "zh-tw" : "en");
+  return language === "zh-tw" ? step.title[0] : conversationCopy(step.title[1]);
+}
+
 export const COMPANY_STAGES = [
   "Idea",
   "Validation",

@@ -17,7 +17,7 @@ export default function ActionMap({ userId, plan, event, children, compact = fal
   const progress = milestones.map(m => ({ ...m, progress: m.achievedAt ? 100 : Math.min(99, actionProgress(plan.actions.filter(a => a.milestoneId === m.id))) }));
   const milestoneBar = (m: typeof progress[number]) => <div role="progressbar" aria-label={`${planText(m.title, locale)} · ${zh ? "已儲存進度" : "Saved progress"}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={m.progress} className="h-1.5 min-w-0 overflow-hidden rounded-full bg-dark/10"><div className="h-full bg-black transition-[width] motion-reduce:transition-none" style={{ width: `${m.progress}%` }} /></div>;
   const overviewOnly = compact && !children;
-  const milestoneList = <ol className="grid min-w-0 grid-cols-2 gap-3 sm:col-span-3 sm:row-start-2 sm:grid-cols-5" aria-label={zh?'里程碑進度':'Milestone progress'}>{progress.map(m=><li key={m.id} aria-current={m.id === current?.id ? 'step' : undefined} className="min-w-0">{milestoneBar(m)}<div className="mt-2 flex justify-between gap-2 text-[10px] text-dark/60"><span>{String(m.position+1).padStart(2,'0')}{m.achievedAt ? ' ✓' : m.id === current?.id ? (zh ? ' · 目前階段' : ' · Current') : ''}</span><span>{m.progress}%</span></div><p className="mt-1 break-words text-xs font-semibold">{planText(m.title,locale)}</p><p className="mt-1 text-[10px] text-dark/50">{m.targetDate || '—'}</p></li>)}</ol>;
+  const milestoneList = <ol className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-5" aria-label={zh?'里程碑進度':'Milestone progress'}>{progress.map(m=><li key={m.id} aria-current={m.id === current?.id ? 'step' : undefined} className="min-w-0">{milestoneBar(m)}<div className="mt-2 flex justify-between gap-2 text-[10px] text-dark/60"><span>{String(m.position+1).padStart(2,'0')}{m.achievedAt ? ' ✓' : m.id === current?.id ? (zh ? ' · 目前階段' : ' · Current') : ''}</span><span>{m.progress}%</span></div><p className="mt-1 break-words text-xs font-semibold">{planText(m.title,locale)}</p><p className="mt-1 text-[10px] text-dark/50">{m.targetDate || '—'}</p></li>)}</ol>;
   useEffect(() => {
     if (overviewOnly) return;
     function reveal() { if (window.location.hash === "#action-map" && ref.current) ref.current.open = true; }
@@ -39,16 +39,16 @@ export default function ActionMap({ userId, plan, event, children, compact = fal
     }, 0);
     return () => clearTimeout(timer);
   }, [event, userId, plan.id, zh, overviewOnly]);
-  if (overviewOnly) return <section id="action-map" data-next-step="map" className="mt-8 min-w-0 scroll-mt-6 space-y-4 rounded-xl border border-dark/10 bg-white p-4 sm:p-5"><h3 className="text-sm font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">04</span>{zh ? "行動地圖" : "Action map"}</h3>{milestoneList}</section>;
+  if (overviewOnly) return <section id="action-map" data-next-step="map" className="mt-8 min-w-0 scroll-mt-6 space-y-4 rounded-xl border border-dark/10 bg-white p-4 sm:p-5"><h3 className="text-sm font-bold">{zh ? "行動地圖" : "Action map"}</h3>{milestoneList}</section>;
   return <div className="mt-8 min-w-0">
     {warning && <p role="status" className="mb-3 text-sm text-amber-800">{warning}</p>}
-    {compact && <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 className="text-sm font-bold"><span className="mr-3 text-[10px] tracking-wider text-dark/40">04</span>{zh ? "行動地圖" : "Action map"}</h3></div>}
+    {compact && <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 className="text-sm font-bold">{zh ? "行動地圖" : "Action map"}</h3></div>}
     <details data-next-step="map" id="action-map" ref={ref} onToggle={e => setOpen(e.currentTarget.open)} className={"scroll-mt-6 rounded-xl border border-dark/10 p-4 sm:p-5 " + (compact ? "bg-white" : "bg-dark/[0.015] ")}>
       <summary className="min-h-11 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-        {compact ? <div className="grid items-center gap-4 sm:grid-cols-[1fr_1fr_auto]">
-          <div className="min-w-0"><p className="mt-1 break-words text-sm font-bold">{current ? `${zh ? "里程碑" : "Milestone"} ${current.position + 1} · ${planText(current.title, locale)}` : zh ? "目前計畫" : "Current plan"}</p></div>
+        {compact ? <div className="space-y-3">
+          {!milestones.length && <p className="text-sm font-bold">{zh ? "目前計畫" : "Current plan"}</p>}
           {milestoneList}
-          <span className="inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/15 bg-white px-4 text-xs font-semibold sm:col-start-3">{open ? (zh ? "收合步驟" : "Collapse steps") : (zh ? "展開步驟" : "Expand steps")} ↕</span>
+          <span className="inline-flex min-h-11 items-center justify-center rounded-xl border border-dark/15 bg-white px-4 text-xs font-semibold">{open ? (zh ? "收合步驟" : "Collapse steps") : (zh ? "展開步驟" : "Expand steps")} ↕</span>
         </div> : <><div className="flex flex-wrap items-center justify-between gap-4">
           <div><h3 className="text-lg font-semibold">{zh ? "行動地圖" : "Action map"}</h3><p className="mt-1 text-sm text-dark/65">{current ? `${zh ? "目前里程碑" : "Current milestone"} ${current.position + 1} · ${planText(current.title, locale)}` : zh ? "目前計畫" : "Current plan"}</p></div>
           <span className="inline-flex min-h-11 items-center rounded-xl border border-dark/15 bg-white px-4 text-sm font-semibold">{open ? (zh ? "收合步驟" : "Collapse steps") : (zh ? "展開步驟" : "Expand steps")} ↕</span>

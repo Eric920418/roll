@@ -93,9 +93,6 @@ export default async function ActionPlanOverview({
         </section>
 
         <section aria-labelledby="home-progress-heading" className="nova-dashboard-card min-w-0 rounded-2xl border border-dark/10 bg-dark p-5 text-white">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent font-[family-name:var(--font-heading)]">
-            {t("progress.eyebrow")}
-          </p>
           <h2 id="home-progress-heading" className="mt-1 text-lg font-extrabold font-[family-name:var(--font-heading)]">
             {t("progress.title")}
           </h2>
@@ -197,9 +194,6 @@ export default async function ActionPlanOverview({
           ) : (
             <div className="flex min-h-52 flex-col justify-between rounded-2xl border border-dashed border-primary/25 bg-primary/[0.035] p-6">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                  {t("next.emptyEyebrow")}
-                </p>
                 <h3 className="mt-2 text-xl font-extrabold text-dark font-[family-name:var(--font-heading)]">
                   {t("next.emptyTitle")}
                 </h3>

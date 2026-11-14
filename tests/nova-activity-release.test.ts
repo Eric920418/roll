@@ -51,7 +51,7 @@ function load<T>(file: string, mocks: Record<string, unknown>, globals: Record<s
   return loaded.exports as T;
 }
 const intl = {
-useLocale: () => "zh-tw", setRequestLocale() {} };
+useLocale: () => "zh-tw", useTranslations: () => (key: string) => key, setRequestLocale() {} };
 
 test("Five canonical tabs and legacy aliases remain deterministic", () => {
   assert.deepEqual(MATCHMAKING_TABS, ["recommendations", "all", "roundtables", "visitors", "messages"]);

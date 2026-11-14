@@ -21,5 +21,5 @@ export default function ReportDraft({ disabled, onInsert }: {
                 }>('/api/action-plans/flow?locale=' + locale, { method: 'POST', body: JSON.stringify({ action: 'share', enabled: true, planId: view.plan.id, revision: view.plan.revision }) });
                 onInsert((zh ? '我的市場驗證報告：' : 'My market validation report: ') + new URL(pathForLocale(shared.link, locale), window.location.origin).href);
             }).catch(e => setError(e instanceof Error ? e.message : String(e))).finally(() => setBusy(false));
-        }}>{zh ? '建立報告分享連結並放入草稿' : 'Insert a report sharing link into draft'}</button>{error && <p role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{error}</p>}</div>;
+        }}>{zh ? '分享報告' : 'Share report'}</button>{error && <p role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{error}</p>}</div>;
 }

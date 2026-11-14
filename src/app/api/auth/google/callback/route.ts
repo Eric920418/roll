@@ -105,6 +105,8 @@ export async function GET(req: NextRequest) {
       }, saved.referralCode, roles.data);
     }
 
+    if (profile.picture && profile.picture !== user.image) await prisma.user.update({ where: { id: user.id }, data: { image: profile.picture } });
+
     const token = await createUserSession(user.id, user.email, user.sessionVersion);
     const dest =
       inviteNext ??

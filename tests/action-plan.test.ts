@@ -1,3 +1,4 @@
+import { STEPS, flowKey, words } from "../src/lib/action-plan/flow/catalog";
 import { anthropicOptions } from "../src/lib/ai/anthropic-options";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -635,4 +636,28 @@ test("Five-choice diagnosis reuses all saved opening answers and never asks anot
   assert.equal(result.status, "ready"); assert.equal(requests.length, 1); assert.equal(requests[0].messages.length, 17);
   const sent = JSON.stringify(requests[0].messages);
   for (const answer of ["Original buyer evidence", "Existing prototype", "Recurring customers", "6–20", "Events and trade shows", "Under 3 hours", "Prepare fundraising materials"]) assert(sent.includes(answer));
+});
+
+
+test("Saved workflow titles, prerequisites and references share short names without changing records", () => {
+  for (const locale of ["en", "zh-tw"]) {
+    const rows = STEPS.map((step, index) => action({ id: step.id, clientKey: flowKey(step.id), executionOrder: index, title: words(step.previousTitle, locale), metricTarget: index + 1, metricCurrent: 0,
+      dependencies: index ? [{ minimumCurrent: 1, dependsOn: { id: STEPS[index - 1].id, clientKey: flowKey(STEPS[index - 1].id), title: words(STEPS[index - 1].previousTitle, locale), done: false, metricCurrent: 0 } }] : [],
+    }));
+    const before = JSON.stringify(rows), ranked = rankActions(rows);
+    for (const [index, step] of STEPS.entries()) {
+      const row = ranked.find(a => a.id === step.id)!;
+      assert.equal(row.title, words(step.title, locale));
+      assert.equal(row.metric?.target, index + 1); assert.equal(row.expectedOutcome.text, rows[index].expectedOutcome);
+      if (index) {
+        assert.equal(row.dependency.actionRefs[0].title, words(STEPS[index - 1].title, locale));
+        assert.equal(row.dependency.actionTitles[0], words(STEPS[index - 1].title, locale));
+      }
+      const reference = taskReference({ clientKey: flowKey(step.id), title: words(step.previousTitle, locale), displayNumber: index + 1, minimumCurrent: 1, metricCurrent: 0, metricUnit: "companies" });
+      assert.equal(reference, `#${index + 1} · ${words(step.title, locale)} (0/1 companies)`);
+    }
+    assert.equal(JSON.stringify(rows), before);
+    const custom = action({ clientKey: flowKey("01-1"), title: "My custom customer programme" });
+    assert.equal(rankActions([custom])[0].title, custom.title);
+  }
 });

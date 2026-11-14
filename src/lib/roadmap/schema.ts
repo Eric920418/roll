@@ -1,11 +1,9 @@
 import { correctionSchema } from "./corrections";
 import { z } from "zod";
 import { diagnosisSchema, generatedPlanSchema } from "@/lib/action-plan/schemas";
+import { dateSchema } from "./date";
+export { dateSchema } from "./date";
 
-export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
-  const date = new Date(value + "T00:00:00Z");
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}, "無效日期 / Invalid date");
 export function today(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
