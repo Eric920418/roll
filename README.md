@@ -2,7 +2,7 @@
 
 - 圓桌申請、具名訪客與私人分享一併沿用多重身份；原有付費、投資人驗證及導師認證檢查保留。
 
-Email 與 Google 註冊提供 Founder／Mentor／Investor／Partner／Buyer 複選。身份與自動卡片在建立帳號的同一交易保存；Google 選項透過 HttpOnly OAuth state cookie 帶回，既有 Google 帳號登入不改身份。新增 MatchmakingProfile.roles nullable JSONB，舊單選 role 保留並相容讀取（舊版更新主要身份時以該身份為準）、不回填既有會員。卡片編輯、顯示、推薦與身份分類共用同一份身份。身份本身不授權付費功能、投資人權限或圓桌主持；新增或移除待驗證的 Investor／Buyer 身份需重新人工驗證，導師認證仍獨立。只用 pnpm，未新增套件。隔離 PostgreSQL 已套用唯一新增 nullable roles 欄位；測試覆蓋 Email／Google 新註冊、舊 Google 登入、雙分類搜尋、編輯重送與衝突、舊單選相容、投資人驗證與圓桌身份邊界。驗收：隔離 PostgreSQL 全套 pnpm test 593／593、零略過；TypeScript、pnpm build 通過，pnpm lint 零錯誤／14 個既有 warnings。繁中 390px 實測雙身份選取、鍵盤取消與切換 Email／Google 保留選擇，無水平溢位且選項高 55px。Google callback 以模擬 OAuth 身份及真實隔離 DB 驗證，未使用真人 Google 帳號建立帳號。正式資料庫已審核並執行唯一新增 nullable JSONB 欄位，無既有資料寫入；部署後驗收另記。
+Email 與 Google 註冊提供 Founder／Mentor／Investor／Partner／Buyer 複選。身份與自動卡片在建立帳號的同一交易保存；Google 選項透過 HttpOnly OAuth state cookie 帶回，既有 Google 帳號登入不改身份。新增 MatchmakingProfile.roles nullable JSONB，舊單選 role 保留並相容讀取（舊版更新主要身份時以該身份為準）、不回填既有會員。卡片編輯、顯示、推薦與身份分類共用同一份身份。身份本身不授權付費功能、投資人權限或圓桌主持；新增或移除待驗證的 Investor／Buyer 身份需重新人工驗證，導師認證仍獨立。只用 pnpm，未新增套件。隔離 PostgreSQL 已套用唯一新增 nullable roles 欄位；測試覆蓋 Email／Google 新註冊、舊 Google 登入、雙分類搜尋、編輯重送與衝突、舊單選相容、投資人驗證與圓桌身份邊界。驗收：隔離 PostgreSQL 全套 pnpm test 593／593、零略過；TypeScript、pnpm build 通過，pnpm lint 零錯誤／14 個既有 warnings。繁中 390px 實測雙身份選取、鍵盤取消與切換 Email／Google 保留選擇，無水平溢位且選項高 55px。Google callback 以模擬 OAuth 身份及真實隔離 DB 驗證，未使用真人 Google 帳號建立帳號。正式資料庫已審核並執行唯一新增 nullable JSONB 欄位，無既有資料寫入；功能提交 f77e17f 已推送 main；Vercel Production dpl_9S5M2GLKwoVw4XYfxeC9EYe5jRdv 為 Ready 並綁定 rollon.com.tw。正式中英文頁驗證 Founder＋Mentor 複選、Email／Google 切換保留，繁中 390px 無水平溢位及至少 44px 點擊區；未建立正式測試會員。
 
 
 # 行動地圖動態進度修復（2026-11-14）
