@@ -14,7 +14,7 @@ const localization = { usePlanDisplay: () => ({ planText: (v: string) => v }) };
 test('Compact chats keep messages and errors, separate composer actions, and hide unavailable controls', () => {
   for (const locale of ['en', 'zh-tw']) for (const status of ['accepted', 'blocked', 'pending']) for (const unread of [0, 2]) {
     const zh = locale === 'zh-tw', connection = { id: 'chat', company: 'Unicorn Tutor', profileId: 'company', status, outgoing: unread === 0, unread, revision: 1, verified: true, role: 'investor', sharing: { revision: 1, sections: [] }, watches: [], tokenFee: { amount: 5, status: status === 'pending' ? 'reserved' : 'captured', expiresAt: '2026-11-21T12:00:00Z', opening: 'Original invitation' } };
-    const messages = [{ id: 'one', mine: true, body: 'Original outgoing message', createdAt: '2026-11-14T12:00:00Z' }, { id: 'two', mine: false, body: 'Original incoming message', createdAt: '2026-11-14T12:01:00Z' }];
+    const messages = [{ id: 'one', mine: true, body: 'Original outgoing message', createdAt: '2026-11-14T12:00:00Z' }, { id: 'two', mine: false, body: 'Original incoming message', createdAt: '2026-11-14T12:01:00Z' }, { id: 'report', mine: false, body: 'https://rollon.com.tw/task-report/owned?token=qa', createdAt: '2026-11-14T12:02:00Z' }, { id: 'unsafe', mine: false, body: 'javascript:alert(1)', createdAt: '2026-11-14T12:03:00Z' }];
     const failure = 'HTTP 503 · send_failed · trace-123\nFull original error';
     const states = [{ enabled: true, portal: true }, '', [connection], 'chat', messages, unread ? 'older' : null, 'Unsaved draft', failure, false, { revision: 1, sections: [], workspace: '' }, null];
     const before = JSON.stringify(states); let slot = 0;
@@ -35,6 +35,8 @@ test('Compact chats keep messages and errors, separate composer actions, and hid
       assert.equal(visible.includes(zh ? '更早訊息' : 'Earlier messages'), unread > 0);
       assert.equal(visible.includes(zh ? '標為已讀' : 'Mark read'), unread > 0);
       assert(visible.includes('dateTime="2026-11-14T12:00:00Z"'));
+      assert(visible.includes('href="https://rollon.com.tw/task-report/owned?token=qa"')); assert(visible.includes('rel="noopener noreferrer"'));
+      assert(!visible.includes('href="javascript:'));
     }
     if (status === 'accepted') {
       assert(visible.includes('data-chat-composer')); assert(visible.includes('Unsaved draft')); assert(visible.includes('rows="2"'));
@@ -72,7 +74,11 @@ test('Chat report sharing checks eligibility, inserts only confirmed links, and 
       assert.match(html(), new RegExp(`href="${zh ? '/zh-tw' : ''}/dashboard/agenda"`));
       assert.equal(calls.length, start + 1); assert.equal(confirms, before); assert.equal(inserted.length, 0);
     };
-    view.plan.workflowVersion = 1; await blocked(zh ? /舊版計畫/ : /previous workflow/);
+    view.plan.workflowVersion = 1; const steps = view.steps; view.steps = [];
+    click(); await settle();
+    assert.equal(inserted.length, 1); assert.match(inserted[0], zh ? /我的進度報告/ : /My progress report/);
+    assert.equal(JSON.parse(calls.at(-1)!.input!.body!).enabled, true);
+    inserted.length = 0; view.steps = steps;
     view.plan.workflowVersion = 2; view.archived = true; await blocked(zh ? /已封存/ : /archived/);
     view.archived = false; view.steps[0].done = false; await blocked(zh ? /完成十六步後/ : /Complete all sixteen steps/);
     view.steps[0].done = true; view.steps[0].ready = false; await blocked(zh ? /證據需補正/ : /evidence needs attention/);

@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { lockActivePlan, PlanWriteError, serializePlan } from "../service";
+import { legacyReportAccess, legacyReportShared, shareLegacyReport } from "../legacy-report";
 import { prepareActionReward, awardReward } from "@/lib/rewards/service";
 import { completeGettingStarted } from "@/lib/getting-started/service";
 import { salesRecordSchema, sameScope } from "@/lib/validation/schema";
@@ -50,7 +51,7 @@ export async function getFlow(userId: string, planId?: string, locale?: string) 
     proofStatus: context.proofs.map(p => ({ company: p.company, kind: p.kind, approved: p.approved, revoked: p.revoked, status: p.reviewStatus || "pending", note: p.reviewNote || "" })),
     integrity: steps.filter(s => s.done && !s.ready).map(s => ({ step: s.id, reasons: s.reasons })),
     reportCode: "NV-" + hash(plan.id).slice(0, 4).toUpperCase() + "-" + hash(plan.id).slice(4, 8).toUpperCase(),
-    shared: Boolean(metadata(plan.actions.find(a => flowStep(a)?.id === "05-3")?.taskFinding).share),
+    shared: isV2 ? Boolean(metadata(plan.actions.find(a => flowStep(a)?.id === "05-3")?.taskFinding).share) : await legacyReportShared(plan),
     history: history.map(p => ({ ...p, createdAt: p.createdAt.toISOString() })),
   };
 }
@@ -68,6 +69,11 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
   let link: string | undefined;
   await prisma.$transaction(async raw => {
     const tx = raw as DB, found = await readPlan(userId, input.planId, tx);
+    if (input.action === "share" && !found.actions.some(a => a.clientKey.startsWith("nova_v2_"))) {
+      await lockActivePlan(tx, userId, found.id, input.revision);
+      link = await shareLegacyReport(tx, found, input.enabled);
+      return;
+    }
     if (found.archivedAt || found.activeKey !== userId || !found.actions.some(a => flowStep(a))) throw new PlanWriteError("只可修改目前新版計畫 / Only the active new workflow can be changed", 409);
     if (input.action === "complete" && found.actions.some(a => flowStep(a)?.id === input.step && a.done)) return;
     if (input.action === "supplement") { const data = dataAt(await flowContext(found, tx), "01-4"); if (data.kind === "organize" && data.supplements?.some(r => r.id === input.requestId)) return; }
@@ -199,7 +205,7 @@ export async function confirmation(actionId: string, token: string, answer?: "ye
 }
 export async function reportAccess(actionId: string, userId?: string, token?: string) {
   const action = await prisma.actionItem.findFirst({ where: { id: actionId, clientKey: { in: [flowKey("03-3"), flowKey("05-3")] } } });
-  if (!action) throw new PlanWriteError("找不到文件 / Document not found", 404);
+  if (!action) return legacyReportAccess(actionId, userId, token);
   const plan = await prisma.actionPlan.findUniqueOrThrow({ where: { id: action.actionPlanId }, include }), context = await flowContext(plan);
   if (plan.userId !== userId || token) {
     const share = metadata(action.taskFinding).share;
@@ -207,5 +213,5 @@ export async function reportAccess(actionId: string, userId?: string, token?: st
   }
   const stored = flowStoredSchema.safeParse(action.taskWorkspace).data;
   if (stored?.data.kind !== "document") throw new PlanWriteError("請先儲存文件 / Save the document first", 409);
-  return { version: reportFingerprint(plan, context).slice(0, 12), counts: { conversations: records(context).length, companies: new Set(records(context).map(r => r.company.normalize("NFKC").toLowerCase())).size, payments: paidCompanies(context).length }, shareExpires: metadata(action.taskFinding).share?.expires || null, step: flowStep(action)!.id, completedAt: action.completedAt?.toISOString() || null, sections: [...stored.data.sections].sort((a, b) => Number(a.id) - Number(b.id)), locale: plan.locale, title: action.title, goal: plan.goal || "", code: "NV-" + hash(plan.id).slice(0, 4).toUpperCase() + "-" + hash(plan.id).slice(4, 8).toUpperCase() };
+  return { kind: "workflow" as const, planId: plan.id, owner: plan.userId === userId, version: reportFingerprint(plan, context).slice(0, 12), counts: { conversations: records(context).length, companies: new Set(records(context).map(r => r.company.normalize("NFKC").toLowerCase())).size, payments: paidCompanies(context).length }, shareExpires: metadata(action.taskFinding).share?.expires || null, step: flowStep(action)!.id, completedAt: action.completedAt?.toISOString() || null, sections: [...stored.data.sections].sort((a, b) => Number(a.id) - Number(b.id)), locale: plan.locale, title: action.title, goal: plan.goal || "", code: "NV-" + hash(plan.id).slice(0, 4).toUpperCase() + "-" + hash(plan.id).slice(4, 8).toUpperCase() };
 }

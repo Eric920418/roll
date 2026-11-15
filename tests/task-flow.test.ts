@@ -269,7 +269,9 @@ test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replie
       await assert.rejects(flow.reportAccess(actionId, other.id), /disabled/);
       const shared = await flow.mutateFlow(owner.id, { action: "share", planId: current.plan.id, revision: current.plan.revision!, enabled: true });
       const token = new URL(shared.link!, "http://localhost").searchParams.get("token")!;
-      assert.equal((await flow.reportAccess(actionId, undefined, token)).sections.length, 4);
+      const opened = await flow.reportAccess(actionId, undefined, token);
+      assert.equal(opened.kind, "workflow");
+      if (opened.kind === "workflow") assert.equal(opened.sections.length, 4);
       await refresh(); await flow.mutateFlow(owner.id, { action: "share", planId: current.plan.id, revision: current.plan.revision!, enabled: false });
       await assert.rejects(flow.reportAccess(actionId, undefined, token), /disabled/);
       assert.equal(await db.rewardEntry.count({ where: { userId: owner.id, kind: "action", eventKey: { startsWith: "action:" } } }), 17, "16 new completions plus the preserved legacy claim");
