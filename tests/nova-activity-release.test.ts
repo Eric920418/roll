@@ -201,7 +201,7 @@ test("Home renders one primary task in both languages with locale-correct destin
 test("Viewer list shows other roles, opens immediately, paginates and clears stale names on errors in both languages", async () => {
   for (const locale of ["zh-tw", "en"]) {
     const state: unknown[] = [], effects: Array<() => unknown> = [], calls: string[] = [];
-    let cursor = 0, fail = false, available = true, empty = false;
+    let cursor = 0, fail = false, available = true, empty = false, comparable = true;
     class FetchError extends Error { constructor(message: string, public status: number) { super(message); } }
     const component = load<{ default(): ReactNode }>("src/components/dashboard/network/ViewerOverview.tsx", {
       react: {
@@ -213,7 +213,7 @@ test("Viewer list shows other roles, opens immediately, paginates and clears sta
       "../matchmaking/CardView": { PrivatePhoto: () => null },
       "@/lib/member-fetch": { MemberFetchError: FetchError, memberFetch: async (path: string) => {
         calls.push(path);
-        if (path === "/api/network/visitors") return { founders: 0, investors: 0, others: empty ? 0 : 1, previous: { founders: 0, investors: 0, others: 0 }, comparable: true };
+        if (path === "/api/network/visitors") return { founders: 0, investors: 0, others: empty ? 0 : 1, previous: { founders: 0, investors: 0, others: 0 }, comparable };
         if (fail) throw new FetchError("HTTP 503\nVisitor read failed\nnetwork_503\ntrace-viewers", 503);
         const more = path.includes("cursor=");
         return { available, members: empty || !available ? [] : [{ card: { id: more ? "second" : "mentor", displayName: more ? "Second visitor" : "Public mentor", role: "mentor" }, viewedAt: "2026-11-14T01:00:00.000Z" }], next: more || empty || !available ? null : "next cursor" };
@@ -226,6 +226,8 @@ test("Viewer list shows other roles, opens immediately, paginates and clears sta
     assert.match(text(render()), /載入訪客統計|Loading visitor totals/);
     effects.splice(0).forEach(fn => fn()); await settle();
     let tree = render(); assert.match(text(tree), /Public mentor/); assert.match(text(tree), /其他會員|Other members/);
+    assert.doesNotMatch(text(tree), /Each member counts|Only visitors who|同一會員每週|下方只列出/);
+    assert.match(text(tree), /查看訪客|See visitors/);
     assert(tree.some(n => n.props.href === "/dashboard/matchmaking/mentor"));
     assert.deepEqual(calls, ["/api/network/visitors", "/api/network/visitors/members"]);
     click(locale === "en" ? "Load more" : "載入更多"); await settle();
@@ -237,6 +239,9 @@ test("Viewer list shows other roles, opens immediately, paginates and clears sta
     assert.doesNotMatch(text(render()), /沒有自願公開身份|No visitors have shared|匿名瀏覽仍計入總數|Anonymous visits are still included/);
     click(locale === "en" ? "Refresh" : "重新整理"); await settle();
     assert.doesNotMatch(text(render()), /本週還沒有人|No one has viewed/); assert.match(text(render()), /Founders|創辦人/); assert(render().some(n => n.type === 'p' && n.props.children === 0), 'Zero totals remain visible');
+    comparable = false; click(locale === "en" ? "Refresh" : "重新整理"); await settle();
+    assert.doesNotMatch(text(render()), /Not enough comparison data|比較資料不足|vs last week at this time|較上週同期|Each member counts|同一會員每週/);
+    assert.equal(render().filter(n => n.type === "p" && n.props.children === 0).length, 3);
     available = false; click(locale === "en" ? "Refresh" : "重新整理"); await settle();
     assert.match(text(render()), /具名瀏覽目前停用|Identified views are currently disabled/);
   }
