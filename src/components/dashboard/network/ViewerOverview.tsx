@@ -34,7 +34,22 @@ export default function ViewerOverview() {
   const loadPeople = useCallback(async (cursor?: string) => { setBusy(true); try { const result = await memberFetch<NonNullable<typeof people>>(`/api/network/visitors/members${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`); setPeople(old => cursor && old ? { ...result, members: [...old.members, ...result.members] } : result); setPeopleError(""); setUpgrade(false); } catch (e) { setPeople(null); setPeopleError(msg(e)); setUpgrade(e instanceof MemberFetchError && e.status === 403); } finally { setBusy(false); } }, []);
   useEffect(() => { void Promise.resolve().then(load); }, [load]);
   useEffect(() => { if (opened) void Promise.resolve().then(() => loadPeople()); }, [opened, loadPeople]);
-  return <section className="space-y-5 rounded-2xl border border-dark/15 bg-white p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{zh ? "誰看過我" : "Who viewed me"}</h2><span className="text-sm">{zh ? "本週" : "This week"}</span></div>{error && <div role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{error}<button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></div>}{data && <div className="grid grid-cols-3 gap-3">{(["founders", "investors", "others"] as const).map(key => { const delta = data[key] - data.previous[key]; return <div key={key} className="min-w-0 rounded-xl border border-dark/15 p-3 sm:p-5"><p className="text-sm font-medium">{key === "founders" ? (zh ? "創辦人" : "Founders") : key === "investors" ? (zh ? "投資人" : "Investors") : (zh ? "其他會員" : "Other members")}</p><p className="mt-3 text-3xl sm:text-5xl font-semibold">{data[key]}</p>{data.comparable && <p className={`mt-4 inline-block rounded-full px-3 py-2 text-xs ${!delta ? "bg-neutral-100" : delta > 0 ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>{data.previous[key] === 0 && delta > 0 ? (zh ? `新增 ${delta} 人` : `${delta} new`) : `${delta > 0 ? "+" : ""}${delta} · ${zh ? "較上週同期" : "vs last week at this time"}`}</p>}</div>; })}</div>}
+  return <section className="space-y-5 rounded-2xl border border-dark/15 bg-white p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{zh ? "誰看過我" : "Who viewed me"}</h2><span className="text-sm">{zh ? "本週" : "This week"}</span></div>{error && <div role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{error}<button className={button} onClick={() => void load()}>{zh ? "重試" : "Retry"}</button></div>}{data && <div className="grid gap-3 lg:grid-cols-3">
+      {(["founders", "investors", "others"] as const).map(key => {
+        const delta = data.comparable ? data[key] - data.previous[key] : 0;
+        const label = key === "founders" ? (zh ? "創辦人" : "Founders") : key === "investors" ? (zh ? "投資人" : "Investors") : (zh ? "其他會員" : "Other members");
+        return <div key={key} role="group" aria-label={label} className="flex min-w-0 items-center gap-4 rounded-xl border border-dark/15 bg-white p-5">
+          <div className={`flex w-10 shrink-0 flex-col items-center gap-2 text-center ${delta > 0 ? "text-green-700" : delta < 0 ? "text-red-800" : "text-neutral-400"}`}>
+            {delta ? <><svg role="img" aria-label={delta > 0 ? (zh ? "增加" : "Increase") : (zh ? "減少" : "Decrease")} viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"><path d={delta > 0 ? "M3 17 12 7 21 17Z" : "M3 7 12 17 21 7Z"} /></svg><span className="text-sm font-medium tabular-nums">{Math.abs(delta)}</span></> : <span className="text-2xl leading-none" aria-label={data.comparable ? (zh ? "無變化" : "No change") : (zh ? "無比較資料" : "Comparison unavailable")}>–</span>}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm text-neutral-600">{label}</p>
+            <p className="text-5xl font-semibold leading-tight tabular-nums">{data[key]}</p>
+            <p className="mt-1 text-xs text-neutral-500">{zh ? "上週：" : "Last week: "}{data.comparable ? data.previous[key] : "–"}</p>
+          </div>
+        </div>;
+      })}
+    </div>}
     {!data && !error && <p role="status">{zh ? "載入訪客統計…" : "Loading visitor totals…"}</p>}
     <button className={button} disabled={busy} onClick={() => { void load(); if (opened) void loadPeople(); }}>{zh ? "重新整理" : "Refresh"}</button>{" "}
     <button className={button} aria-expanded={opened} onClick={() => setOpened(v => !v)}>{zh ? "查看訪客" : "See visitors"} {opened ? "↑" : "↓"}</button>

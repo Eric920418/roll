@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 import { Children, isValidElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { homeNextStep, matchmakingTab, MATCHMAKING_TABS } from "../src/lib/dashboard/home";
 import type { ActionPlanDto } from "../src/lib/action-plan/service";
@@ -244,5 +245,42 @@ test("Viewer list shows other roles, opens immediately, paginates and clears sta
     assert.equal(render().filter(n => n.type === "p" && n.props.children === 0).length, 3);
     available = false; click(locale === "en" ? "Refresh" : "重新整理"); await settle();
     assert.match(text(render()), /具名瀏覽目前停用|Identified views are currently disabled/);
+  }
+});
+
+test("Visitor cards show same-time absolute trends and previous totals in both languages", () => {
+  for (const locale of ["zh-tw", "en"]) {
+    const summary = { founders: 5, investors: 0, others: 4, previous: { founders: 2, investors: 2, others: 4 }, comparable: true };
+    let cursor = 0;
+    const component = load<{ default(): ReactNode }>("src/components/dashboard/network/ViewerOverview.tsx", {
+      react: { useState: (initial: unknown) => [cursor++ === 0 ? summary : initial, () => {}], useCallback: (fn: unknown) => fn, useEffect() {} },
+      "next-intl": { useLocale: () => locale }, "next/link": { default: "a" },
+      "@/lib/routes": {}, "@/lib/member-options": {}, "@/lib/member-fetch": {}, "../matchmaking/CardView": {},
+    });
+    function cards() { cursor = 0; return nodes(component.default()).filter(n => n.props.role === "group").map(n => renderToStaticMarkup(n.props.children)); }
+    const [founders, investors, others] = cards();
+    assert.match(founders!, /Founders|創辦人/);
+    assert.match(founders!, /text-green-700/); assert.match(founders!, /M3 17 12 7 21 17Z/);
+    assert.match(founders!, /<span[^>]*>3<\/span>/); assert.match(founders!, /<p[^>]*text-5xl[^>]*>5<\/p>/);
+    assert.match(founders!, /(?:Last week: |上週：)2<\/p>/);
+    assert.match(investors!, /Investors|投資人/);
+    assert.match(investors!, /text-red-800/); assert.match(investors!, /M3 7 12 17 21 7Z/);
+    assert.match(investors!, /<span[^>]*>2<\/span>/); assert.match(investors!, /<p[^>]*text-5xl[^>]*>0<\/p>/);
+    assert.match(investors!, /(?:Last week: |上週：)2<\/p>/); assert.doesNotMatch(investors!, />-2</);
+    assert.match(others!, /Other members|其他會員/);
+    assert.match(others!, /text-neutral-400/); assert.match(others!, />–<\/span>/);
+    assert.match(others!, /<p[^>]*text-5xl[^>]*>4<\/p>/); assert.match(others!, /(?:Last week: |上週：)4<\/p>/);
+    assert.doesNotMatch(others!, /<svg|<span[^>]*>0<\/span>/);
+    assert.doesNotMatch(cards().join(""), /new|新增|vs last week|較上週|rounded-full/);
+
+    summary.previous.founders = 0;
+    assert.match(cards()[0]!, /<span[^>]*>5<\/span>/);
+    assert.match(cards()[0]!, /(?:Last week: |上週：)0<\/p>/);
+    summary.comparable = false;
+    for (const card of cards()) {
+      assert.match(card, />–<\/span>/); assert.match(card, /(?:Last week: |上週：)–<\/p>/);
+      assert.doesNotMatch(card, /<svg|text-green-700|text-red-800/);
+    }
+    assert.match(cards()[0]!, /<p[^>]*text-5xl[^>]*>5<\/p>/);
   }
 });
