@@ -102,7 +102,11 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       require(data.market, "請選擇原市場", "Choose the original market");
     } else {
       target = 5; const paid = new Set(paidCompanies(context).map(p => companyKey(p.company)));
-      current = new Set(data.records.filter(r => paid.has(companyKey(r.company)) && r.name && r.reason && r.missing && r.referral && dateValid(r.date) && approvedProofs(context, true).some(p => companyKey(p.company) === companyKey(r.company) && p.date <= r.date)).map(r => companyKey(r.company))).size;
+      const reviews = data.records.filter(r => paid.has(companyKey(r.company)) && r.name && r.reason && r.missing && r.referral && dateValid(r.date) && approvedProofs(context, true).some(p => companyKey(p.company) === companyKey(r.company) && p.date <= r.date));
+      current = new Set(reviews.map(r => companyKey(r.company))).size;
+      const retentionReasons = new Map<string, Set<string>>();
+      for (const r of reviews) retentionReasons.set(r.reason, new Set([...(retentionReasons.get(r.reason) || []), companyKey(r.company)]));
+      summary.push(...[...retentionReasons].sort((a, b) => b[1].size - a[1].size).slice(0, 3).map(([reason, companies]) => reason + " · " + companies.size + w(" 家客戶佐證", " customer sources")));
     }
     require(current >= target, "完整有效對話不足 " + current + "/" + target, "Not enough complete conversations: " + current + "/" + target);
   }

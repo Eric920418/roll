@@ -234,9 +234,9 @@ test("Viewer list shows other roles, opens immediately, paginates and clears sta
     fail = true; click(locale === "en" ? "Refresh" : "重新整理"); await settle();
     tree = render(); assert.match(text(tree), /HTTP 503/); assert.match(text(tree), /trace-viewers/); assert.doesNotMatch(text(tree), /Public mentor|Second visitor/);
     fail = false; empty = true; click(locale === "en" ? "Retry" : "重試"); await settle();
-    assert.match(text(render()), /沒有自願公開身份|No visitors have shared/);
+    assert.doesNotMatch(text(render()), /沒有自願公開身份|No visitors have shared|匿名瀏覽仍計入總數|Anonymous visits are still included/);
     click(locale === "en" ? "Refresh" : "重新整理"); await settle();
-    assert.match(text(render()), /本週還沒有人|No one has viewed/);
+    assert.doesNotMatch(text(render()), /本週還沒有人|No one has viewed/); assert.match(text(render()), /Founders|創辦人/); assert(render().some(n => n.type === 'p' && n.props.children === 0), 'Zero totals remain visible');
     available = false; click(locale === "en" ? "Refresh" : "重新整理"); await settle();
     assert.match(text(render()), /具名瀏覽目前停用|Identified views are currently disabled/);
   }

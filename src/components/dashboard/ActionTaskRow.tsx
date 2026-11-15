@@ -45,8 +45,7 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
           <h2 className="mt-2 break-words text-lg font-bold sm:text-xl">{title}</h2>
           <div className="mt-3 flex flex-wrap gap-1" aria-hidden="true">{group.map(a => <span key={a.id} className={"h-1 w-7 rounded-full " + (a.done || a.id === action.id ? "bg-white" : "bg-white/20")} />)}</div>
         </div><button type="button" disabled={busy} className="min-h-11 shrink-0 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2 disabled:opacity-50" onClick={() => { const work = document.getElementById(workId); work?.scrollIntoView({ block: "start" }); work?.querySelector<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a")?.focus(); }}>{zh ? "繼續本步行動" : "Work on this step"}</button></div>
-        <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs sm:grid-cols-[1.6fr_1fr_1fr]">
-          <div className="col-span-2 sm:col-span-1"><dt className="text-[10px] tracking-wider text-white/50">{zh ? "完成標準" : "Completion criteria"}</dt><dd className="mt-2 whitespace-pre-wrap break-words leading-6">{outcome}</dd></div>
+        <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs">
           <div><dt className="text-[10px] tracking-wider text-white/50">{zh ? "目前進度" : "Saved progress"}</dt><dd className="mt-2 font-semibold">{action.metric?.target != null ? `${action.metric.current ?? 0} / ${action.metric.target} ${planUnit(action.metric.unit || "", locale)}` : status}</dd></div>
           <div><dt className="text-[10px] tracking-wider text-white/50">{milestone ? zh ? "里程碑期限" : "Milestone due" : zh ? "目標期限" : "Goal due"}</dt><dd className="mt-2 font-semibold">{milestone?.targetDate || plan.roadmap?.deadline || "—"}</dd></div>
         </dl>
@@ -68,7 +67,7 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
           <span aria-hidden="true" className="ml-auto shrink-0 text-dark/50 group-open/task:rotate-180">⌄</span>
           <span className="sr-only">{zh ? "展開或收合任務" : "Expand or collapse task"}</span>
         </summary>
-        {badges}<div className="mt-4 border-t border-dark/10 pt-4">{focusMode && <p className="text-xs font-semibold tracking-wide text-dark/55">{zh ? "完成標準" : "COMPLETION CRITERIA"}</p>}<p className="mt-2 whitespace-pre-wrap text-base leading-7 text-dark/75">{outcome}</p></div>{focusMode && !workspace && <div className="mt-5"><LearningResources kind={workspaceKind(action)} question={title} /></div>}{metric}{workspace}{taskActions}{featured && checkbox && <label className="mt-5 inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}
+        {badges}{!focusMode && <div className="mt-4 border-t border-dark/10 pt-4"><p className="mt-2 whitespace-pre-wrap text-base leading-7 text-dark/75">{outcome}</p></div>}{focusMode && !workspace && <div className="mt-5"><LearningResources kind={workspaceKind(action)} question={title} /></div>}{metric}{workspace}{taskActions}{featured && checkbox && <label className="mt-5 inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}
       </details>
     </div>
   </article>;

@@ -31,6 +31,7 @@ export const STEPS = [
 export type StepId = typeof STEPS[number]["id"];
 export const STEP_TARGETS: Record<StepId, number> = { "01-1": 10, "01-2": 5, "01-3": 4, "01-4": 10, "02-1": 3, "02-2": 1, "02-3": 3, "03-1": 80, "03-2": 2, "03-3": 4, "04-1": 5, "04-2": 5, "04-3": 3, "05-1": 2, "05-2": 10, "05-3": 4 };
 export type TemplateKind = typeof STEPS[number]["kind"];
+export const TEMPLATE_NAMES: Record<TemplateKind, Words> = { conversation: ["對話", "Conversation"], organize: ["整理", "Organize"], outreach: ["聯絡", "Outreach"], document: ["文件", "Document"] };
 export const stepIdSchema = z.enum(STEPS.map(s => s.id) as [StepId, ...StepId[]]);
 export const flowKey = (id: StepId) => "nova_v2_" + id;
 export function isFlowAction(action: { clientKey?: string }) { return Boolean(action.clientKey?.startsWith("nova_v2_")); }

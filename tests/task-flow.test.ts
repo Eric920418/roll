@@ -39,6 +39,20 @@ test("New completion rejects bare counts, duplicate people, future dates and own
   delete record.proofs[0].review; assert.equal(validProofs(record).length, 1, "Legacy proof semantics remain unchanged");
 });
 
+test("Paid review findings retain original wording and count distinct, valid paying companies only", () => {
+  const row = (id: string, company: string, reason = 'Saves reporting time') => ({ ...emptyRecord(id), company, name: id, date: '2026-09-01', reason, missing: 'Export format', referral: 'Other teams' });
+  const paid = (company: string, approved = true) => ({ id: company, company, name: 'Buyer', kind: 'paid' as const, amount: '100', currency: 'USD', date: '2026-08-01', approved, revoked: false });
+  const data: FlowData = { kind: 'conversation', market: 'TW', records: [row('1', 'Acme'), row('2', 'Beta'), row('3', ' ACME '), row('4', 'Unpaid', 'Must not appear'), row('5', 'Pending', 'Not yet paid'), { ...row('6', 'Future', 'Future wording'), date: '2099-01-01' }, { ...row('7', 'Incomplete', 'Incomplete wording'), referral: '' }] };
+  for (const locale of ['en', 'zh-tw']) {
+    const context: FlowContext = { actions: [], proofs: [paid('Acme'), paid('Beta'), paid('Pending', false), paid('Future'), paid('Incomplete')], locale, now: new Date('2026-09-07') };
+    const before: string = JSON.stringify({ context, data }), result = evaluateStep(context, '04-2', data);
+    assert.equal(result.current, 2); assert.equal(result.ready, false);
+    assert(result.summary.includes('Saves reporting time · 2' + (locale === 'en' ? ' customer sources' : ' 家客戶佐證')));
+    assert.doesNotMatch(result.summary.join('\n'), /Must not appear|Not yet paid|Future wording|Incomplete wording/);
+    assert.equal(JSON.stringify({ context, data }), before);
+  }
+});
+
 test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replies, review, carry-over, history and atomic completion", { skip: !process.env.ROLL_REWARDS_TEST_DATABASE_URL }, async t => {
   const connectionString = process.env.ROLL_REWARDS_TEST_DATABASE_URL!, url = new URL(connectionString);
   assert(["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) && url.pathname.startsWith("/roll_rewards_qa"));

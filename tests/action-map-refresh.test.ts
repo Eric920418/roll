@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { pdfRuntime } from './helpers/pdf-runtime';
-import { STEPS, MILESTONES, emptyFlowData } from '../src/lib/action-plan/flow/catalog';
+import { STEPS, MILESTONES, TEMPLATE_NAMES, emptyFlowData } from '../src/lib/action-plan/flow/catalog';
 import type { FlowView } from '../src/lib/action-plan/flow/service';
 
 function fixture(revision = 1, completed = 0, current = 0): FlowView {
   const steps = STEPS.map((s, i) => ({ ...s, actionId: s.id, done: i < completed, current: i === completed ? current : 0, target: 10, data: emptyFlowData(s.kind), saved: true, reasons: [], summary: [] }));
-  return { plan: { id: 'plan', revision, actions: steps.map(s => ({ id: s.id, done: s.done, milestoneId: `m${s.milestone}`, metric: { current: 0, target: 10 } })), roadmap: { goal: 'Goal', milestones: MILESTONES.map((m, i) => ({ id: `m${i}`, title: m[1], position: i, achievedAt: i < STEPS[completed]?.milestone ? '2026-11-14' : null, targetDate: '2026-12-14' })) } }, steps, current: steps.find(s => !s.done)?.id || null, archived: false, integrity: [], history: [], followups: [], leads: [], positioningReplies: [], proofStatus: [], weeks: [] } as unknown as FlowView;
+  return { plan: { id: 'plan', revision, actions: steps.map(s => ({ id: s.id, done: s.done, milestoneId: `m${s.milestone}`, metric: { current: 0, target: 10 } })), roadmap: { goal: 'Goal', milestones: MILESTONES.map((m, i) => ({ id: `m${i}`, title: m[1], position: i, achievedAt: i < STEPS[completed]?.milestone ? '2026-11-14' : null, targetDate: '2026-12-14' })) } }, steps, current: steps.find(s => !s.done)?.id || null, archived: false, integrity: [], history: [], followups: [], leads: [], criteria: [], tiers: [], payments: [], channels: [], positioningReplies: [], proofStatus: [], weeks: [], metrics: { currency: 'USD', customers: 0, eligible: 0, renewed: 0, renewalRate: null, averageRevenue: 0, acquisitionCost: null, revenue: 0 }, searchTokens: { recordedOrders: 0, spent: 0, reserved: 0 }, weekly: { currency: 'USD', target: 0, weeklyContacts: 0, weeklyConversations: 0 } } as unknown as FlowView;
 }
 
 test('Milestone bars reflect saved progress, retain confirmation gates, and advance the current milestone', () => {
@@ -86,4 +86,24 @@ test('Flow refresh preserves unsaved input and its original revision, including 
   assert.equal(clean.reads(), 2, 'Returning to the page refreshes clean progress');
   clean.find('Templates').onChange(draft); clean.resolve(next); await clean.settle();
   assert.equal((clean.find('Templates').data as { market: string }).market, 'US'); assert.equal(clean.find('Map').plan.revision, 1);
+});
+
+test('All sixteen steps retain compact types and criteria gates; company search uses only the four relevant step contexts', async () => {
+  for (const locale of ['en', 'zh-tw']) for (const [index, spec] of STEPS.entries()) {
+    const view = fixture(1, index);
+    const original = view.steps[0].data; if (original.kind === 'conversation') original.market = 'TW';
+    const current = view.steps[index].data; if (spec.id === '05-2' && current.kind === 'outreach') current.market = 'Japan';
+    const positioning = view.steps[1].data;
+    if (positioning.kind === 'organize') { positioning.values.positioning = 'A confirmed positioning statement'; positioning.confirmed = ['positioning']; }
+    view.criteria = [{ id: 'confirmed', label: 'Confirmed buying criterion', weight: 50, sources: ['a', 'b', 'c'], confirmed: true }, { id: 'observed', label: 'Observation only', weight: 50, sources: ['a'], confirmed: true }];
+    const before = JSON.stringify(view), h = harness(view, locale); await h.settle();
+    const tree = h.render(), badge = tree.find(n => Object.hasOwn(n.props, 'data-task-type'));
+    assert.equal(badge?.props.children, TEMPLATE_NAMES[spec.kind][locale === 'zh-tw' ? 0 : 1]);
+    const search = tree.find(n => n.props.stepContext)?.props.stepContext as { step: string; market: string; description: string } | undefined;
+    assert.equal(Boolean(search), ['01-1', '03-1', '04-1', '05-2'].includes(spec.id));
+    if (search) { assert.equal(search.step, spec.id); assert.equal(search.market, spec.id === '05-2' ? 'Japan' : 'TW'); assert.match(search.description, /Confirmed buying criterion/); assert(!search.description.includes('Observation only')); }
+    const priority = tree.find(n => Object.hasOwn(n.props, 'data-today-priority'));
+    assert.doesNotMatch(JSON.stringify(priority), /Completion criteria|COMPLETION CRITERIA|完成標準/);
+    assert.equal(JSON.stringify(view), before);
+  }
 });

@@ -19,7 +19,7 @@ test('Legacy priority layout retains original data and checkbox gates; other cal
     const Row = load<typeof import('../src/components/dashboard/ActionTaskRow')>('src/components/dashboard/ActionTaskRow.tsx').default;
     const props = { action, plan, compact: true, featured: true, focusMode: true, workspace: React.createElement('div', null, 'Original work'), onEdit: () => {}, onDelete: () => {}, onToggle: () => { throw Error('Rendering must not complete a task'); } };
     const original = JSON.stringify(plan), html = renderToStaticMarkup(React.createElement(Row, props));
-    assert(html.includes('data-today-priority')); assert(html.includes('data-task-columns')); assert(html.includes('Original completion criterion')); assert(html.includes('2026-12-01'));
+    assert(html.includes('data-today-priority')); assert(html.includes('data-task-columns')); assert(!html.includes('Original completion criterion')); assert(!/>(?:Completion criteria|COMPLETION CRITERIA|完成標準)</.test(html)); assert(html.includes(locale === 'en' ? 'Saved progress' : '目前進度')); assert(html.includes('2026-12-01'));
     assert.match(html, /<input[^>]* disabled=""/); assert.equal(JSON.stringify(plan), original);
     assert.doesNotMatch(html, /Show more|Show less|Expected outcome|Estimated time|Why now|Stage fit|Blocked by \/ Prerequisites|顯示更多|收起|預估時間|為何現在做|階段適合度/);
     assert(!html.includes(action.bottleneckFit.reason)); assert(!html.includes(action.stageFit.reason));
@@ -38,6 +38,23 @@ test('Compact maps use real legacy milestone and action counts, including no roa
     const html = renderToStaticMarkup(React.createElement(Map, { userId: 'owner', plan: { ...plan, roadmap: milestones }, event: null, compact: true } as React.ComponentProps<typeof Map>, 'Original steps'));
     assert(html.includes('Expand steps')); assert.equal((html.match(/<li/g) || []).length, milestones?.milestones.length || 0); assert(!html.includes('steps completed')); if (milestones) { assert(html.includes('aria-current="step"')); assert.equal((html.match(/Original milestone/g) || []).length, 2); } else assert(html.includes('Current plan'));
     assert(!html.includes('16 steps')); assert(!html.includes('View all 5 milestones'));
+  }
+});
+
+test('Every legacy milestone omits criteria from featured, expanded, blocked and completed tasks without changing data', () => {
+  for (const locale of ['en', 'zh-tw']) {
+    const load = runtime(locale), Row = load<typeof import('../src/components/dashboard/ActionTaskRow')>('src/components/dashboard/ActionTaskRow.tsx').default;
+    for (let position = 0; position < 5; position++) for (const state of ['ready', 'blocked', 'done']) {
+      const task = { ...action, id: `a${position}`, milestoneId: `m${position}`, done: state === 'done', dependency: { ...action.dependency, blocked: state === 'blocked' } };
+      const currentPlan = { ...plan, actions: [task], roadmap: { ...plan.roadmap!, milestones: [{ ...plan.roadmap!.milestones[0], id: task.milestoneId, position }] } };
+      const before = JSON.stringify(currentPlan);
+      for (const featured of [true, false]) {
+        const html = renderToStaticMarkup(React.createElement(Row, { action: task, plan: currentPlan, compact: true, focusMode: true, featured, onToggle() {} }));
+        assert(!html.includes(action.expectedOutcome.text)); assert.doesNotMatch(html, />(?:COMPLETION CRITERIA|Completion criteria|完成標準)</);
+        if (featured) { assert(html.includes('2026-12-01')); assert(html.includes(locale === 'en' ? 'Saved progress' : '目前進度')); }
+      }
+      assert.equal(JSON.stringify(currentPlan), before);
+    }
   }
 });
 

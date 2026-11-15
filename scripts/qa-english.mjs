@@ -419,6 +419,21 @@ async function legacyLayoutQA() {
       }
       check('Viewing legacy plan never rewrites its data '+locale+kind,await snapshot()===before);
     }
+    const milestoneTitles=['Confirm your target customer','Validate willingness to pay','Build a repeatable acquisition process','Build your first paying customer cohort','Scale revenue using validated methods'];
+    for(let position=1;position<5;position++)await db.planMilestone.create({data:{actionPlanId:owner.planId,position,title:milestoneTitles[position],expectedOutcome:'Hidden legacy outcome '+position,acceptanceCriteria:'Hidden legacy criterion '+position,targetDate:new Date(Date.now()+30*86400000)}});
+    const allMilestones=await db.planMilestone.findMany({where:{actionPlanId:owner.planId},orderBy:{position:'asc'}});
+    for(const milestone of allMilestones){
+      for(const m of allMilestones)await db.planMilestone.update({where:{id:m.id},data:{achievedAt:m.position<milestone.position?pastDate:null}});
+      await db.actionItem.update({where:{id:actionId},data:{milestoneId:milestone.id,title:'Write a positioning statement',taskWorkspace:positioning,metricTarget:1,metricCurrent:1,expectedOutcome:'Hidden legacy task criterion'}});
+      const before=await snapshot();await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();
+      for(const width of [390,768,1440]){
+        await page.setViewportSize({width,height:1000});const priority=page.locator('[data-legacy-task] [data-today-priority]');
+        check('Five-stage legacy criteria removal '+locale+milestone.position+width,await priority.locator('dt').count()===2&&!(await page.locator('main').innerText()).includes('Hidden legacy task criterion')&&!(await page.locator('main').innerText()).includes('Hidden legacy criterion')&&!/Completion criteria|COMPLETION CRITERIA|完成標準/.test(await priority.innerText()));
+        await layout(page,'Legacy milestone '+milestone.position+locale+width,locale);if(width!==768)await screenshot(page,'legacy-milestone-'+milestone.position+'-'+locale+'-'+width);
+      }
+      check('Legacy milestone viewing preserves records '+locale+milestone.position,await snapshot()===before);
+    }
+    await db.planMilestone.updateMany({where:{actionPlanId:owner.planId},data:{achievedAt:null}});await db.actionItem.update({where:{id:actionId},data:{milestoneId:owner.milestoneId}});
     // A plan with no roadmap keeps its actual steps and does not gain milestones.
     await db.actionPlan.update({where:{id:owner.planId},data:{goal:null}});await db.actionItem.update({where:{id:actionId},data:{title:'Write a positioning statement',taskWorkspace:positioning,metricTarget:1,metricCurrent:1}});
     const noMap=await snapshot();await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('[data-legacy-task]').waitFor();const mapSummary=await page.locator('#action-map > summary').innerText();check('Legacy plan without roadmap shows real steps '+locale,mapSummary.includes('2 / 3')&&mapSummary.includes(zh?'展開步驟':'Expand steps'));check('No-roadmap view retains all data '+locale,await snapshot()===noMap);
@@ -657,6 +672,7 @@ async function task16QA() {
     const tiers=records.map((r,i)=>({leadId:r.id,matches:i<3?criteria.map(c=>c.id):['c0'],override:'',reason:'',confirmed:true}));
     const positioning=w('為需要每週報表的小型團隊，減少手動彙整時間。','Help small teams reduce manual weekly reporting.');
     const contact=(id,company,i=0)=>({id,company,name:w('聯絡人 ','Contact ')+(i+1),leadId:'',date:day(7),channel:i%2?'LinkedIn':'Email',status:'sent',offer:w('報表試點：USD 100，為期十四天，交付每週報表與回顧。','Reporting pilot: USD 100 for fourteen days, weekly reports and a review.'),matches:criteria.map(c=>c.id),pain:records[0].pain,solution:records[0].solution,wtp:'willing'});
+    let searchPosts=0;page.on('request',request=>{if(new URL(request.url()).pathname==='/api/prospects/orders'&&request.method()==='POST')searchPosts++;});
     const states={
       '01-1':{kind:'conversation',market:'TW',records},
       '01-2':{...empty(),values:{positioning,positioningMode:'direct',positioningWho:w('需要每週報表的小型團隊','Small teams needing weekly reports'),positioningWhen:w('每週整理資料時','When compiling weekly data'),positioningPain:records[0].pain,positioningMethod:w('依客戶紀錄整理固定格式','Consistent reports from customer records')},confirmed:['positioning']},
@@ -681,14 +697,29 @@ async function task16QA() {
       if(id==='04-3')await proof(records[0].company,1);
       if(id==='05-2')await proof(w('日本公司 ','Japan company ')+'1',1);
       await db.actionItem.update({where:{id:action(id).id},data:{taskWorkspace:{version:2,step:id,data:states[id]},...(id==='01-2'?{taskFinding:{positioningVersion:'qa-version',responses:records.slice(0,5).map(r=>({version:'qa-version',leadId:r.id,statement:positioning,answer:'yes',at:new Date().toISOString()}))}}:{})}});
+      if(id==='05-2'){
+        const description=[positioning,...criteria.map(c=>c.label)].join('\n');
+        const delivery=(name,country,description)=>({id:randomUUID(),submissionId:randomUUID(),country,description,status:'completed',createdAt:new Date().toISOString(),requested:5,delivered:5,usable:1,needsRecheck:false,companies:[{id:randomUUID(),name,quality:'strong',website:'https://example.com',contact:{kind:'page',value:'https://example.com/contact',source:'https://example.com/contact'},evidence:[]}]});
+        await page.route('**/api/prospects',route=>route.fulfill({json:{enabled:true,pricing:{version:1,searchFee:20},tokens:{available:100,reserved:0},workspace:{revision:1,country:'TW',description:'Old shared target',suggested:'Old profile target'},access:{canSearch:true,fullAccess:true},quota:{remaining:100},pending:null,nextCursor:null,orders:[delivery('Old Taiwan delivery','TW',description),delivery('Other Japan criteria','JP','Other buyer criteria'),delivery('Correct Japan delivery','JP',description)]}}));
+      }
       const frozen=JSON.stringify(await db.actionItem.findMany({where:{actionPlanId:plan.id},orderBy:{id:'asc'}}));
       for(const width of [390,768,1440]) {
         // Pace screenshot reloads to respect the existing shared member-read limit.
         await page.waitForTimeout(2000);
         await page.setViewportSize({width,height:width===390?844:1000});await page.goto(origin+prefix+'/dashboard/agenda');if(id===ids[0]&&width===390)await closeTour(page,locale);await page.locator('#task-work').waitFor();
         await page.waitForFunction(()=>!document.querySelector('#goal-roadmap')?.textContent.includes('Loading your sixteen-step'));
-        if(states[id].kind!=='conversation'){await page.locator('#prospects').getByRole('button',{name:w('尋找 5 家公司','Find 5 companies'),exact:true}).waitFor();await page.locator('#prospects form').waitFor({state:'attached'});}
+        if(['01-1','03-1','04-1','05-2'].includes(id)){await page.locator('#prospects').getByRole('button',{name:w('尋找 5 家公司','Find 5 companies'),exact:true}).waitFor();await page.locator('#prospects form').waitFor({state:'attached'});} else check('No unrelated company panel '+id+locale+width,await page.locator('#prospects').count()===0);
+        if(id==='05-2'){
+          const companies=page.locator('#prospects > div table');await companies.getByText('Correct Japan delivery',{exact:true}).waitFor();check('Second market excludes old deliveries '+locale+width,!(await companies.innerText()).includes('Old Taiwan delivery')&&!(await companies.innerText()).includes('Other Japan criteria'));
+          if(width===390){
+            await page.locator('#prospects').getByRole('button',{name:w('尋找 5 家公司','Find 5 companies'),exact:true}).click();const dialog=page.getByRole('dialog',{name:w('尋找新公司','Find new companies'),exact:true});
+            check('Second market country prefilled '+locale,await dialog.getByLabel(w('目標公司所在國家','Target company country'),{exact:true}).inputValue()==='JP');await dialog.getByLabel(w('目標買方描述','Target buyer description'),{exact:true}).fill('Manual Japan search criteria');await dialog.getByRole('button',{name:w('關閉搜尋','Close search'),exact:true}).click();
+            await page.reload();await page.locator('#task-work').waitFor();await page.locator('#prospects').getByRole('button',{name:w('尋找 5 家公司','Find 5 companies'),exact:true}).click();await dialog.waitFor();check('Second market manual draft survives reload '+locale,await dialog.getByLabel(w('目標買方描述','Target buyer description'),{exact:true}).inputValue()==='Manual Japan search criteria');await dialog.getByRole('button',{name:w('套用本步搜尋條件',"Apply this step's criteria"),exact:true}).click();await dialog.getByRole('button',{name:w('關閉搜尋','Close search'),exact:true}).click();
+          }
+        }
         const heading=await page.locator('[data-today-priority] h2').innerText();check('Correct step '+id+locale+width,heading.length>0);
+        const priority=page.locator('[data-today-priority]');check('Compact task type and retained progress '+id+locale+width,await priority.locator('[data-task-type]').innerText()===w(({conversation:'對話',organize:'整理',outreach:'聯絡',document:'文件'})[states[id].kind],({conversation:'Conversation',organize:'Organize',outreach:'Outreach',document:'Document'})[states[id].kind])&&await priority.locator('dt').count()===2&&!/Completion criteria|COMPLETION CRITERIA|完成標準/.test(await priority.innerText()));
+        if(id==='04-2')check('Actual renewal wording and five customer sources '+locale+width,(await page.locator('[data-next-step=insights]').innerText()).includes(w('每週節省整理時間 · 5 家客戶佐證','Saves reporting time each week · 5 customer sources')));
         await layout(page,'Task '+id+locale+width,locale);
         check('44px task controls '+id+locale+width,await page.locator('#goal-roadmap button:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=43)));
         const alerts=(await page.locator('main [role=alert]').allInnerTexts()).filter(t=>t.trim());check('No runtime alerts '+id+locale+width+(alerts.length?' '+alerts.join(' | '):''),alerts.length===0);
@@ -705,6 +736,11 @@ async function task16QA() {
     await page.goto(origin+prefix+'/dashboard/agenda');await page.locator('#flow-report').waitFor();
     check('Completed plan retains PDF and share entry '+locale,await page.locator('#flow-report').getByRole('link',{name:w('預覽／列印為 PDF','Preview / print to PDF'),exact:true}).isVisible()&&await page.locator('#flow-report').getByRole('button',{name:w('建立報告分享連結','Create report sharing link'),exact:true}).isVisible());
     check('Completed plan cannot complete or overwrite again '+locale,await page.getByRole('button',{name:w('確認並完成','Confirm and complete'),exact:true}).count()===0&&await page.getByRole('button',{name:w('儲存本步成果','Save this step'),exact:true}).count()===0);
+    check('Viewing and editing search drafts never starts an order '+locale,searchPosts===0);
+    await page.route('**/api/network/visitors',route=>route.fulfill({json:{founders:0,investors:0,others:0,previous:{founders:0,investors:0,others:0},comparable:true}}));
+    await page.route('**/api/network/visitors/members*',route=>route.fulfill({json:{available:true,members:[],next:null}}));
+    await page.goto(origin+prefix+'/dashboard/matchmaking?tab=visitors');const visitors=page.locator('#matchmaking-panel-visitors');await visitors.getByRole('button',{name:w('清單','List'),exact:true}).waitFor();
+    for(const width of [390,768,1440]){await page.setViewportSize({width,height:1000});check('Empty visitor wording removed, totals retained '+locale+width,await visitors.locator('p').filter({hasText:/^0$/}).count()===3&&!/No one has viewed|No visitors have shared|Anonymous visits are still included|本週還沒有人|沒有自願公開身份的訪客/.test(await visitors.innerText()));await layout(page,'Visitor empty state '+locale+width,locale);if(width!==768)await screenshot(page,'visitors-empty-'+locale+'-'+width);}
     await context.close();
   }
 }
