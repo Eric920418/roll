@@ -1,4 +1,5 @@
 import { tokenQuote } from "@/lib/billing/commerce";
+import { invalidateProspectingSchedule } from "@/lib/prospecting/schedule";
 import "server-only";
 import { grantTokens, reserveTokens, resourceFee, tokenSnapshot } from "@/lib/tokens/service";
 import { expireTokens } from "@/lib/tokens/expiry";
@@ -84,7 +85,7 @@ async function feeView(id: string) {
 }
 export async function createProspectOrder(userId: string, input: z.infer<typeof orderInputSchema>) {
   const payloadHash = hash(input);
-  return prisma.$transaction(async raw => {
+  const saved = await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
     await lockMember(tx, userId);
     const replay = await tx.prospectingOrder.findUnique({ where: { userId_requestId: { userId, requestId: input.requestId } } });
@@ -112,6 +113,8 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash, kind: "search", poc: rights.poc, resourceId: order.id, expiresAt: new Date(Date.now() + 86400000), metadata: { exclusions: context.names, ...(input.planId ? { planId: input.planId } : {}) } });
     return { id: order.id, status: order.status };
   }, { timeout: 15000 });
+  invalidateProspectingSchedule();
+  return saved;
 }
 export async function addProspectContact(userId: string, orderId: string, companyId: string) {
   return prisma.$transaction(async raw => {

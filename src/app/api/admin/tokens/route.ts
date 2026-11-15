@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { invalidateProspectingSchedule } from "@/lib/prospecting/schedule";
 import { getAdminSession } from "@/lib/auth/guard";
 import { unauthorized } from "@/lib/api";
 import { MemberError, memberError, privateOk } from "@/lib/member-http";
@@ -56,6 +57,7 @@ export async function PATCH(req: Request) {
       await tx.tokenReservation.update({ where: { id: fee.id }, data: { metadata: { ...metadata, reconciliation: [...history, audit] } } });
       return { saved: true };
     });
+    invalidateProspectingSchedule();
     return privateOk(result);
   } catch (error) { return memberError(error); }
 }

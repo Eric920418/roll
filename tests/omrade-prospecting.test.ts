@@ -17,7 +17,7 @@ function loader(mocks: Record<string, unknown>, env: Record<string, string> = {}
   function load<T>(file: string): T {
     const path = resolve(file); if (cache.has(path)) return cache.get(path)!.exports as T;
     const loaded = { exports: {} }; cache.set(path, loaded);
-    runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, { module: loaded, exports: loaded.exports, Date, Error, SyntaxError, Response, Request, Headers, URL, Buffer, AbortSignal, TextEncoder, TextDecoder, process: { env }, fetch: fetcher, console, setTimeout, clearTimeout, require: (id: string) => id === "server-only" ? {} : id in mocks ? mocks[id] : id.startsWith("@/") ? load(`src/${id.slice(2)}.ts`) : id.startsWith(".") ? load(resolve(dirname(path), `${id}.ts`)) : native(id) });
+    runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, { module: loaded, exports: loaded.exports, Date, Error, SyntaxError, Response, Request, Headers, URL, Buffer, AbortSignal, TextEncoder, TextDecoder, process: { env }, fetch: fetcher, console, setTimeout, clearTimeout, require: (id: string) => id === "@/lib/prospecting/schedule" ? { invalidateProspectingSchedule() {} } : id === "server-only" ? {} : id in mocks ? mocks[id] : id.startsWith("@/") ? load(`src/${id.slice(2)}.ts`) : id.startsWith(".") ? load(resolve(dirname(path), `${id}.ts`)) : native(id) });
     return loaded.exports as T;
   }
   return load;
