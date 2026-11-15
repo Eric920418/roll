@@ -9,7 +9,7 @@ const target = 'Confirmed reporting buyers';
 const order = (name: string, country: string, description: string) => ({ id: randomUUID(), submissionId: randomUUID(), country, description, status: 'completed', createdAt: '2026-11-01T00:00:00Z', requested: 5, delivered: 5, usable: 1, needsRecheck: false, companies: [{ id: randomUUID(), name, quality: 'strong', website: 'https://example.com', contact: { kind: 'page', value: 'https://example.com/contact', source: 'https://example.com/contact' }, evidence: [] }] });
 function harness(locale: string, stepContext?: SearchProps['stepContext'], storage = new Map<string, string>()) {
   const slots: unknown[] = [], effects: Array<() => void> = [], timers: Array<() => void> = [], posts: Array<Record<string, unknown>> = [];
-  let cursor = 0, fail = false;
+  let cursor = 0, fail = false, context = stepContext;
   const server = { enabled: true, pricing: { version: 1, searchFee: 20 }, workspace: { revision: 3, country: 'TW', description: 'Unrelated shared workspace', suggested: 'Saved buyer evidence' }, access: { canSearch: true, fullAccess: true }, quota: { remaining: 100 }, orders: [order('Old Taiwan company', 'TW', target), order('Wrong Japan conditions', 'JP', 'Other buyer criteria'), order('Matching Japan company', 'JP', target)], pending: null, nextCursor: null };
   const changed = (a: unknown[] | undefined, b: unknown[]) => !a || a.length !== b.length || b.some((v, i) => v !== a[i]);
   const hooks = { ...React,
@@ -26,10 +26,10 @@ function harness(locale: string, stepContext?: SearchProps['stepContext'], stora
   } } }, { crypto: { randomUUID }, window: Object.assign(new EventTarget(), { setInterval: () => 1, location: { hash: '' } }), document: Object.assign(new EventTarget(), { visibilityState: 'visible' }), BroadcastChannel: undefined, HTMLDialogElement: class {}, localStorage: { getItem: (key: string) => storage.get(key) || null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) }, sessionStorage: { getItem: () => null, setItem() {} }, setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {}, clearInterval() {} });
   const Search = load<typeof import('../src/components/dashboard/prospecting/ProspectSearch')>('src/components/dashboard/prospecting/ProspectSearch.tsx').default;
   type Node = { type: unknown; props: Record<string, unknown> };
-  function render() { cursor = 0; const nodes: Node[] = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (React.isValidElement<{ children?: React.ReactNode }>(child)) { nodes.push(child as Node); visit(child.props.children); } }); } visit(Search({ userId: 'owner', planId: 'plan', compact: true, stepContext })); return nodes; }
+  function render() { cursor = 0; const nodes: Node[] = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (React.isValidElement<{ children?: React.ReactNode }>(child)) { nodes.push(child as Node); visit(child.props.children); } }); } visit(Search({ userId: 'owner', planId: 'plan', compact: true, stepContext: context })); return nodes; }
   function find(type: unknown) { const node = render().find(n => n.type === type); assert(node); return node.props; }
   async function settle() { for (let i = 0; i < 8; i++) { render(); effects.splice(0).forEach(fn => fn()); timers.splice(0).forEach(fn => fn()); await Promise.resolve(); } }
-  return { render, settle, posts, storage, fail: (value: boolean) => { fail = value; }, country: () => find('CountrySelect').value,
+  return { render, settle, posts, storage, context: (value: SearchProps['stepContext']) => { context = value; }, fail: (value: boolean) => { fail = value; }, country: () => find('CountrySelect').value,
     description: () => find('textarea').value,
     editCountry: (value: string) => (find('CountrySelect').onChange as (value: string) => void)(value),
     editDescription: (value: string) => (find('textarea').onChange as (e: { target: { value: string } }) => void)({ target: { value } }),
@@ -66,4 +66,24 @@ test('Unknown task markets require a chosen country while unscoped search retain
   assert.equal(scoped.country(), ''); scoped.submit(); await scoped.settle(); assert.equal(scoped.posts.length, 0);
   scoped.editCountry('US'); scoped.submit(); await scoped.settle(); assert.equal(scoped.posts[0].country, 'US');
   const shared = harness('en'); await shared.settle(); assert.equal(shared.country(), 'TW'); assert.equal(shared.description(), 'Unrelated shared workspace');
+});
+
+
+test('First-market prefill retains the saved buyer description and never replaces manually edited targeting', async () => {
+  const h = harness('en', { step: '01-1', market: '', description: '' }); await h.settle();
+  assert.equal(h.description(), 'Saved buyer evidence');
+  h.context({ step: '01-1', market: 'TW', description: '' }); await h.settle();
+  assert.equal(h.country(), 'TW'); assert.equal(h.description(), 'Saved buyer evidence');
+  h.editDescription('My own buyer description'); h.context({ step: '01-1', market: 'Japan', description: target }); await h.settle();
+  assert.equal(h.description(), 'My own buyer description');
+});
+
+test('Failed local storage never lets a market update restore an older draft over current input', async () => {
+  const storage = new Map([['nova:prospects:owner:plan:01-1', JSON.stringify({ country: 'TW', description: 'Older stored draft' })]]);
+  const h = harness('en', { step: '01-1', market: 'TW', description: '' }, storage); await h.settle();
+  storage.set = () => { throw new Error('Storage unavailable'); };
+  h.editDescription('Current unsaved buyer description');
+  h.context({ step: '01-1', market: 'Japan', description: target }); await h.settle();
+  assert.equal(h.description(), 'Current unsaved buyer description');
+  assert.match(JSON.stringify(h.render()), /Local draft could not be saved/);
 });

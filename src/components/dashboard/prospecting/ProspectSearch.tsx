@@ -42,7 +42,6 @@ export default function ProspectSearch({ userId, planId, active = true, onSelect
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      if (scoped && !dirty.current && !attempt.current) { setCountry(stepCountry); setDescription(stepDescription); }
       try {
         const cached = JSON.parse(localStorage.getItem(storageKey) || "null");
         if (!cached && planId && !scoped) {
@@ -54,7 +53,14 @@ export default function ProspectSearch({ userId, planId, active = true, onSelect
       if (!cancelled) setStorageReady(true);
     }, 0);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [storageKey, zh, planId, userId, scoped, stepCountry, stepDescription]);
+  }, [storageKey, zh, planId, userId, scoped]);
+  useEffect(() => {
+    if (!scoped) return;
+    const timer = setTimeout(() => {
+      if (!dirty.current && !attempt.current) { setCountry(stepCountry); setDescription(stepDescription || data?.workspace.suggested || ""); }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [scoped, stepCountry, stepDescription, data?.workspace.suggested]);
   useEffect(() => { if (active && storageReady && !loaded.current) { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); } }, [active, storageReady, load]);
   const pending = Boolean(data?.pending);
   const effectiveCount = 5;
