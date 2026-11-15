@@ -25,6 +25,9 @@ test('Compact chats keep messages and errors, separate composer actions, and hid
     const html = renderToStaticMarkup(React.createElement(Inbox, { embedded: true }));
     const visible = html.replace(/<details\b[^>]*>[\s\S]*?<\/details>/g, '');
     assert(!visible.includes('Reload')); assert(!visible.includes('Company card')); assert(!visible.includes('Your invitation fee'));
+    assert(!visible.includes('5 Token')); assert(!visible.includes('Paid')); assert(!visible.includes('已扣款'));
+    assert.equal(visible.includes('Original invitation'), status === 'pending');
+    assert.equal(visible.includes(zh ? '未回覆退回時間' : 'Unanswered hold expires'), status === 'pending');
     assert(visible.includes(failure)); assert(html.includes('/dashboard/matchmaking/company'));
     assert(!visible.includes('Block and stop private sharing')); assert(!/<details[^>]*\bopen/.test(html));
     if (status !== 'pending') {
@@ -40,6 +43,55 @@ test('Compact chats keep messages and errors, separate composer actions, and hid
       assert(visible.indexOf('<textarea') < visible.indexOf(zh ? '送出</button>' : 'Send</button>'));
     } else assert(!visible.includes('<textarea'));
     assert.equal(JSON.stringify(states), before);
+  }
+});
+
+test('Chat report sharing checks eligibility, inserts only confirmed links, and retains full retry errors', async () => {
+  for (const locale of ['en', 'zh-tw']) {
+    const zh = locale === 'zh-tw', state: unknown[] = [], calls: Array<{ path: string; input?: { method?: string; body?: string } }> = [], inserted: string[] = [];
+    let slot = 0, confirms = 0, consent = true, fail = false, disabled = false, wait: Promise<void> | null = null;
+    const view = { plan: { id: 'owned-plan', revision: 7, workflowVersion: 2 }, archived: false, steps: Array.from({ length: 16 }, () => ({ done: true, ready: true })) };
+    const load = pdfRuntime({ react: { ...hooks, useState: (initial: unknown) => { const i = slot++; if (!(i in state)) state[i] = initial; return [state[i], (next: unknown) => { state[i] = next; }]; } },
+      'next-intl': { useLocale: () => locale }, 'next/link': { __esModule: true, default: 'a' },
+      '@/lib/member-fetch': { memberFetch: async (path: string, input?: { method?: string; body?: string }) => {
+        calls.push({ path, input });
+        if (!input) { if (wait) await wait; return view; }
+        if (fail) throw new Error('HTTP 409\nPlan revision changed\nconflict\ntrace-share');
+        return { ...view, link: '/task-report/report-id?token=confirmed-token' };
+      } },
+    }, { window: { location: { origin: 'https://example.test' }, confirm: () => { confirms++; return consent; } }, Error });
+    const Report = load<typeof import('../src/components/dashboard/network/ReportDraft')>('src/components/dashboard/network/ReportDraft.tsx').default;
+    function render() { slot = 0; return Report({ disabled, onInsert: value => inserted.push(value) }); }
+    function click() { const root = render(); const button = React.Children.toArray(root.props.children).find(child => React.isValidElement(child) && child.type === 'button') as React.ReactElement<{ onClick(): void }>; button.props.onClick(); }
+    const html = () => renderToStaticMarkup(render());
+    const settle = () => new Promise(resolve => setImmediate(resolve));
+    const blocked = async (pattern: RegExp) => {
+      const start = calls.length, before = confirms;
+      click(); await settle();
+      assert.match(html(), pattern); assert.match(html(), zh ? /查看今日任務/ : /View today’s tasks/);
+      assert.match(html(), new RegExp(`href="${zh ? '/zh-tw' : ''}/dashboard/agenda"`));
+      assert.equal(calls.length, start + 1); assert.equal(confirms, before); assert.equal(inserted.length, 0);
+    };
+    view.plan.workflowVersion = 1; await blocked(zh ? /舊版計畫/ : /previous workflow/);
+    view.plan.workflowVersion = 2; view.archived = true; await blocked(zh ? /已封存/ : /archived/);
+    view.archived = false; view.steps[0].done = false; await blocked(zh ? /完成十六步後/ : /Complete all sixteen steps/);
+    view.steps[0].done = true; view.steps[0].ready = false; await blocked(zh ? /證據需補正/ : /evidence needs attention/);
+    view.steps[0].ready = true; consent = false;
+    click(); await settle(); assert.equal(inserted.length, 0); assert(!calls.at(-1)!.input);
+
+    consent = true; fail = true; click(); await settle();
+    for (const detail of ['HTTP 409', 'Plan revision changed', 'conflict', 'trace-share']) assert(html().includes(detail));
+    assert.equal(inserted.length, 0);
+    fail = false; view.plan.revision = 8;
+    let release!: () => void; wait = new Promise<void>(resolve => { release = resolve; });
+    click(); assert.match(html(), zh ? /準備分享/ : /Preparing report/); assert.match(html(), /disabled=""/);
+    release(); await settle(); wait = null;
+    assert.equal(inserted.length, 1);
+    assert(inserted[0].includes(`https://example.test${zh ? '/zh-tw' : ''}/task-report/report-id?token=confirmed-token`));
+    assert.deepEqual(JSON.parse(calls.at(-1)!.input!.body!), { action: 'share', enabled: true, planId: 'owned-plan', revision: 8 });
+    assert(calls.every(call => call.path === `/api/action-plans/flow?locale=${locale}`), 'Sharing never sends a chat message');
+    assert.match(html(), zh ? /已放入訊息草稿/ : /Report link added to your message draft/); assert.doesNotMatch(html(), /HTTP 409|trace-share/);
+    disabled = true; assert.match(html(), /disabled=""/);
   }
 });
 
