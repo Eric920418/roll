@@ -138,6 +138,7 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
       linkId = results[0]!.id; assert.equal(results[1]!.id, linkId);
       assert.equal(await db.networkConnection.count({ where: { pairKey: pairKey(owner.id, investor.id) } }), 1);
       await assert.rejects(service.sendMessage(investor.id, linkId, { requestId: randomUUID(), body: "not accepted" }));
+      assert.equal((await service.listConnections(owner.id))[0]!.preview,null);
       await assert.rejects(service.changeConnection(investor.id, linkId, { action: "accept", revision: 1 }));
       await service.changeConnection(owner.id, linkId, { action: "accept", revision: 1 });
       await photo.readPhoto(investor.id, owner.matchmakingProfile!.id); assert.equal(photoPath, "qa/original.webp");
@@ -148,6 +149,8 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
       await assert.rejects(service.messages(stranger.id, linkId));
       assert.equal((await service.messages(owner.id, linkId)).messages.length, 2);
       assert.equal((await service.listConnections(owner.id))[0]!.unread, 2);
+      assert.equal((await service.listConnections(owner.id))[0]!.preview,input.body);
+      assert(!(await service.listConnections(stranger.id)).some(r => r.id === linkId));
     });
     await t.test("Receiving opt-out blocks new invitations before holds, prevents acceptance and new messages, and preserves history and replays", async () => {
       const recipient = await user(), evidence = load<typeof import("../src/lib/evidence/service")>("src/lib/evidence/service.ts"), schema = load<typeof import("../src/lib/evidence/schema")>("src/lib/evidence/schema.ts");

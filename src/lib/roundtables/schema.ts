@@ -26,7 +26,7 @@ export const sessionDraftSchema = z.object({
   startsAt: z.iso.datetime(), endsAt: z.iso.datetime(),
   timezone: z.string().max(100).refine(v => { try { new Intl.DateTimeFormat("en", { timeZone: v }); return true; } catch { return false; } }, "Invalid time zone"),
   frameworkStages: z.array(z.number().int().min(1).max(5)).max(5).refine(distinct).default([]), repeatCount: z.number().int().min(1).max(6).default(1),
-  capacity: z.number().int().min(4).max(6), registrationMode: z.enum(["approval", "instant"]), meetingUrl: httpsUrl,
+  capacity: z.number().int().min(4).max(10), registrationMode: z.enum(["approval", "instant"]), meetingUrl: httpsUrl,
 }).strict().refine(v => { const minutes = (Date.parse(v.endsAt) - Date.parse(v.startsAt)) / 60000; return minutes >= 30 && minutes <= 180; }, "會議須為 30–180 分鐘 / Sessions last 30–180 minutes");
 export const commitmentSchema = z.object({
   title: z.string().trim().min(3).max(200), criteria: z.string().trim().min(3).max(2000), dueDate: dateSchema,
@@ -44,7 +44,7 @@ export const roundtableMutationSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("apply"), id, name: z.string().trim().min(2).max(100), question: z.string().trim().min(3).max(2000), consent: z.literal(true) }).strict(),
   z.object({ action: z.literal("withdraw"), id }).strict(),
   z.object({ action: z.literal("decide"), id, revision, registrationId: id, decision: z.enum(["approve", "reject"]), reason: z.string().trim().min(3).max(2000) }).strict(),
-  z.object({ action: z.literal("finish"), id, revision, entries: z.array(z.object({ registrationId: id, attendance: z.enum(["attended", "absent"]), commitment: commitmentSchema.optional() }).strict()).max(5) }).strict(),
+  z.object({ action: z.literal("finish"), id, revision, entries: z.array(z.object({ registrationId: id, attendance: z.enum(["attended", "absent"]), commitment: commitmentSchema.optional() }).strict()).max(9) }).strict(),
   z.object({ action: z.literal("commitmentDone"), registrationId: id, revision, done: z.boolean() }).strict(),
 ]);
 export type RoundtableMutation = z.infer<typeof roundtableMutationSchema>;

@@ -15,7 +15,7 @@ test("Admin roundtable operations cannot forge certification, delegate through m
   const input = { action: "create", hostId: "host", requestId: randomUUID(), draft };
   assert(adminRoundtableMutationSchema.safeParse(input).success);
   assert(!roundtableMutationSchema.safeParse(input).success);
-  for (const patch of [{ status: "approved" }, { hostId: "host", draft: { ...draft, capacity: 7 } }, { draft: { ...draft, meetingUrl: "javascript:alert(1)" } }]) assert(!adminRoundtableMutationSchema.safeParse({ ...input, ...patch }).success);
+  for (const patch of [{ status: "approved" }, { hostId: "host", draft: { ...draft, capacity: 11 } }, { draft: { ...draft, meetingUrl: "javascript:alert(1)" } }]) assert(!adminRoundtableMutationSchema.safeParse({ ...input, ...patch }).success);
   for (const action of ["mentorApply", "decide", "finish", "prepare", "feedback", "apply"]) assert(!adminRoundtableMutationSchema.safeParse({ ...input, action }).success);
   assert(!adminRoundtableMutationSchema.safeParse({ action: "edit", id: "s", revision: 0, draft, hostId: "other-host" }).success);
 });

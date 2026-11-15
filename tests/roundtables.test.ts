@@ -108,7 +108,7 @@ test("Mentor approval reaches an open foreground panel without reload and expose
     assert.equal(h.reads(), 1); h.status("approved"); const nodes = await h.tick();
     assert.equal(h.reads(), 2, "Read the administrator decision without navigation or a focus event");
     if (compact) assert(nodes.some(n => n.props.children === (locale === "en" ? "Create roundtable" : "建立圓桌會議")));
-    else { assert(nodes.some(n => n.type === "SessionForm")); assert.equal((nodes.find(n => n.type === "details" && n.props.ref)!.props.ref!.current as { open: boolean }).open, true, "Approved host form must be visible outside the application deep link"); }
+    else { assert(nodes.some(n => n.type === "SessionForm")); assert(nodes.some(n => n.props.children === (locale === "en" ? "You\'re certified and ready to host a Roundtable" : "已通過認證，你可以開始主持 Roundtable")), "Approved hosts open directly on the hosting layout"); }
     h.status("revoked"); assert(!(await h.tick()).some(n => n.type === "SessionForm"));
     h.visible("hidden"); const reads = h.reads(); await h.tick(); assert.equal(h.reads(), reads);
     h.active(false); await h.settle(); assert.equal(h.intervals.size, 0);
@@ -123,14 +123,14 @@ test("Certification refresh retains complete errors until an explicit retry", as
   assert.equal(h.reads(), reads + 1); assert(!nodes.some(n => n.props.role === "alert"));
 });
 
-test("Roundtable boundaries reject forged certifications, capacity outside 4–6, unsafe links and unconsented applications", () => {
+test("Roundtable boundaries reject forged certifications, capacity outside 4–10, unsafe links and unconsented applications", () => {
   assert(!mentorDraftSchema.safeParse({ ...mentor, status: "approved" }).success);
   assert(!mentorDraftSchema.safeParse({ ...mentor, references: ["javascript:alert(1)"] }).success);
   assert(!roundtableMutationSchema.safeParse({ action: "apply", id: "r", name: "QA", question: "Discuss evidence", consent: false }).success);
   assert(!roundtableMutationSchema.safeParse({ action: "apply", id: "r", name: "QA", question: "Discuss evidence", consent: true, status: "confirmed" }).success);
   const draft = { topic: "QA roundtable", description: "Discuss actual customer evidence", steps: ["01-1"], industry: "saas", languages: ["en"], startsAt: "2026-11-06T02:00:00Z", endsAt: "2026-11-06T03:00:00Z", timezone: "Asia/Taipei", capacity: 4, registrationMode: "instant", meetingUrl: "https://meet.google.com/qa-private-room" };
   assert(sessionDraftSchema.safeParse(draft).success);
-  for (const patch of [{ capacity: 3 }, { capacity: 7 }, { timezone: "Moon/Base" }, { steps: ["01-1", "01-1"] }, { endsAt: "2026-11-06T02:05:00Z" }, { meetingUrl: "https://user:password@example.com/" }]) assert(!sessionDraftSchema.safeParse({ ...draft, ...patch }).success);
+  for (const patch of [{ capacity: 3 }, { capacity: 11 }, { timezone: "Moon/Base" }, { steps: ["01-1", "01-1"] }, { endsAt: "2026-11-06T02:05:00Z" }, { meetingUrl: "https://user:password@example.com/" }]) assert(!sessionDraftSchema.safeParse({ ...draft, ...patch }).success);
 });
 test("Roundtables in isolated PostgreSQL: certification, concurrent seats, approved FIFO, privacy, immutable sources and atomic commitments", { skip: !process.env.ROLL_REWARDS_TEST_DATABASE_URL }, async t => {
   const connectionString = process.env.ROLL_REWARDS_TEST_DATABASE_URL!, url = new URL(connectionString);
@@ -199,6 +199,20 @@ test("Roundtables in isolated PostgreSQL: certification, concurrent seats, appro
       await assert.rejects(create(host.id, 6), /overlap/);
       await assert.rejects(run(host.id, { action: "create", requestId: randomUUID(), draft: { ...draft(), startsAt: "2026-11-01T02:00:00Z", endsAt: "2026-11-01T03:00:00Z" } }), /future/);
       approval = await create(host.id, 7, "approval");
+    });
+    await t.test("Ten-person sessions reserve the host, cap concurrent seats at nine and finalize all nine attendees", async () => {
+      const extraMembers = await Promise.all(Array.from({ length: 10 }, () => user()));
+      const id = (await run(host.id, { action: "create", requestId: randomUUID(), draft: { ...draft(12), capacity: 10 } }))!; sessions.push(id);
+      await Promise.all(extraMembers.map(m => apply(m.id, id)));
+      const row = await session(id), confirmed = row.registrations.filter(r => r.status === "confirmed");
+      assert.equal(confirmed.length, 9); assert.equal(row.registrations.filter(r => r.status === "waitlisted").length, 1);
+      const before = now;
+      try {
+        now = Date.parse("2026-11-12T03:01:00Z");
+        await run(host.id, { action: "finish", id, revision: row.revision, entries: confirmed.map(r => ({ registrationId: r.id, attendance: "attended", commitment: { title: "Confirm buyer evidence", criteria: "Save one actual buyer response", dueDate: "2026-11-14" } })) });
+        assert.equal((await session(id)).status, "completed");
+        assert.equal(await db.weekCalendarItem.count({ where: { requestId: { startsWith: "roundtable:" + id } } }), 9);
+      } finally { now = before; }
     });
     await t.test("Only founders with existing eligibility apply; private references and links never reach strangers", async () => {
       await assert.rejects(apply(free.id, instant), /eligible/);

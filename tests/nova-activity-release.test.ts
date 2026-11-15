@@ -222,13 +222,13 @@ test("Viewer list shows other roles, opens immediately, paginates and clears sta
     });
     function render() { cursor = 0; effects.length = 0; return nodes(component.default()); }
     const text = (tree: ReturnType<typeof nodes>) => JSON.stringify(tree.map(n => n.props.children));
-    function click(label: string) { const node = render().find(n => n.type === "button" && n.props.children === label); assert(node, label); node.props.onClick!(); }
+    function click(label: string) { const node = render().find(n => n.type === "button" && Children.toArray(n.props.children).some(child => child === label)); assert(node, label); node.props.onClick!(); }
     const settle = () => new Promise(resolve => setImmediate(resolve));
     assert.match(text(render()), /載入訪客統計|Loading visitor totals/);
     effects.splice(0).forEach(fn => fn()); await settle();
     let tree = render(); assert.match(text(tree), /Public mentor/); assert.match(text(tree), /其他會員|Other members/);
     assert.doesNotMatch(text(tree), /Each member counts|Only visitors who|同一會員每週|下方只列出/);
-    assert.match(text(tree), /查看訪客|See visitors/);
+    assert.match(text(tree), /訪客名單|Visitors/);
     assert(tree.some(n => n.props.href === "/dashboard/matchmaking/mentor"));
     assert.deepEqual(calls, ["/api/network/visitors", "/api/network/visitors/members"]);
     click(locale === "en" ? "Load more" : "載入更多"); await settle();
@@ -260,11 +260,11 @@ test("Visitor cards show same-time absolute trends and previous totals in both l
     function cards() { cursor = 0; return nodes(component.default()).filter(n => n.props.role === "group").map(n => renderToStaticMarkup(n.props.children)); }
     const [founders, investors, others] = cards();
     assert.match(founders!, /Founders|創辦人/);
-    assert.match(founders!, /text-green-700/); assert.match(founders!, /M3 17 12 7 21 17Z/);
+    assert.match(founders!, /text-green-700/); assert.match(founders!, /aria-label="(?:Increase|增加)"/);
     assert.match(founders!, /<span[^>]*>3<\/span>/); assert.match(founders!, /<p[^>]*text-5xl[^>]*>5<\/p>/);
     assert.match(founders!, /(?:Last week: |上週：)2<\/p>/);
     assert.match(investors!, /Investors|投資人/);
-    assert.match(investors!, /text-red-800/); assert.match(investors!, /M3 7 12 17 21 7Z/);
+    assert.match(investors!, /text-red-800/); assert.match(investors!, /aria-label="(?:Decrease|減少)"/);
     assert.match(investors!, /<span[^>]*>2<\/span>/); assert.match(investors!, /<p[^>]*text-5xl[^>]*>0<\/p>/);
     assert.match(investors!, /(?:Last week: |上週：)2<\/p>/); assert.doesNotMatch(investors!, />-2</);
     assert.match(others!, /Other members|其他會員/);
