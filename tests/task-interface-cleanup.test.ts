@@ -22,7 +22,7 @@ test('Compact chats keep messages and errors, separate composer actions, and hid
       'next-intl': { useLocale: () => locale }, 'next/navigation': { useSearchParams: () => new URLSearchParams() }, 'next/link': { __esModule: true, default: 'a' }, '../evidence/Preferences': { default: () => null }, './ViewerOverview': { default: () => null }, '../matchmaking/CardView': { PrivatePhoto: () => null }, '@/lib/network/policy': { SECTIONS: ['profile'] },
     });
     const Inbox = load<typeof import('../src/components/dashboard/network/NetworkPanels')>('src/components/dashboard/network/NetworkPanels.tsx').MessagesPage;
-    const html = renderToStaticMarkup(React.createElement(Inbox, { embedded: true }));
+    const html = renderToStaticMarkup(React.createElement(Inbox, { userId: 'owner', embedded: true }));
     const visible = html.replace(/<details\b[^>]*>[\s\S]*?<\/details>/g, '');
     assert(!visible.includes('Reload')); assert(!visible.includes('Company card')); assert(!visible.includes('Your invitation fee'));
     assert(!visible.includes('5 Token')); assert(!visible.includes('Paid')); assert(!visible.includes('已扣款'));

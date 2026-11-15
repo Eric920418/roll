@@ -7,6 +7,7 @@ import { Children, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { homeNextStep, matchmakingTab, MATCHMAKING_TABS } from "../src/lib/dashboard/home";
+import { messageSchema } from "../src/lib/network/policy";
 import type { ActionPlanDto } from "../src/lib/action-plan/service";
 import type { getDiscoverySnapshot } from "../src/lib/discovery/service";
 
@@ -95,7 +96,7 @@ test("Action map starts closed, claims each real transition once and isolates me
   assert.equal(saved.size, 4);
 });
 
-type NodeProps = { value?: string; homeTask?: ReactNode; children?: ReactNode; href?: string; role?: string; id?: string; active?: boolean; embedded?: boolean; onClick?: () => void; onUnreadChange?: (n: number) => void; onKeyDown?: (e: object) => void };
+type NodeProps = { value?: string; error?: string; homeTask?: ReactNode; children?: ReactNode; href?: string; role?: string; id?: string; active?: boolean; embedded?: boolean; onClick?: () => void; onChange?: (e: { target: { value: string } }) => void; onUnreadChange?: (n: number) => void; onKeyDown?: (e: object) => void };
 function nodes(root: ReactNode) {
   const result: Array<{ type: unknown; props: NodeProps }> = [];
   function visit(node: ReactNode) { Children.forEach(node, child => { if (isValidElement<NodeProps>(child)) { result.push(child); visit(child.props.children); } }); }
@@ -126,6 +127,54 @@ test("Switching tabs retains the mounted inbox, marks it inactive and supports k
   assert.equal(new URL(currentUrl).searchParams.get("tab"), "visitors");
   tree.find(n => n.props.id === "matchmaking-tab-all")!.props.onClick!();
   assert.equal(render().some(n => n.type === Viewers), false, "Leaving visitors unmounts private results; returning loads current consent");
+});
+
+test("Back navigation keeps the current URL tab when cached server props and delayed initialization disagree", () => {
+  const state: unknown[] = [], effects: Array<() => unknown> = [], timers: Array<() => void> = [];
+  const listeners = new Map<string, () => void>();
+  let cursor = 0, currentUrl = "https://example.test/dashboard/matchmaking?tab=roundtables";
+  const Inbox = () => null;
+  const workspace = load<{ default(p: object): ReactNode }>("src/components/dashboard/matchmaking/MatchmakingWorkspace.tsx", {
+    react: { useCallback: (fn: unknown) => fn, useEffect: (fn: () => unknown) => effects.push(fn), useState: (initial: unknown) => { const i = cursor++; if (!(i in state)) state[i] = typeof initial === "function" ? initial() : initial; return [state[i], (value: unknown) => { state[i] = typeof value === "function" ? value(state[i]) : value; }]; } },
+    "next-intl": intl, "next/link": { default: "a" }, "./MatchmakingPage": { default: () => null }, "./RoundtablesPanel": { default: () => null },
+    "../network/ViewerOverview": { default: () => null, ViewerPrivacySettings: () => null },
+    "../network/NetworkPanels": { MessagesPage: Inbox, useNetwork: () => ({}) },
+    "@/lib/member-fetch": {}, "@/lib/dashboard/home": { MATCHMAKING_TABS, matchmakingTab }, "@/lib/routes": { pathForLocale: (path: string) => path },
+  }, { window: { location: { get href() { return currentUrl; } }, addEventListener: (name: string, fn: () => void) => listeners.set(name, fn), removeEventListener: (name: string) => listeners.delete(name) }, setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {} });
+  function render() { cursor = 0; return nodes(workspace.default({ userId: "owner", initialTab: "roundtables" })); }
+  render(); const cleanups = effects.map(fn => fn());
+  currentUrl = "https://example.test/dashboard/matchmaking?tab=messages&connection=saved";
+  listeners.get("popstate")!(); timers.forEach(fn => fn());
+  assert.equal(render().find(n => n.type === Inbox)?.props.active, true);
+  cleanups.forEach(fn => { if (typeof fn === "function") fn(); });
+  assert.equal(listeners.size, 0);
+});
+
+test("Message drafts survive a page remount, isolate members and preserve the pending send request ID", async () => {
+  const storage = new Map<string, string>(), sent: Array<{ body: string; requestId: string }> = [];
+  const rows = ["one", "two"].map(id => ({ id, company: "QA " + id, status: "accepted", revision: 1, unread: 0, roles: ["founder"], watches: [], sharing: { revision: 0, sections: [] } }));
+  let state: unknown[] = [], refs: Array<{ current: unknown }> = [], effects: Array<() => unknown> = [], cursor = 0, refCursor = 0, owner = "owner", storageError = false;
+  const inbox = load<{ MessagesPage(p: object): ReactNode }>("src/components/dashboard/network/NetworkPanels.tsx", {
+    react: { ...createRequire(import.meta.url)("react"), useCallback: (fn: unknown) => fn, useEffect: (fn: () => unknown) => effects.push(fn), useRef: (initial: unknown) => refs[refCursor++] ||= { current: initial }, useState: (initial: unknown) => { const i = cursor++; if (!(i in state)) state[i] = i === 0 ? { enabled: true, portal: false } : i === 2 ? rows : initial; return [state[i], (value: unknown) => { state[i] = typeof value === "function" ? value(state[i]) : value; }]; } },
+    "next-intl": { useLocale: () => "en" }, "next/link": { default: "a" }, "next/navigation": { useSearchParams: () => ({ get: () => null }) },
+    "./ReportDraft": { default: () => null }, "../evidence/Preferences": { default: () => null }, "./ViewerOverview": { default: () => null }, "../matchmaking/CardView": { PrivatePhoto: () => null },
+    "@/lib/network/policy": { CONDITIONS: [], SECTIONS: [], messageSchema }, "@/lib/routes": { pathForLocale: (path: string) => path },
+    "@/lib/member-fetch": { memberFetch: async (path: string, init?: { method?: string; body?: string }) => { if (init?.method === "POST") { sent.push(JSON.parse(init.body!)); return {}; } return path.endsWith("messages") ? { messages: [], next: null } : rows; } },
+  }, { sessionStorage: { getItem: (key: string) => storage.get(key) || null, setItem: (key: string, value: string) => { if (storageError) throw new Error("QA storage denied"); storage.set(key, value); }, removeItem: (key: string) => storage.delete(key) }, window: { location: { href: "https://example.test/dashboard/matchmaking?tab=messages" }, history: { replaceState() {} }, dispatchEvent() {} }, Event: class {}, crypto: { randomUUID: () => "22222222-2222-4222-8222-222222222222" } });
+  function render() { cursor = refCursor = 0; effects = []; const tree = nodes(inbox.MessagesPage({ userId: owner, active: false, embedded: true })); effects.forEach(fn => fn()); return tree; }
+  function open(name: string) { render().find(n => n.type === "button" && JSON.stringify(n.props.children).includes(name))!.props.onClick!(); return render(); }
+  function remount() { state = []; refs = []; }
+  let tree = open("QA one"); tree.find(n => n.type === "textarea")!.props.onChange!({ target: { value: "Unsent draft" } }); render();
+  tree = open("QA two"); assert.equal(tree.find(n => n.type === "textarea")!.props.value, "");
+  remount(); tree = open("QA one"); assert.equal(tree.find(n => n.type === "textarea")!.props.value, "Unsent draft");
+  owner = "different-owner"; remount(); tree = open("QA one"); assert.equal(tree.find(n => n.type === "textarea")!.props.value, "");
+  owner = "owner"; const requestId = "11111111-1111-4111-8111-111111111111";
+  storage.set("nova:message-draft:owner:one", JSON.stringify({ body: "Retry safely", pending: { body: "Retry safely", requestId } }));
+  remount(); tree = open("QA one"); tree.find(n => n.type === "button" && n.props.children === "Send")!.props.onClick!();
+  await new Promise(resolve => setTimeout(resolve, 0)); render();
+  assert.deepEqual(sent, [{ body: "Retry safely", requestId }]); assert.equal(storage.has("nova:message-draft:owner:one"), false);
+  storageError = true; tree = open("QA one"); tree.find(n => n.type === "textarea")!.props.onChange!({ target: { value: "Keep in memory" } }); render();
+  tree = render(); assert.equal(tree.find(n => n.type === "textarea")!.props.value, "Keep in memory"); assert(tree.some(n => n.props.error?.includes("QA storage denied")));
 });
 
 test("Inactive roundtable panel starts no requests; visible panel loads actual server records", async () => {
@@ -161,10 +210,10 @@ test("An inactive inbox starts no requests or polling; activating it resumes rea
     "@/lib/routes": { pathForLocale: (path: string) => path }, "@/lib/network/policy": {},
     "@/lib/member-fetch": { memberFetch: async (path: string) => { calls.push(path); return path.endsWith("connections") ? [] : path.endsWith("features") ? network : { workspaces: [] }; } },
   }, { document: { visibilityState: "visible" }, setInterval: (_: unknown, delay: number) => { timers.push(delay); return 1; }, clearInterval() {}, setTimeout, clearTimeout, AbortController, AbortSignal });
-  component.MessagesPage({ active: false, embedded: true }); effects.forEach(fn => fn());
+  component.MessagesPage({ userId: "owner", active: false, embedded: true }); effects.forEach(fn => fn());
   await Promise.resolve(); assert.equal(calls.length, 0); assert.equal(timers.length, 0);
   cursor = 0; effects.length = 0;
-  component.MessagesPage({ active: true, embedded: true }); effects.forEach(fn => fn());
+  component.MessagesPage({ userId: "owner", active: true, embedded: true }); effects.forEach(fn => fn());
   await Promise.resolve(); await Promise.resolve();
   assert(calls.includes("/api/network/connections")); assert(timers.includes(15000));
 });

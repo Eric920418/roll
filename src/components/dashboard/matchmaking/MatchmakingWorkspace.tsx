@@ -19,12 +19,12 @@ export default function MatchmakingWorkspace({ userId, initialTab, initialMentor
   const [unread, setUnread] = useState(0), [error, setError] = useState("");
   const { value: network, error: networkError, load: reloadNetwork } = useNetwork();
   const activate = useCallback((id: MatchmakingTab) => { setTab(id); setVisited(v => new Set([...v, id])); }, []);
-  useEffect(() => { const timer = setTimeout(() => { activate(initial); if (initialMentor === "apply") setMentorRequest(n=>n+1); }, 0); return () => clearTimeout(timer); }, [initial, initialMentor, activate]);
   useEffect(() => {
-    const sync = () => { const url = new URL(window.location.href); activate(matchmakingTab(url.searchParams.get("tab") || undefined)); if (url.searchParams.get("mentor") === "apply") setMentorRequest(n=>n+1); };
+    const sync = () => { const url = new URL(window.location.href), mentor = url.searchParams.get("mentor") === "apply"; activate(matchmakingTab(mentor ? "roundtables" : url.searchParams.get("tab") || undefined)); if (mentor) setMentorRequest(n=>n+1); };
+    const timer = setTimeout(sync, 0);
     window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
-  }, [activate]);
+    return () => { clearTimeout(timer); window.removeEventListener("popstate", sync); };
+  }, [initial, initialMentor, activate]);
   const loadUnread = useCallback(async () => {
     try { const rows = await memberFetch<Array<{ unread: number }>>("/api/network/connections"); setUnread(rows.reduce((sum, r) => sum + r.unread, 0)); setError(""); }
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
@@ -52,7 +52,7 @@ export default function MatchmakingWorkspace({ userId, initialTab, initialMentor
     </div>
     {(networkError || error) && <div role="alert" className="whitespace-pre-wrap break-words rounded-xl bg-red-50 p-4 text-sm text-red-800"><p>{networkError || error}</p><button className="mt-2 min-h-11 underline" type="button" onClick={() => void (networkError ? reloadNetwork() : loadUnread())}>{zh ? "重試" : "Retry"}</button></div>}
     {MATCHMAKING_TABS.map(id => <div key={id} role="tabpanel" id={`matchmaking-panel-${id}`} aria-labelledby={`matchmaking-tab-${id}`} hidden={tab !== id}>
-      {visited.has(id) && (id === "visitors" ? (tab === id && (network?.enabled ? <div className="space-y-5"><ViewerOverview /><ViewerPrivacySettings numbered /></div> : <p role="status" className="text-sm">{network ? (zh ? "訪客紀錄目前未開放。" : "Visitor records are currently unavailable.") : (zh ? "載入訪客權益…" : "Loading visitor access…")}</p>)) : id === "roundtables" ? <RoundtablesPanel userId={userId} active={tab === id} mentorRequest={mentorRequest} /> : id === "messages" ? <div className="space-y-3"><MessagesPage key={userId} embedded active={tab === id} onUnreadChange={setUnread} /></div> : <MatchmakingPage active={tab === id} memberView={id} />)}
+      {visited.has(id) && (id === "visitors" ? (tab === id && (network?.enabled ? <div className="space-y-5"><ViewerOverview /><ViewerPrivacySettings numbered /></div> : <p role="status" className="text-sm">{network ? (zh ? "訪客紀錄目前未開放。" : "Visitor records are currently unavailable.") : (zh ? "載入訪客權益…" : "Loading visitor access…")}</p>)) : id === "roundtables" ? <RoundtablesPanel userId={userId} active={tab === id} mentorRequest={mentorRequest} /> : id === "messages" ? <div className="space-y-3"><MessagesPage key={userId} userId={userId} embedded active={tab === id} onUnreadChange={setUnread} /></div> : <MatchmakingPage active={tab === id} memberView={id} />)}
     </div>)}
   </div>;
 }
