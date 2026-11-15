@@ -61,8 +61,7 @@ export default function DiscoveryJourney({ userId, planId, showCommercial = true
         <div className="min-w-0"><p className="text-xs font-semibold text-white/55">{zh ? "本日優先行動" : "Today's priority"}</p><h2 className="mt-2 text-lg font-bold sm:text-xl">{zh ? `與 ${data.target} 間目標公司對話，了解真實需求` : `Understand real needs through ${data.target} company conversations`}</h2></div>
         {!data.canCreate && <a className={`${button} shrink-0 self-start bg-white text-black`} href={`#discovery-record-${data.journeyId}`}>{zh ? "查看已存對話" : "View saved conversations"}</a>}
       </div>
-      <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-white/20 pt-4 sm:grid-cols-[2fr_1fr_1fr]">
-        <div className="col-span-2 sm:col-span-1"><dt className="text-xs text-white/55">{zh ? "完成標準" : "Completion criteria"}</dt><dd className="mt-1 text-sm font-semibold">{zh ? `${data.target} 間不同公司的有效對話，保存實際需求與原話。` : `Save valid conversations with ${data.target} distinct companies, including their needs and exact words.`}</dd></div>
+      <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-white/20 pt-4">
         <div data-next-step="insights"><dt className="text-xs text-white/55">{zh ? "目前進度" : "Current progress"}</dt><dd className="mt-1 text-sm font-semibold">{Math.min(data.total, data.target)} / {data.target} {zh ? "間公司" : "companies"}</dd></div>
         <div><dt className="text-xs text-white/55">{data.paid ? (zh ? "工作區" : "Workspace") : (zh ? "試用狀態" : "Trial status")}</dt><dd className="mt-1 text-sm font-semibold">{data.paid ? (zh ? "完整客戶探索" : "Full customer discovery") : data.active ? (zh ? `還有 ${data.daysRemaining} 天` : `${data.daysRemaining} days remaining`) : (zh ? "試用已結束" : "Trial ended")}</dd></div>
       </dl>

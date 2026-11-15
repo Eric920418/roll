@@ -189,7 +189,8 @@ test("Home renders one primary task in both languages with locale-correct destin
     const outer = nodes(await page.default({ params: Promise.resolve({ locale }) }));
     const tree = [...outer, ...nodes(outer.find(n => n.props.homeTask)?.props.homeTask as ReactNode)];
     assert.equal(tree.filter(n => n.type === "h1").length, 1);
-    assert.equal(tree.some(n => n.props.value === saved.actions[0].expectedOutcome.text), version !== 2, "New-flow criteria stay out of the home card; legacy cards retain their actual content");
+    assert.equal(tree.some(n => n.props.value === saved.actions[0].expectedOutcome.text), false, "Home omits criteria prose for both current and legacy plans");
+    assert(!tree.some(n => n.type === "dt" && /Completion criteria|完成標準/.test(String(n.props.children))));
     const main = tree.find(n => n.props.id === "home-task-title");
     assert.equal((main?.props.children as { props: { value: string } }).props.value, "Saved task");
     const links = tree.filter(n => n.type === "a");

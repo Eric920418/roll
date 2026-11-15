@@ -49,3 +49,22 @@ test("Roundtable grouped form supports 4/6/8/10, preserves an existing five-seat
     assert(!saved.includes("Series sessions") && !saved.includes("系列場次"));
   }
 });
+
+test("Existing discovery priority cards omit criteria prose while retaining actual progress and saved-conversation access", () => {
+  for (const locale of ["en", "zh-tw"]) {
+    let calls = 0;
+    const snapshot = { journeyId: "owned", paid: true, active: true, canCreate: false, total: 2, target: 10, version: 1 };
+    const load = pdfRuntime({
+      react: { ...React, useState: (value: unknown) => [calls++ === 0 ? snapshot : value, () => {}], useEffect() {}, useCallback: (fn: unknown) => fn, useRef: (value: unknown) => ({ current: value }) },
+      "next-intl": { useLocale: () => locale }, "next/link": { __esModule: true, default: "a" },
+      "@/lib/discovery/policy": { discoveryReportSchema: { safeParse: () => ({}) } },
+      ...Object.fromEntries(["../PersonalizationQuestions", "../CustomerDiscovery", "../prospecting/ProspectSearch", "../ValidationWorkspace", "../LearningResources", "./FounderOffer", "../ActionPlanBuilder", "../NextStepsTour"].map(name => [name, { __esModule: true, default: () => null, PersonalizationSummary: () => null }])),
+    });
+    const { default: Card } = load<typeof import("../src/components/dashboard/discovery/DiscoveryJourney")>("src/components/dashboard/discovery/DiscoveryJourney.tsx");
+    const html = renderToStaticMarkup(React.createElement(Card, { userId: "owner" }));
+    assert.doesNotMatch(html, /Completion criteria|完成標準|Save valid conversations with/);
+    assert.match(html, /2 \/ 10/); assert.match(html, /value="2" max="10"/);
+    assert.match(html, /href="#discovery-record-owned"/);
+    assert.equal(snapshot.target, 10); assert.equal(snapshot.total, 2);
+  }
+});
