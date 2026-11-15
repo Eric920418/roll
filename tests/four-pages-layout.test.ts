@@ -9,7 +9,7 @@ test("Business plan uses actual milestone order and current task count, omits cr
   for (const locale of ["en", "zh-tw"]) for (const version of [1,2]) {
     const counts = version === 2 ? [4,3,3,3,3] : [5,0,0,0,0];
     const milestones = counts.map((total,i) => ({ id: "m"+i, position: i, title: "SAVED_MILESTONE_"+i, targetDate: `2027-0${i+1}-15`, status: i ? "blocked" : "active", total, done: i ? 0 : 1 }));
-    const actions = counts.flatMap((count,i) => Array.from({ length: count },(_,j) => ({ id: i+"-"+j, title: `SAVED_TASK_${i}_${j}`, milestoneId: "m"+i, done: i === 0 && j === 0, dependency: { blocked: i > 0 }, expectedOutcome: { text: "PRIVATE_CRITERIA_PROSE" } })));
+    const actions = counts.flatMap((count,i) => Array.from({ length: count },(_,j) => ({ id: i+"-"+j, title: `SAVED_TASK_${i}_${j}`, milestoneId: "m"+i, done: i === 0 && j === 0, dependency: { blocked: i > 0 || j > 1 }, expectedOutcome: { text: "PRIVATE_CRITERIA_PROSE" } })));
     const plan = { id: "owned", workflowVersion: version, actions, roadmap: { goal: "SAVED_REVENUE_GOAL", deadline: "2027-10-02", milestones } } as unknown as ActionPlanDto;
     const before = JSON.stringify(plan);
     const load = pdfRuntime({ "server-only": {}, "next/link": { __esModule: true, default: "a" },
@@ -24,7 +24,10 @@ test("Business plan uses actual milestone order and current task count, omits cr
     assert.match(html,/SAVED_REVENUE_GOAL/); assert.match(html,/2027-10-02/); assert.match(html,/PRINT_PDF/); assert.match(html,/SAVED_ICP/);
     assert.match(html,new RegExp(`max="${actions.length}" value="1"`));
     for (const m of milestones) { assert(html.includes(m.title)); assert(html.includes(m.targetDate)); }
-    for (const a of actions) assert.equal(html.includes(a.title), a.milestoneId === "m0");
+    for (const a of actions) {
+      assert.equal(html.includes(a.title), a.milestoneId === "m0");
+      assert.equal(html.includes("/dashboard/agenda#action-"+a.id), a.milestoneId === "m0" && (a.done || !a.dependency.blocked));
+    }
     assert.match(html, new RegExp(`1 / ${counts[0]}`)); assert.doesNotMatch(html,/PRIVATE_CRITERIA_PROSE/);
     assert(html.includes("Validation evidence") || html.includes("驗證成果")); assert(html.includes("Exporting does not automatically") || html.includes("不會自動開放投資人分享"));
     assert.equal(JSON.stringify(plan),before);
