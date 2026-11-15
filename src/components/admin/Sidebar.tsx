@@ -23,6 +23,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/billing", label: "價格與 Token 政策" },
   { href: "/admin/evidence", label: "驗證框架條件" },
   { href: "/admin/mentors", label: "導師認證審核" },
+  { href: "/admin/roundtables", label: "圓桌場次管理" },
   { href: "/admin/task-evidence", label: "今日任務證據審核" },
   { href: "/admin/matchmaking", label: "Matchmaking 審核" },
   { href: "/admin/quiz-submissions", label: "測驗提交紀錄" },

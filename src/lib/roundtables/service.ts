@@ -10,7 +10,7 @@ import { features, networkAccount } from "@/lib/network/access";
 import { queueNotification } from "@/lib/network/notifications";
 import { flowStep } from "@/lib/action-plan/flow/catalog";
 import { today } from "@/lib/roadmap/schema";
-import { mentorDraftSchema, commitmentSchema, similarEvidenceStages, type RoundtableMutation, type mentorReviewSchema } from "./schema";
+import { mentorDraftSchema, commitmentSchema, similarEvidenceStages, type RoundtableMutation, type mentorReviewSchema, type adminRoundtableMutationSchema } from "./schema";
 import type { z } from "zod";
 type DB = Prisma.TransactionClient;
 const json = (value: unknown) => value as Prisma.InputJsonValue;
@@ -152,6 +152,24 @@ export async function getRoundtables(userId: string, id?: string) {
   };
 }
 export type RoundtableState = Awaited<ReturnType<typeof getRoundtables>>;
+export async function adminRoundtables() {
+  const [mentors, sessions] = await Promise.all([
+    prisma.mentorCertification.findMany({ where: { status: "approved" }, orderBy: { updatedAt: "desc" }, select: { userId: true, draft: true, user: { select: { email: true } } } }),
+    prisma.roundtable.findMany({ orderBy: [{ startsAt: "desc" }, { id: "asc" }], take: 100, include: { host: { select: { email: true, mentorCertification: { select: { status: true, draft: true } } } }, registrations: { select: { status: true } } } }),
+  ]);
+  return { serverTime: new Date().toISOString(), mentors: mentors.map(m => ({ id: m.userId, name: mentorDraftSchema.parse(m.draft).publicName, email: m.user.email })), sessions: sessions.map(s => ({
+    id: s.id, hostId: s.hostId, hostName: s.host?.mentorCertification ? mentorDraftSchema.parse(s.host.mentorCertification.draft).publicName : "主持帳號已停用", hostEmail: s.host?.email || "", certified: s.host?.mentorCertification?.status === "approved",
+    topic: s.topic, description: s.description, steps: s.steps, industry: s.industry, languages: s.languages, startsAt: s.startsAt.toISOString(), endsAt: s.endsAt.toISOString(), timezone: s.timezone,
+    capacity: s.capacity, registrationMode: s.registrationMode, frameworkStages: s.frameworkStages, meetingUrl: s.meetingUrl, status: s.status, cancelReason: s.cancelReason, revision: s.revision,
+    registrations: s.registrations.length, confirmed: s.registrations.filter(r => r.status === "confirmed").length + (s.hostId ? 1 : 0), pending: s.registrations.filter(r => r.status === "pending").length, waiting: s.registrations.filter(r => r.status === "waitlisted").length,
+  })) };
+}
+export async function manageRoundtable(input: z.infer<typeof adminRoundtableMutationSchema>) {
+  if (input.action === "create") return mutateRoundtable(input.hostId, { action: "create", requestId: input.requestId, draft: input.draft });
+  const session = await prisma.roundtable.findUnique({ where: { id: input.id }, select: { hostId: true } });
+  if (!session?.hostId) throw new MemberError("找不到有效主持場次 / Active host session not found", 404);
+  return mutateRoundtable(session.hostId, input);
+}
 export async function myCommitments(userId: string) {
   const rows = await prisma.roundtableRegistration.findMany({ where: { userId, commitment: { not: Prisma.DbNull } }, orderBy: { updatedAt: "desc" }, take: 100, include: { roundtable: { select: { id: true, topic: true, endsAt: true } }, calendarItem: true } });
   return rows.map(r => ({ id: r.id, session: r.roundtable.id, topic: r.roundtable.topic, at: r.roundtable.endsAt.toISOString(), planId: r.planId, stepId: r.stepId, ...commitmentSchema.parse(r.commitment), done: r.calendarItem?.done || false, revision: r.calendarItem?.revision ?? 0, calendarRemoved: Boolean(r.calendarItem?.deletedAt) }));

@@ -48,6 +48,12 @@ export const roundtableMutationSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("commitmentDone"), registrationId: id, revision, done: z.boolean() }).strict(),
 ]);
 export type RoundtableMutation = z.infer<typeof roundtableMutationSchema>;
+export const adminRoundtableMutationSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("create"), hostId: id, requestId: z.uuid(), draft: sessionDraftSchema }).strict(),
+  z.object({ action: z.literal("edit"), id, revision, draft: sessionDraftSchema }).strict(),
+  z.object({ action: z.literal("meetingLink"), id, revision, meetingUrl: httpsUrl }).strict(),
+  z.object({ action: z.literal("cancel"), id, revision, reason: z.string().trim().min(3).max(2000) }).strict(),
+]);
 export const mentorReviewSchema = z.object({ id, revision, status: z.enum(["approved", "rejected", "revoked"]), note: z.string().trim().min(3).max(2000) }).strict();
 
 export function similarEvidenceStages(stages:number[]){return !stages.length||Math.max(...stages)-Math.min(...stages)<=1;}
