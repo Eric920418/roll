@@ -820,7 +820,7 @@ async function mentorEntryQA() {
     const labels={name:w('公開導師名稱','Public mentor name'),references:w('佐證網址','Evidence URLs'),expertise:w('專業經驗','Expertise'),bio:w('專業簡介','Professional bio')};
     for(const width of [390,768,1440]){
       await page.setViewportSize({width,height:1000});await page.goto(origin+prefix+'/dashboard');const entry=page.getByRole('link',{name:w('申請成為導師','Apply to become a mentor'),exact:true});await entry.waitFor();await entry.scrollIntoViewIfNeeded();await page.waitForFunction(()=>{const link=[...document.querySelectorAll('a')].find(el=>el.href.includes('mentor=apply'));return link&&link.getBoundingClientRect().height>=43.9;});check('Home mentor link is explicit '+locale+width,(await entry.getAttribute('href')).includes('mentor=apply')&&(await entry.boundingBox()).height>=43.9);await entry.click();await submit.waitFor();await page.waitForFunction(()=>document.activeElement?.id==='mentor-certification-title');
-      check('Mentor entry focuses heading without keyboard '+locale+width,await cert.locator('details').first().evaluate(el=>el.open)&&await page.locator('#mentor-certification').count()===1);await layout(page,'Mentor application '+locale+width,locale);
+      check('Mentor entry focuses heading without keyboard '+locale+width,await cert.evaluate(el=>el.open)&&await page.locator('#mentor-certification').count()===1);await layout(page,'Mentor application '+locale+width,locale);
       await page.addStyleTag({content:'[data-custom-cursor]{visibility:hidden!important}'});await page.mouse.move(-100,-100);await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(400);await screenshot(page,'mentor-entry-'+locale+'-'+width);
     }
     const tabs=page.getByRole('tab');for(let i=0;i<4;i++){await tabs.nth(i).click();const entry=page.getByRole('button',{name:w('導師申請與認證','Mentor application & certification'),exact:true});check('No duplicate header mentor entry '+locale+i,await entry.count()===0);}
@@ -851,7 +851,7 @@ async function roundtableCore(hostKey, memberKey, width, locale, approvalMode) {
   const originalActions = JSON.stringify(await db.actionItem.findMany({ where: { actionPlan: { userId: users[memberKey].id } }, orderBy: { id: 'asc' } }));
   await page.goto(origin + prefix + '/dashboard/matchmaking?tab=roundtables');
   const panel = page.locator('#matchmaking-panel-roundtables');
-  const mentorSection = panel.locator('details').filter({ has: page.locator('summary').filter({ hasText: w('導師認證與主持', 'Mentor certification and hosting') }) });
+  const mentorSection = panel.locator('#mentor-certification');
   await mentorSection.locator(':scope > summary').click();
   await mentorSection.getByLabel(w('公開導師名稱', 'Public mentor name'), { exact: true }).fill(publicName);
   await mentorSection.getByLabel(w('專業簡介', 'Professional bio'), { exact: true }).fill('Experienced founder helping teams test real customer demand and pilot offers.');
@@ -935,6 +935,8 @@ async function roundtableCore(hostKey, memberKey, width, locale, approvalMode) {
     check('Host reviews application through real UI ' + locale, (await response).status() === 200);
     await refreshRoundtables(member.page);
   }
+  await member.page.locator('[data-roundtable-overview]').getByRole('link', { name: w('加入會議', 'Join meeting'), exact: true }).waitFor();
+  await detail.locator('..').evaluate(node => { node.open = true; });
   await detail.getByRole('link', { name: w('開啟會議連結', 'Open meeting link'), exact: true }).waitFor();
   await responsive(member.page, 'Application and confirmed member'); await screenshot(member.page, 'roundtable-member-' + locale);
   const fillers = ['desktop', 'mobile', 'blocked', 'outcome', 'complete', 'newpaid'].filter(k => k !== memberKey && k !== hostKey).slice(0, 3);

@@ -15,7 +15,12 @@ import type { z } from "zod";
 type DB = Prisma.TransactionClient;
 const json = (value: unknown) => value as Prisma.InputJsonValue;
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
-const include = { host: { select: { mentorCertification: true } }, registrations: { orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }], include: { calendarItem: true } } } satisfies Prisma.RoundtableInclude;
+const publicProfile = { profile: { select: { companyName: true, country: true } }, matchmakingProfile: { select: { visible: true, sourcePolicy: true, country: true, visibleFields: true } } } satisfies Prisma.UserSelect;
+const include = { host: { select: { mentorCertification: true, ...publicProfile } }, registrations: { orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }], include: { calendarItem: true, user: { select: publicProfile } } } } satisfies Prisma.RoundtableInclude;
+function publicCompany(user: Prisma.UserGetPayload<{ select: typeof publicProfile }> | null) {
+  const card = user?.matchmakingProfile;
+  return card?.visible ? { company: card.sourcePolicy === 2 ? user?.profile?.companyName || null : null, country: card.visibleFields.includes("country") ? (card.sourcePolicy === 2 ? user?.profile?.country : card.country) || null : null } : null;
+}
 const activeStatuses = ["pending", "confirmed", "waitlisted"];
 async function eligible(userId: string, tx: DB) {
   const account = await networkAccount(userId, tx);
@@ -114,12 +119,14 @@ function project(row: Awaited<ReturnType<typeof lockSession>>, userId: string, b
     startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString(), timezone: row.timezone, capacity: row.capacity,
     registrationMode: row.registrationMode, status, cancelReason: row.cancelReason || (!row.hostId && status === "cancelled" ? "主持帳號已停用，場次取消；報名紀錄保留 / Host account removed; session cancelled and records retained" : ""), revision: row.revision, host,
     mentor: { name: hostBlocked ? "NOVA" : mentor?.publicName || "NOVA", bio: hostBlocked ? "" : mentor?.bio || "", certified: !hostBlocked && cert?.status === "approved" },
+    hostProfile: authorized ? publicCompany(row.host) : null,
+    prepared: authorized ? row.registrations.filter(r => r.status === "confirmed" && !blockedPeers.has(r.userId) && r.preparation && typeof r.preparation === "object" && "share" in r.preparation && r.preparation.share === true && "submittedAt" in r.preparation).length : null,
     confirmed: row.registrations.filter(r => r.status === "confirmed").length + (row.hostId ? 1 : 0),
     waiting: approvedQueue.length, pending: host ? row.registrations.filter(r => r.status === "pending" || r.status === "waitlisted" && !r.approvedAt).length : undefined,
     meetingUrl: authorized && row.status === "scheduled" && cert?.status === "approved" ? row.meetingUrl : null,
     mine: mine ? { id: mine.id, revision: mine.revision, preparation: mine.preparation, feedback: mine.feedback, status: mine.status, approved: Boolean(mine.approvedAt), name: mine.name, question: mine.question, reason: mine.reason,
       position: mine.status === "waitlisted" && mine.approvedAt ? approvedQueue.findIndex(r => r.id === mine.id) + 1 : null, attendance: mine.attendance, commitment: commitment(mine) } : null,
-    people: authorized ? row.registrations.filter(r => host || !blockedPeers.has(r.userId) && r.status === "confirmed").map(r => ({ id: r.id, name: blockedPeers.has(r.userId) ? "不可交流會員 / Unavailable member" : r.name, unavailable: blockedPeers.has(r.userId), status: r.status, approved: Boolean(r.approvedAt), attendance: r.attendance,
+    people: authorized ? row.registrations.filter(r => host || !blockedPeers.has(r.userId) && r.status === "confirmed").map(r => ({ id: r.id, mine: r.userId === userId, profile: r.status === "confirmed" && !blockedPeers.has(r.userId) ? publicCompany(r.user) : null, name: blockedPeers.has(r.userId) ? "不可交流會員 / Unavailable member" : r.name, unavailable: blockedPeers.has(r.userId), status: r.status, approved: Boolean(r.approvedAt), attendance: r.attendance,
       preparation: r.status === "confirmed" && !blockedPeers.has(r.userId) && r.preparation && typeof r.preparation === "object" && "share" in r.preparation && r.preparation.share === true ? r.preparation : null, ...(host ? { feedback: r.feedback, question: blockedPeers.has(r.userId) ? "" : r.question, reason: r.reason } : {}), commitment: row.status === "completed" && !blockedPeers.has(r.userId) ? commitment(r) : null })) : [],
   };
 }
@@ -135,7 +142,9 @@ export async function getRoundtables(userId: string, id?: string) {
   ]);
   const blockedPeers = new Set(connections.flatMap(c => [c.senderId, c.recipientId]).filter(id => id !== userId));
   const rows = [...new Map([...upcoming, ...own, ...(selected ? [selected] : [])].map(r => [r.id, r])).values()];
+  const [evidence, commitments] = await Promise.all([rows.some(row => row.hostId === userId || row.registrations.some(r => r.userId === userId && r.status === "confirmed")) ? weeklyEvidence(userId) : null, myCommitments(userId)]);
   return {
+    evidence, commitments,
     serverTime: new Date().toISOString(),
     certification: cert ? { status: cert.status, revision: cert.revision, draft: mentorDraftSchema.parse(cert.draft), note: cert.note } : null,
     canApply: account.effectivePlan !== "free" && access.network && Boolean(card && memberRoles(card).includes("founder")),

@@ -108,7 +108,7 @@ test("Mentor approval reaches an open foreground panel without reload and expose
     assert.equal(h.reads(), 1); h.status("approved"); const nodes = await h.tick();
     assert.equal(h.reads(), 2, "Read the administrator decision without navigation or a focus event");
     if (compact) assert(nodes.some(n => n.props.children === (locale === "en" ? "Create roundtable" : "建立圓桌會議")));
-    else { assert(nodes.some(n => n.type === "SessionForm")); assert.equal((nodes.find(n => n.type === "details")!.props.ref!.current as { open: boolean }).open, true, "Approved host form must be visible outside the application deep link"); }
+    else { assert(nodes.some(n => n.type === "SessionForm")); assert.equal((nodes.find(n => n.type === "details" && n.props.ref)!.props.ref!.current as { open: boolean }).open, true, "Approved host form must be visible outside the application deep link"); }
     h.status("revoked"); assert(!(await h.tick()).some(n => n.type === "SessionForm"));
     h.visible("hidden"); const reads = h.reads(); await h.tick(); assert.equal(h.reads(), reads);
     h.active(false); await h.settle(); assert.equal(h.intervals.size, 0);
@@ -220,6 +220,34 @@ test("Roundtables in isolated PostgreSQL: certification, concurrent seats, appro
       assert.equal(peer.people.length, 3); assert(peer.meetingUrl);
       assert(!JSON.stringify(peer).includes("Private question for host " + members.find(m => m.id !== accepted.userId)!.id));
       assert.equal((await service.getRoundtables(host.id, instant)).sessions.find(r => r.id === instant)!.people.length, 10);
+    });
+    await t.test("Group overview exposes public company fields and consented counts only to confirmed members", async () => {
+      const registrations = (await session(instant)).registrations.filter(r => r.status === "confirmed"), member = registrations[0], viewer = registrations[1];
+      const original = await db.matchmakingProfile.findUniqueOrThrow({ where: { userId: member.userId } });
+      await db.onboardingProfile.create({ data: { userId: member.userId, companyName: "Overview public company", country: "MX" } });
+      try {
+        await db.matchmakingProfile.update({ where: { userId: member.userId }, data: { sourcePolicy: 2, visible: true, visibleFields: [] } });
+        await run(member.userId, { action: "prepare", id: instant, revision: member.revision, question: "Private preparation question", share: true });
+        let view = (await service.getRoundtables(viewer.userId, instant)).sessions.find(s => s.id === instant)!;
+        let person = view.people.find(p => p.id === member.id)!;
+        assert.equal(person.profile?.company, "Overview public company"); assert.equal(person.profile?.country, null);
+        assert.equal((person.preparation as { totalConversations: number }).totalConversations, 0); assert.equal(view.prepared, 1);
+        assert(!JSON.stringify(view).includes("Private preparation question"));
+        const outsiderView = (await service.getRoundtables(outsider.id, instant)).sessions.find(s => s.id === instant)!;
+        assert.equal(outsiderView.people.length, 0); assert.equal(outsiderView.prepared, null); assert.equal(outsiderView.hostProfile, null);
+        const saved = await db.roundtableRegistration.findUniqueOrThrow({ where: { id: member.id } });
+        await run(member.userId, { action: "prepare", id: instant, revision: saved.revision, question: "Private preparation question", share: false });
+        view = (await service.getRoundtables(viewer.userId, instant)).sessions.find(s => s.id === instant)!;
+        assert.equal(view.people.find(p => p.id === member.id)!.preparation, null); assert.equal(view.prepared, 0);
+        await db.matchmakingProfile.update({ where: { userId: member.userId }, data: { visible: false } });
+        person = (await service.getRoundtables(viewer.userId, instant)).sessions.find(s => s.id === instant)!.people.find(p => p.id === member.id)!;
+        assert.equal(person.profile, null);
+        await db.matchmakingProfile.update({ where: { userId: member.userId }, data: { visible: true, sourcePolicy: null, country: "JP", visibleFields: ["country"] } });
+        person = (await service.getRoundtables(viewer.userId, instant)).sessions.find(s => s.id === instant)!.people.find(p => p.id === member.id)!;
+        assert.equal(person.profile?.company, null); assert.equal(person.profile?.country, "JP");
+      } finally {
+        await db.matchmakingProfile.update({ where: { userId: member.userId }, data: { sourcePolicy: original.sourcePolicy, country: original.country, visible: original.visible, visibleFields: original.visibleFields } });
+      }
     });
     await t.test("Cancellation and approval run under the same seat lock; approved FIFO cannot be jumped", async () => {
       const row = await session(instant), seat = row.registrations.find(r => r.status === "confirmed")!, next = row.registrations.find(r => r.status === "waitlisted")!;
