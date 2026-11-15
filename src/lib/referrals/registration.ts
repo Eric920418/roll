@@ -1,4 +1,5 @@
 import { autoCardData, networkEnabled } from "@/lib/network/policy";
+import { invalidateReferralSchedule } from "@/lib/cron/schedules";
 import "server-only";
 import { memberRolesSchema } from "@/lib/matchmaking/roles";
 import { randomBytes } from "node:crypto";
@@ -24,13 +25,15 @@ export async function registerWithReferral(data: Prisma.UserCreateInput, value: 
   if (networkEnabled() || roles) data = { ...data, matchmakingProfile: { create: { ...autoCardData, ...(roles ? { role: roles[0], roles } : {}) } } };
   if (!code) return prisma.user.create({ data });
   requireReferralConfig();
-  return rewardTransaction(async tx => {
+  const saved = await rewardTransaction(async tx => {
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('nova-referrals-v1'))::text`;
     const inviter = await tx.referralAccount.findFirst({ where: { code, userId: { not: null } }, include: { user: { select: { email: true } } } });
     if (!inviter) throw new ReferralError("邀請碼不存在或已停用 / Referral code not found or unavailable", 400, "invalid_referral_code");
     if (inviter.user?.email.toLowerCase() === data.email.toLowerCase()) throw new ReferralError("不能邀請自己 / Self-referrals are not allowed", 400, "self_referral");
     return tx.user.create({ data: { ...data, receivedReferral: { create: { inviterId: inviter.id } } } });
   });
+  invalidateReferralSchedule();
+  return saved;
 }
 export async function ensureReferralAccount(userId: string) {
   requireReferralConfig();

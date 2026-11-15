@@ -55,7 +55,7 @@ test("Referral integration uses only its own fixtures in loopback PostgreSQL", {
     getSubscriptionTransactions: async (id: string) => transactions.get(id) ?? [],
     verifyWebhookSignature: async () => state.validWebhook,
   };
-  const mocks: Record<string, unknown> = {
+  const mocks: Record<string, unknown> = { "@/lib/cron/schedules": { invalidateFounderSchedule() {}, invalidateReferralSchedule() {} },
     "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/api": api,
     "@/lib/security/log": { logSecurityError: () => "qa-trace", publicErrorMessage: () => "Retry (qa-trace)" },
     "@/lib/billing/paypal": provider, "@/lib/auth/account": {}, "@/lib/billing/gate": { getEffectivePlan: () => "free" }, "@/lib/action-plan/service": {}, "@/lib/playbook/quiz": {},

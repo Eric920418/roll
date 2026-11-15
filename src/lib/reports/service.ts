@@ -1,4 +1,5 @@
 import "server-only";
+import { nextReportWorkAt, invalidateReportSchedule } from "@/lib/cron/schedules";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -50,6 +51,7 @@ export async function createReportRequest(input: ReportInput) {
     void _trap;
     return tx.marketReportRequest.create({ data: { ...data, requestHash, newsletterStatus: input.subscribe ? "pending" : "not_requested", deliveries: { create: reportPayloads(input).map(job => ({ ...job, payload: job.payload as Prisma.InputJsonValue })) } } });
   });
+  invalidateReportSchedule();
   let newsletterStatus = row.newsletterStatus, newsletterError = row.newsletterError;
   if (row.subscribe && ["pending", "failed"].includes(newsletterStatus)) {
     try {
@@ -68,6 +70,14 @@ export async function createReportRequest(input: ReportInput) {
 export async function runReportDeliveries(now = new Date(), budgetMs = 60000, requestId?: string) {
   if (!reportsEnabled()) return { disabled: true, accepted: 0, failed: 0 };
   if (budgetMs <= 0) return { disabled: false, accepted: 0, failed: 0 };
+  if (!requestId) {
+    const next = await nextReportWorkAt();
+    if (!next || Date.parse(next) > now.getTime()) {
+      console.info({ event: "report_delivery.cron_idle", nextWorkAt: next });
+      return { disabled: false, accepted: 0, failed: 0 };
+    }
+  }
+  try {
   const started = Date.now(), jobs = await prisma.marketReportDelivery.findMany({ where: { status: { in: ["pending", "processing"] }, nextAttemptAt: { lte: now }, ...(requestId ? { requestId } : {}) }, orderBy: { createdAt: "asc" }, take: 30 });
   let accepted = 0, failed = 0;
   for (const row of jobs) {
@@ -91,4 +101,5 @@ export async function runReportDeliveries(now = new Date(), budgetMs = 60000, re
     await new Promise(resolve => setTimeout(resolve, 550));
   }
   return { disabled: false, accepted, failed };
+  } finally { invalidateReportSchedule(); }
 }

@@ -1,4 +1,5 @@
 import 'server-only';
+import { nextNewsletterWorkAt, invalidateNewsletterSchedule } from '@/lib/cron/schedules';
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
@@ -63,6 +64,7 @@ export async function signupNewsletter(input: z.infer<typeof signupSchema>, now 
         const text = (input.locale === 'zh-tw' ? '你主動要求訂閱每週公開創辦人指南。請在 72 小時內開啟下方連結並按確認；未確認不會寄送週報。若不是你提出，忽略此信即可。' : 'You requested weekly public founder guides. Open this link and confirm within 72 hours. Weekly emails begin only after confirmation. If you did not request this, ignore this email.') + '\n\n' + href;
         await tx.newsletterDelivery.create({ data: { subscriberId: row.id, eventKey: `verify:${row.id}:${row.version}`, category: 'verify', createdAt: now, nextAttemptAt: now, payload: emailPayload(row.email, title, text) as Prisma.InputJsonValue } });
     });
+    invalidateNewsletterSchedule();
     return { accepted: true };
 }
 export async function newsletterAction(token: string, action: 'confirm' | 'unsubscribe', now = new Date()) {
@@ -84,12 +86,20 @@ export async function newsletterAction(token: string, action: 'confirm' | 'unsub
             await tx.newsletterDelivery.updateMany({ where: { subscriberId: row.id, status: { in: ['pending', 'processing'] } }, data: { status: 'cancelled', leaseToken: null, leaseUntil: null } });
         }
     });
+    invalidateNewsletterSchedule();
     return { saved: true };
 }
 export async function runNewsletter(now = new Date(), budgetMs = 70000) {
     if (process.env.MEMBER_NETWORK_EMAIL_ENABLED !== 'true' || !process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL)
         return { disabled: true, accepted: 0, failed: 0 };
     available();
+    if (budgetMs <= 0) return { disabled: false, accepted: 0, failed: 0 };
+    const next = await nextNewsletterWorkAt();
+    if (!next || Date.parse(next) > now.getTime()) {
+        console.info({ event: 'newsletter.cron_idle', nextWorkAt: next });
+        return { disabled: false, accepted: 0, failed: 0 };
+    }
+    try {
     const started = Date.now(), articles = await getInsightTeasers();
     const subscribers = await prisma.newsletterSubscriber.findMany({ where: { status: 'active', nextDigestAt: { lte: now } }, orderBy: { nextDigestAt: 'asc' }, take: 100 });
     for (const row of subscribers) {
@@ -146,4 +156,5 @@ export async function runNewsletter(now = new Date(), budgetMs = 70000) {
         }
     }
     return { disabled: false, accepted, failed };
+    } finally { invalidateNewsletterSchedule(); }
 }

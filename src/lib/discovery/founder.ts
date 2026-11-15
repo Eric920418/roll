@@ -1,4 +1,5 @@
 import { networkEnabled } from "@/lib/network/policy";
+import { invalidateFounderSchedule } from "@/lib/cron/schedules";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -52,7 +53,7 @@ export async function createFounderCheckout(userId: string, requestId: string, r
   return { approveUrl, orderId: remote.id, reservedUntil: local.reservedUntil.toISOString() };
 }
 export async function fulfillFounderOrder(order: PaypalOrder) {
-  return prisma.$transaction(async raw => {
+  const saved = await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient; await lockSeats(tx);
     const local = await tx.founderOrder.findUnique({ where: { paypalOrderId: order.id } });
     if (!local || !local.userId) throw new PlanWriteError("找不到付款會員，請聯絡客服核對 / Payment account missing; contact support", 409);
@@ -67,6 +68,8 @@ export async function fulfillFounderOrder(order: PaypalOrder) {
     await tx.user.update({ where: { id: local.userId }, data: { founderStartedAt: timestamp, founderEndsAt: endsAt } });
     return { added: true, accessEndsAt: endsAt.toISOString() };
   });
+  invalidateFounderSchedule();
+  return saved;
 }
 export async function confirmFounderPayment(userId: string, orderId: string) {
   const token = randomUUID();
@@ -79,6 +82,7 @@ export async function confirmFounderPayment(userId: string, orderId: string) {
     if ((row.status === "reserved" && row.reservedUntil <= new Date()) || !row.seat || !["reserved", "capturing"].includes(row.status)) throw new PlanWriteError("結帳已結束，請查看帳號付款狀態；勿重複付款 / Checkout closed; check your billing status. Do not pay again", 409);
     return tx.founderOrder.update({ where: { id: row.id }, data: { status: "capturing", captureToken: token, captureExpiresAt: new Date(Date.now() + CAPTURE_LEASE_MS) } });
   });
+  invalidateFounderSchedule();
   if (local.status === "paid") return { added: false, accessEndsAt: local.accessEndsAt!.toISOString() };
   // Keep uncertain captures reserved; stable provider keys make retry safe after a timeout.
   const remote = await getOrder(orderId);

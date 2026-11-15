@@ -15,7 +15,7 @@ function loader(mocks: Record<string, unknown>, env: Record<string, string>, fet
     const path = resolve(file); if (cache.has(path)) return cache.get(path)!.exports as T;
     const mod = { exports: {} }; cache.set(path, mod);
     runInNewContext(ts.transpileModule(readFileSync(path,"utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText, { module: mod, exports: mod.exports, process: { env, cwd: () => process.cwd() }, Date, Error, SyntaxError, URL, Request, Response, Headers, Buffer, AbortSignal, fetch: fetcher, setTimeout: (fn: () => void) => { fn(); }, console,
-      require: (id: string) => id in mocks ? mocks[id] : id === "server-only" ? {} : id.startsWith("@/") ? load(`src/${id.slice(2)}.ts`) : id.startsWith(".") ? load(resolve(dirname(path),`${id}.ts`)) : native(id),
+      require: (id: string) => id === "@/lib/cron/schedules" ? { nextReportWorkAt: async () => new Date(0).toISOString(), invalidateReportSchedule() {} } : id in mocks ? mocks[id] : id === "server-only" ? {} : id.startsWith("@/") ? load(`src/${id.slice(2)}.ts`) : id.startsWith(".") ? load(resolve(dirname(path),`${id}.ts`)) : native(id),
     }); return mod.exports as T;
   } return load;
 }

@@ -34,7 +34,7 @@ test("Founding payments in isolated PostgreSQL: ten seats, expiry, ownership, id
     captureFounderPayment: async (id: string, localId: string) => { captures++; const value = paidOrder(id, localId); remote.set(id, value); if (timeoutCapture) throw Error("Injected timeout after provider capture"); return value; },
     getFounderCapture: async (id: string) => ({ id, status: refundStatus }),
   };
-  const mocks: Record<string, unknown> = { "server-only": {}, "@/lib/prisma": { prisma: extended }, "@/lib/action-plan/service": { PlanWriteError: WriteError }, "@/lib/auth/account": { getCurrentAccount: async () => null }, "@/lib/billing/paypal": provider, "@/lib/discovery/policy": policy };
+  const mocks: Record<string, unknown> = { "@/lib/cron/schedules": { invalidateFounderSchedule() {}, invalidateReferralSchedule() {} }, "server-only": {}, "@/lib/prisma": { prisma: extended }, "@/lib/action-plan/service": { PlanWriteError: WriteError }, "@/lib/auth/account": { getCurrentAccount: async () => null }, "@/lib/billing/paypal": provider, "@/lib/discovery/policy": policy };
   function load<T>(file: string): T {
     const absolute = resolve(file); if (cache.has(absolute)) return cache.get(absolute) as T;
     const loaded = { exports: {} }; cache.set(absolute, loaded.exports);
