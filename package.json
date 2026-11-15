@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "video:preview": "node videos/nova-intro/video.mjs preview",
+    "video:render": "node videos/nova-intro/video.mjs render",
+    "video:check": "node videos/nova-intro/video.mjs check",
+    "video:prepare": "node videos/nova-intro/video.mjs prepare",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
@@ -76,6 +80,9 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.4.5",
+    "@react-three/fiber": "9.8.2",
+    "@remotion/cli": "4.0.543",
+    "@remotion/three": "4.0.543",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/bcryptjs": "^3.0.0",
     "@types/mdx": "^2.0.14",
@@ -83,11 +90,15 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "0.187.0",
     "@types/ws": "^8.18.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.4.5",
+    "hyperframes": "0.9.53",
+    "remotion": "4.0.543",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
+    "three": "0.187.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }

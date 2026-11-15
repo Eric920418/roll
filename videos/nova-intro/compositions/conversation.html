@@ -1,0 +1,19 @@
+<template>
+<style>#root{position:absolute;inset:0}.conversation-table{position:absolute;left:20px;top:0;width:480px;height:410px}.table-ring{position:absolute;left:90px;top:55px;width:300px;height:300px;border:1px solid #667083;border-radius:50%;display:grid;place-items:center;font-size:29px;line-height:1.5;text-align:center;background:#16191f}.seat{position:absolute;background:#222733}.seat.one{left:207px;top:22px}.seat.two{left:344px;top:142px}.seat.three{left:207px;top:290px}.seat.four{left:60px;top:142px}.conversation-messages{position:absolute;left:570px;top:0;width:540px;height:400px}.bubble{padding:18px 22px;border-radius:12px;background:#282e3b;font-size:28px;line-height:1.5;margin-top:20px}.bubble.reply{margin-left:50px;background:#e7eaf0;color:#171b23}.conversation-task{position:absolute;right:0;top:60px;width:340px;height:330px}.conversation-task h2{font-size:29px;line-height:1.5;margin:20px 0}.conversation-connector{position:absolute;left:1123px;top:175px;font-size:44px}.conversation-note{position:absolute;left:80px;bottom:8px;font-size:28px;color:#a3abba}.conversation-task .pill{font-size:28px}</style>
+<div id="root" data-composition-id="conversation" data-width="1920" data-height="1080">
+<div class="scene">
+<p class="kicker">04 / CONVERSATIONS INTO ACTION</p><h1 class="headline">把交流，<span>變成下一步。</span></h1><p class="subline">圓桌會議・導師交流・訊息・會後承諾</p>
+<div class="stage">
+<div class="conversation-table"><div class="table-ring">圓桌會議<br><span class="label">MEET. SHARE. ACT.</span></div><div class="seat avatar one">創</div><div class="seat avatar two">導</div><div class="seat avatar three">創</div><div class="seat avatar four">合</div></div>
+<article class="panel conversation-messages"><p class="label">訊息交流</p><div class="bubble">分享最近的客戶發現？</div><div class="bubble reply">一起討論下一個驗證行動。</div><p class="detail muted" style="margin-top:24px">保留對話，持續跟進。</p></article>
+<span class="conversation-connector">→</span><article class="panel conversation-task"><p class="label">今日任務</p><h2>會後承諾，<br>接回行動。</h2><span class="pill" style="margin-top:20px">✓ 持續跟進</span></article>
+<p class="conversation-note">從認識彼此，到一起推進。</p>
+</div><p class="scene-footer">一次交流，不只停在交換名片。</p><p class="demo">圓桌與訊息內容均為虛構示範</p>
+</div>
+</div>
+<script>
+const tl=Nova.timeline('conversation',8);
+Nova.enter(tl,'.table-ring',.7,{scale:.6,y:0});Nova.enter(tl,'.seat',1.1,{scale:.5,y:0});Nova.enter(tl,'.conversation-messages',2.1,{x:45,y:0});Nova.enter(tl,'.bubble',2.7,{x:25,y:0});Nova.enter(tl,'.conversation-connector',4.1,{x:-20,y:0});Nova.enter(tl,'.conversation-task',4.4,{scale:.88,y:0});Nova.enter(tl,'.conversation-note',5.5,{y:12});
+Nova.register('conversation',tl);
+</script>
+</template>

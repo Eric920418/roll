@@ -1,3 +1,124 @@
+# NOVA AI 客戶端 MG 介紹動畫（2026-11-16）
+
+已完成 60 秒、1920×1080、30fps（1800 影格）的黑白銀灰 MG 介紹片，含繁中文字卡、動態排版、介面拆解、金屬 3D、原創 120 BPM 電子配樂與轉場音效，無旁白。交付 MP4 約 11 MB，以及 JPG 封面；不是螢幕錄影。以現行客戶端為準，涵蓋公司檔案、AI 引導／目標客戶／潛客搜尋、5 個里程碑與 16 步、今日任務與對話證據、五類會員媒合、名片與訪客、圓桌與訊息、會後承諾、商業計畫／PDF／驗證報告分享、積分與邀請獎勵，最後導向繁中註冊。
+
+原始碼在 `videos/nova-intro/`。HyperFrames 0.9.53 負責全片預覽與合成，現有 GSAP 3.15 負責字卡／圖形時間軸，Remotion 4.0.543＋Three.js 0.187 逐幀產生片頭／收尾素材。只用 pnpm 引入開發依賴，正式網站沒有匯入影片工具、沒有新增播放區或 API，不連線修改資料庫。公司、訊息、進度與圖表均為明確標示的虛構示範；方案、證據與分享門檻保留，不宣稱成交或營收保證。
+
+| 本機指令 | 用途 |
+| --- | --- |
+| `pnpm video:prepare` | 準備 Logo、字型、原創配樂與 3D 素材；依來源指紋重建。 |
+| `pnpm video:preview` | 開啟可編輯的 HyperFrames 預覽，預設 http://localhost:4310/#project/nova-intro；支援 `--no-open`。 |
+| `pnpm video:render` | 輸出 `videos/nova-intro/renders/nova-ai-intro-zh-tw.mp4` 與 `nova-ai-intro-cover.jpg`，拒絕未就緒或缺漏媒體。 |
+| `pnpm video:check` | 執行來源 assert、HyperFrames strict 檢查、成片規格及全片解碼；警告也使檢查失敗。 |
+
+需要 Node.js 22+、pnpm、PATH 上的 ffmpeg／ffprobe 及 Chromium。macOS 優先使用已安裝的 Google Chrome，其他環境使用 Remotion 的瀏覽器；可用 `NOVA_CHROME_EXECUTABLE` 指定。Remotion 使用獨立空白 env 檔，不載入網站的資料庫設定。素材與渲染錯誤的完整訊息、HTTP 狀態與堆疊會顯示在預覽錯誤面板；修正後重跑 prepare／preview。初次安裝工具可能需要網路；字型已隨原始碼保存，修改字卡後先執行 prepare 更新子集。
+
+驗收：`pnpm video:render`、`pnpm video:check` 通過；HyperFrames lint／runtime／layout／contrast／craft／audio 均零錯誤、零警告，共 81 個版面檢查時點（9 個關鍵時點＋72 個轉場樣本）與 480 個閱讀節奏樣本，未宣稱逐一檢查所有動畫邊界。1800 影格全部解碼成功，黑畫面偵測無片段；配樂約 -17.68 LUFS、True Peak -2.13 dBTP，無削波。檢查實際匯出影片的九段關鍵畫面、全部八處場景交界與 1280×720 字卡可讀性。七個時點反覆跳轉後，在與輸出相同的軟體擷取路徑逐像素一致，前端完整錯誤面板也已實測。
+
+已修正介面小字、證據勾選容器及註記對比；報告進場採平移、圖片 eager／同步解碼，最終採軟體截圖擷取，避免硬體預覽的 PNG 重採樣差異。不同 GPU 的預覽仍可能有細微抗鋸齒差異，不宣稱跨硬體輸出的位元組完全相同。網站 `pnpm build`、TypeScript 與完整 ESLint 通過；ESLint 保留 14 個既有 warning、零 error。本批沒有重跑資料庫測試、沒有新增測試帳號或操作正式會員資料。
+
+驗收證據留在本機 `videos/nova-intro/renders/`：`verification.json`（規格、SHA-256、音量）、`hyperframes-check.json`、`browser-check.json`、`final-review/`、`delivery-contact.jpg`、`720p-review.png` 及各指令日誌。渲染檔與 HyperFrames 快取不納入版控；原始碼、pnpm lockfile、字型與本 README 納入版控。只製作橫式繁中功能概覽，未製作逐步教學、直式或英文版，也未發布影片到外部平台。
+
+配樂由固定種子的程式合成，不使用外部音樂或樣本。字型為 Google Fonts Noto Sans TC 的 400–900 可變字重子集，以下保留原始 SIL OFL 1.1 授權。
+
+<details><summary>Noto Sans TC 字型授權全文（SIL OFL 1.1）</summary>
+
+Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied below, and is also available with a FAQ at:
+https://scripts.sil.org/OFL
+
+
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded,
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+
+</details>
+
 # 自動建立正式驗收資料與補修（2026-11-15）
 
 依使用者要求自行生成測試帳號並從正式登入表單操作，補足前輪真實帳號沒有導師認證／聊天紀錄的部分。使用獨立內嵌瀏覽器，未登出或變更會員原有 Chrome 登入；五位一次性合成帳號使用唯一 QA 標記、不可寄達信箱、限時試用及關閉郵件偏好，不改真實帳密、認證、付款或計畫。為驗證具名訪客短暫公開兩張合成名片，隨即隱藏並確認刷新後移除。

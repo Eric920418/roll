@@ -1,0 +1,27 @@
+<template>
+<style>#root{position:absolute;inset:0}.network-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:20px}.network-card{height:310px;padding:26px 23px}.network-card .avatar{width:72px;height:72px;margin:0 0 24px;border-color:#9aa0ad}.network-card h2{font-size:30px;letter-spacing:-.03em;margin-bottom:12px}.network-card p{font-size:28px;color:#646a76}.network-card .rule{margin:14px 0}.network-card h2{line-height:1.25}.network-card p{line-height:1.3}.network-card .label{font-size:28px;letter-spacing:.05em}.network-toolbar{position:absolute;top:360px;left:0;right:0;display:flex;gap:22px;align-items:center}.network-visitor{margin-left:auto;background:#16191f;color:#f7f7f2;padding:18px 26px;border-radius:8px;display:flex;align-items:center;gap:24px;font-size:28px}.network-visitor strong{font-size:37px}.network-dots{position:absolute;top:330px;left:10%;width:80%;display:flex;justify-content:space-between;border-top:1px solid #b5bac5}.network-dots i{margin-top:-5px;width:9px;height:9px;border-radius:50%;background:#6f7686}</style>
+<div id="root" data-composition-id="network" data-width="1920" data-height="1080">
+<div class="scene light">
+<p class="kicker">03 / THE RIGHT PEOPLE</p><h1 class="headline">讓對的人，<span>找到你。</span></h1><p class="subline">商機媒合・推薦會員・專屬名片・誰看過我</p>
+<div class="stage">
+<div class="network-cards">
+<article class="panel network-card"><div class="avatar">創</div><h2>創辦人</h2><p>交流經驗與洞察</p><div class="rule"></div><span class="label">FOUNDERS</span></article>
+<article class="panel network-card"><div class="avatar">導</div><h2>認證導師</h2><p>討論眼前的問題</p><div class="rule"></div><span class="label">MENTORS</span></article>
+<article class="panel network-card"><div class="avatar">投</div><h2>投資人</h2><p>從成果開始認識</p><div class="rule"></div><span class="label">INVESTORS</span></article>
+<article class="panel network-card"><div class="avatar">合</div><h2>合作夥伴</h2><p>發現互補機會</p><div class="rule"></div><span class="label">PARTNERS</span></article>
+<article class="panel network-card"><div class="avatar">買</div><h2>買家</h2><p>從需求開始對話</p><div class="rule"></div><span class="label">BUYERS</span></article>
+</div>
+<div class="network-dots" data-layout-ignore><i></i><i></i><i></i><i></i><i></i></div>
+<div class="network-toolbar"><span class="tag">推薦給你</span><span class="tag">所有會員</span><span class="tag">編輯我的名片</span><div class="network-visitor"><span>誰看過我</span><strong>↗</strong></div></div>
+</div><p class="scene-footer">連結有共同目標的人，讓機會開始流動。</p><p class="demo">角色與介面示意・非真實會員推薦</p>
+</div>
+</div>
+<script>
+const tl=Nova.timeline('network',8);
+Nova.enter(tl,'.network-card',.8,{y:65,rotation:3});
+tl.fromTo('.network-dots',{scaleX:0,opacity:0},{scaleX:1,opacity:1,duration:1.1},2.4);
+Nova.enter(tl,'.network-toolbar .tag',3.2,{y:20});Nova.enter(tl,'.network-visitor',4.3,{x:40,y:0});
+tl.to('.network-card:nth-child(2)',{y:-12,duration:.8,ease:'power2.inOut',yoyo:true,repeat:1},5.2);
+Nova.register('network',tl);
+</script>
+</template>

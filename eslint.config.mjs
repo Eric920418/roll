@@ -22,6 +22,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "videos/nova-intro/assets/generated/**",
+    "videos/nova-intro/renders/**",
   ]),
 ]);
 

@@ -1,0 +1,23 @@
+<template>
+<style>#root{position:absolute;inset:0}.direction-company{position:absolute;left:0;top:0;width:470px;height:385px}.direction-company .big{font-size:42px}.direction-target{position:absolute;left:560px;top:0;width:450px;height:385px}.direction-prospects{position:absolute;right:0;top:0;width:440px;height:385px}.direction-link{position:absolute;left:490px;top:150px;font-size:44px}.direction-link.second{left:1025px}.direction-target .avatar{margin-bottom:16px}.direction-search{border:1px solid #b7bbc5;border-radius:6px;padding:10px 16px;margin:16px 0;font-size:28px}.prospect-item{padding:8px 0;border-top:1px solid #d2d5db;font-size:28px}.direction-accent{position:absolute;bottom:8px;left:0;display:flex;gap:16px}</style>
+<div id="root" data-composition-id="direction" data-width="1920" data-height="1080">
+<div class="scene light">
+<p class="kicker">01 / FIND YOUR DIRECTION</p><h1 class="headline small">從你的公司，<span>找到對的方向。</span></h1><p class="subline">公司檔案 × AI 引導 × 目標客戶</p>
+<div class="stage">
+<article class="panel direction-company"><p class="label">公司檔案</p><h2 class="big" style="margin-top:28px">向量工作室</h2><p class="detail muted" style="margin-top:15px">為小型團隊簡化工作流程</p><div class="rule"></div><div class="row detail"><span>目前階段</span><strong>驗證需求</strong></div><div class="row detail" style="margin-top:15px"><span>目標市場</span><strong>台灣</strong></div></article>
+<span class="direction-link" aria-hidden="true">→</span>
+<article class="panel direction-target"><div class="row"><p class="label">AI 引導</p><span class="pill">ICP</span></div><div class="avatar" style="margin-top:26px">◎</div><h2 class="big" style="font-size:39px">誰最需要你？</h2><p class="detail muted" style="margin-top:16px">釐清客群、痛點與付費訊號</p><div class="progress" style="margin-top:26px"><i class="direction-progress"></i></div></article>
+<span class="direction-link second" aria-hidden="true">→</span>
+<article class="panel direction-prospects"><p class="label">潛在客戶搜尋</p><div class="direction-search">尋找值得聯絡的公司</div><p class="prospect-item">01　星禾設計</p><p class="prospect-item">02　澄光科技</p><p class="prospect-item">03　拾序工作室</p></article>
+<div class="direction-accent"><span class="tag">先建立假設</span><span class="tag">再找真實證據</span></div>
+</div><p class="scene-footer">從公司現況，整理下一個優先行動。</p><p class="demo">介面示意・公司與資料均為虛構</p>
+</div>
+</div>
+<script>
+const tl=Nova.timeline('direction',8);
+Nova.enter(tl,'.direction-company',.7,{x:-55,y:0});Nova.enter(tl,'.direction-link',1.4,{x:-20,y:0});Nova.enter(tl,'.direction-target',1.7,{scale:.9,y:0});
+tl.fromTo('.direction-progress',{scaleX:0},{scaleX:1,duration:1.4},2.3);
+Nova.enter(tl,'.direction-prospects',3.6,{x:55,y:0});Nova.enter(tl,'.prospect-item',4.1,{x:20,y:0});Nova.enter(tl,'.direction-accent .tag',5.2,{y:15});
+Nova.register('direction',tl);
+</script>
+</template>

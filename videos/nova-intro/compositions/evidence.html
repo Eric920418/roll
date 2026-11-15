@@ -1,0 +1,21 @@
+<template>
+<style>#root{position:absolute;inset:0}.evidence-notes{position:absolute;left:0;top:10px;width:385px}.evidence-note{padding:24px;margin-bottom:16px;border:1px solid #c5cad4;background:#f9f9f6;border-radius:10px;font-size:28px;display:flex;gap:18px;align-items:center}.evidence-report{position:absolute;left:510px;top:-5px;width:560px;height:440px;padding:30px 36px;background:#fff;border:1px solid #b6bcc9;box-shadow:12px 14px 0 #d5d8de;border-radius:5px}.report-logo{width:160px;height:auto}.evidence-report h2{font-size:36px;margin-top:22px}.report-line{display:flex;align-items:center;justify-content:space-between;margin-top:22px;font-size:28px}.report-chart{display:flex;align-items:end;gap:20px;height:82px;border-bottom:1px solid #aeb5c2;padding-top:10px;margin-top:25px}.report-chart i{width:55px;background:#363e50;transform-origin:bottom}.evidence-share{position:absolute;right:0;top:65px;width:360px;height:390px}.evidence-share .big{font-size:36px;margin:24px 0}.evidence-share .tag{font-size:28px;padding:9px 14px}.evidence-arrow{position:absolute;left:423px;top:165px;font-size:44px}.evidence-note .check{width:44px;height:44px;font-size:28px}.evidence-footnote{position:absolute;top:474px;left:510px;font-size:28px;color:#515866}</style>
+<div id="root" data-composition-id="evidence" data-width="1920" data-height="1080">
+<div class="scene light">
+<p class="kicker">05 / PROGRESS YOU CAN SHOW</p><h1 class="headline">每一步，<span>都留下成果。</span></h1><p class="subline">商業計畫・市場驗證報告・公司 PDF・報告分享</p>
+<div class="stage">
+<div class="evidence-notes"><div class="evidence-note"><span class="check">✓</span>客戶對話與洞察</div><div class="evidence-note"><span class="check">✓</span>付費與簽約證明</div><div class="evidence-note"><span class="check">✓</span>任務與里程碑成果</div></div>
+<span class="evidence-arrow">→</span><article class="evidence-report"><img loading="eager" decoding="sync" class="report-logo" src="assets/generated/logo-black.png" alt="NOVA AI"><h2>向量工作室｜驗證成果</h2><div class="rule"></div><div class="report-line"><span>由已儲存的紀錄整理</span><span class="mono">16 STEPS</span></div><div class="report-chart" data-layout-ignore><i style="height:30%"></i><i style="height:47%"></i><i style="height:38%"></i><i style="height:70%"></i><i style="height:85%"></i><i style="height:100%"></i></div><p class="label" style="margin-top:20px">示意・非實際營收</p></article>
+<article class="panel evidence-share"><p class="label">分享進度與成果</p><h2 class="big">讓對話，<br>更有依據。</h2><span class="tag">公司 PDF</span><span class="tag" style="margin-top:12px">報告分享連結 ↗</span></article>
+<p class="evidence-footnote">完成條件與方案權限符合後，才開放對應匯出／分享。</p>
+</div><p class="scene-footer">成果來自實際紀錄，AI 協助整理，驗證由你完成。</p><p class="demo">虛構示範資料・非成交或營收保證</p>
+</div>
+</div>
+<script>
+const tl=Nova.timeline('evidence',8);
+Nova.enter(tl,'.evidence-note',.75,{x:-45,y:0});Nova.enter(tl,'.evidence-arrow',1.7,{x:-15,y:0});Nova.enter(tl,'.evidence-report',2,{x:45,y:0});
+tl.fromTo('.report-chart i',{scaleY:0},{scaleY:1,duration:1,stagger:.13},2.7);
+Nova.enter(tl,'.evidence-share',4,{x:50,y:0});Nova.enter(tl,'.evidence-footnote',4.7,{y:12});
+Nova.register('evidence',tl);
+</script>
+</template>

@@ -1,0 +1,19 @@
+<template>
+<style>#root{position:absolute;inset:0}.action-steps{position:absolute;left:192px;top:375px;width:1536px;display:flex;justify-content:space-between;gap:18px}.milestone{flex:1;border-top:2px solid #525866;padding-top:17px;font-size:28px;color:#a5abb8}.milestone strong{font-size:36px;display:block;margin-bottom:7px;color:#f4f5f8}.action-work{position:absolute;left:0;top:90px;width:770px;height:365px}.action-assist{position:absolute;right:0;top:90px;width:710px;height:365px}.action-count{font-size:28px;letter-spacing:.05em}.action-task{font-size:36px;font-weight:700;margin:20px 0}.action-evidence{display:flex;align-items:center;gap:15px;padding:17px;background:#242832;border-radius:8px;font-size:28px}.action-bubbles{display:flex;gap:12px;margin-top:14px}.action-bubbles .tag{font-size:28px;padding:8px 12px}.action-helper{font-size:28px;line-height:1.5;margin-top:14px}.action-result{display:flex;align-items:center;gap:14px;margin-top:20px;font-size:28px}</style>
+<div id="root" data-composition-id="action" data-width="1920" data-height="1080">
+<div class="scene">
+<p class="kicker">02 / ONE CLEAR NEXT MOVE</p><h1 class="headline small">5 個里程碑，<span>16 步清楚行動。</span></h1><p class="subline">今日任務・AI 輔助・對話與證據紀錄</p>
+<div class="action-steps"><div class="milestone"><strong>01</strong>確認目標客戶</div><div class="milestone"><strong>02</strong>驗證付費意願</div><div class="milestone"><strong>03</strong>建立開發流程</div><div class="milestone"><strong>04</strong>累積付費客戶</div><div class="milestone"><strong>05</strong>擴大已驗證營收</div></div>
+<div class="stage">
+<article class="panel action-work"><div class="row"><p class="label">今日優先行動</p><span class="pill">目前一步</span></div><h2 class="action-task">記錄客戶對話，找到真正痛點。</h2><div class="action-evidence"><span class="check">✓</span><span>保留原話、需求與付費訊號</span></div><div class="row" style="margin-top:24px"><span class="label">完成有依據，才開啟下一步</span><span class="action-count mono">01 / 16</span></div></article>
+<article class="panel action-assist"><p class="label">AI 助手</p><p class="action-helper">整理對話重點，<br>協助你釐清下一個問題。</p><div class="action-bubbles"><span class="tag">訪談引導</span><span class="tag">學習資源</span><span class="tag">行事曆</span></div><div class="action-result"><span class="status-dot"></span>從紀錄，累積可核對的證據。</div></article>
+</div><p class="scene-footer">一次專心做一件事。每一步，接上下一步。</p><p class="demo">介面與進度為示範・非實際成果</p>
+</div>
+</div>
+<script>
+const tl=Nova.timeline('action',10);
+Nova.enter(tl,'.milestone',.8,{y:20});Nova.enter(tl,'.action-work',1.6,{x:-50,y:0});Nova.enter(tl,'.action-assist',2.6,{x:50,y:0});Nova.enter(tl,'.action-evidence',3.7,{scale:.93,y:0});Nova.enter(tl,'.action-bubbles .tag',4.5,{y:18});Nova.enter(tl,'.action-result',5.6,{y:20});
+tl.fromTo('.milestone:first-child',{borderColor:'#525866'},{borderColor:'#f4f5f8',duration:.8},6.5);tl.fromTo('.action-evidence .check',{scale:.5,rotation:-90},{scale:1,rotation:0,duration:.6,ease:'back.out(1.5)'},6.6);
+Nova.register('action',tl);
+</script>
+</template>

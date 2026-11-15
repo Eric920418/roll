@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant" data-composition-variables='[{"id":"cta","type":"string","label":"行動呼籲","default":"免費開始"}]'>
+<head><meta charset="utf-8"><title>NOVA AI — 先驗證，再建置。</title>
+<link rel="stylesheet" href="assets/style.css">
+<script>
+window.novaErrors=[];
+window.novaError=function(message){
+  window.novaErrors.push(message);
+  var box=document.getElementById('nova-error');
+  if(!box){box=document.createElement('pre');box.id='nova-error';box.setAttribute('role','alert');box.style.cssText='position:fixed;inset:16px;z-index:99999;background:#fff1f1;color:#831717;padding:24px;white-space:pre-wrap;overflow:auto;font:18px monospace';(document.body||document.documentElement).appendChild(box);}
+  box.textContent='NOVA AI 影片錯誤（完整內容）\n\n'+window.novaErrors.join('\n\n');
+};
+window.addEventListener('error',function(e){window.novaError(e.error?e.error.stack||String(e.error):e.message||'素材載入失敗：'+(e.target.src||e.target.href||e.target.tagName));},true);
+window.addEventListener('unhandledrejection',function(e){window.novaError(e.reason&&e.reason.stack||String(e.reason));});
+</script>
+<script src="assets/generated/status.js"></script>
+<script src="assets/generated/gsap.min.js"></script>
+<script src="assets/motion.js"></script>
+</head><body>
+<div id="root" data-composition-id="nova-intro" data-start="0" data-duration="60" data-width="1920" data-height="1080" data-fps="30">
+<div id="question" class="clip" data-composition-id="question" data-composition-src="compositions/question.html" data-start="0" data-duration="4" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<div id="brand" class="clip" data-composition-id="brand" data-composition-src="compositions/brand.html" data-start="4" data-duration="4" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<div id="direction" class="clip" data-composition-id="direction" data-composition-src="compositions/direction.html" data-start="8" data-duration="8" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<div id="action" class="clip" data-composition-id="action" data-composition-src="compositions/action.html" data-start="16" data-duration="10" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<div id="network" class="clip" data-composition-id="network" data-composition-src="compositions/network.html" data-start="26" data-duration="8" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<div id="conversation" class="clip" data-composition-id="conversation" data-composition-src="compositions/conversation.html" data-start="34" data-duration="8" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<div id="evidence" class="clip" data-composition-id="evidence" data-composition-src="compositions/evidence.html" data-start="42" data-duration="8" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<div id="rewards" class="clip" data-composition-id="rewards" data-composition-src="compositions/rewards.html" data-start="50" data-duration="4" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<div id="closing" class="clip" data-composition-id="closing" data-composition-src="compositions/closing.html" data-start="54" data-duration="6" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+<audio id="nova-score" class="clip" src="assets/generated/score.wav" data-start="0" data-duration="60" data-track-index="2" data-volume="1" data-fade-in="0.5" data-fade-out="1.5"></audio>
+</div>
+<script>
+const master=gsap.timeline({paused:true});
+master.to({},{duration:60});
+window.__timelines=window.__timelines||{};
+window.__timelines['nova-intro']=master;
+document.fonts.ready.then(function(){if(!document.fonts.check('700 40px NovaTC'))window.novaError('中文字型 NovaTC 載入失敗，請執行 pnpm video:prepare。');});
+</script>
+</body></html>

@@ -1,0 +1,14 @@
+<template>
+<style>#root{position:absolute;inset:0}.brand-logo{position:absolute;left:192px;top:230px;width:465px}.brand-title{position:absolute;left:192px;top:420px;font-size:108px;line-height:1.2;letter-spacing:-.055em;font-weight:700}.brand-title span{color:#a4abba}.brand-video{position:absolute;inset:0;width:1920px;height:1080px}.brand-signature{position:absolute;left:198px;top:725px;font-size:28px;color:#a7adba;letter-spacing:.13em}</style>
+<div id="root" data-composition-id="brand" data-width="1920" data-height="1080">
+<div class="scene">
+<video id="brand-metal" class="clip brand-video" src="assets/generated/metal-intro.mp4" data-start="0" data-duration="4" data-track-index="0" muted playsinline></video>
+<p class="kicker">YOUR NEXT MOVE, WITH EVIDENCE.</p><img loading="eager" decoding="sync" class="brand-logo" src="assets/generated/logo-white.png" alt="NOVA AI"><h1 class="brand-title">先驗證，<br><span>再建置。</span></h1><p class="brand-signature">NOVA AI / BE THE BOLD ONES</p>
+</div>
+</div>
+<script>
+const tl=Nova.timeline('brand',4);
+Nova.enter(tl,'.brand-logo',.15,{y:22});Nova.enter(tl,'.brand-title',.38,{y:45});Nova.enter(tl,'.brand-signature',.82,{y:15});
+Nova.register('brand',tl);
+</script>
+</template>

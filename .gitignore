@@ -44,5 +44,14 @@ yarn-error.log*
 next-env.d.ts
 .gstack/
 
+# Reproducible film assets and rendered deliverables.
+/videos/nova-intro/assets/generated/
+/videos/nova-intro/renders/
+/videos/nova-intro/.hyperframes/
+/videos/nova-intro/.hyperframes-local/
+/videos/nova-intro/.thumbnails/
+/videos/nova-intro/.transcode-cache/
+/videos/nova-intro/.waveform-cache/
+
 # Playbook ingest 來源 PDF（產出的 JSON 才進版控）
 content/playbooks/_inbox/

@@ -1,0 +1,20 @@
+<template>
+<style>#root{position:absolute;inset:0}.question-copy{position:absolute;left:192px;top:320px;font-size:138px;line-height:1.25;letter-spacing:-.055em;font-weight:700}.question-copy span{display:block;color:#9299ab}.question-tags{position:absolute;inset:0}.question-tags .tag{position:absolute;color:#959ba9;border-color:#424653;font-size:28px}.question-cross{position:absolute;right:270px;top:260px;width:260px;height:260px;border:1px solid #414755;border-radius:50%}.question-cross:before,.question-cross:after{content:'';position:absolute;background:#6f778a}.question-cross:before{left:50%;top:-45px;height:350px;width:1px}.question-cross:after{top:50%;left:-45px;width:350px;height:1px}</style>
+<div id="root" data-composition-id="question" data-width="1920" data-height="1080">
+<div class="scene">
+<p class="kicker">FOR THE BOLD ONES / NOVA AI</p>
+<div class="question-tags" data-layout-ignore><span class="tag" style="left:1120px;top:190px">市場在哪裡？</span><span class="tag" style="left:1370px;top:710px">先做什麼？</span><span class="tag" style="left:860px;top:820px">誰需要我的產品？</span><span class="tag" style="left:420px;top:185px">下一個決定</span></div>
+<div class="question-cross" data-layout-ignore></div><h1 class="question-copy">想法很多，<span>下一步呢？</span></h1><p class="scene-footer">從想法，走向有依據的行動。</p>
+</div>
+</div>
+<script>
+const tl=Nova.timeline('question',4);
+tl.fromTo('.question-copy',{opacity:0,y:55},{opacity:1,y:0,duration:.9},.12);
+tl.fromTo('.question-copy span',{opacity:0,x:-45},{opacity:1,x:0,duration:.8},.48);
+tl.fromTo('.question-tags .tag',{opacity:0,y:30},{opacity:.7,y:0,duration:.6,stagger:.12},.2);
+tl.fromTo('.question-cross',{opacity:0,scale:.5,rotation:-45},{opacity:.7,scale:1,rotation:0,duration:1.5},.1);
+tl.to('.question-tags .tag',{x:-80,y:-24,opacity:0,duration:.7,stagger:.04},3.05);
+tl.to('.question-cross',{scale:.6,rotation:90,opacity:0,duration:.6},3.2);
+Nova.register('question',tl);
+</script>
+</template>

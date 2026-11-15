@@ -1,0 +1,15 @@
+<template>
+<style>#root{position:absolute;inset:0}.reward-orbit{position:absolute;left:80px;top:5px;width:340px;height:340px;border-radius:50%;border:1px solid #747e92;display:grid;place-items:center}.reward-inner{width:270px;height:270px;border:1px solid #3b4354;border-radius:50%;display:grid;place-items:center;background:#191e29}.reward-check{font-size:110px;color:#e9edf8}.reward-card{position:absolute;left:520px;top:15px;width:480px;height:330px}.reward-card h2{font-size:50px;margin:30px 0 12px}.reward-referral{position:absolute;right:0;top:15px;width:450px;height:330px}.reward-referral h2{font-size:43px;margin:26px 0}.reward-detail{font-size:28px;line-height:1.6;color:#abb2c2}.reward-plus{position:absolute;left:440px;top:140px;font-size:45px}.reward-card .label{font-size:28px}</style>
+<div id="root" data-composition-id="rewards" data-width="1920" data-height="1080">
+<div class="scene">
+<p class="kicker">06 / KEEP THE MOMENTUM</p><h1 class="headline small">持續行動，<span>累積更多可能。</span></h1><p class="subline">獎勵積分 × 邀請獎勵</p>
+<div class="stage"><div class="reward-orbit" data-layout-ignore><div class="reward-inner"><span class="reward-check">✓</span></div></div><span class="reward-plus">→</span><article class="panel reward-card"><p class="label">獎勵積分</p><h2>讓行動有回饋。</h2><p class="reward-detail">符合規則的行動，<br>累積積分與 AI 對話機會。</p></article><article class="panel reward-referral"><p class="label">邀請獎勵</p><h2>一起向前。</h2><p class="reward-detail">邀請夥伴加入，<br>符合條件後領取獎勵。</p></article></div>
+<p class="scene-footer">獎勵依規則與資格發放，不代表所有操作均可獲得。</p><p class="demo">介面示意</p>
+</div>
+</div>
+<script>
+const tl=Nova.timeline('rewards',4);
+Nova.enter(tl,'.reward-orbit',.35,{scale:.7,y:0,rotation:-30});Nova.enter(tl,'.reward-plus',.65,{x:-20,y:0});Nova.enter(tl,'.reward-card',.75,{x:45,y:0});Nova.enter(tl,'.reward-referral',1.1,{x:45,y:0});
+Nova.register('rewards',tl);
+</script>
+</template>
