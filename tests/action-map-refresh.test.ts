@@ -30,9 +30,9 @@ test('Milestone bars reflect saved progress, retain confirmation gates, and adva
   }
 });
 
-function harness(initial = fixture(), locale = 'en') {
+function harness(initial = fixture(), locale = 'en', hash = '') {
   const slots: unknown[] = [], effects: Array<() => void> = [], timers: Array<() => void> = [];
-  let cursor = 0, props = initial.plan, server = initial, reads = 0;
+  let cursor = 0, props = initial.plan, server = initial, reads = 0, writes = 0;
   let pending: ((value: FlowView) => void) | null = null;
   const events = new EventTarget(), documentEvents = new EventTarget();
   const depsChanged = (a: unknown[] | undefined, b: unknown[]) => !a || a.length !== b.length || b.some((v, i) => v !== a[i]);
@@ -44,18 +44,33 @@ function harness(initial = fixture(), locale = 'en') {
     useEffectEvent(fn: (...args: unknown[]) => unknown) { const cell = hooks.useRef(fn) as { current: typeof fn }; cell.current = fn; return hooks.useCallback((...args: unknown[]) => cell.current(...args), []); },
   };
   const load = pdfRuntime({ react: hooks, 'next-intl': { useLocale: () => locale }, 'next/navigation': { useRouter: () => ({ refresh() {} }) },
-    '@/lib/member-fetch': { memberFetch: async (_url: string, init?: { method: string }) => { if (init?.method !== 'POST') { reads++; if (pending) return new Promise<FlowView>(resolve => { pending = resolve; }); } return structuredClone(server); } },
+    '@/lib/member-fetch': { memberFetch: async (_url: string, init?: { method: string }) => { if (init?.method !== 'POST') { reads++; if (pending) return new Promise<FlowView>(resolve => { pending = resolve; }); } else writes++; return structuredClone(server); } },
     '../ActionMap': { __esModule: true, default: 'Map' }, '../ActionPlanBuilder': { __esModule: true, default: 'Builder' }, './Templates': { __esModule: true, default: 'Templates', button: '', TextField: 'Field' }, './OrganizeWork': { __esModule: true, default: 'OrganizeWork', TaskRoadmap: 'TaskRoadmap', TaskSection: 'TaskSection' }, './CurrentFindings': { __esModule: true, default: 'Findings' }, './PositioningEditor': { positioningPreview: () => '' }, '../LearningResources': { __esModule: true, default: 'Resources' }, './TaskAssist': { __esModule: true, default: 'Assist' }, './Proofs': { __esModule: true, default: 'Proofs' }, './Followups': { __esModule: true, default: 'Followups' },
-  }, { window: Object.assign(events, { location: { hash: '', origin: 'http://localhost' } }), document: Object.assign(documentEvents, { visibilityState: 'visible', getElementById: () => null }), localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, requestAnimationFrame: (fn: () => void) => fn(), setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {}, crypto: { randomUUID: () => 'request' } });
+  }, { window: Object.assign(events, { location: { hash, origin: 'http://localhost' } }), document: Object.assign(documentEvents, { visibilityState: 'visible', getElementById: () => null }), localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, requestAnimationFrame: (fn: () => void) => fn(), setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {}, crypto: { randomUUID: () => 'request' } });
   const Workspace = load<typeof import('../src/components/dashboard/flow/Workspace')>('src/components/dashboard/flow/Workspace.tsx').default;
   type Node = { type: unknown; props: Record<string, unknown> };
   type ChildProps = { Map: { plan: FlowView['plan'] }; Templates: React.ComponentProps<typeof import('../src/components/dashboard/flow/Templates').default> };
   let nodes: Node[] = [];
   function render() { cursor = 0; nodes = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (React.isValidElement<{ children?: React.ReactNode }>(child)) { nodes.push(child as Node); visit(child.props.children); } }); } visit(Workspace({ userId: 'qa', plan: props, onChanged: p => { props = p; } })); return nodes; }
   async function settle() { for (let i = 0; i < 8; i++) { render(); effects.splice(0).forEach(fn => fn()); timers.splice(0).forEach(fn => fn()); await Promise.resolve(); } render(); }
-  return { settle, render, setServer: (v: FlowView) => { server = v; }, setProps: (v: FlowView) => { props = v.plan; }, reads: () => reads, event: (type: string) => events.dispatchEvent(new Event(type)), find: <K extends keyof ChildProps>(type: K) => nodes.find(n => n.type === type || type === 'Templates' && n.type === 'OrganizeWork')!.props as ChildProps[K],
+  return { settle, render, setServer: (v: FlowView) => { server = v; }, setProps: (v: FlowView) => { props = v.plan; }, reads: () => reads, writes: () => writes, event: (type: string) => events.dispatchEvent(new Event(type)), find: <K extends keyof ChildProps>(type: K) => nodes.find(n => n.type === type || type === 'Templates' && n.type === 'OrganizeWork')!.props as ChildProps[K],
     defer() { pending = () => {}; }, resolve(v: FlowView) { const fn = pending; pending = null; fn?.(structuredClone(v)); } };
 }
+
+test('Owned positioning and criteria links open read-only previews without completing earlier work or writing', async () => {
+  for (const locale of ['en', 'zh-tw']) for (const step of ['01-2', '01-3']) {
+    const view = fixture(), before = JSON.stringify(view), h = harness(view, locale, '#action-' + step); await h.settle();
+    assert.equal(h.find('Templates').step, step); assert.equal(h.find('Templates').readOnly, true);
+    const text = JSON.stringify(h.render()); assert(text.includes(locale === 'en' ? 'Read-only preview' : '唯讀預覽'));
+    assert(!text.includes(locale === 'en' ? 'This completed result is retained' : '此步驟的完成成果已保留'));
+    assert(!text.includes(locale === 'en' ? 'Confirm and complete' : '確認並完成'));
+    assert.equal(h.writes(), 0); assert.equal(view.current, '01-1'); assert.equal(JSON.stringify(view), before);
+    h.event('focus'); await h.settle(); assert.equal(h.find('Templates').step, step); assert.equal(h.find('Templates').readOnly, true);
+  }
+  for (const hash of ['#action-foreign-account', '#action-02-2', '#action-03-1']) {
+    const h = harness(fixture(), 'en', hash); await h.settle(); assert.equal(h.find('Templates').step, '01-1'); assert.equal(h.writes(), 0);
+  }
+});
 
 test('Flow reloads refreshed parent progress and milestone without reloading the page', async () => {
   const h = harness(); await h.settle();
