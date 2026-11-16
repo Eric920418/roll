@@ -5,7 +5,7 @@ import { STEPS, CHAPTERS, followupSchema, emptyFlowData, emptyRecord, emptyConta
 export type FlowAction = { id: string; clientKey: string; done: boolean; completedAt: Date | string | null; taskWorkspace: unknown; taskFinding: unknown };
 export type FlowProof = { id: string; company: string; name: string; kind: "signed" | "paid"; amount: string; currency: string; date: string; approved: boolean; revoked: boolean; reviewStatus?: "pending" | "approved" | "rejected"; reviewNote?: string };
 export type FlowContext = { actions: FlowAction[]; proofs: FlowProof[]; locale: string; now?: Date };
-export type Confirmation = { version: string; leadId: string; statement: string; answer: "yes" | "no"; at: string };
+export type Confirmation = { version: string; leadId: string; statement: string; answer: "yes" | "no"; at: string; feedback?: string };
 export function storedData(action?: FlowAction) { return flowStoredSchema.safeParse(action?.taskWorkspace).data?.data; }
 export function dataAt(context: FlowContext, step: StepId) { return storedData(context.actions.find(a => flowStep(a)?.id === step)) || emptyFlowData(STEPS.find(s => s.id === step)!.kind); }
 export function validConversation(r: ReturnType<typeof emptyRecord>, day = today()) { return Boolean(["yes", "possible"].includes(r.fit || "") && r.company && r.name && r.relationship && r.pain && r.severity && r.solution && r.wtp && r.wtp !== "not_asked" && r.date && r.date <= day); }
@@ -32,7 +32,7 @@ export function positioningReplies(context: FlowContext) {
   const statement = data.kind === "organize" ? data.values.positioning : "";
   return records(context).map(lead => {
     const reply = statement && meta?.positioningVersion ? meta.responses?.find(r => r.version === meta.positioningVersion && r.statement === statement && r.leadId === lead.id && ["yes", "no"].includes(r.answer)) : null;
-    return { leadId: lead.id, answer: reply?.answer || null, at: reply?.at || null };
+    return { leadId: lead.id, answer: reply?.answer || null, at: reply?.at || null, feedback: reply?.feedback || "" };
   });
 }
 export function criteria(context: FlowContext) { const data = dataAt(context, "01-3"); return data.kind === "organize" ? data.criteria : []; }
@@ -80,7 +80,7 @@ function week(date: string) {
   const day = new Date(date + "T00:00:00Z"), offset = (day.getUTCDay() + 6) % 7;
   day.setUTCDate(day.getUTCDate() - offset); return day.toISOString().slice(0, 10);
 }
-function completedText(text: string) { return text.trim().length >= 3 && !/\[[^\]]+\]|待補|TBD|TODO/i.test(text); }
+export function completedText(text: string) { return text.trim().length >= 3 && !/\[[^\]]+\]|待補|TBD|TODO/i.test(text); }
 function unique(values: string[]) { return new Set(values).size === values.length; }
 export function evaluateStep(context: FlowContext, step: StepId, override?: FlowData) {
   if (override && step === "01-4") context = { ...context, actions: context.actions.map(a => flowStep(a)?.id === step ? { ...a, taskWorkspace: { version: 2, step, data: override } } : a) };

@@ -45,7 +45,7 @@ function harness(initial = fixture(), locale = 'en') {
   };
   const load = pdfRuntime({ react: hooks, 'next-intl': { useLocale: () => locale }, 'next/navigation': { useRouter: () => ({ refresh() {} }) },
     '@/lib/member-fetch': { memberFetch: async (_url: string, init?: { method: string }) => { if (init?.method !== 'POST') { reads++; if (pending) return new Promise<FlowView>(resolve => { pending = resolve; }); } return structuredClone(server); } },
-    '../ActionMap': { __esModule: true, default: 'Map' }, '../ActionPlanBuilder': { __esModule: true, default: 'Builder' }, './Templates': { __esModule: true, default: 'Templates', button: '', TextField: 'Field' }, './CurrentFindings': { __esModule: true, default: 'Findings' }, './PositioningEditor': { positioningPreview: () => '' }, '../LearningResources': { __esModule: true, default: 'Resources' }, './TaskAssist': { __esModule: true, default: 'Assist' }, './Proofs': { __esModule: true, default: 'Proofs' }, './Followups': { __esModule: true, default: 'Followups' },
+    '../ActionMap': { __esModule: true, default: 'Map' }, '../ActionPlanBuilder': { __esModule: true, default: 'Builder' }, './Templates': { __esModule: true, default: 'Templates', button: '', TextField: 'Field' }, './OrganizeWork': { __esModule: true, default: 'OrganizeWork', TaskRoadmap: 'TaskRoadmap', TaskSection: 'TaskSection' }, './CurrentFindings': { __esModule: true, default: 'Findings' }, './PositioningEditor': { positioningPreview: () => '' }, '../LearningResources': { __esModule: true, default: 'Resources' }, './TaskAssist': { __esModule: true, default: 'Assist' }, './Proofs': { __esModule: true, default: 'Proofs' }, './Followups': { __esModule: true, default: 'Followups' },
   }, { window: Object.assign(events, { location: { hash: '', origin: 'http://localhost' } }), document: Object.assign(documentEvents, { visibilityState: 'visible', getElementById: () => null }), localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, requestAnimationFrame: (fn: () => void) => fn(), setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {}, crypto: { randomUUID: () => 'request' } });
   const Workspace = load<typeof import('../src/components/dashboard/flow/Workspace')>('src/components/dashboard/flow/Workspace.tsx').default;
   type Node = { type: unknown; props: Record<string, unknown> };
@@ -53,7 +53,7 @@ function harness(initial = fixture(), locale = 'en') {
   let nodes: Node[] = [];
   function render() { cursor = 0; nodes = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (React.isValidElement<{ children?: React.ReactNode }>(child)) { nodes.push(child as Node); visit(child.props.children); } }); } visit(Workspace({ userId: 'qa', plan: props, onChanged: p => { props = p; } })); return nodes; }
   async function settle() { for (let i = 0; i < 8; i++) { render(); effects.splice(0).forEach(fn => fn()); timers.splice(0).forEach(fn => fn()); await Promise.resolve(); } render(); }
-  return { settle, render, setServer: (v: FlowView) => { server = v; }, setProps: (v: FlowView) => { props = v.plan; }, reads: () => reads, event: (type: string) => events.dispatchEvent(new Event(type)), find: <K extends keyof ChildProps>(type: K) => nodes.find(n => n.type === type)!.props as ChildProps[K],
+  return { settle, render, setServer: (v: FlowView) => { server = v; }, setProps: (v: FlowView) => { props = v.plan; }, reads: () => reads, event: (type: string) => events.dispatchEvent(new Event(type)), find: <K extends keyof ChildProps>(type: K) => nodes.find(n => n.type === type || type === 'Templates' && n.type === 'OrganizeWork')!.props as ChildProps[K],
     defer() { pending = () => {}; }, resolve(v: FlowView) { const fn = pending; pending = null; fn?.(structuredClone(v)); } };
 }
 
@@ -88,6 +88,18 @@ test('Flow refresh preserves unsaved input and its original revision, including 
   assert.equal((clean.find('Templates').data as { market: string }).market, 'US'); assert.equal(clean.find('Templates').step, '01-1');
 });
 
+test('Prepared participant links survive a clean focus refresh and remain isolated to their step', async () => {
+  const view = Object.assign(fixture(1, 1), { links: [{ leadId: 'participant', href: '/task-confirm/qa?token=synthetic' }] });
+  const h = harness(view); await h.settle();
+  const work = () => h.render().find(n => n.type === 'OrganizeWork')!.props;
+  (work().onLinks as (ids: string[], save: boolean) => void)(['participant'], false); await h.settle();
+  assert.equal((work().links as unknown[]).length, 1);
+  h.event('focus'); await h.settle();
+  assert.equal((work().links as unknown[]).length, 1, 'Reading replies must not discard prepared messages');
+  const next = fixture(2, 2); h.setServer(next); h.setProps(next); await h.settle();
+  assert.equal((work().links as unknown[]).length, 0);
+});
+
 test('All sixteen steps retain compact types and criteria gates; company search uses only the four relevant step contexts', async () => {
   for (const locale of ['en', 'zh-tw']) for (const [index, spec] of STEPS.entries()) {
     const view = fixture(1, index);
@@ -103,7 +115,8 @@ test('All sixteen steps retain compact types and criteria gates; company search 
     assert.equal(Boolean(search), ['01-1', '03-1', '04-1', '05-2'].includes(spec.id));
     if (search) { assert.equal(search.step, spec.id); assert.equal(search.market, spec.id === '05-2' ? 'Japan' : 'TW'); assert.match(search.description, /Confirmed buying criterion/); assert(!search.description.includes('Observation only')); }
     const priority = tree.find(n => Object.hasOwn(n.props, 'data-today-priority'));
-    assert.doesNotMatch(JSON.stringify(priority), /Completion criteria|COMPLETION CRITERIA|完成標準/);
+    assert.equal(/Completion criteria|COMPLETION CRITERIA|完成標準/.test(JSON.stringify(priority)), ["01-2", "01-3"].includes(spec.id));
+    assert.equal(tree.some(n => n.type === "TaskRoadmap"), ["01-2", "01-3"].includes(spec.id));
     assert.equal(JSON.stringify(view), before);
   }
 });

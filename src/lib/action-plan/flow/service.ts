@@ -61,12 +61,13 @@ export const flowMutationSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("followup"), planId: z.string().min(1), revision: z.number().int().nonnegative(), sourceActionId: z.string().min(1), update: followupSchema }).strict(),
   z.object({ action: z.literal("save"), planId: z.string().min(1), revision: z.number().int().nonnegative(), step: stepIdSchema, data: flowDataSchema }).strict(),
   z.object({ action: z.literal("complete"), planId: z.string().min(1), revision: z.number().int().nonnegative(), step: stepIdSchema, requestId: z.string().uuid() }).strict(),
-  z.object({ action: z.literal("confirmLink"), planId: z.string().min(1), revision: z.number().int().nonnegative(), leadId: z.string().min(1) }).strict(),
+  z.object({ action: z.literal("confirmLink"), planId: z.string().min(1), revision: z.number().int().nonnegative(), leadId: z.string().min(1).optional(), leadIds: z.array(z.string().min(1)).min(1).max(25).optional() }).strict().refine(v => Boolean(v.leadId) !== Boolean(v.leadIds), "Select one participant or a participant list"),
   z.object({ action: z.literal("share"), planId: z.string().min(1), revision: z.number().int().nonnegative(), enabled: z.boolean() }).strict(),
   z.object({ action: z.literal("goal"), planId: z.string().min(1), revision: z.number().int().nonnegative(), goal: z.string().trim().min(3).max(2000), deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).strict(),
 ]);
 export async function mutateFlow(userId: string, input: z.infer<typeof flowMutationSchema>, locale?: string) {
   let link: string | undefined;
+  const links: Array<{ leadId: string; href: string }> = [];
   await prisma.$transaction(async raw => {
     const tx = raw as DB, found = await readPlan(userId, input.planId, tx);
     if (input.action === "share" && !found.actions.some(a => a.clientKey.startsWith("nova_v2_"))) {
@@ -109,11 +110,16 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
     if (input.action === "confirmLink") {
       const action = plan.actions.find(a => flowStep(a)?.id === "01-2");
       const data = dataAt(context, "01-2");
-      if (current?.id !== "01-2" || !action || data.kind !== "organize" || !data.confirmed.includes("positioning") || !data.values.positioning?.trim() || !records(context).some(r => r.id === input.leadId)) throw new PlanWriteError("先儲存並確認定位，並選擇本計畫受訪者 / Save confirmed positioning and select a plan interviewee", 409);
-      const token = randomBytes(32).toString("base64url"), old = metadata(action.taskFinding);
-      const entry = { version: old.positioningVersion || "", leadId: input.leadId, hash: hash(token), statement: data.values.positioning, expires: new Date(Date.now() + 30 * 86400000).toISOString() };
-      await tx.actionItem.update({ where: { id: action.id }, data: { taskFinding: { ...old, links: [...(old.links || []).filter(l => l.leadId !== input.leadId), entry] } as Prisma.InputJsonValue } });
-      link = "/task-confirm/" + action.id + "?token=" + token;
+      const ids = input.leadIds || [input.leadId!], leads = records(context);
+      if (current?.id !== "01-2" || !action || data.kind !== "organize" || !data.confirmed.includes("positioning") || !data.values.positioning?.trim() || new Set(ids).size !== ids.length || ids.some(id => !leads.some(r => r.id === id))) throw new PlanWriteError("先儲存並確認定位，並選擇本計畫受訪者 / Save confirmed positioning and select a plan interviewee", 409);
+      const old = metadata(action.taskFinding);
+      const entries = ids.map(leadId => {
+        const token = randomBytes(32).toString("base64url");
+        links.push({ leadId, href: "/task-confirm/" + action.id + "?token=" + token });
+        return { version: old.positioningVersion || "", leadId, hash: hash(token), statement: data.values.positioning, expires: new Date(Date.now() + 30 * 86400000).toISOString() };
+      });
+      await tx.actionItem.update({ where: { id: action.id }, data: { taskFinding: { ...old, links: [...(old.links || []).filter(l => !ids.includes(l.leadId)), ...entries] } as Prisma.InputJsonValue } });
+      if (input.leadId) link = links[0].href;
       return;
     }
     if (input.action === "share") {
@@ -177,9 +183,10 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
     await completeGettingStarted(tx, userId);
     await awardReward(tx, userId, "action", action.id);
   }, { timeout: 15000 });
-  return { ...(await getFlow(userId, input.planId, locale)), link };
+  return { ...(await getFlow(userId, input.planId, locale)), link, links };
 }
-export async function confirmation(actionId: string, token: string, answer?: "yes" | "no") {
+export async function confirmation(actionId: string, token: string, answer?: "yes" | "no", feedback = "") {
+  feedback = z.string().trim().max(1000).parse(feedback);
   if (!/^[a-zA-Z0-9_-]{43}$/.test(token)) throw new PlanWriteError("連結無效或已失效 / Invalid or expired link", 404);
   const perform = async (tx: DB) => {
     const action = await tx.actionItem.findFirst({ where: { id: actionId, clientKey: flowKey("01-2"), actionPlan: { archivedAt: null, activeKey: { not: null } } }, include: { actionPlan: true } });
@@ -197,7 +204,7 @@ export async function confirmation(actionId: string, token: string, answer?: "ye
       if (!live || live.version !== next.positioningVersion || latest.done || current?.data.kind !== "organize" || current.data.values.positioning !== entry.statement) throw new PlanWriteError("定位已更新，請索取新連結 / Positioning changed; request a new link", 409);
       const prior = next.responses?.find(r => r.version === entry.version && r.leadId === entry.leadId && r.statement === entry.statement);
       if (prior && prior.answer !== answer) throw new PlanWriteError("已保存回覆，不能覆寫 / Your response is already saved", 409);
-      if (!prior) await tx.actionItem.update({ where: { id: action.id }, data: { taskFinding: { ...next, responses: [...(next.responses || []), { version: entry.version, leadId: entry.leadId, statement: entry.statement, answer, at: new Date().toISOString() }] } as Prisma.InputJsonValue } });
+      if (!prior) await tx.actionItem.update({ where: { id: action.id }, data: { taskFinding: { ...next, responses: [...(next.responses || []), { version: entry.version, leadId: entry.leadId, statement: entry.statement, answer, at: new Date().toISOString(), ...(feedback ? { feedback } : {}) }] } as Prisma.InputJsonValue } });
     }
     return { statement: entry.statement, locale: action.actionPlan.locale, answered: Boolean(answer || response) };
   };

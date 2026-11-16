@@ -45,7 +45,8 @@ test('Task templates show single-page work without mutating unconfirmed or compl
     const props = { ...item, locale, view, onChange: () => { throw new Error('Rendering must not change a draft'); } } as unknown as React.ComponentProps<typeof Templates>;
     const guided = renderToStaticMarkup(React.createElement(Templates, props));
     assert(!guided.includes('data-guided-fields'));
-    if (item.data.kind !== 'conversation') assert(guided.includes(locale === 'en' ? 'Switch to guided work' : '切換逐題整理'));
+    if (item.data.kind !== 'conversation' && item.step !== '01-3') assert(guided.includes(locale === 'en' ? 'Switch to guided work' : '切換逐題整理'));
+    if (item.step === '01-3') { assert(!guided.includes('Switch to guided work')); assert.equal((guided.match(/aria-label="Criterion name"|aria-label="條件名稱"/g) || []).length, 1); assert(guided.includes('Criterion 2')); }
     if(item.step==='03-2'){assert(guided.includes('<table'));assert(guided.includes('50%'));assert(guided.includes('20%'));assert(guided.includes('5%'));assert(guided.includes('checked'));}
     else assert(guided.includes('Saved') || guided.includes('Criterion'));
     assert.equal(JSON.stringify(item.data), original);

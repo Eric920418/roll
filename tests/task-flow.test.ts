@@ -153,16 +153,23 @@ test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replie
       await save("01-2", data);
       await assert.rejects(flow.confirmation(oldId, oldToken), /expired/);
 
-      for (let i = 0; i < 5; i++) {
-        await refresh(); const result = await flow.mutateFlow(owner.id, { action: "confirmLink", planId: current.plan.id, revision: current.plan.revision!, leadId: "r" + i });
-        const url = new URL(result.link!, "http://localhost"), token = url.searchParams.get("token")!, id = url.pathname.split("/").at(-1)!;
-        await flow.confirmation(id, token, "yes"); await flow.confirmation(id, token, "yes");
+      await refresh();
+      const version = current.plan.revision!;
+      await assert.rejects(flow.mutateFlow(owner.id, { action: "confirmLink", planId: current.plan.id, revision: version, leadIds: ["r0", "other-member"] }), /plan interviewee/);
+      await refresh(); assert.equal(current.plan.revision, version, "An invalid batch rolls back the entire transaction");
+      await assert.rejects(flow.mutateFlow(owner.id, { action: "confirmLink", planId: current.plan.id, revision: version, leadIds: ["r0", "r0"] }), /plan interviewee/);
+      const batch = await flow.mutateFlow(owner.id, { action: "confirmLink", planId: current.plan.id, revision: version, leadIds: Array.from({length:5}, (_, i) => "r" + i) });
+      assert.equal(batch.links.length, 5);
+      for (const [i, item] of batch.links.entries()) {
+        const url = new URL(item.href, "http://localhost"), token = url.searchParams.get("token")!, id = url.pathname.split("/").at(-1)!;
+        await flow.confirmation(id, token, "yes", i === 0 ? "This describes our reporting problem." : ""); await flow.confirmation(id, token, "yes");
         await assert.rejects(flow.confirmation(id, token, "no"), /already saved/);
       }
       await refresh(); assert.equal(current.steps[1].current, 5);
       assert.equal(current.positioningReplies.filter(r => r.answer === "yes").length, 5);
       assert.equal(current.positioningReplies.length, 10);
-      assert(current.positioningReplies.every(r => Object.keys(r).sort().join(",") === "answer,at,leadId"));
+      assert.equal(current.positioningReplies[0].feedback, "This describes our reporting problem.");
+      assert(current.positioningReplies.every(r => Object.keys(r).sort().join(",") === "answer,at,feedback,leadId"));
       assert.equal((await plans.getActiveActionPlan(owner.id))!.nextMoves[0].metric!.current, 5);
       await complete("01-2");
     });
