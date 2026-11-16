@@ -24,6 +24,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "videos/nova-intro/assets/generated/**",
     "videos/nova-intro/renders/**",
+    "videos/nova-tutorial-en/assets/generated/**",
+    "videos/nova-tutorial-en/raw/**",
+    "videos/nova-tutorial-en/renders/**",
   ]),
 ]);
 

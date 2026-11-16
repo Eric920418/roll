@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "tutorial:capture": "node --import tsx videos/nova-tutorial-en/capture.mjs",
+    "tutorial:preview": "node videos/nova-tutorial-en/video.mjs preview",
+    "tutorial:render": "node videos/nova-tutorial-en/video.mjs render",
+    "tutorial:check": "node videos/nova-tutorial-en/video.mjs check",
     "video:preview": "node videos/nova-intro/video.mjs preview",
     "video:render": "node videos/nova-intro/video.mjs render",
     "video:check": "node videos/nova-intro/video.mjs check",

@@ -16,6 +16,46 @@
 
 七個自建 QA 帳號已在同一交易先將費用／訂單 ID 歸檔至既有 Setting 的 `prospecting.ai-backup.validation` 再刪除，不污染正式註冊人數；費用仍列入 US$5，驗收不占用 20 位會員名額。讀取歸檔格式異常即停止新搜尋，清理不會重置預算。原有 Omrade 訂單、會員、方案、訪談及聯絡人不改動。驗證：全套 pnpm test 662／662、零略過；本次範圍 ESLint 零錯誤／警告，pnpm lint 零錯誤（工作區共 21 警告，含並行影片檔），pnpm build 及建置後 TypeScript 通過。5ed0b41 正式部署已 Ready，rollon.com.tw 別名已切換；實際後台顯示備援開啟、會員 0/20、驗收 7、預算占用 US$0.5475/5、台北 11/17 00:00 到期。正式 Anthropic 組織查詢回 200，Nova AI 與本機付費驗收同組織。中英文正式搜尋同意皆改指 Anthropic、預設未勾選；390px 搜尋視窗寬 350px、內容寬 348px，按鈕高 55px，視窗無溢位。背景既有學習影片卡另有 47px 溢位，本輪未改動該區。正式會員沒有再追加驗收搜尋或修改偏好。畫面證據為同一本機目錄 production-budget.png 與 mobile-live.png。
 
+# NOVA AI 英文客戶端操作教學影片（2026-11-16）
+
+已完成十一章、147 張英文步驟字卡的實際操作教學，MP4 約 56 MB，封面與英文 SRT 已交付。規格為 15:00、1920×1080、30fps／27000 影格，英文介面與雙行字幕，無旁白，低音量原創電子配樂。桌面採實際表單、游標與點擊提示，手機同時顯示真實 390×844 版面及 2 倍局部。40px 主要字幕最短約 5.07 秒；操作維持原速，儲存回饋含原素材與定格至少兩秒。
+
+來源在 `videos/nova-tutorial-en/`。`template.html.tpl` 為視覺樣板，`chapters.mjs` 為固定章節表，`record.mjs` 錄製並驗證真實操作，`fixtures.mjs` 建立虛構角色及預載進度，`video.mjs` 產生英文 SRT／HyperFrames 子合成及輸出，`check.mjs` 驗收。預覽準備失敗時會建立零素材依賴的完整錯誤畫面，包含 stack，並正常開啟預覽視窗；錯誤文字會先 HTML 編碼，另有斷言驗證。生成入口 `index.html`、所有錄影、連線資訊、快取與成片均排除版控；既有 `videos/nova-intro/` 宣傳片原始碼及輸出保留。
+
+```sh
+pnpm tutorial:capture  # 新建本機隔離 DB，正式建置本機 App，再錄製十一章
+pnpm tutorial:preview  # 組合既有錄影並開啟 http://localhost:4311 預覽
+pnpm tutorial:render   # HyperFrames 合成 MP4、封面及英文 SRT
+pnpm tutorial:check    # 檢查既有素材與輸出；不建立 DB 或示範帳號
+```
+
+需沿用已安裝的 Chromium、PostgreSQL 16、FFmpeg／ffprobe 與 pdftoppm。若既有金屬品牌素材不存在，先執行 `pnpm video:prepare`，以既有 Remotion／Three.js 原始碼重新產生。未新增任何套件；GSAP 只使用可定位時間的暫停時間軸，HyperFrames 負責預覽、時間軸、音訊及最終輸出。FFmpeg 處理原始素材尺寸、閱讀定格及固定影格率，並將 HyperFrames 尾端最多兩個編碼填補影格以無損 remux 截齊 27000 影格（超出範圍拒絕交付）；底層每秒一個關鍵影格，支援穩定跳轉。Inter 使用 SIL OFL 1.1（Rasmus Andersson／rsms.me/inter），首輪準備會快取本機字型；完整 OFL 條款沿用本 README 既有字型授權段落。
+
+| 時間 | 章節 |
+|---|---|
+| 00:00–00:30 | Getting started |
+| 00:30–02:00 | Sign in and company profile |
+| 02:00–04:20 | Today's priority |
+| 04:20–05:20 | Find companies |
+| 05:20–06:40 | Business matching |
+| 06:40–08:20 | Roundtables and messages |
+| 08:20–10:50 | Hosting as a mentor |
+| 10:50–12:10 | Reports and sharing |
+| 12:10–13:10 | Rewards and referrals |
+| 13:10–14:20 | Account and preferences |
+| 14:20–15:00 | Mobile and recap |
+
+資料邊界：只接受 loopback、名稱以 `roll_rewards_qa_tutorial_` 開頭的新資料庫，由 `roll_rewards_qa_crons_20261115` 僅複製 schema，不複製會員資料、不改資料表結構。完整重錄建立新 DB，舊示範庫及私有狀態保留。 伺服器啟動與停止會核對 Next 程序、工作目錄、專用日誌、連接埠及本次 PID；拒絕沿用未知的本機 App，不會因舊 PID 被重用而停止其他程序。一般示範會員使用本機限時完整權限，未偽造 PayPal 訂閱；七個角色帳號及付款佐證皆為虛構。公司偏好儲存後明示切換預備會員，創辦人測驗未納入本片。任務從九筆預載對話開始，實際新增第十筆、儲存、重載並完成首步；其他參考草稿不代表步驟已完成。
+
+AI／搜尋明確標示 `SIMULATED RESPONSE`、`SIMULATED / PRELOADED`；AI 草稿須人工核對並由真實 API 儲存。搜尋保留待處理、失敗及預存名單，不宣稱供應商交付已修復；現行備援供應商及費率依當時介面為準。導師申請待審後切換預先認證帳號；結案切換到預載已結束場次，沒有呈現即時認證或瞬間跑完十六步。錄製強制停用寄信、付款與供應商金鑰，瀏覽器拒絕外部寫入；未實際寄信、收款或下單。付款章節停在訂閱操作之前，未操作刪除帳號。
+
+已通過：十一章瀏覽器錯誤為零；表單儲存重載、十筆證據門檻、AI 草稿明確儲存、名片更新、圓桌申請及席位、訊息接收方、導師本次新場次 ID、會議連結更新、出席結案與任務回寫、取消狀態、真實報告／公司 PDF、匿名分享開啟及撤銷、積分兌換、通知／隱私與新密碼登入，共 25 組流程斷言。另建隔離 schema 資料庫執行相關回歸 87 項全部通過、零略過；網站 TypeScript 通過，`pnpm lint` 零錯誤、14 個既有警告，影片原始碼 ESLint 零警告。`pnpm tutorial:preview` 已實際啟動；`pnpm tutorial:check` 通過，包含八組來源自檢、147 段 SRT 編號／兩行內容／至少四秒／連續無重疊且正好結束於 15:00、英文缺字及七個隨機跳轉字卡雜湊一致。
+
+實際成片為 H.264／AAC、1920×1080、30fps、900.000 秒，27000 影格全部解碼；黑畫面區間為零，音訊峰值 −15.2 dB，無爆音。HyperFrames strict 零錯誤／零警告，包含 91 個版面時點（11 個章節時點與最多 80 個轉場樣本）、599 個閱讀節奏樣本；未宣稱逐一抽驗全部轉場邊界。實際查看十二張輸出關鍵畫面及 1280×720 手機段落，主要字幕清楚、游標位置與真實手機版面一致。渲染前量測 Chrome 內部視窗並校準至 1080px，附斷言；另直接讀取 MP4 六個時點的底部像素，確認完整字幕區未裁切，並以校準短片與舊裁切成片驗證檢查可區分兩者。
+
+交付檔案在本機 `videos/nova-tutorial-en/renders/`：`nova-ai-client-tutorial-en.mp4`、`nova-ai-client-tutorial-cover.jpg`、`nova-ai-client-tutorial-en.srt`、`verification.json` 與 `hyperframes-check.json`；另保留 `delivery-contact.jpg`、`720p-review.png` 及實際 MP4 抽驗影格。兩份真實示範 PDF 在 `raw/nova-demo-validation-report.pdf` 與 `raw/nova-demo-business-plan.pdf`。不加入網站播放區；原始碼可重新錄製與渲染，外部服務替身不作為正式 AI／搜尋成功驗收。
+
+
 # Omrade 同條件五家公司實測（2026-11-16）
 
 依使用者要求，沿用最近失敗訂單已確認的台灣買方 ICP v1，於台北 13:22 建立唯一一筆五家公司供應商實測單。送出前將 UUID 冪等鍵與原始請求持久保存；count=5、max_charge_cents=0，未建立第二筆訂單、未放寬國家／公開聯絡來源要求，未修改會員 ICP、Token、方案或歷史訂單。

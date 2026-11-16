@@ -52,6 +52,15 @@ next-env.d.ts
 /videos/nova-intro/.thumbnails/
 /videos/nova-intro/.transcode-cache/
 /videos/nova-intro/.waveform-cache/
+/videos/nova-tutorial-en/assets/generated/
+/videos/nova-tutorial-en/raw/
+/videos/nova-tutorial-en/renders/
+/videos/nova-tutorial-en/index.html
+/videos/nova-tutorial-en/.hyperframes/
+/videos/nova-tutorial-en/.hyperframes-local/
+/videos/nova-tutorial-en/.thumbnails/
+/videos/nova-tutorial-en/.transcode-cache/
+/videos/nova-tutorial-en/.waveform-cache/
 
 # Playbook ingest 來源 PDF（產出的 JSON 才進版控）
 content/playbooks/_inbox/
