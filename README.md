@@ -1,3 +1,17 @@
+# Omrade 同條件五家公司實測（2026-11-16）
+
+依使用者要求，沿用最近失敗訂單已確認的台灣買方 ICP v1，於台北 13:22 建立唯一一筆五家公司供應商實測單。送出前將 UUID 冪等鍵與原始請求持久保存；count=5、max_charge_cents=0，未建立第二筆訂單、未放寬國家／公開聯絡來源要求，未修改會員 ICP、Token、方案或歷史訂單。
+
+- 供應商 Order ID：`d65500a1-8a09-4a64-91fd-9b9a530a7c25`。
+- POST 接單 HTTP 202；X-Request-ID：`cc179f2e-dbe2-4e35-9b1d-0f5f281cffd0`，預留免費 5 家、付費預留 US$0。
+- 約 49 秒後 GET 終態為 failed／insufficient_matches；X-Request-ID：`1e6a3b70-0446-4736-980a-de8cd631c70e`。
+- research_findings：候選 9、exact_matches 0、adjacent_matches 0、review_candidates 0；companies 0，沒有可供本站來源查證的交付公司。API 未提供逐候選排除原因。
+- 收據 released，free_companies=0、paid_companies=0、amount_cents=0。事後 usage 再核對：免費可用 150、交付／預留／進行中均 0，paid_enabled=false，月支出上限與付費累積均 US$0。
+
+供應商現行公開 OpenAPI 為 v1.1.0；實際接單及失敗 payload 均通過本專案 orderResponse 驗證，未發現本次請求格式或解析錯誤。Omrade、來源驗證、排程及搜尋入口相關回歸 47／47 通過，使用隔離 PostgreSQL、零略過；沒有呼叫 Anthropic 或寄信。本次直接驗證同組織供應商 API，沒有新增正式會員訂單或執行真實會員 Token 結算；零交付也未進入正式來源查證階段。
+
+**尚未修復交付問題**：失敗在供應商交付階段；需查那 9 個候選的逐筆排除原因及搜尋處理紀錄。Omrade 管理頁目前登出，已保留登入分頁並請使用者登入以繼續核對組織內紀錄。原始 payload、完整收據、逐次輪詢及前後用量只保存在本機 `/Users/eric/.codex/visualizations/2026/11/16/nova-omrade-one-live/`，不將私有 ICP 或 API 金鑰寫入 Git。本批僅記錄真實測試，不以介面修改宣稱搜尋已修好；未執行不相關 lint／build 或重新部署程式。
+
 # NOVA AI 客戶端 MG 介紹動畫（2026-11-16）
 
 已完成 60 秒、1920×1080、30fps（1800 影格）的黑白銀灰 MG 介紹片，含繁中文字卡、動態排版、介面拆解、金屬 3D、原創 120 BPM 電子配樂與轉場音效，無旁白。交付 MP4 約 11 MB，以及 JPG 封面；不是螢幕錄影。以現行客戶端為準，涵蓋公司檔案、AI 引導／目標客戶／潛客搜尋、5 個里程碑與 16 步、今日任務與對話證據、五類會員媒合、名片與訪客、圓桌與訊息、會後承諾、商業計畫／PDF／驗證報告分享、積分與邀請獎勵，最後導向繁中註冊。
