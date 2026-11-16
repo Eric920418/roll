@@ -14,7 +14,7 @@
 
 真實驗收：早期新創 ICP 未達五家；較廣的台灣 B2B 軟體／數位產品買方條件，已從同一批保存結果核對五家真實公開商務 Email／官方洽詢表單。不能以此宣稱每個 ICP 都足額。七次隔離 QA 保守成本共 US$0.547497，包含推論前 strict schema 拒絕（已以原格式重現 HTTP 400：maxItems 不支援，零模型用量，改用 SDK zodOutputFormat 轉換）。未足額 Token 均退回，來源重查沒有新 AI 費用或重扣 Token。證據只存在本機 `/Users/eric/.codex/visualizations/2026/11/16/nova-ai-backup/`，不保存 API key。
 
-七個自建 QA 帳號已在同一交易先將費用／訂單 ID 歸檔至既有 Setting 的 `prospecting.ai-backup.validation` 再刪除，不污染正式註冊人數；費用仍列入 US$5，驗收不占用 20 位會員名額。讀取歸檔格式異常即停止新搜尋，清理不會重置預算。原有 Omrade 訂單、會員、方案、訪談及聯絡人不改動。驗證：全套 pnpm test 661／661、零略過，另補歸檔預算防重置測試；pnpm lint 零錯誤（工作區共 21 警告，含並行影片檔），pnpm build 及建置後 TypeScript 通過。正式設定已新增到期旗標，待本次 main 部署後確認。
+七個自建 QA 帳號已在同一交易先將費用／訂單 ID 歸檔至既有 Setting 的 `prospecting.ai-backup.validation` 再刪除，不污染正式註冊人數；費用仍列入 US$5，驗收不占用 20 位會員名額。讀取歸檔格式異常即停止新搜尋，清理不會重置預算。原有 Omrade 訂單、會員、方案、訪談及聯絡人不改動。驗證：全套 pnpm test 662／662、零略過；本次範圍 ESLint 零錯誤／警告，pnpm lint 零錯誤（工作區共 21 警告，含並行影片檔），pnpm build 及建置後 TypeScript 通過。5ed0b41 正式部署已 Ready，rollon.com.tw 別名已切換；實際後台顯示備援開啟、會員 0/20、驗收 7、預算占用 US$0.5475/5、台北 11/17 00:00 到期。正式 Anthropic 組織查詢回 200，Nova AI 與本機付費驗收同組織。中英文正式搜尋同意皆改指 Anthropic、預設未勾選；390px 搜尋視窗寬 350px、內容寬 348px，按鈕高 55px，視窗無溢位。背景既有學習影片卡另有 47px 溢位，本輪未改動該區。正式會員沒有再追加驗收搜尋或修改偏好。畫面證據為同一本機目錄 production-budget.png 與 mobile-live.png。
 
 # Omrade 同條件五家公司實測（2026-11-16）
 
