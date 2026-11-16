@@ -10,6 +10,7 @@ import { features } from "@/lib/network/access";
 import { DISCOVERY_POLICY, discoveryTrialActive, discoveryEvidence } from "@/lib/discovery/policy";
 import { readIcp } from "@/lib/icp/schema";
 import { configured } from "./client";
+import { backupEnabled, backupUntil, backupProvider, backupModel, backupOrders, backupRequest, backupUsage, backupLimit, backupBudgetMicros, backupHoldMicros } from "./backup";
 import { activeOrderStatuses, audienceDescription, orderInputSchema, ProspectingError, publicProspectSchema, uniqueProspects, utcPeriod } from "./schema";
 import type { z } from "zod";
 type DB = Prisma.TransactionClient;
@@ -49,7 +50,7 @@ export function storedCompanies(order: Pick<ProspectingOrder, "result">) {
 }
 export function orderView(order: ProspectingOrder, excluded: string[], workspace?: { country: string; description: string } | null) {
   const companies = uniqueProspects(storedCompanies(order), excluded);
-  return { id: order.id, submissionId: order.requestId, country: order.country, description: order.description, requested: order.count, delivered: order.deliveredCount, usable: companies.length, status: order.status, poc: order.poc, period: order.period,
+  return { provider: backupRequest(order.providerRequest) ? "anthropic_backup" : "omrade", id: order.id, submissionId: order.requestId, country: order.country, description: order.description, requested: order.count, delivered: order.deliveredCount, usable: companies.length, status: order.status, poc: order.poc, period: order.period,
     createdAt: order.createdAt.toISOString(), checkedAt: order.checkedAt?.toISOString() || null, nextAttemptAt: order.nextAttemptAt.toISOString(),
     needsRecheck: !order.checkedAt || Date.now() - order.checkedAt.getTime() >= 86400000,
     stale: !order.checkedAt || Date.now() - order.checkedAt.getTime() >= 86400000 || Boolean(workspace && (workspace.country !== order.country || workspace.description !== order.description)),
@@ -70,7 +71,7 @@ export async function prospectSnapshot(userId: string, cursor?: string) {
   const delivered = usage._sum.deliveredCount || 0, reserved = usage._sum.reservedCount || 0;
   const gift = rights.poc ? await prisma.tokenLedger.findUnique({ where: { eventKey: `poc:${userId}` } }) : null;
   const pricing = { ...tokens.pricing, searchFee: gift?.availableDelta || tokens.pricing.searchFee };
-  return { pricing, tokens: { available: tokens.available, reserved: tokens.reserved }, enabled: configured(), access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
+  return { pricing, tokens: { available: tokens.available, reserved: tokens.reserved }, enabled: configured() || backupEnabled(), provider: backupEnabled() ? "anthropic_backup" : "omrade", backupUntil: backupEnabled() ? backupUntil() : null, access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
     quota: { period: utcPeriod(), limit: pricing.monthlyCompanies, delivered, reserved, remaining: Math.max(0, pricing.monthlyCompanies - delivered - reserved) },
     pending: pending ? orderView(pending, context.names, values) : null, orders: await Promise.all(orders.slice(0, 20).map(async o => ({ ...orderView(o, context.names, values), tokenFee: await feeView(o.id) }))), nextCursor: orders.length > 20 ? orders[19].id : null };
 }
@@ -93,7 +94,9 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     if (input.planId && !await tx.actionPlan.findFirst({ where: { id: input.planId, userId, activeKey: userId, archivedAt: null }, select: { id: true } })) throw new ProspectingError("找不到本人有效計畫 / Active plan not found", 404, "plan_not_found");
     const pricing = await tokenQuote(tx);
     if (input.pricingVersion !== pricing.version || input.count !== 5) throw new ProspectingError(`新搜尋固定五家公司，請重新載入確認報價 / New searches require five companies; reload and confirm current pricing`, input.pricingVersion && input.pricingVersion !== pricing.version ? 409 : 400, "pricing_confirmation_required");
-    if (!configured()) throw new ProspectingError("公司搜尋尚未開放，已存名單仍可查看 / Company search is not configured; saved lists remain readable", 503, "not_configured");
+    const backup = backupEnabled();
+    if ((input.provider || "omrade") !== (backup ? backupProvider : "omrade")) throw new ProspectingError("搜尋服務已切換，請重載並重新同意傳送條件 / Search provider changed; reload and confirm consent", 409, "provider_confirmation_required");
+    if (!configured() && !backup) throw new ProspectingError("公司搜尋尚未開放，已存名單仍可查看 / Company search is not configured; saved lists remain readable", 503, "not_configured");
     const rights = await eligibility(userId, tx);
     if (!rights.canSearch) throw new ProspectingError(rights.activeTrial && !rights.claimed ? "完成三家有效訪談後可領一次五家公司 / Complete three valid company interviews for one five-company POC" : "需要 NOVA 或有效既有權益；一般試用 POC 每帳號一次 / NOVA or valid existing entitlement required; trial POC is once per account", 403, "access_required");
     if (rights.poc && input.count !== 5) throw new ProspectingError("POC 每次限五家公司 / Trial POC is limited to five companies", 400, "poc_count");
@@ -106,9 +109,15 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     const context = await exclusions(userId, tx, true), definition = { description: input.description, countries: [input.country], industries: [], exclude_domains: context.domains, contact_requirement: "email_or_contact_page" };
     const audienceHash = hash(definition), sameAudience = workspace?.audienceHash === audienceHash && workspace.omradeIcpId && workspace.omradeIcpVersion;
     await tx.prospectingWorkspace.upsert({ where: { userId }, create: { userId, country: input.country, description: input.description, revision: 1 }, update: { country: input.country, description: input.description, revision: { increment: 1 } } });
+    if (backup) {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291736)::text`;
+      const previous = await backupOrders(tx), usage = backupUsage(previous);
+      if (previous.some(o => o.userId === userId)) throw new ProspectingError("臨時 AI 搜尋每帳號一次，已存名單可查看及重新核對來源 / Temporary AI search is once per account; saved lists can be read and rechecked", 429, "backup_member_limit");
+      if (usage.attempts >= backupLimit || usage.committedMicros > backupBudgetMicros - backupHoldMicros && !previous.some(o => o.status === "running")) throw new ProspectingError("臨時 AI 搜尋名額或安全預算已用完，未扣點 / Temporary AI search capacity or safety budget exhausted; no Token charged", 429, "backup_budget_limit");
+    }
     const order = await tx.prospectingOrder.create({ data: { userId, requestId: input.requestId, payloadHash, country: input.country, description: input.description, count: input.count, poc: rights.poc, period, reservedCount: input.count,
       audienceRequest: json({ name: "NOVA confirmed buyer criteria", definition }), audienceKey: randomUUID(), audienceParentId: workspace?.omradeIcpId || null,
-      omradeIcpId: sameAudience ? workspace!.omradeIcpId : null, omradeIcpVersion: sameAudience ? workspace!.omradeIcpVersion : null, orderKey: randomUUID() } });
+      omradeIcpId: sameAudience ? workspace!.omradeIcpId : null, omradeIcpVersion: sameAudience ? workspace!.omradeIcpVersion : null, orderKey: randomUUID(), ...(backup ? { providerRequest: json({ provider: backupProvider, campaign: backupUntil(), model: backupModel, costMicros: 0 }) } : {}) } });
     if (rights.poc && !await tx.tokenLedger.findUnique({ where: { eventKey: `poc:${userId}` } })) await grantTokens(tx, userId, pricing.searchFee, `poc:${userId}`, "一次公司搜尋 POC 贈額 / One-time search POC grant");
     await reserveTokens(tx, { userId, requestId: input.requestId, payloadHash, kind: "search", poc: rights.poc, resourceId: order.id, expiresAt: new Date(Date.now() + 86400000), metadata: { exclusions: context.names, ...(input.planId ? { planId: input.planId } : {}) } });
     return { id: order.id, status: order.status };

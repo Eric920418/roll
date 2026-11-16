@@ -10,6 +10,7 @@ import { configured, icpResponse, OmradeError, omradeRequest, orderResponse } fr
 import { activeOrderStatuses, ProspectingError, uniqueProspects, type PublicProspect } from "./schema";
 import { eligibility, exclusions, getProspectOrder, hash, json, lockMember } from "./service";
 import { verifyCompany } from "./contact";
+import { backupEnabled, backupProvider, backupRequest, backupOrders, backupUsage, backupBudgetMicros, backupHoldMicros, backupResultSchema, researchBackup, groundedBackupCandidates } from "./backup";
 const leaseMs = 300000;
 const failureMessages: Record<string, string> = {
   insufficient_matches: "供應商無法找到足額且符合條件的新公司 / Provider could not find enough qualifying new companies",
@@ -31,7 +32,13 @@ async function ownedUpdate(id: string, token: string, data: Prisma.ProspectingOr
   if (!saved.count) throw new ProspectingError("訂單由另一處理程序接手，請重新讀取 / Order processing lease changed; reload", 409, "lease_changed");
 }
 async function completeCheck(order: ProspectingOrder, token: string) {
-  const response = orderResponse.parse(order.providerResult);
+  const backup = Boolean(backupRequest(order.providerRequest));
+  const pending = order.providerResult as { raw?: unknown; urls?: string[] } | null;
+  if (backup && pending?.raw && pending.urls) {
+    const providerResult = json({ provider: backupProvider, raw: pending.raw, urls: pending.urls, companies: await groundedBackupCandidates(pending.raw, pending.urls, order.country) });
+    await ownedUpdate(order.id, token, { providerResult }); order = await prisma.prospectingOrder.findUniqueOrThrow({ where: { id: order.id } });
+  }
+  const response = backup ? backupResultSchema.parse(order.providerResult) : orderResponse.parse(order.providerResult);
   const companies: PublicProspect[] = [], rejections: Record<string, number> = {};
   // At most two company checks in parallel; each source read has its own strict network budget.
   for (let offset = 0; offset < response.companies.length; offset += 2) {
@@ -45,12 +52,12 @@ async function completeCheck(order: ProspectingOrder, token: string) {
     if (fresh.leaseToken !== token) throw new ProspectingError("訂單處理權已變更 / Processing lease changed", 409, "lease_changed");
     const context = await exclusions(order.userId, tx), fee = await resourceFee(tx, "search", order.id);
     const frozen = (fee?.metadata as { exclusions?: string[] } | undefined)?.exclusions;
-    const eligible = uniqueProspects(companies, frozen || context.names);
+    const eligible = uniqueProspects(companies, fresh.checkedAt ? frozen || context.names : [...(frozen || []), ...context.names]).slice(0, order.count);
     if (fee) await settleTokens(tx, fee.id, eligible.length === order.count ? "capture" : "refund", eligible.length === order.count ? "五家新公司已核對交付 / Five new companies verified and delivered" : "合格交付不足，原預扣 Token 退回 / Insufficient verified delivery; original Token hold returned");
     if (eligible.length < companies.length) rejections.known_or_duplicate = companies.length - eligible.length;
     const grant = await tx.prospectingTrialGrant.findUnique({ where: { userId: order.userId } });
     if (order.poc && eligible.length && (!fee || eligible.length === order.count) && !grant) await tx.prospectingTrialGrant.create({ data: { userId: order.userId, orderId: order.id } });
-    await tx.prospectingOrder.update({ where: { id: order.id }, data: { result: json(eligible), rejections, checkedAt: new Date(), status: "completed", leaseToken: null, leaseUntil: null, failureCode: fee && eligible.length < order.count ? "delivery_refunded" : null, failureMessage: fee && eligible.length < order.count ? "合格公司不足，原預扣 Token 已退回；重新搜尋前請核對報價 / Insufficient verified companies; original Token hold returned. Check pricing before a replacement search" : null } });
+    await tx.prospectingOrder.update({ where: { id: order.id }, data: { result: json(eligible), rejections, checkedAt: new Date(), status: backup && !eligible.length ? "failed" : "completed", ...(backup ? { reservedCount: 0, deliveredCount: eligible.length, deliveredAt: eligible.length ? new Date() : null } : {}), leaseToken: null, leaseUntil: null, failureCode: fee && eligible.length < order.count ? "delivery_refunded" : null, failureMessage: fee && eligible.length < order.count ? "合格公司不足，原預扣 Token 已退回；重新搜尋前請核對報價 / Insufficient verified companies; original Token hold returned. Check pricing before a replacement search" : null } });
     return eligible.length;
   }, { timeout: 15000 });
 }
@@ -106,8 +113,34 @@ async function submitGate(order: ProspectingOrder, token: string) {
     await tx.prospectingOrder.update({ where: { id: order.id }, data: { submittedAt: new Date() } });
   }, { timeout: 15000 });
 }
+async function processBackup(order: ProspectingOrder, token: string) {
+  const request = backupRequest(order.providerRequest)!;
+  if (order.submittedAt) throw new ProspectingError("前次 AI 呼叫已送出但結果未保存；為避免重複費用不自動重試，預扣 Token 退回 / Previous AI request was sent but no result was saved; no paid retry, Token hold returned", 503, "backup_interrupted");
+  if (!backupEnabled()) throw new ProspectingError("臨時 AI 搜尋已結束，未送出，Token 預扣退回 / Temporary AI search has ended; not submitted, Token hold returned", 503, "backup_expired");
+  const started = await prisma.$transaction(async raw => {
+    const tx = raw as unknown as Prisma.TransactionClient;
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291736)::text`;
+    const busy = await tx.prospectingOrder.findFirst({ where: { id: { not: order.id }, status: "running", providerRequest: { path: ["provider"], equals: backupProvider }, leaseUntil: { gt: new Date() } } });
+    if (busy) return false;
+    const rights = await eligibility(order.userId, tx);
+    if (!rights.canSearch || order.poc && !rights.poc) throw new ProspectingError("搜尋資格已變更，未送出 / Search access changed; not submitted", 403, "access_changed");
+    if (backupUsage(await backupOrders(tx)).committedMicros + backupHoldMicros > backupBudgetMicros) throw new ProspectingError("安全預算不足，未送出，Token 預扣退回 / Safety budget unavailable; not submitted, Token hold returned", 429, "backup_budget_limit");
+    const saved = await tx.prospectingOrder.updateMany({ where: { id: order.id, leaseToken: token, submittedAt: null }, data: { status: "running", submittedAt: new Date(), acceptedAt: new Date(), providerRequest: json({ ...request, costMicros: backupHoldMicros }) } });
+    if (!saved.count) throw new ProspectingError("搜尋處理權已變更，未重送 / Processing lease changed; not resubmitted", 409, "lease_changed");
+    return true;
+  });
+  if (!started) { await ownedUpdate(order.id, token, { nextAttemptAt: new Date(Date.now() + 30000) }); return false; }
+  const definition = order.audienceRequest as { definition: { exclude_domains: string[] } };
+  const research = await researchBackup(order.description, order.country, definition.definition.exclude_domains, async (usedMicros, requestId) => {
+    await ownedUpdate(order.id, token, { providerRequest: json({ ...request, costMicros: backupHoldMicros, usedMicros }), providerRequestId: requestId || null });
+  });
+  // Persist the paid result before doing any network verification; a lease retry never repeats research.
+  await ownedUpdate(order.id, token, { status: "checking", providerRequest: json({ ...request, costMicros: research.costMicros }), providerResult: json({ provider: backupProvider, raw: research.raw, urls: research.urls, diagnostics: research.diagnostics, companies: [] }) });
+  return false;
+}
 async function processOrder(order: ProspectingOrder, token: string) {
   if (order.status === "checking") { await completeCheck(order, token); return true; }
+  if (backupRequest(order.providerRequest)) return processBackup(order, token);
   if (!order.omradeIcpId || !order.omradeIcpVersion) {
     const audience = await limitedRequest(order.audienceParentId ? `/icps/${order.audienceParentId}/versions` : "/icps", order.audienceRequest, order.audienceKey);
     const parsed = icpResponse.safeParse(audience.data); if (!parsed.success) throw new OmradeError(503, "provider_invalid_response", 60, audience.requestId);
@@ -138,10 +171,11 @@ async function failedAttempt(order: ProspectingOrder, token: string, error: unkn
   if (!fresh || fresh.leaseToken !== token) return;
   const known = error instanceof ProspectingError, provider = error instanceof OmradeError;
   // Only an explicit rejection before acceptance releases a reservation. Never recreate an uncertain operation.
-  const definite = !fresh.providerOrderId && known && [400, 401, 402, 403, 404].includes(error.status);
+  const backup = Boolean(backupRequest(fresh.providerRequest));
+  const definite = backup && fresh.status !== "checking" || !fresh.providerOrderId && known && [400, 401, 402, 403, 404].includes(error.status);
   const delayed = Date.now() - (fresh.submittedAt || fresh.createdAt).getTime() > 40 * MINUTE_MS;
   const retry = Math.max(15, known ? error.retryAfter : 60, Math.min(300, 15 * 2 ** Math.min(fresh.attempts, 4)));
-  const message = known ? error.message : "搜尋暫時無法確認，原訂單及預留量保留，系統會重試 / Search unconfirmed; original order and reservation retained for retry";
+  const message = backup ? known ? error.message : "AI 搜尋未完成，沒有自動重試；Token 預扣退回。若是連線或供應商問題請聯絡平台 / AI search did not complete; no automatic retry. Token hold returned; contact support for connection or provider issues" : known ? error.message : "搜尋暫時無法確認，原訂單及預留量保留，系統會重試 / Search unconfirmed; original order and reservation retained for retry";
   await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
     await lockMember(tx, order.userId);
@@ -156,14 +190,15 @@ async function failedAttempt(order: ProspectingOrder, token: string, error: unkn
 }
 export async function runProspecting(userId?: string) {
   await expireTokens(userId);
-  if (process.env.OMRADE_WORKER_ENABLED === "false" || !process.env.OMRADE_API_KEY) return { enabled: false, processed: 0 };
-  const enabled = configured(), deadline = Date.now() + 200000; let processed = 0;
+  const omradeWorker = process.env.OMRADE_WORKER_ENABLED !== "false" && Boolean(process.env.OMRADE_API_KEY);
+  if ((process.env.OMRADE_WORKER_ENABLED === "false" || !process.env.OMRADE_API_KEY) && !process.env.PROSPECT_AI_BACKUP_UNTIL) return { enabled: false, processed: 0 };
+  const enabled = configured() || backupEnabled(), deadline = Date.now() + 200000; let processed = 0;
   const seen: string[] = [];
   while (processed < 5 && Date.now() < deadline - 105000) {
     const claimed = await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(537291735)::text`;
-      const order = await tx.prospectingOrder.findFirst({ where: { ...(userId ? { userId } : {}), id: { notIn: seen }, status: { in: activeOrderStatuses }, nextAttemptAt: { lte: new Date() }, OR: [{ leaseUntil: null }, { leaseUntil: { lt: new Date() } }], ...(!enabled ? { providerOrderId: { not: null } } : {}) }, orderBy: { nextAttemptAt: "asc" } });
+      const order = await tx.prospectingOrder.findFirst({ where: { ...(userId ? { userId } : {}), id: { notIn: seen }, status: { in: activeOrderStatuses }, nextAttemptAt: { lte: new Date() }, OR: [{ leaseUntil: null }, { leaseUntil: { lt: new Date() } }], AND: [...(!omradeWorker ? [{ providerRequest: { path: ["provider"], equals: backupProvider } }] : []), ...(!enabled ? [{ OR: [{ providerOrderId: { not: null } }, { providerRequest: { path: ["provider"], equals: backupProvider } }] }] : [])] }, orderBy: { nextAttemptAt: "asc" } });
       if (!order) return null;
       const token = randomUUID(); await tx.prospectingOrder.update({ where: { id: order.id }, data: { leaseToken: token, leaseUntil: new Date(Date.now() + leaseMs), attempts: { increment: 1 } } });
       return { order, token };

@@ -70,10 +70,13 @@ export async function verifyCompany(raw: unknown, country: string, read = readPu
     const published = text(page.html).match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
     if (published.some(v => v.toLowerCase() === route.email.toLowerCase())) { contact = { kind: "email", value: route.email, source: page.url, name: !sharedInbox(route.email) && route.name && text(page.html).includes(route.name) ? route.name : null, role: !sharedInbox(route.email) && route.name && route.role && text(page.html).includes(route.name) && text(page.html).includes(route.role) ? route.role : null }; break; }
   }
+  const businessForm = (html: string) => (text(html).match(/<form\b[^>]*>[\s\S]*?<\/form>/gi) || []).some(form =>
+    /<textarea\b|name\s*=\s*["'](?:message|subject|enquiry|inquiry)["']/i.test(form) ||
+    /type\s*=\s*["']email["']/i.test(form) && /name\s*=\s*["'][^"']*(?:company|公司|企業)/i.test(form) && /type\s*=\s*["']submit["']|<button\b/i.test(form) && /contact|enquir|inquir|諮詢|洽詢|聯絡|聯繫|想瞭解的服務/i.test(form));
   const qualifies = (page: { url: string; html: string }) => (contactPath(page.url) || contactPages.has(page.url)) && (
     protectedEmail(text(page.html)) ||
     /href\s*=\s*["']mailto:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text(page.html)) ||
-    /<form\b[^>]*>[\s\S]*?(?:<textarea\b|name\s*=\s*["'](?:message|subject|enquiry|inquiry)["'])[\s\S]*?<\/form>/i.test(text(page.html))
+    businessForm(page.html)
   );
   if (!contact) {
     let page = [...pages.values()].find(qualifies);
@@ -83,6 +86,11 @@ export async function verifyCompany(raw: unknown, country: string, read = readPu
       if (links[0] && !pages.has(links[0])) { const fetched = await read(links[0], c.website_url); if (fetched && qualifies(fetched)) page = fetched; }
     }
     if (page) contact = { kind: "page", value: page.url, source: page.url, name: null, role: null };
+  }
+  if (!contact) for (const page of pages.values()) {
+    const published = text(page.html).match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
+    const email = published.find(value => z.email().max(254).safeParse(value).success && !/^(?:no.?reply|privacy|dpo|abuse|security|jobs|careers|legal)@/i.test(value) && (value.toLowerCase().split("@")[1] === host(c.website_url)));
+    if (email) { contact = { kind: "email", value: email, source: page.url, name: null, role: null }; break; }
   }
   if (!contact) return { rejection: "no_verified_contact" };
   return { company: { id: c.company_id, name: c.name, website: c.website_url, country: c.country_code, quality: c.match_quality, note: c.match_note || null, evidence: c.fit_evidence, researchedAt: c.researched_at, contact } };

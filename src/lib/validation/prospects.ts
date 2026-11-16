@@ -6,5 +6,5 @@ import { orderInputSchema } from "@/lib/prospecting/schema";
 import { createProspectOrder } from "@/lib/prospecting/service";
 export const prospectInputSchema = orderInputSchema.omit({ count: true }).extend({ scope: scopeSchema.optional(), locale: z.enum(["en", "zh-tw"]), prospectCount: z.union([z.literal(5), z.literal(10)], { error: "公司搜尋已更新，請重新載入並確認五家公司與目前報價；既有十家訂單仍保留 / Search updated; reload and confirm five companies and current pricing. Existing ten-company orders are retained" }) }).strict();
 export async function generateProspects(account: Account, input: z.infer<typeof prospectInputSchema>) {
-  return createProspectOrder(account.id, orderInputSchema.parse({ requestId: input.requestId, pricingVersion: input.pricingVersion, revision: input.revision, country: input.country, description: input.description, count: input.prospectCount }));
+  return createProspectOrder(account.id, orderInputSchema.parse({ requestId: input.requestId, ...(input.provider ? { provider: input.provider } : {}), pricingVersion: input.pricingVersion, revision: input.revision, country: input.country, description: input.description, count: input.prospectCount }));
 }
