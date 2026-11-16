@@ -50,6 +50,7 @@ for (const locale of ['en', 'zh-tw'] as const)
         assert(html.indexOf('<h3>Eric</h3>') < html.indexOf('<h3>Vincent</h3>'));
         assert(html.indexOf('<h3>Vincent</h3>') < html.indexOf('<h3>Iris</h3>'));
         assert(!html.includes('teamPlaceholder'));
+        assert.match(html, /src="\/nova\/team\/eric-bw\.webp" alt="Eric"/);
         assert(html.includes('Taiwan Startup Hub') && html.includes('Ark Project'));
         assert(html.includes('dateTime="2026-11-16"') || html.includes('datetime="2026-11-16"'));
         assert.equal((html.match(new RegExp('<h3>' + (locale === 'en' ? 'Coming soon' : '即將推出') + '</h3>', 'g')) || []).length, 2);
