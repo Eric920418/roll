@@ -36,7 +36,7 @@ export default function OrganizeWork({ step, data, view, locale, disabled, readO
     catch { setCopyStatus(w("無法使用剪貼簿，請手動複製下方訊息。", "Clipboard unavailable. Copy the message below manually.") + "\n" + text); }
   }
   return <>
-    <TaskSection number="02" title={positioning ? w("定位草稿", "Positioning draft") : w("新增或修改評分條件", "Add or edit qualification criteria")} detail={positioning ? w(`依 ${view.leads.length} 次已存對話整理，可直接修改`, `Based on ${view.leads.length} saved conversations; edit as needed`) : w(`目前 ${data.criteria.length} 項條件`, `${data.criteria.length} criteria`)} />
+    <TaskSection number="02" title={positioning ? w("定位草稿", "Positioning draft") : w("新增或修改評分條件", "Add or edit qualification criteria")} detail={positioning ? !view.leads.length ? w("尚無已儲存對話", "No saved conversations yet") : readOnly ? w(`已儲存 ${view.leads.length} 次對話`, `${view.leads.length} saved conversations`) : w(`依 ${view.leads.length} 次已存對話整理，可直接修改`, `Based on ${view.leads.length} saved conversations; edit as needed`) : w(`目前 ${data.criteria.length} 項條件`, `${data.criteria.length} criteria`)} />
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]" data-task-columns>
       <section id="task-work" className="min-w-0 space-y-5 rounded-2xl border border-dark/10 bg-white p-5 sm:p-6 [&_input:not([type=checkbox])]:min-h-[44px] [&_input:not([type=checkbox])]:py-[7px]" aria-label={positioning ? w("定位草稿", "Positioning draft") : w("評分條件", "Qualification criterion")}>
         {notice && <p role="status" className="text-sm">{notice}</p>}

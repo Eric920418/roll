@@ -72,6 +72,20 @@ test("Saving a criterion explicitly confirms only the edited row and never mutat
   }
 });
 
+test("An empty read-only positioning preview does not claim evidence or offer save operations", () => {
+  const load = pdfRuntime({ react: { ...React, useState: (value: unknown) => [value, () => {}] }, '../LearningResources': { __esModule: true, default: 'Resources' } });
+  const Work = load<typeof import("../src/components/dashboard/flow/OrganizeWork")>("src/components/dashboard/flow/OrganizeWork.tsx").default;
+  const data = emptyFlowData("organize") as Extract<FlowData, { kind: "organize" }>;
+  const view = { steps: [{ id: "01-2", data }], leads: [], positioningReplies: [] } as unknown as FlowView;
+  for (const locale of ["en", "zh-tw"]) {
+    const html = renderToStaticMarkup(React.createElement(Work, { step: "01-2", data, view, locale, disabled: false, readOnly: true, onChange() { throw new Error("Preview must not edit"); }, onSave() { throw new Error("Preview must not save"); }, onLinks() {}, links: [], onRefresh() {}, notice: "" }));
+    assert(html.includes(locale === "en" ? "No saved conversations yet" : "尚無已儲存對話"));
+    assert(!html.includes(locale === "en" ? "edit as needed" : "可直接修改"));
+    assert(!html.includes(locale === "en" ? "Save draft" : "儲存草稿"));
+    assert.match(html, /<fieldset disabled/);
+  }
+});
+
 test("Positioning response table only exposes this plan's current statement replies and no link secrets", () => {
   const action = (step: StepId, data: FlowData, taskFinding: unknown = null) => ({ id: step, clientKey: flowKey(step), done: false, completedAt: null, taskWorkspace: { version: 2, step, data }, taskFinding });
   const leads = ["yes", "no", "old", "wrong", "none", "excluded"].map(id => ({ ...emptyRecord(id), company: id, name: id, fit: id === "excluded" ? "no" as const : "yes" as const }));
