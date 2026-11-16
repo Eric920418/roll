@@ -39,7 +39,7 @@ export default function ActionMap({ userId, plan, event, children, compact = fal
     }, 0);
     return () => clearTimeout(timer);
   }, [event, userId, plan.id, zh, overviewOnly]);
-  if (overviewOnly) return <section id="action-map" data-next-step="map" className="mt-8 min-w-0 scroll-mt-6 space-y-4 rounded-xl border border-dark/10 bg-white p-4 sm:p-5"><h3 className="text-sm font-bold">{zh ? "行動地圖" : "Action map"}</h3>{milestoneList}</section>;
+  if (overviewOnly) return <section id="action-map" data-next-step="map" className="min-w-0 scroll-mt-6 space-y-4 rounded-xl border border-dark/10 bg-white p-4 sm:p-5"><h3 className="text-sm font-bold">{zh ? "行動地圖" : "Action map"}</h3>{milestoneList}</section>;
   return <div className="mt-8 min-w-0">
     {warning && <p role="status" className="mb-3 text-sm text-amber-800">{warning}</p>}
     {compact && <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 className="text-sm font-bold">{zh ? "行動地圖" : "Action map"}</h3></div>}

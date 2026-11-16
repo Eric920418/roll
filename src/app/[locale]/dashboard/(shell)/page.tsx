@@ -13,6 +13,7 @@ import { getEvents } from "@/lib/cms/content";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import EvidencePanel from "@/components/dashboard/evidence/EvidencePanel";
+import ActionMap from "@/components/dashboard/ActionMap";
 import PlanRefresh from "@/components/dashboard/PlanRefresh";
 import FounderRecommendations from "@/components/dashboard/home/FounderRecommendations";
 import RoundtablesPanel from "@/components/dashboard/matchmaking/RoundtablesPanel";
@@ -65,6 +66,7 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
     </section>);
   return <PlanLocalizationProvider planId={plan?.id} revision={plan?.revision}><div className="space-y-4 font-[family-name:var(--font-body)]">
     <PlanRefresh userId={account.id} /><h1 className="sr-only">{zh ? "首頁" : "Home"}</h1>
+    {plan && <ActionMap userId={account.id} plan={plan} event={null} compact />}
     <EvidencePanel userId={account.id} compact homeTask={task} />
     <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"><RoundtablesPanel userId={account.id} compact /><FounderRecommendations /></div>
     <div className="grid min-w-0 items-start gap-4 lg:grid-cols-3"><UpcomingEventsRail locale={l} events={events.slice(0,1).map(({id,date,title,location})=>({id,date,title,location}))} /><ReturnReminder date={milestone?.targetDate} /><ReferralPanel compact /></div>

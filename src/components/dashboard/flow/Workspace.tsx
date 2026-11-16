@@ -7,7 +7,6 @@ import { STEPS, MILESTONES, STEP_WORK, TEMPLATE_NAMES, flowDataSchema, words, ty
 import type { FlowView } from "@/lib/action-plan/flow/service";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import { pathForLocale } from "@/lib/routes";
-import ActionMap from "../ActionMap";
 import Templates, { button, TextField } from "./Templates";
 import CurrentFindings from "./CurrentFindings";
 import { positioningPreview } from "./PositioningEditor";
@@ -112,10 +111,6 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
     if (await mutate({action:"supplement",requestId})) { supplementRequest.current=null;try{localStorage.removeItem(key);}catch{/* A saved round is recognised before the next request. */} }
   }
   if (!view) return <div className="space-y-4">{title}<section className="rounded-2xl border border-dark/15 p-5"><p role="status">{w("載入 16 步行動計畫…", "Loading your sixteen-step plan…")}</p>{error && <p role="alert" className="whitespace-pre-wrap break-words text-red-800">{error}</p>}<button className={button} disabled={loading} type="button" onClick={() => void load()}>{w("重試", "Retry")}</button></section></div>;
-  const displayPlan = view.steps.length === 0 ? view.plan : { ...view.plan, actions: view.plan.actions.map(a => {
-    const evaluated = view.steps.find(s => s.actionId === a.id);
-    return evaluated ? { ...a, metric: { unit: a.metric?.unit || null, current: evaluated.done || evaluated.id === view.current ? evaluated.current : 0, target: evaluated.target } } : a;
-  }), roadmap: view.plan.roadmap ? { ...view.plan.roadmap, milestones: view.plan.roadmap.milestones.map(m => ({ ...m, title: words(MILESTONES[m.position], locale) })) } : null };
   const originalMarket = view.steps.find(s => s.id === "01-1")?.data;
   const marketData = step?.id === "01-1" || step?.id === "05-2" ? draft : originalMarket;
   const positioning = view.steps.find(s => s.id === "01-2")?.data;
@@ -178,7 +173,6 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
     <div id="task-tools" className="space-y-4">
     {!view.archived && view.steps.find(s => s.id === "05-1")?.done && <details open={weeklyOpen} onToggle={e => setWeeklyOpen(e.currentTarget.open)} className="rounded-xl border border-dark/15 p-5"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w("每週開發待辦（已建立 13 週）", "Weekly activity (thirteen weeks created)")}</summary>{weeklyOpen && <Suspense fallback={<p role="status">{w("載入每週待辦…", "Loading weekly tasks…")}</p>}><ThisWeekCalendar /></Suspense>}</details>}
     </div>
-    {view.steps.length > 0 && <ActionMap userId={userId} plan={displayPlan} event={null} compact />}
 
   </section>;
 }

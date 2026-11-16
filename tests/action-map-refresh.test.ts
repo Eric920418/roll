@@ -60,9 +60,9 @@ function harness(initial = fixture(), locale = 'en') {
 test('Flow reloads refreshed parent progress and milestone without reloading the page', async () => {
   const h = harness(); await h.settle();
   const next = fixture(2, 4, 2); h.setServer(next); h.setProps(next); await h.settle();
-  assert.equal(h.find('Map').plan.revision, 2);
+  assert(!h.render().some(n => n.type === 'Map'), 'The moved map no longer appears in the task workspace');
   assert.equal(h.find('Templates').step, '02-1');
-  assert.equal(h.find('Map').plan.actions[4].metric!.current, 2, 'Use server-evaluated progress, not stale stored counters');
+  assert.equal(h.find('Templates').view.steps[4].current, 2, 'Use server-evaluated progress, not stale stored counters');
 });
 
 test('Conversation priority omits its duplicate button while other step actions and forms remain available', async () => {
@@ -81,11 +81,11 @@ test('Flow refresh preserves unsaved input and its original revision, including 
   const draft = { ...h.find('Templates').data, market: 'US' };
   h.find('Templates').onChange(draft); await h.settle();
   const reads = h.reads(), next = fixture(2, 4, 2); h.setServer(next); h.setProps(next); h.event('focus'); await h.settle();
-  assert.equal(h.reads(), reads); assert.equal((h.find('Templates').data as { market: string }).market, 'US'); assert.equal(h.find('Map').plan.revision, 1);
+  assert.equal(h.reads(), reads); assert.equal((h.find('Templates').data as { market: string }).market, 'US'); assert.equal(h.find('Templates').step, '01-1');
   const clean = harness(); await clean.settle(); clean.defer(); clean.event('focus'); await clean.settle();
   assert.equal(clean.reads(), 2, 'Returning to the page refreshes clean progress');
   clean.find('Templates').onChange(draft); clean.resolve(next); await clean.settle();
-  assert.equal((clean.find('Templates').data as { market: string }).market, 'US'); assert.equal(clean.find('Map').plan.revision, 1);
+  assert.equal((clean.find('Templates').data as { market: string }).market, 'US'); assert.equal(clean.find('Templates').step, '01-1');
 });
 
 test('All sixteen steps retain compact types and criteria gates; company search uses only the four relevant step contexts', async () => {

@@ -68,3 +68,16 @@ test("Existing discovery priority cards omit criteria prose while retaining actu
     assert.equal(snapshot.target, 10); assert.equal(snapshot.total, 2);
   }
 });
+
+
+test("Home evidence removes the stage card while keeping its task, weekly evidence, errors and profile entry", () => {
+  for (const locale of ["en", "zh-tw"]) {
+    let slot = 0;
+    const load = pdfRuntime({ react: { ...React, useState: (initial: unknown) => [slot++ === 0 ? { state: { hypotheses: [], selectedId: null }, result: { stage: 1 }, weekly: { conversations: 0, findings: 0, commitments: 0 } } : initial, () => {}], useEffect() {}, useRef: () => ({ current: null }), useCallback: (fn: unknown) => fn }, "next-intl": { useLocale: () => locale }, "@/lib/member-fetch": {} });
+    const Evidence = load<typeof import("../src/components/dashboard/evidence/EvidencePanel")>("src/components/dashboard/evidence/EvidencePanel.tsx").default;
+    const html = renderToStaticMarkup(React.createElement(Evidence, { userId: "owner", compact: true, homeTask: React.createElement("section", null, "SAVED_PRIORITY") }));
+    assert(!html.includes("Stage 1:") && !html.includes("你目前在第"));
+    assert(html.includes("SAVED_PRIORITY") && html.includes("home-weekly-title"));
+    assert(html.includes("/dashboard/profile"));
+  }
+});

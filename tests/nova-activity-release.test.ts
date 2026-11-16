@@ -231,13 +231,15 @@ test("Home renders one primary task in both languages with locale-correct destin
     "@/lib/dashboard/home": { homeNextStep }, "@/lib/dashboard/next-steps": { actionProgress: () => 0 },
     "@/lib/cms/content": { getEvents: async () => [] },
     "@/lib/routes": { pathForLocale: (path: string, locale: string) => locale === "zh-tw" ? `/zh-tw${path}` : path },
-    ...Object.fromEntries(["PlanRefresh", "evidence/EvidencePanel", "home/FounderRecommendations", "matchmaking/RoundtablesPanel", "home/UpcomingEventsRail"].map(name => [`@/components/dashboard/${name}`, { default: () => null }])),
+    ...Object.fromEntries(["PlanRefresh", "ActionMap", "evidence/EvidencePanel", "home/FounderRecommendations", "matchmaking/RoundtablesPanel", "home/UpcomingEventsRail"].map(name => [`@/components/dashboard/${name}`, { default: () => null }])),
   });
   for (const locale of ["en", "zh-tw"]) for (const version of [undefined, 2] as const) {
     saved.workflowVersion = version;
     const outer = nodes(await page.default({ params: Promise.resolve({ locale }) }));
     const tree = [...outer, ...nodes(outer.find(n => n.props.homeTask)?.props.homeTask as ReactNode)];
     assert.equal(tree.filter(n => n.type === "h1").length, 1);
+    const map = outer.findIndex(n => "plan" in n.props && "compact" in n.props);
+    assert(map >= 0 && map < outer.findIndex(n => n.props.homeTask), "Move the map ahead of the home task");
     assert.equal(tree.some(n => n.props.value === saved.actions[0].expectedOutcome.text), false, "Home omits criteria prose for both current and legacy plans");
     assert(!tree.some(n => n.type === "dt" && /Completion criteria|完成標準/.test(String(n.props.children))));
     const main = tree.find(n => n.props.id === "home-task-title");
