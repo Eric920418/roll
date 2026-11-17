@@ -9,7 +9,6 @@ import { generateBodySchema, type Diagnosis, type GeneratedAction } from "./sche
 import { rankActions, humanizeActionText, taskReference, wouldCreateCycle, type ActionPlanActionDto } from "./ranking";
 import { legacyHoursForMinutes } from "./time";
 import { workspaceKind } from "@/lib/action-plan/workspace";
-import { legacySequence } from "@/lib/action-plan/legacy-sequence";
 
 const actionInclude = {
   dependencies: {
@@ -44,7 +43,6 @@ async function findActivePlanRecord(userId: string) {
 }
 
 export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto {
-  plan = { ...plan, actions: legacySequence(plan.actions) };
   const milestones = milestoneViews(plan.milestones.map(m => ({ ...m, targetDate: m.targetDate.toISOString().slice(0, 10), achievedAt: m.achievedAt?.toISOString() || null })), plan.actions);
   const blocks = new Map(milestones.filter(m => m.status === "blocked").map(m => [m.id, m.title]));
   const actions = rankActions(plan.actions, blocks, new Map(milestones.map(m => [m.id, m.position])));

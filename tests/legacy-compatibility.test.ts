@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { legacySequence } from "../src/lib/action-plan/legacy-sequence";
 import { emptyFlowData } from "../src/lib/action-plan/flow/catalog";
 import { emptyInsight } from "../src/lib/customer-insights/schema";
 import { pdfRuntime } from "./helpers/pdf-runtime";
@@ -16,20 +15,27 @@ function fixture(prefix: string) {
   [[], [0], [0, 1], [2], [0, 3]].forEach((deps, i) => { rows[i].dependencies = deps.map(d => ({ minimumCurrent: i === 1 ? 10 : null, dependsOn: { id: rows[d].id, title: rows[d].title, done: rows[d].done } })); });
   return rows;
 }
-test("The shared projection handles one hundred legacy accounts without mutating stored tasks, and preserves custom graphs", () => {
+test("One hundred active legacy plans keep their paid pilot next and preserve stored order, gates and completed records", () => {
+  const service = pdfRuntime({ "server-only": {}, "@/lib/prisma": { prisma: {} } })<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts");
   for (let i = 0; i < 100; i++) {
-    const rows = fixture(`account-${i}-`); Object.assign(rows[0], { taskFinding: { internalMetadata: "retained" } });
-    const before = JSON.stringify(rows), projected = legacySequence(rows).sort((a, b) => a.executionOrder! - b.executionOrder!);
-    assert.deepEqual(projected.map(a => a.clientKey), ["task_1", "task_3", "task_4", "task_5", "task_2"]);
-    assert.equal(projected[1].dependencies[0].dependsOn.id, rows[0].id);
-    assert.equal(Object.hasOwn(projected[1].dependencies[0].dependsOn, "taskFinding"), false, "Dependency DTOs must not contain raw findings or link hashes");
-    assert.equal(projected[4].dependencies[0].dependsOn.id, rows[4].id);
-    assert.equal(JSON.stringify(rows), before); assert.equal(projected.filter(a => a.done).length, 1);
-    rows[2].dependencies.push({ minimumCurrent: null, dependsOn: { id: "custom", title: "User prerequisite", done: false } });
-    assert.equal(legacySequence(rows), rows, "A custom prerequisite must never disappear");
+    const rows = fixture(`account-${i}-`);
+    const actions = rows.map(row => ({ ...row, createdAt: new Date("2026-10-02"), completedAt: row.done ? new Date("2026-10-31") : null, metricCurrent: row.done ? 10 : 0, metricTarget: row.clientKey === "task_1" ? 10 : 1, metricUnit: "companies", dependencyLevel: row.dependencies.length ? 1 : 0, impact: "High", urgencyType: "scheduled", difficulty: 2, actionTimeMinHours: 1, actionTimeMaxHours: 2, stageFit: 4, stageFitReason: "Saved", bottleneckGroup: "Sales", bottleneckCode: "no_icp", bottleneckFit: 4, bottleneckFitReason: "Saved", expectedOutcome: "Original result", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7, dependencies: row.dependencies.map(edge => ({ ...edge, dependsOn: { ...edge.dependsOn, clientKey: rows.find(a => a.id === edge.dependsOn.id)!.clientKey, metricCurrent: edge.dependsOn.done ? 10 : 0 } })) }));
+    const plan = { id: `plan-${i}`, revision: 164, createdAt: new Date("2026-10-02"), locale: i % 2 ? "en" : "zh-tw", companyStage: "MVP", stageReason: "Saved", bottleneckGroup: "Sales", bottleneckCode: "no_icp", bottleneckReason: "Saved", actions, milestones: [] } as unknown as Parameters<typeof service.serializePlan>[0];
+    const before = JSON.stringify(plan), projected = service.serializePlan(plan);
+    assert.equal(projected.nextMoves[0].id, rows[1].id, "The in-progress paid pilot must not jump back to ICP positioning");
+    assert.deepEqual(Array.from(projected.actions, a => a.clientKey), ["task_1", "task_2", "task_3", "task_4", "task_5"]);
+    for (const [index, row] of rows.entries()) {
+      const dto = projected.actions.find(a => a.id === row.id)!;
+      assert.deepEqual(Array.from(dto.dependency.actionIds), row.dependencies.map(edge => edge.dependsOn.id));
+      assert.equal(dto.displayNumber, index + 1); assert.equal(dto.done, row.done);
+    }
+    assert.equal(projected.actions[1].dependency.actionRefs[0].minimumCurrent, 10);
+    assert.equal(projected.actions[2].dependency.blocked, true);
+    assert.equal(projected.actions[0].completedAt, "2026-10-31T00:00:00.000Z");
+    assert.equal(JSON.stringify(plan), before);
+    actions[2].dependencies.push({ minimumCurrent: null, dependsOn: { id: "custom", clientKey: "custom", title: "User prerequisite", done: false, metricCurrent: 0 } });
+    assert(service.serializePlan(plan).actions[2].dependency.actionIds.includes("custom"));
   }
-  const ordered = fixture("custom-order-"); ordered[1].executionOrder = 1; assert.equal(legacySequence(ordered), ordered);
-  const v2 = fixture("v2-"); v2[0].clientKey = "nova_v2_01-1"; assert.equal(legacySequence(v2), v2);
   const empty = emptyFlowData("organize") as OrganizeData, context = { actions: [], proofs: [], locale: "en" };
   assert.equal(evaluateStep(context, "01-3", empty).target, 4);
   const partial = evaluateStep(context, "01-3", { ...empty, criteria: [{ id: "one", label: "One criterion", weight: 30, sources: [], confirmed: true }] });
@@ -67,12 +73,19 @@ test("Actual legacy five-task PostgreSQL path: ordering, records, links, replies
     for (let i = 0; i < 10; i++) notes.push(await db.meetingNote.create({ data: { userId: owner.id, title: "Conversation " + i, insight: { ...emptyInsight("discover"), actionId: tasks[0].id, company: "Company " + i, name: "Person " + i, notes: "Saved source " + i, commercial: { willingness: "willing" } } } }));
     const snapshot = JSON.stringify(await db.actionItem.findMany({ where: { actionPlanId: plan.id }, include: { dependencies: true }, orderBy: { id: "asc" } }));
     let active = (await service.getActiveActionPlan(owner.id))!;
-    assert.equal(active.nextMoves[0].id, tasks[2].id); assert.equal(active.actions.find(a => a.id === tasks[2].id)?.displayNumber, 2);
+    assert.equal(active.nextMoves[0].id, tasks[1].id); assert.equal(active.actions.find(a => a.id === tasks[2].id)?.displayNumber, 3);
     assert.equal(snapshot, JSON.stringify(await db.actionItem.findMany({ where: { actionPlanId: plan.id }, include: { dependencies: true }, orderBy: { id: "asc" } })), "Reading does not modify member data");
     const req = (body: unknown) => ({ url: "https://example.test/api/action", headers: new Headers({ Origin: "https://example.test", "Content-Type": "application/json" }), nextUrl: new URL("https://example.test/api/action"), json: async () => body }) as never;
     const patch = async (taskId: string, body: object, rev?: number) => api.PATCH(req({ revision: rev ?? (await db.actionPlan.findUniqueOrThrow({ where: { id: plan.id } })).revision, ...body }), { params: Promise.resolve({ id: taskId }) });
     const data = { ...emptyFlowData("organize"), values: { positioning: "We help founders validate demand." }, confirmed: ["positioning"], selections: notes.slice(0, 5).map(n => n.id) } as OrganizeData;
     uid = other.id; assert.equal((await patch(tasks[2].id, { organizeData: data })).status, 404); uid = owner.id;
+    assert.equal((await patch(tasks[2].id, { organizeData: data })).status, 409, "Positioning cannot bypass the original paid-pilot prerequisite");
+    assert.equal((await patch(tasks[1].id, { done: true })).status, 409, "The restored paid task still requires actual proof");
+    await db.deal.create({ data: { userId: owner.id, title: "Synthetic paid pilot", validation: { scope: { planId: plan.id }, company: "Synthetic buyer", name: "Test contact", version: 1, status: "paid", events: [], proofs: [{ id: randomUUID(), kind: "paid", amount: "125.50", currency: "USD", date: "2026-11-17", pathname: `commercial-evidence/${owner.id}/synthetic.pdf`, filename: "synthetic.pdf", confirmed: true }] } } });
+    assert.equal((await patch(tasks[1].id, { done: true })).status, 200);
+    assert.equal((await patch(tasks[1].id, { done: true })).status, 200);
+    assert.equal(await db.rewardEntry.count({ where: { userId: owner.id, eventKey: "action:" + tasks[1].id } }), 1);
+    assert.equal((await service.getActiveActionPlan(owner.id))!.nextMoves[0].id, tasks[2].id);
     assert.equal((await patch(tasks[3].id, { organizeData: emptyFlowData("organize") })).status, 409, "Scorecard stays gated");
     await db.actionItem.update({ where: { id: tasks[2].id }, data: { taskFinding: { result: null, pending: { requestId: randomUUID(), since: new Date().toISOString() } } } });
     assert.equal((await patch(tasks[2].id, { organizeData: data })).status, 409, "An old in-flight analysis cannot overwrite the new form");
