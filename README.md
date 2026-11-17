@@ -1,3 +1,14 @@
+# Omrade 正式搜尋切回與五筆交付核對（2026-11-17）
+
+依使用者要求，正式搜尋回到 Omrade；核對 Vercel Production 的 `OMRADE_ENABLED=true`、`OMRADE_WORKER_ENABLED=true`。移除正式與本機已到期的 `PROSPECT_AI_BACKUP_UNTIL`，重新部署後以正式搜尋畫面複驗；本機 Omrade 兩個關閉值保留，避免開發時誤送單。金鑰不改動，不自動回退 Anthropic；POLARIS、ICP 與訪談分析供應商保持。每筆新單仍固定 `max_charge_cents:0`，回應須零付費；現行方案、會員點數、原訂單、公司月額度與資料不變。
+
+本次僅 GET 讀取原供應商訂單 `b1a1102a-cb9f-4a40-9614-5dee315e1ddc` 及 usage，沒有建立新搜尋單、追加免費量、呼叫付費 AI 或寄送開發信。原單 `completed`、requested_count=5、delivered_count=5、companies.length=5、free_companies=5、paid_companies=0、amount_cents=0。正式已存本站訂單 `7c110a16-1e9a-4c09-b53a-ac200f97a9bd` 可用三家，原有 rejections 為 `invalid_fields:2`；本輪重新逐筆執行相同欄位與安全來源核對，結果一致：
+
+- BaseTech、STARTBOARD：官網公開公司共用 Email 可核對；TAITRON：官方聯絡表單可核對。均為 possible，非已確認需求或購買意願。
+- Taiwan Startup Stadium、Taipei ANJET Corporation：`country_code:null`、contacts 的 emails／people／contact_pages 皆為空；供應商 `icp_fit.classification=outside`，match_note 明示 `Unfiltered deadline fallback. This company may not meet the requested filters.`。本站拒絕缺少國家欄位，未擅自補國家、聯絡資訊或列為合格公司；這是交付數與合格數的差異，不是 API 只回三筆。
+
+實際讀取為 `GET https://omrade.app/api/v1/prospecting/orders/b1a1102a-cb9f-4a40-9614-5dee315e1ddc`，使用伺服器 Bearer 認證，沒有 UI 篩選參數。原建立呼叫是 `POST https://omrade.app/api/v1/prospecting/orders`，保存原 UUID Idempotency-Key，body 為 `{"count":5,"icp_id":"130621c7-066a-411e-ac68-1829d12cc666","icp_version":1,"max_charge_cents":0}`；不重送 POST。最新只讀 trace 為 `1e79f21c-426a-4052-8746-b2f88a77f704`。供應商應核對上述兩筆 outside／缺國家及聯絡資訊的結果是否意圖列入五家可聯絡的交付；本站不以放寬驗證湊數。usage 為免費剩餘 130、已交付 20、預留／進行中 0，paid_enabled=false、monthly_spend_limit_cents=0、paid_accrued_cents=0。證據保存在 `/tmp/nova-omrade-20261117/`，不含金鑰；不可將未驗證結果當作可用名單。隔離 PostgreSQL 的 Omrade／安全聯絡來源／排程／備援停用及步驟搜尋回歸 50／50 通過，零失敗／略過；不呼叫真實 AI 或建立供應商訂單。本批沒有修改程式、schema、套件或會員資料，未重跑全套 lint／本機 build；正式部署會重新建置。正式站切換驗收待補。
+
 # 今日任務移除任務設定區塊（2026-11-17）
 
 依 IMG_2959，移除舊計畫定位／評分標準整理版型下方整塊「任務設定／Task settings」，包含該區的解鎖條件編輯、任務編輯及刪除入口，中英文同步。既有工作表單、整理結果、原任務、前置條件、完成紀錄與伺服器完成判定保留；其他版型的既有操作不改動。只移除呈現，不修改 API、資料庫或套件。驗收：5 項既有舊計畫回歸通過；繁中／英文 × 定位／評分標準共 4 組實際元件渲染確認整區及內含操作消失、原表單與整理結果保留、任務物件未變更；範圍 ESLint、TypeScript、正式建置通過。未重跑全套後端測試或新增測試資料；本次為單一呈現區塊刪除。
