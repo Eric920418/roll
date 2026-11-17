@@ -15,7 +15,7 @@ export type TaskWorkspace = z.infer<typeof workspaceSchema>;
 export type WorkspaceKind = TaskWorkspace["kind"] | "interview";
 export const findingSchema = z.object({ cards: z.array(z.object({ title: z.string().trim().min(1).max(120), text: z.string().trim().min(1).max(1000), evidence: z.string().trim().max(2000) }).strict()).length(3), why: z.string().trim().min(1).max(1500) }).strict();
 export const findingDraftSchema = findingSchema.extend({ cards: z.array(findingSchema.shape.cards.element.extend({ title: z.string().max(120), text: z.string().max(1000) })).length(3), why: z.string().max(1500) });
-export const storedFindingSchema = z.object({ result: findingSchema.nullable(), source: z.enum(["ai", "user"]).optional(), generatedAt: z.iso.datetime().optional(), pending: z.object({ requestId: z.string().uuid(), since: z.iso.datetime() }).strict().optional(), error: z.string().max(2000).optional() }).strict();
+export const storedFindingSchema = z.object({ result: findingSchema.nullable(), source: z.enum(["ai", "user"]).optional(), generatedAt: z.iso.datetime().optional(), pending: z.object({ requestId: z.string().uuid(), since: z.iso.datetime() }).strict().optional(), error: z.string().max(2000).optional() }).passthrough();
 export type TaskFinding = z.infer<typeof storedFindingSchema>;
 
 // shortcut: Existing AI tasks have no typed workspace; infer these six families from their titles until generation returns a typed kind.

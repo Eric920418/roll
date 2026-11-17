@@ -164,7 +164,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged, title }: 
   function taskRow(a: ActionPlanActionDto, readOnly = false) {
     return <div key={a.id} id={readOnly ? undefined : `action-${a.id}`} tabIndex={-1} data-next-step={!readOnly && a.id === featuredId ? "record" : undefined} className="scroll-mt-24">
 
-      <ActionTaskRow plan={initialPlan || undefined} action={a} compact focusMode featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
+      <ActionTaskRow organizeLayout={["positioning", "scorecard"].includes(workspaceKind(a) || "")} plan={initialPlan || undefined} action={a} compact focusMode featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
         onToggle={readOnly ? undefined : () => { void changeTask(a.id, { done: !a.done }).then(saved => { if (saved && !a.done) { setCompletion(locale === "zh-tw" ? `已完成：${planText(a.title, locale)}` : `Completed: ${a.title}`); if (a.recordingMode === "interview") setInsights({ id: a.id, title: planText(a.title, locale) }); } }); }}
         results={!readOnly && a.id === featuredId && workspaceKind(a) === "interview" ? <InterviewFindings actionId={a.id} revision={initialPlan?.revision} /> : undefined}
         onMetric={readOnly ? undefined : metric => changeTask(a.id, metric, "PATCH", true)}

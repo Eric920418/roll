@@ -12,7 +12,7 @@ import { workspaceKind, workspaceComplete } from "@/lib/action-plan/workspace";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { priorityTier } from "@/lib/action-plan/ranking";
 
-export default function ActionTaskRow({ action, busy = false, readOnly = false, onToggle, onMetric, onDependencyChange, revision, onEdit, onDelete, href, compact = false, featured = false, focusMode = false, workspace, results, plan }: { results?: ReactNode; plan?: ActionPlanDto; focusMode?: boolean; workspace?: ReactNode; action: ActionPlanActionDto; busy?: boolean; readOnly?: boolean; revision?: number; onDependencyChange?: (thresholds: Record<string, number | null>, revision?: number) => Promise<boolean | void>; onToggle?: () => void; onMetric?: (metric: { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number }) => Promise<boolean | void>; onEdit?: () => void; onDelete?: () => void; href?: string; compact?: boolean; featured?: boolean }) {
+export default function ActionTaskRow({ action, busy = false, readOnly = false, onToggle, onMetric, onDependencyChange, revision, onEdit, onDelete, href, compact = false, featured = false, focusMode = false, workspace, results, plan, organizeLayout = false }: { organizeLayout?: boolean; results?: ReactNode; plan?: ActionPlanDto; focusMode?: boolean; workspace?: ReactNode; action: ActionPlanActionDto; busy?: boolean; readOnly?: boolean; revision?: number; onDependencyChange?: (thresholds: Record<string, number | null>, revision?: number) => Promise<boolean | void>; onToggle?: () => void; onMetric?: (metric: { metricTarget: number | null; metricUnit: string | null; metricCurrent: number | null; revision?: number }) => Promise<boolean | void>; onEdit?: () => void; onDelete?: () => void; href?: string; compact?: boolean; featured?: boolean }) {
   const { planText, planUnit, displayTaskReference } = usePlanDisplay();
   const locale = useLocale(), zh = locale === "zh-tw";
   const title = planText(action.title, locale), outcome = planText(action.expectedOutcome.text, locale);
@@ -26,7 +26,7 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
   const interviewPending = focusMode && action.recordingMode === "interview" && action.metric?.target != null && (action.metric.current ?? 0) < action.metric.target;
   const workspacePending = focusMode && Boolean(workspaceKind(action)) && workspaceKind(action) !== "interview" && !commercialTask(action) && !workspaceComplete(action.taskWorkspace ?? null);
   const lockReason = interviewPending ? (zh ? "達到有效訪談公司數目標後，才能確認完成" : "Reach the valid company conversation target before confirming completion") : workspacePending ? (zh ? "請先儲存符合完成標準的紀錄" : "Save records that meet the completion criteria first") : blockedReason;
-  const checkbox = !readOnly && (onToggle || action.dependency.blocked) && <TaskCheckbox label={`${zh ? "完成任務" : "Complete task"}: ${title}`} checked={action.done} locked={!action.done && (action.dependency.blocked || interviewPending || workspacePending)} disabled={busy} reason={lockReason} onChange={onToggle || (() => {})} />;
+  const checkbox = !organizeLayout && !readOnly && (onToggle || action.dependency.blocked) && <TaskCheckbox label={`${zh ? "完成任務" : "Complete task"}: ${title}`} checked={action.done} locked={!action.done && (action.dependency.blocked || interviewPending || workspacePending)} disabled={busy} reason={lockReason} onChange={onToggle || (() => {})} />;
   const badges = !focusMode && <div className="mt-2 flex flex-wrap gap-2 text-xs"><span className={`rounded-md px-2 py-1 ${action.done ? "bg-dark/5" : action.dependency.blocked ? "bg-amber-100 text-amber-900" : "bg-green-100 text-green-900"}`}>{status}</span><span className="rounded-md bg-amber-100/70 px-2 py-1 text-amber-900">{priorityTier(action.priorityScore)}</span></div>;
   const metric = <>{action.metric?.target != null && !(focusMode && workspace) && <div className="mt-3">
     <p className="text-sm font-semibold">{action.metric.current ?? (zh ? "尚未回報" : "Not reported")}/{action.metric.target} {planUnit(action.metric.unit || "", locale)}</p>
@@ -39,22 +39,24 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
     const group = plan.actions.filter(a => a.milestoneId === action.milestoneId);
     const workId = `task-work-${action.id}`;
     return <article className="min-w-0 space-y-4" data-legacy-task>
+      {organizeLayout && <h2 className="flex items-baseline gap-3 text-base font-bold"><span className="text-[10px] font-normal text-dark/45">01</span>{zh ? "本日優先行動" : "Today’s priority"}</h2>}
       <section data-today-priority className="rounded-xl bg-black p-4 text-white sm:p-5">
         <div className="flex flex-col items-start justify-between gap-4 lg:flex-row"><div className="min-w-0 w-full flex-1 lg:w-auto">
           <p className="text-[10px] font-semibold tracking-wider text-white/55">{milestone ? `${zh ? "里程碑" : "Milestone"} ${milestone.position + 1} · ${planText(milestone.title, locale)}` : zh ? "目前計畫" : "Current plan"} · {zh ? "行動" : "Action"} {group.findIndex(a => a.id === action.id) + 1} / {group.length}</p>
           <h2 className="mt-2 break-words text-lg font-bold sm:text-xl">{title}</h2>
           <div className="mt-3 flex flex-wrap gap-1" aria-hidden="true">{group.map(a => <span key={a.id} className={"h-1 w-7 rounded-full " + (a.done || a.id === action.id ? "bg-white" : "bg-white/20")} />)}</div>
-        </div><button type="button" disabled={busy} className="min-h-11 shrink-0 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2 disabled:opacity-50" onClick={() => { const work = document.getElementById(workId); work?.scrollIntoView({ block: "start" }); work?.querySelector<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a")?.focus(); }}>{zh ? "繼續本步行動" : "Work on this step"}</button></div>
-        <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs">
+        </div><button type="button" disabled={busy} className="min-h-11 shrink-0 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2 disabled:opacity-50" onClick={() => { const work = document.getElementById(organizeLayout ? workspaceKind(action) === "positioning" ? "positioning-recipients" : "add-criterion" : workId); if (organizeLayout && workspaceKind(action) === "scorecard") { work?.click(); } work?.scrollIntoView({ block: "start" }); work?.querySelector<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a")?.focus(); }}>{organizeLayout ? workspaceKind(action) === "positioning" ? (zh ? "寄送確認訊息" : "Prepare confirmations") : (zh ? "新增條件" : "Add criterion") : zh ? "繼續本步行動" : "Work on this step"}</button></div>
+        <dl className={"mt-3 grid gap-3 border-t border-white/15 pt-3 text-xs " + (organizeLayout ? "sm:grid-cols-3" : "grid-cols-2")}>
+          {organizeLayout && <div><dt className="text-[10px] text-white/50">{zh ? "完成標準" : "Completion criteria"}</dt><dd className="mt-2 font-semibold">{outcome}</dd></div>}
           <div><dt className="text-[10px] tracking-wider text-white/50">{zh ? "目前進度" : "Saved progress"}</dt><dd className="mt-2 font-semibold">{action.metric?.target != null ? `${action.metric.current ?? 0} / ${action.metric.target} ${planUnit(action.metric.unit || "", locale)}` : status}</dd></div>
           <div><dt className="text-[10px] tracking-wider text-white/50">{milestone ? zh ? "里程碑期限" : "Milestone due" : zh ? "目標期限" : "Goal due"}</dt><dd className="mt-2 font-semibold">{milestone?.targetDate || plan.roadmap?.deadline || "—"}</dd></div>
         </dl>
       </section>
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" data-task-columns>
+      {organizeLayout ? <>{workspace}<details className="rounded-xl border border-dark/10 bg-white p-4"><summary className="min-h-11 cursor-pointer py-2 text-xs">{zh ? "任務設定" : "Task settings"}</summary>{taskActions}</details></> : <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" data-task-columns>
         <section id={workId} className="min-w-0 scroll-mt-6 space-y-3 rounded-xl border border-dark/10 bg-white p-4 sm:p-5" aria-label={zh ? "本步操作" : "Current step work"}><h3 className="text-base font-bold">{zh ? "操作區" : "Your work"}</h3>{metric}{workspace}{taskActions}
         {checkbox && !action.done && (action.dependency.blocked || interviewPending || workspacePending) && <p className="text-sm">{lockReason}</p>}{checkbox && <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dark/15 bg-dark/[0.02] py-2 pl-2 pr-5 text-sm font-semibold">{checkbox}<span>{action.done ? (zh ? "已完成" : "Completed") : (zh ? "確認並完成" : "Confirm and complete")}</span></label>}</section>
         <aside className="min-w-0 space-y-4 rounded-xl border border-dark/10 bg-white p-5"><h3 className="font-bold">{zh ? "方法指引" : "How to approach it"}</h3><LearningResources visual kind={workspaceKind(action)} question={title} /></aside>
-      </div>
+      </div>}
       {results}
     </article>;
   }

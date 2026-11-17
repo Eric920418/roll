@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
     if (!action) return fail("找不到任務 / Task not found", 404);
     if (req.nextUrl.searchParams.get("scope") === "plan") {
       const evidence = await planWorkspaceEvidence(prisma as unknown as Prisma.TransactionClient, session.uid, action.actionPlanId);
-      return ok({ leads: evidence.leads, scorecards: evidence.scorecards });
+      const organize = await (await import("@/lib/action-plan/legacy-organize")).getLegacyOrganize(prisma as unknown as Prisma.TransactionClient, session.uid, action.actionPlanId, actionId, req.nextUrl.searchParams.get("locale") === "zh-tw" ? "zh-tw" : "en").catch(error => { if (error instanceof PlanWriteError && error.status === 404) return null; throw error; });
+      return ok({ leads: evidence.leads, scorecards: evidence.scorecards, organize: organize && { step: organize.step, data: organize.data, leads: organize.leads, revision: organize.revision, positioningReplies: organize.positioningReplies, result: organize.result } });
     }
     const rows = await interviewRows(prisma as unknown as Prisma.TransactionClient, session.uid, actionId);
     return ok({ rows: rows.map(r => ({ ...r, updatedAt: r.updatedAt.toISOString() })), summary: interviewSummary(actionId, rows), plan: await getActiveActionPlan(session.uid) });

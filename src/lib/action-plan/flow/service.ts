@@ -1,4 +1,6 @@
 import { evidenceStateSchema } from "@/lib/evidence/schema";
+import { legacyOrganizeData } from "../legacy-organize";
+import { workspaceKind } from "../workspace";
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -189,10 +191,10 @@ export async function confirmation(actionId: string, token: string, answer?: "ye
   feedback = z.string().trim().max(1000).parse(feedback);
   if (!/^[a-zA-Z0-9_-]{43}$/.test(token)) throw new PlanWriteError("連結無效或已失效 / Invalid or expired link", 404);
   const perform = async (tx: DB) => {
-    const action = await tx.actionItem.findFirst({ where: { id: actionId, clientKey: flowKey("01-2"), actionPlan: { archivedAt: null, activeKey: { not: null } } }, include: { actionPlan: true } });
-    const stored = flowStoredSchema.safeParse(action?.taskWorkspace).data, meta = metadata(action?.taskFinding);
+    const action = await tx.actionItem.findFirst({ where: { id: actionId, actionPlan: { archivedAt: null, activeKey: { not: null } } }, include: { actionPlan: true } });
+    const data = action?.clientKey === flowKey("01-2") ? flowStoredSchema.safeParse(action.taskWorkspace).data?.data : action && workspaceKind(action) === "positioning" ? legacyOrganizeData(action) : null, meta = metadata(action?.taskFinding);
     const entry = meta.links?.find(l => l.hash === hash(token) && l.version === meta.positioningVersion && Date.parse(l.expires) > Date.now());
-    if (!action || !entry || stored?.data.kind !== "organize" || stored.data.values.positioning !== entry.statement) throw new PlanWriteError("連結無效、已更新或已失效 / Invalid, updated or expired link", 404);
+    if (!action || !entry || data?.kind !== "organize" || data.values.positioning !== entry.statement) throw new PlanWriteError("連結無效、已更新或已失效 / Invalid, updated or expired link", 404);
     const response = meta.responses?.find(r => r.version === entry.version && r.leadId === entry.leadId && r.statement === entry.statement);
     if (answer && response && response.answer !== answer) throw new PlanWriteError("已保存回覆，不能覆寫 / Your response is already saved", 409);
     if (answer && !response) {
@@ -200,8 +202,8 @@ export async function confirmation(actionId: string, token: string, answer?: "ye
       await lockActivePlan(tx, action.actionPlan.userId, action.actionPlanId);
       const latest = await tx.actionItem.findUniqueOrThrow({ where: { id: action.id } });
       const next = metadata(latest.taskFinding), live = next.links?.find(l => l.hash === entry.hash);
-      const current = flowStoredSchema.safeParse(latest.taskWorkspace).data;
-      if (!live || live.version !== next.positioningVersion || latest.done || current?.data.kind !== "organize" || current.data.values.positioning !== entry.statement) throw new PlanWriteError("定位已更新，請索取新連結 / Positioning changed; request a new link", 409);
+      const current = latest.clientKey === flowKey("01-2") ? flowStoredSchema.safeParse(latest.taskWorkspace).data?.data : legacyOrganizeData(latest);
+      if (!live || live.version !== next.positioningVersion || latest.done || current?.kind !== "organize" || current.values.positioning !== entry.statement) throw new PlanWriteError("定位已更新，請索取新連結 / Positioning changed; request a new link", 409);
       const prior = next.responses?.find(r => r.version === entry.version && r.leadId === entry.leadId && r.statement === entry.statement);
       if (prior && prior.answer !== answer) throw new PlanWriteError("已保存回覆，不能覆寫 / Your response is already saved", 409);
       if (!prior) await tx.actionItem.update({ where: { id: action.id }, data: { taskFinding: { ...next, responses: [...(next.responses || []), { version: entry.version, leadId: entry.leadId, statement: entry.statement, answer, at: new Date().toISOString(), ...(feedback ? { feedback } : {}) }] } as Prisma.InputJsonValue } });

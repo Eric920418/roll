@@ -13,15 +13,22 @@ import { logSecurityError } from "@/lib/security/log";
 import { PlanWriteError, lockActivePlan, getActiveActionPlan } from "./service";
 import { workspaceSchema, storedFindingSchema, workspaceLeads, workspaceKind, workspaceComplete, workspaceProgress, interviewTarget, groundedFinding, type TaskWorkspace } from "./workspace";
 import { interviewSummary } from "@/lib/customer-insights/interviews";
+import { flowDataSchema } from "./flow/catalog";
 
 export async function planWorkspaceEvidence(tx: Pick<Prisma.TransactionClient, "actionItem" | "meetingNote" | "actionPlan">, userId: string, planId: string) {
-  const actions = await tx.actionItem.findMany({ where: { actionPlanId: planId, actionPlan: { userId } }, orderBy: [{ executionOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }], select: { id: true, taskWorkspace: true } });
+  const actions = await tx.actionItem.findMany({ where: { actionPlanId: planId, actionPlan: { userId } }, orderBy: [{ executionOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }], select: { id: true, taskWorkspace: true, taskFinding: true, done: true } });
   const plan = await tx.actionPlan.findFirst({ where: { id: planId, userId }, select: { sourceJourneyId: true } });
   const rows = await tx.meetingNote.findMany({ where: { userId, insight: { not: Prisma.DbNull } }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], select: { id: true, updatedAt: true, insight: true } });
   const ids = new Set(actions.map(a => a.id));
   const ownedRows = rows.filter(row => row.insight && typeof row.insight === "object" && (("actionId" in row.insight && ids.has(String(row.insight.actionId))) || (plan?.sourceJourneyId && "journeyId" in row.insight && row.insight.journeyId === plan.sourceJourneyId)));
-  const scorecards = actions.flatMap(action => { const w = workspaceSchema.safeParse(action.taskWorkspace); return w.success && w.data.kind === "scorecard" && workspaceComplete(w.data) ? [{ actionId: action.id, ...w.data }] : []; });
-  return { rows: ownedRows, leads: workspaceLeads(ownedRows), scorecards: scorecards.reverse() };
+  const leads = workspaceLeads(ownedRows), leadIds = new Set(leads.map(l => l.id));
+  const scorecards = actions.flatMap(action => {
+    const meta = action.taskFinding && typeof action.taskFinding === "object" && !Array.isArray(action.taskFinding) ? action.taskFinding : {};
+    const data = flowDataSchema.safeParse("organizeData" in meta ? meta.organizeData : null).data;
+    if (data?.kind === "organize" && data.criteria.length && action.done) return [{ actionId: action.id, kind: "scorecard" as const, criteria: data.criteria.filter(c => c.confirmed && new Set(c.sources.filter(id => leadIds.has(id))).size >= 3).map(c => ({ id: c.id, criterion: c.label, weight: c.weight, fit: c.research || c.rationale || c.label })) }];
+    const w = workspaceSchema.safeParse(action.taskWorkspace); return w.success && w.data.kind === "scorecard" && workspaceComplete(w.data) ? [{ actionId: action.id, ...w.data }] : [];
+  });
+  return { rows: ownedRows, leads, scorecards: scorecards.reverse() };
 }
 export function validateWorkspaceLinks(workspace: TaskWorkspace, evidence: Awaited<ReturnType<typeof planWorkspaceEvidence>>) {
   const ids = new Set(evidence.leads.map(l => l.id));
@@ -40,6 +47,15 @@ export async function assertTaskWorkspaceComplete(tx: Prisma.TransactionClient, 
   if (commercialTask(action)) return assertCommercialCompletion(tx, userId, action);
   const kind = workspaceKind(action);
   if (!kind) return;
+  if (kind === "positioning" || kind === "scorecard") {
+    const { getLegacyOrganize, organizeMetadata } = await import("./legacy-organize");
+    const saved = await tx.actionItem.findUniqueOrThrow({ where: { id: action.id }, select: { taskFinding: true } });
+    if (organizeMetadata(saved.taskFinding).organizeData) {
+      const view = await getLegacyOrganize(tx, userId, action.actionPlanId, action.id);
+      if (!view.result.ready) throw new PlanWriteError(view.result.reasons.join("；"), 409);
+      return;
+    }
+  }
   const evidence = await planWorkspaceEvidence(tx, userId, action.actionPlanId);
   if (kind === "interview") {
     const count = interviewSummary(action.id, await interviewRows(tx, userId, action.id)).total, target = interviewTarget(action);
@@ -77,6 +93,7 @@ export async function generateTaskFinding(account: Account, actionId: string, in
       const tx = raw as unknown as Prisma.TransactionClient;
       const a = await tx.actionItem.findFirst({ where: { id: actionId, actionPlan: { userId: account.id, activeKey: account.id, archivedAt: null } } });
       if (!a) throw new PlanWriteError("找不到任務 / Task not found", 404);
+      if (a.taskFinding && typeof a.taskFinding === "object" && "organizeData" in a.taskFinding) throw new PlanWriteError("本任務使用已保存的整理與確認紀錄 / This task uses saved organization and confirmation records", 409);
       if (commercialTask(a) || workspaceKind(a) === "interview") throw new PlanWriteError("請使用訪談分段分析按鈕，確認次數後才產生 / Use the interview milestone analysis buttons with explicit usage", 409);
       if (!a.done || !workspaceKind(a)) throw new PlanWriteError("完成並保存紀錄後才能分析 / Complete the task with saved records first", 409);
       const finding = storedFindingSchema.safeParse(a.taskFinding).data;

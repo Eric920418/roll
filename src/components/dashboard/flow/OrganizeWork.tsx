@@ -16,7 +16,7 @@ export function TaskSection({ number, title, detail }: { number: string; title: 
 }
 
 export default function OrganizeWork({ step, data, view, locale, disabled, readOnly, onChange, onSave, onLinks, links, onRefresh, notice, assist }: {
-  step: "01-2" | "01-3"; data: Data; view: FlowView; locale: string; disabled: boolean; readOnly: boolean;
+  step: "01-2" | "01-3"; data: Data; view: Pick<FlowView, "leads" | "positioningReplies"> & { steps: Array<{ id: StepId; data: FlowData }> }; locale: string; disabled: boolean; readOnly: boolean;
   onChange(data: Data): void; onSave(data?: Data): void; onLinks(ids: string[], save: boolean): void; links: ParticipantLink[]; onRefresh(): void; notice: string; assist?: ReactNode;
 }) {
   const zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;

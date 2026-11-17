@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { generateBodySchema, type Diagnosis, type GeneratedAction } from "./schemas";
 import { rankActions, humanizeActionText, taskReference, wouldCreateCycle, type ActionPlanActionDto } from "./ranking";
 import { legacyHoursForMinutes } from "./time";
+import { workspaceKind } from "@/lib/action-plan/workspace";
+import { legacySequence } from "@/lib/action-plan/legacy-sequence";
 
 const actionInclude = {
   dependencies: {
@@ -42,6 +44,7 @@ async function findActivePlanRecord(userId: string) {
 }
 
 export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto {
+  plan = { ...plan, actions: legacySequence(plan.actions) };
   const milestones = milestoneViews(plan.milestones.map(m => ({ ...m, targetDate: m.targetDate.toISOString().slice(0, 10), achievedAt: m.achievedAt?.toISOString() || null })), plan.actions);
   const blocks = new Map(milestones.filter(m => m.status === "blocked").map(m => [m.id, m.title]));
   const actions = rankActions(plan.actions, blocks, new Map(milestones.map(m => [m.id, m.position])));
@@ -82,6 +85,18 @@ export async function getActiveActionPlan(userId: string): Promise<ActionPlanDto
     result.workflowNeedsReview = steps.some(step => step.done && !step.ready);
     const action = result.actions.find(action => action.id === current?.actionId);
     if (action && current) action.metric = { target: current.target, current: current.current, unit: plan.locale === "zh-tw" ? "筆有效成果" : "verified records" };
+  } else {
+    for (const stored of plan.actions) {
+      const meta = stored.taskFinding;
+      if (meta && typeof meta === "object" && "organizeData" in meta) {
+        const { getLegacyOrganize } = await import("./legacy-organize");
+        const view = await getLegacyOrganize(prisma as unknown as Prisma.TransactionClient, userId, plan.id, stored.id), action = result.actions.find(a => a.id === stored.id);
+        if (action) action.metric = { current: view.result.current, target: view.result.target, unit: view.step === "01-2" ? "confirmations" : "criteria" };
+      } else if (workspaceKind(stored) === "positioning" && !stored.done) {
+        const action = result.actions.find(a => a.id === stored.id);
+        if (action) action.metric = { current: 0, target: 5, unit: "confirmations" };
+      }
+    }
   }
   return result;
 }

@@ -32,7 +32,7 @@ const units = new Map<string, string>([
     ['companies', '家公司'], ['company', '家公司'], ['candidates', '個候選客群'],
     ['agreed pilots', '位同意試用的客戶'], ['validated statement', '份已驗證定位'],
     ['criteria', '項條件'], ['leads', '位潛在客戶'], ['verified records', '筆有效成果'],
-    ['records', '筆紀錄'], ['statement', '份定位'],
+    ['records', '筆紀錄'], ['statement', '份定位'], ['confirmations', '位確認'],
   ]);
 const english = new Map([...phrases].map(([en, zh]) => [normalize(zh), en]));
 // Catalog spelling wins over normalized lookup keys.

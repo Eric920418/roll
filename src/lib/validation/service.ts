@@ -1,4 +1,5 @@
 import { workspaceKind, interviewTarget } from "@/lib/action-plan/workspace";
+import { legacySequence } from "@/lib/action-plan/legacy-sequence";
 import { prospectCacheSchema, prospectCacheFresh, prospectKey } from "./prospect-schema";
 import { interviewSummary } from "@/lib/customer-insights/interviews";
 import { interviewRows } from "@/lib/customer-insights/service";
@@ -74,7 +75,7 @@ export async function assertCommercialCompletion(tx: DB, userId: string, action:
   await tx.actionItem.update({ where: { id: action.id }, data: { metricCurrent: total, metricTarget: target, metricUnit: "companies", commercialValidation: { requiresConfirmation: false, confirmedAt: new Date().toISOString() } } });
 }
 export async function assertCommercialPrerequisites(tx: DB, userId: string, planId: string, dependencyIds: string[]) {
-  const all = await tx.actionItem.findMany({ where: { actionPlanId: planId }, include: { dependencies: { select: { dependsOnId: true } } } });
+  const all = legacySequence(await tx.actionItem.findMany({ where: { actionPlanId: planId }, include: { dependencies: { include: { dependsOn: true } } } }));
   const ancestors = new Set(dependencyIds);
   for (let changed = true; changed;) { changed = false; for (const action of all) if (ancestors.has(action.id)) for (const edge of action.dependencies) if (!ancestors.has(edge.dependsOnId)) { ancestors.add(edge.dependsOnId); changed = true; } }
   const previous = all.filter(a => ancestors.has(a.id));

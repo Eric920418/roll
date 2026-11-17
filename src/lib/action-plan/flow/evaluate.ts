@@ -119,7 +119,7 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       require(current >= target, "等待 5 位受訪者透過連結確認，目前 " + current, "Waiting for five interviewee responses; currently " + current);
     }
     if (step === "01-3") {
-      current = data.criteria.filter(c => completedText(c.label) && c.confirmed).length; target = data.criteria.length;
+      current = data.criteria.filter(c => completedText(c.label) && c.confirmed).length; target = Math.max(4, data.criteria.length);
       require(data.criteria.length >= 4 && data.criteria.length <= 6 && current === target, "請確認 4–6 項評分條件", "Confirm 4–6 qualification criteria");
       require(unique(data.criteria.map(c => c.id)) && unique(data.criteria.map(c => companyKey(c.label))), "條件不能重複", "Criteria must be distinct");
       require(data.criteria.reduce((s, c) => s + c.weight, 0) === 100, "權重合計必須為 100%", "Weights must total 100%");

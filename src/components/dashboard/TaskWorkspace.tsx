@@ -8,6 +8,7 @@ import { emptyWorkspace, workspaceSchema, workspaceKind, workspaceProgress, lead
 import InterviewWorkspace from "./InterviewWorkspace";
 import { commercialTask } from "@/lib/validation/schema";
 import LearningResources from "./LearningResources";
+import LegacyOrganizeWork from "./LegacyOrganizeWork";
 
 const button = "inline-flex min-h-11 items-center justify-center rounded-lg border border-dark/20 px-4 py-2 text-sm font-semibold disabled:opacity-50";
 const input = "mt-1 min-h-11 w-full rounded-lg border border-dark/15 bg-white px-3 py-2 text-sm placeholder:text-dark/35 focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -18,6 +19,7 @@ const questions = {
 
 export default function TaskWorkspace({ userId, action, plan, busy, onChanged, onInsights, onAnalyze, showGuide = true }: { showGuide?: boolean; userId: string; action: ActionPlanActionDto; plan: ActionPlanDto; busy: boolean; onChanged: (plan: ActionPlanDto | null) => void; onInsights: () => void; onAnalyze: () => void }) {
   const kind = workspaceKind(action), zh = useLocale() === "zh-tw";
+  if (kind === "positioning" || kind === "scorecard") return <LegacyOrganizeWork userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} />;
   if (commercialTask(action)) return <div className="mt-5 space-y-3">{showGuide && <LearningResources collapsed kind="pilot" question={zh ? "如何提出付費試點？" : "How to offer a paid pilot?"} />}<a className={button} href={`#validation-${plan.id}`}>{zh ? "付款／簽約證據 →" : "Payment / contract evidence →"}</a></div>;
   return <>{kind === "interview" ? <InterviewWorkspace showGuide={showGuide} revision={plan.revision} userId={userId} action={action} busy={busy} onChanged={onChanged} onInsights={onInsights} /> : kind ? <WorkspaceForm showGuide={showGuide} key={action.id} userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} /> : null}
     {kind && kind !== "interview" && (showGuide ? <TaskFinding userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} onAnalyze={onAnalyze} /> : <details open={Boolean(action.taskFinding?.error)} className="rounded-xl border border-dark/10 p-3"><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">{zh ? "NOVA 整理結果" : "NOVA findings"}</summary><TaskFinding userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} onAnalyze={onAnalyze} /></details>)}

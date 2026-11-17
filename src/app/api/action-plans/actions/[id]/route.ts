@@ -19,6 +19,8 @@ import { awardReward, prepareActionReward } from "@/lib/rewards/service";
 import { z } from "zod";
 import { workspaceKind, storedFindingSchema } from "@/lib/action-plan/workspace";
 import { planWorkspaceEvidence, validateWorkspaceLinks, workspaceMetric, assertTaskWorkspaceComplete, generateTaskFinding } from "@/lib/action-plan/workspace-service";
+import { legacyActionState, saveLegacyOrganize } from "@/lib/action-plan/legacy-organize";
+import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
 
@@ -42,6 +44,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     const found = await prisma.actionItem.findFirst({ where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } }, select: { actionPlanId: true, clientKey: true } });
     if (!found) return fail("找不到 Action。", 404);
     if (found.clientKey?.startsWith("nova_v2_")) return fail("請使用新版今日任務工作區 / Use the new task workspace", 409);
+    let confirmationLinks: Array<{ leadId: string; href: string }> | undefined;
     await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
     await lockActivePlan(tx, session.uid, found.actionPlanId, revision);
@@ -75,6 +78,16 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       },
     });
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
+    const effective = await legacyActionState(tx, found.actionPlanId), own = effective.find(a => a.id === id);
+    if (own) {
+      current.dependencies = own.dependencies;
+      current.requiredBy = effective.flatMap(a => a.dependencies.filter(e => e.dependsOn.id === id).map(e => ({ minimumCurrent: e.minimumCurrent, action: a })));
+    }
+    if ("organizeData" in parsed.data || "confirmationRecipients" in parsed.data) {
+      if ("confirmationRecipients" in parsed.data && parsed.data.confirmationRecipients && !(await checkRateLimit("flow-confirm-link:" + session.uid, 100, DAY_MS)).ok) throw new PlanWriteError("今日確認連結已達上限，請明天重試 / Daily confirmation link limit reached", 429);
+      confirmationLinks = await saveLegacyOrganize(tx, session.uid, found.actionPlanId, id, "organizeData" in parsed.data ? parsed.data.organizeData : undefined, parsed.data.confirmationRecipients);
+      return;
+    }
     await prepareActionReward(tx, session.uid, id, current.done);
 
     if ("taskWorkspace" in parsed.data || "finding" in parsed.data) {
@@ -82,10 +95,11 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       if (pending && Date.now() - Date.parse(pending.since) < 120_000) throw new PlanWriteError("請等 AI 分析完成後再編輯 / Wait for analysis before editing", 409);
       if ("finding" in parsed.data) {
         if (!current.done) throw new PlanWriteError("完成任務後才可編輯分析 / Complete the task before editing findings", 409);
-        await tx.actionItem.update({ where: { id }, data: { taskFinding: { result: parsed.data.finding, source: "user", generatedAt: new Date().toISOString() } } });
+        await tx.actionItem.update({ where: { id }, data: { taskFinding: { ...(current.taskFinding && typeof current.taskFinding === "object" && !Array.isArray(current.taskFinding) ? current.taskFinding : {}), result: parsed.data.finding, source: "user", generatedAt: new Date().toISOString() } } });
         return;
       }
       if (current.done) throw new PlanWriteError("請先撤銷完成，再編輯任務紀錄 / Undo completion before editing task records", 409);
+      if (current.taskFinding && typeof current.taskFinding === "object" && "organizeData" in current.taskFinding) throw new PlanWriteError("請使用目前的定位／評分表單，原有紀錄保留 / Use the current positioning / qualification form; original records are retained", 409);
       await guardActionMilestone(tx, current.actionPlanId, current.milestoneId, "edit");
       if (commercialTask(current)) throw new PlanWriteError("請使用成交證據工作區，口頭同意不計成交 / Use the commercial evidence workspace; verbal agreement is not a conversion", 409);
       const workspace = parsed.data.taskWorkspace;
@@ -220,7 +234,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         });
       }
     });
-    return ok(await getActiveActionPlan(session.uid));
+    const plan = await getActiveActionPlan(session.uid);
+    return ok(confirmationLinks ? { ...plan, confirmationLinks } : plan);
   } catch (error) {
     if (error instanceof PlanWriteError) return fail(error.message, error.status);
     if (error instanceof Error && /依賴|循環|自己/.test(error.message)) return fail(error.message, 400);

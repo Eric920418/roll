@@ -1,6 +1,7 @@
 import { personalizationSchema } from "./personalization";
 import { z } from "zod";
 import { workspaceSchema, findingSchema } from "./workspace";
+import { flowDataSchema } from "./flow/catalog";
 import {
   BOTTLENECKS,
   COMPANY_STAGES,
@@ -274,6 +275,8 @@ export const actionInputSchema = z
   });
 
 export const actionPatchSchema = z.union([
+  z.object({ organizeData: flowDataSchema.options[1], confirmationRecipients: z.array(z.string().min(1).max(200)).min(1).max(25).optional() }).strict(),
+  z.object({ confirmationRecipients: z.array(z.string().min(1).max(200)).min(1).max(25) }).strict(),
   z.object({ taskWorkspace: workspaceSchema }).strict(),
   z.object({ finding: findingSchema }).strict(),
   z.object({ recordingMode: z.literal("interview"), metricTarget: z.number().int().positive().max(1000000000) }).strict(),

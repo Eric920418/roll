@@ -6,7 +6,7 @@ import type { FlowView } from "@/lib/action-plan/flow/service";
 import { TextField, button } from "./Templates";
 
 type Data = Extract<FlowData, { kind: "organize" }>;
-type Props = { data: Data; view: FlowView; locale: string; readOnly?: boolean; disabled?: boolean; onChange(data: Data): void };
+type Props = { data: Data; view: Pick<FlowView, "leads">; locale: string; readOnly?: boolean; disabled?: boolean; onChange(data: Data): void };
 
 export function CriteriaTable({ data, view, locale, selected, onSelect }: Omit<Props, "onChange"> & { selected?: string; onSelect?(id: string): void }) {
   const zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;

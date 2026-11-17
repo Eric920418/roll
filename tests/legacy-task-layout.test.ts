@@ -72,14 +72,14 @@ test('Legacy plan rendering preserves steps and records for current, blocked, co
 });
 
 test('Separating legacy guidance keeps the original form and opens findings errors', () => {
-  const load = runtime('en');
+  const load = runtime('en', { './LegacyOrganizeWork': { __esModule: true, default: ({ action }: { action: ActionPlanActionDto }) => React.createElement('div', null, action.taskWorkspace?.kind === 'positioning' && action.taskWorkspace.who, 'Shared organize work') } });
   const Workspace = load<typeof import('../src/components/dashboard/TaskWorkspace')>('src/components/dashboard/TaskWorkspace.tsx').default;
   const data = { ...emptyWorkspace('positioning'), who: 'Original customer' };
   const props = { userId: 'owner', action: { ...action, taskWorkspace: data }, plan, busy: false, onChanged() {}, onInsights() {}, onAnalyze() {} };
   const before = JSON.stringify(props.action);
   const html = renderToStaticMarkup(React.createElement(Workspace, { ...props, showGuide: false }));
-  assert(html.includes('Original customer')); assert(html.includes('Save statement')); assert(!html.includes('Further learning'));
+  assert(html.includes('Original customer')); assert(html.includes('Shared organize work')); assert(!html.includes('Further learning'));
   assert.equal(JSON.stringify(props.action), before);
-  const error = renderToStaticMarkup(React.createElement(Workspace, { ...props, showGuide: false, action: { ...props.action, taskFinding: { result: null, pending: false, error: 'HTTP 502 · provider_error · safe-trace' } } }));
+  const error = renderToStaticMarkup(React.createElement(Workspace, { ...props, showGuide: false, action: { ...props.action, title: 'Define and document your ideal customer profile', taskWorkspace: emptyWorkspace('icp'), taskFinding: { result: null, pending: false, error: 'HTTP 502 · provider_error · safe-trace' } } }));
   assert.match(error, /<details[^>]*open/); assert(error.includes('HTTP 502 · provider_error · safe-trace'));
 });

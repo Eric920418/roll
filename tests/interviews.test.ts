@@ -65,6 +65,9 @@ test("Interview transactions and completion in isolated PostgreSQL", { skip: !co
   mocks["@/lib/validation/service"] = load("src/lib/validation/service.ts", mocks);
   const workspaces = load<typeof import("../src/lib/action-plan/workspace-service")>("src/lib/action-plan/workspace-service.ts", { ...mocks, "@/lib/rate-limit": {}, "@/lib/security/log": {} });
   mocks["@/lib/action-plan/workspace-service"] = workspaces;
+  mocks["./workspace-service"] = workspaces;
+  mocks["@/lib/action-plan/legacy-organize"] = load("src/lib/action-plan/legacy-organize.ts", mocks);
+  mocks["@/lib/rate-limit"] = { checkRateLimit: async () => ({ ok: true }), DAY_MS: 86400000 };
   const rewards = load<typeof import("../src/lib/rewards/service")>("src/lib/rewards/service.ts", mocks);
   mocks["@/lib/rewards/service"] = { ...rewards, awardReward: async (...args: Parameters<typeof rewards.awardReward>) => { if (failAward) throw new Error("Injected transaction failure"); return rewards.awardReward(...args); } };
   const records = load<typeof import("../src/app/api/customer-insights/route")>("src/app/api/customer-insights/route.ts", mocks);
