@@ -57,7 +57,7 @@ test("Task workspace APIs in isolated PostgreSQL: versioning, ownership, evidenc
   const owner = await db.user.create({ data: { email: `${randomUUID()}@workspace.invalid`, plan: "pro" } }), other = await db.user.create({ data: { email: `${randomUUID()}@workspace.invalid` } });
   let releaseAi: (() => void) | null = null, holdAi = false;
   let uid: string | null = owner.id, allowed = true, failAward = false, aiCalls = 0, reserveCalls = 0, successCalls = 0, failureCalls = 0, aiFail = false;
-  const mocks: Record<string, unknown> = { "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/action-plan/workspace": workspace,
+  const mocks: Record<string, unknown> = { "@/lib/credits/authority": { creditsEnabledFor: async () => false, memberCreditsEnabled: async () => false }, "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/action-plan/workspace": workspace,
     "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null }, "@/lib/auth/account": { getCurrentAccount: async () => null },
     "@/lib/billing/gate": { requirePlan: async () => allowed ? { id: uid, plan: "pro" } : null, getEffectivePlan: () => "pro" },
     "@/lib/ai/allowance": { reserveAiUsage: async () => { reserveCalls++; return "qa-usage"; }, completeAiUsage: async (_id: string, success: boolean) => { if (success) successCalls++; else failureCalls++; } },

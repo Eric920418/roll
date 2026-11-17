@@ -7,6 +7,8 @@ import { logSecurityError } from "@/lib/security/log";
 import { REFERRAL_RULES as rules, ReferralError, referralMonth, grantAmounts, revokeAmounts } from "./policy";
 import { collectPayments, refreshDeletedPayment, payerFingerprint, type PaymentProof } from "./payments";
 import { requireReferralConfig } from "./registration";
+import { creditsEnabledFor, memberCreditsEnabled } from "@/lib/credits/authority";
+import { referralGrant, referralRevoke, units } from "@/lib/credits/policy";
 const lock = (tx: Prisma.TransactionClient) => tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('nova-referrals-v1'))::text`;
 
 async function revoke(tx: Prisma.TransactionClient, id: string, reason = "payment_refunded") {
@@ -14,6 +16,17 @@ async function revoke(tx: Prisma.TransactionClient, id: string, reason = "paymen
   for (const grant of grants) {
     if (await tx.referralEntry.findUnique({ where: { referralId_accountId_kind: { referralId: id, accountId: grant.accountId, kind: "revoke" } } })) continue;
     const account = await tx.referralAccount.findUniqueOrThrow({ where: { id: grant.accountId } });
+    if (account.userId && await creditsEnabledFor(tx, account.userId)) {
+      const { withCreditWallet } = await import("@/lib/credits/service");
+      await withCreditWallet(tx, account.userId, wallet => {
+        const issued = wallet.events.find(e => e.key === `referral:${id}:${account.id}:grant:lot`);
+        const amount = issued?.availableDelta ?? units(grant.credits);
+        const restored = issued ? units(rules.credits) - amount : units(grant.offset);
+        referralRevoke(wallet, `referral:${id}:${account.id}:revoke`, amount, new Date(), restored);
+      });
+      await tx.referralEntry.create({ data: { referralId: id, accountId: account.id, kind: "revoke", credits: -grant.credits, debtDelta: 0 } });
+      continue;
+    }
     const allowance = account.userId ? await tx.aiAllowance.findUnique({ where: { userId: account.userId } }) : null;
     const amounts = revokeAmounts(allowance?.rewardBalance ?? 0, grant);
     if (account.userId && amounts.removed) await tx.aiAllowance.update({ where: { userId: account.userId }, data: { rewardBalance: { decrement: amounts.removed } } });
@@ -60,6 +73,12 @@ async function settle(tx: Prisma.TransactionClient, id: string, now: Date) {
   const inviteeAccount = await tx.referralAccount.upsert({ where: { userId: row.inviteeId! }, create: { userId: row.inviteeId!, code: randomBytes(6).toString("hex").toUpperCase() }, update: {} });
   for (const accountId of [row.inviterId, inviteeAccount.id].sort()) {
     const account = await tx.referralAccount.findUniqueOrThrow({ where: { id: accountId } });
+    if (await creditsEnabledFor(tx, account.userId!)) {
+      const { withCreditWallet } = await import("@/lib/credits/service");
+      await withCreditWallet(tx, account.userId!, wallet => referralGrant(wallet, `referral:${id}:${accountId}:grant`, units(rules.credits), now));
+      await tx.referralEntry.create({ data: { referralId: id, accountId, kind: "grant", credits: rules.credits, offset: 0, debtDelta: 0 } });
+      continue;
+    }
     const amounts = grantAmounts(account.debt);
     await tx.referralAccount.update({ where: { id: accountId }, data: { debt: amounts.debt } });
     await tx.aiAllowance.upsert({ where: { userId: account.userId! }, create: { userId: account.userId!, rewardBalance: amounts.credits }, update: { rewardBalance: { increment: amounts.credits } } });
@@ -177,10 +196,11 @@ export async function prepareReferralDeletion(tx: Prisma.TransactionClient, user
 export async function referralSummary(userId: string, page: number) {
   const account = await prisma.referralAccount.findUnique({ where: { userId }, select: { id: true, code: true, debt: true } });
   const month = referralMonth(new Date());
+  const credits = await memberCreditsEnabled(userId) ? await (await import("@/lib/credits/service")).creditSnapshot(userId) : undefined;
   const [rows, used] = await Promise.all([
-    prisma.referral.findMany({ where: { OR: [{ inviteeId: userId }, ...(account ? [{ inviterId: account.id }] : [])] }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 21, select: { id: true, inviterId: true, status: true, reason: true, errorRequestId: true, eligibleAt: true, createdAt: true, entries: { where: { account: { userId } }, select: { kind: true, credits: true, offset: true, debtDelta: true, createdAt: true } } } }),
+    prisma.referral.findMany({ where: { OR: [{ inviteeId: userId }, ...(account ? [{ inviterId: account.id }] : [])] }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 21, select: { id: true, inviterId: true, status: true, reason: true, errorRequestId: true, eligibleAt: true, createdAt: true, entries: { where: { account: { userId } }, select: { accountId: true, kind: true, credits: true, offset: true, debtDelta: true, createdAt: true } } } }),
     account ? prisma.referral.count({ where: { inviterId: account.id, monthKey: month, slot: { not: null } } }) : Promise.resolve(0),
   ]);
-  return { code: account?.code ?? null, debt: account?.debt ?? 0, rules, month, used, hasMore: rows.length > 20, rows: rows.slice(0, 20).map(row => ({ id: row.id, direction: row.inviterId === account?.id ? "sent" : "received", status: row.status, reason: row.reason, errorRequestId: row.errorRequestId, eligibleAt: row.eligibleAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString(), entries: row.entries.map(entry => ({ ...entry, createdAt: entry.createdAt.toISOString() })) })) };
+  return { mode: credits?.mode, code: account?.code ?? null, debt: credits?.referralDebt ?? account?.debt ?? 0, rules, month, used, hasMore: rows.length > 20, rows: rows.slice(0, 20).map(row => ({ id: row.id, direction: row.inviterId === account?.id ? "sent" : "received", status: row.status, reason: row.reason, errorRequestId: row.errorRequestId, eligibleAt: row.eligibleAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString(), entries: row.entries.map(entry => { const receipt = credits?.ledger.find(e => e.id === `referral:${row.id}:${entry.accountId}:${entry.kind}${entry.kind === "grant" ? ":lot" : ""}`); return { ...entry, credits: receipt?.availableDelta ?? entry.credits, createdAt: entry.createdAt.toISOString() }; }) })) };
 }
 export type ReferralSummary = Awaited<ReturnType<typeof referralSummary>>;

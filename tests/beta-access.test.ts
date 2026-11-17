@@ -22,6 +22,9 @@ function load<T>(file: string, dependencies: Record<string, unknown>): T {
     exports, process, Date,
     require: (name: string) => {
       if (name === "server-only") return {};
+      if (name === "@/lib/credits/authority") return { creditsEnabledFor: async () => false, memberCreditsEnabled: async () => false };
+      if (name === "@/lib/credits/local") return { localCreditsEnabled: () => false };
+      if (name === "@/lib/credits/policy") return {};
       if (name === "@/lib/security/http") return securityHttp;
       if (name === "@/lib/billing/coupons") return coupons;
       if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);

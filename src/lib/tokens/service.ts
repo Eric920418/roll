@@ -5,6 +5,9 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { MemberError } from "@/lib/member-http";
 import { networkAccount } from "@/lib/network/access";
+import { creditsEnabledFor, memberCreditsEnabled } from "@/lib/credits/authority";
+import { memberTokenQuote, memberPricing } from "@/lib/credits/pricing";
+import { adjust, reserve, settle, units } from "@/lib/credits/policy";
 type DB = Prisma.TransactionClient;
 export const tokenHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export class TokenError extends MemberError {}
@@ -28,11 +31,18 @@ async function entry(tx: DB, userId: string, eventKey: string, kind: string, ava
   return tx.tokenLedger.create({ data: { userId, eventKey, kind, availableDelta, reservedDelta, reason, reservationId } });
 }
 export async function grantTokens(tx: DB, userId: string, amount: number, key: string, reason: string) {
+  if (await creditsEnabledFor(tx, userId)) {
+    const { withCreditWallet } = await import("@/lib/credits/service");
+    if (!Number.isSafeInteger(amount) || amount === 0 || Math.abs(amount) > 1000000) throw new TokenError("無效點數調整 / Invalid Credits adjustment", 400);
+    await withCreditWallet(tx, userId, wallet => adjust(wallet, key, units(amount), reason));
+    return tx.tokenLedger.upsert({ where: { eventKey: key }, create: { userId, eventKey: key, kind: "grant", availableDelta: amount, reservedDelta: 0, reason }, update: {} });
+  }
   await lockWallet(tx, userId);
   if (!Number.isSafeInteger(amount) || amount === 0 || Math.abs(amount) > 1000000) throw new TokenError("無效 Token 數量 / Invalid Token amount", 400);
   return entry(tx, userId, key, "grant", amount, 0, reason);
 }
 export async function monthlyTokens(tx: DB, userId: string) {
+  if (await creditsEnabledFor(tx, userId)) { const { refreshCreditGrants } = await import("@/lib/credits/service"); await refreshCreditGrants(tx, userId); return; }
   await lockWallet(tx, userId);
   const key = `monthly:${userId}:${new Date().toISOString().slice(0, 7)}`;
   const reason = "每月方案贈額 / Monthly plan grant", prior = await tx.tokenLedger.findUnique({ where: { eventKey: key } });
@@ -49,19 +59,34 @@ export async function reserveTokens(tx: DB, input: { userId: string; requestId: 
     if (previous.payloadHash !== input.payloadHash || previous.kind !== input.kind || previous.resourceId !== input.resourceId || previous.resourceVersion !== (input.resourceVersion || 0)) throw new TokenError("同一次提交已使用不同內容 / Request ID already used with different content", 409);
     return previous;
   }
-  const quote = await tokenQuote(tx);
+  const quote = await memberTokenQuote(tx, input.userId);
   const gift = input.kind === "search" && input.poc ? await tx.tokenLedger.findUnique({ where: { eventKey: `poc:${input.userId}` } }) : null;
   const amount = input.kind === "invite" ? quote.inviteFee : gift?.availableDelta || quote.searchFee;
   const { metadata, ...data } = input;
   delete data.poc;
   const reservation = await tx.tokenReservation.create({ data: { ...data, amount, metadata: { ...(metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {}), pricing: { version: quote.version, amount } } } });
+  if (await creditsEnabledFor(tx, input.userId)) {
+    const { withCreditWallet } = await import("@/lib/credits/service");
+    await withCreditWallet(tx, input.userId, wallet => reserve(wallet, { id: reservation.id, amount: units(amount), kind: input.kind, expiresAt: input.expiresAt.toISOString() }));
+    await tx.tokenLedger.create({ data: { userId: input.userId, eventKey: `reserve:${reservation.id}`, kind: "reserve", availableDelta: -amount, reservedDelta: amount, reason: "點數預扣 / Credits held", reservationId: reservation.id } });
+    return reservation;
+  }
   await entry(tx, input.userId, `reserve:${reservation.id}`, "reserve", -amount, amount, input.kind === "invite" ? "交流邀請預扣 / Invitation hold" : "五家公司搜尋預扣 / Five-company search hold", reservation.id);
   return reservation;
 }
-export async function settleTokens(tx: DB, id: string, action: "capture" | "refund", reason: string) {
+export async function settleTokens(tx: DB, id: string, action: "capture" | "refund", reason: string, compensateExpired = false) {
   const first = await tx.tokenReservation.findUniqueOrThrow({ where: { id } });
-  await lockWallet(tx, first.userId);
+  const unified = await creditsEnabledFor(tx, first.userId);
+  if (!unified) await lockWallet(tx, first.userId);
   const row = await tx.tokenReservation.findUniqueOrThrow({ where: { id } });
+  if (unified) {
+    const { withCreditWallet } = await import("@/lib/credits/service");
+    if (["released", "refunded"].includes(row.status) || action === "capture" && row.status === "captured") return row;
+    if (!["reserved", "captured"].includes(row.status)) throw new TokenError("未知預扣狀態 / Unknown hold status", 409);
+    await withCreditWallet(tx, row.userId, wallet => settle(wallet, id, action, reason, new Date(), action === "refund" && compensateExpired));
+    await tx.tokenLedger.create({ data: { userId: row.userId, eventKey: `${action}:${id}`, kind: action === "capture" ? "capture" : row.status === "reserved" ? "release" : "refund", availableDelta: action === "refund" ? row.amount : 0, reservedDelta: row.status === "reserved" ? -row.amount : 0, reason, reservationId: id } });
+    return tx.tokenReservation.update({ where: { id }, data: { status: action === "capture" ? "captured" : row.status === "reserved" ? "released" : "refunded", settledAt: new Date() } });
+  }
   if (action === "capture") {
     if (row.status !== "reserved") return row;
     await entry(tx, row.userId, `capture:${id}`, "capture", 0, -row.amount, reason, id);
@@ -75,7 +100,22 @@ export async function settleTokens(tx: DB, id: string, action: "capture" | "refu
 export async function resourceFee(tx: DB, kind: string, resourceId: string, resourceVersion?: number) {
   return tx.tokenReservation.findFirst({ where: { kind, resourceId, ...(resourceVersion === undefined ? {} : { resourceVersion }) }, orderBy: { createdAt: "desc" } });
 }
-export async function tokenSnapshot(userId: string, cursor?: string) {
+type TokenSnapshot = {
+  available: number; reserved: number; monthlyGrant: number; pricing: Awaited<ReturnType<typeof tokenQuote>>; period: string;
+  ledger: { id: string; kind: string; reason: string; availableDelta: number; reservedDelta: number; createdAt: Date | string }[];
+  nextCursor: string | null;
+  mode?: "credits"; lifetimeEarned?: number; referralDebt?: number;
+  expiring?: { id: string; amount: number; expiresAt: string }[]; permanent?: number;
+};
+export async function tokenSnapshot(userId: string, cursor?: string): Promise<TokenSnapshot> {
+  if (await memberCreditsEnabled(userId)) {
+    const { creditSnapshot } = await import("@/lib/credits/service");
+    const credits = await creditSnapshot(userId), pricing = await memberPricing(userId);
+    const index = cursor ? credits.ledger.findIndex(e => e.id === cursor) : -1;
+    if (cursor && index < 0) throw new TokenError("無效帳本頁次 / Invalid ledger cursor", 400);
+    const rows = credits.ledger.slice(index + 1, index + 52);
+    return { ...credits, monthlyGrant: pricing.monthlyGrant, pricing, period: new Date().toISOString().slice(0, 7), ledger: rows.slice(0, 50), nextCursor: rows.length > 50 ? rows[49].id : null };
+  }
   return prisma.$transaction(async raw => {
     const tx = raw as unknown as DB;
     await monthlyTokens(tx, userId);

@@ -10,9 +10,9 @@ export async function rewardRequest<T>(url: string, init?: RequestInit): Promise
   if (!response.ok) throw new Error(`${body.error || response.statusText}${body.code ? ` (${body.code})` : ""}`);
   return body.data as T;
 }
-type Context = { data: RewardSummary | null; error: string; loading: boolean; userId: string; refresh: () => Promise<void>; update: (data: RewardSummary) => void };
+type Context = { creditsMode: boolean; data: RewardSummary | null; error: string; loading: boolean; userId: string; refresh: () => Promise<void>; update: (data: RewardSummary) => void };
 const RewardsContext = createContext<Context | null>(null);
-export function RewardsProvider({ children, userId }: { children: React.ReactNode; userId: string }) {
+export function RewardsProvider({ children, userId, creditsMode = false }: { children: React.ReactNode; userId: string; creditsMode?: boolean }) {
   const [data, setData] = useState<RewardSummary | null>(null), [error, setError] = useState(""), [loading, setLoading] = useState(true);
   const revision = useRef(0);
   const summaryUrl = useCallback(() => {
@@ -32,11 +32,11 @@ export function RewardsProvider({ children, userId }: { children: React.ReactNod
   }, [userId]);
   const refresh = useCallback(async () => {
     const currentRevision = revision.current;
-    try { const summary = await rewardRequest<RewardSummary>(summaryUrl()); if (currentRevision === revision.current) { reconcile(summary); setData(summary); setError(""); } }
+    try { const summary = await rewardRequest<RewardSummary>(summaryUrl()); if (currentRevision === revision.current) { reconcile(summary); setData(summary); setError(""); if (summary.credits) window.dispatchEvent(new Event("nova-credits-changed")); } }
     catch (cause) { if (currentRevision === revision.current) setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setLoading(false); }
   }, [summaryUrl, reconcile]);
-  const update = useCallback((summary: RewardSummary) => { revision.current++; reconcile(summary); setData(summary); setError(""); setLoading(false); }, [reconcile]);
+  const update = useCallback((summary: RewardSummary) => { revision.current++; reconcile(summary); setData(summary); setError(""); setLoading(false); if (summary.credits) window.dispatchEvent(new Event("nova-credits-changed")); }, [reconcile]);
   useEffect(() => {
     let active = true;
     const currentRevision = revision.current;
@@ -44,12 +44,14 @@ export function RewardsProvider({ children, userId }: { children: React.ReactNod
     let day = rewardKeys().day;
     const focus = () => { if (document.visibilityState === "visible") { day = rewardKeys().day; void refresh(); } };
     window.addEventListener("focus", focus); document.addEventListener("visibilitychange", focus);
+    window.addEventListener("nova-tokens-changed", focus);
+    window.addEventListener("nova-plan-changed", focus);
     // Writes update the provider directly; only a calendar change needs a
     // background refresh. Returning to the page still refreshes the balance.
     const timer = window.setInterval(() => { if (rewardKeys().day !== day) focus(); }, 60000);
-    return () => { active = false; window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", focus); window.clearInterval(timer); };
+    return () => { active = false; window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", focus); window.removeEventListener("nova-tokens-changed", focus); window.removeEventListener("nova-plan-changed", focus); window.clearInterval(timer); };
   }, [refresh, update, summaryUrl]);
-  return <RewardsContext.Provider value={{ data, error, loading, userId, refresh, update }}>{children}</RewardsContext.Provider>;
+  return <RewardsContext.Provider value={{ creditsMode, data, error, loading, userId, refresh, update }}>{children}</RewardsContext.Provider>;
 }
 export function useRewards() { const context = useContext(RewardsContext); if (!context) throw new Error("RewardsProvider missing"); return context; }
 export function RewardBadge() {

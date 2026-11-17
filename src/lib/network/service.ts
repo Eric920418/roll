@@ -1,5 +1,5 @@
 import { googlePhotoUrl } from "@/lib/matchmaking/schema";
-import { tokenQuote } from "@/lib/billing/commerce";
+import { memberTokenQuote } from "@/lib/credits/pricing";
 import "server-only";
 import { memberRoles } from "@/lib/matchmaking/roles";
 import { reserveTokens, resourceFee, settleTokens, tokenHash } from "@/lib/tokens/service";
@@ -53,7 +53,7 @@ export async function invite(userId: string, input: z.infer<typeof inviteSchema>
     if (row?.status === "declined" && Date.now() - row.updatedAt.getTime() < 7 * DAY_MS) throw new MemberError("邀請已拒絕，七天後可再試 / Invitation declined; retry after seven days", 409);
     if (!row || ["declined", "expired", "cancelled"].includes(row.status)) {
       await requireReceiving(tx, target.userId);
-      const pricing = await tokenQuote(tx);
+      const pricing = await memberTokenQuote(tx, userId);
       if (!input.requestId || !input.opening) throw new MemberError("請確認開場訊息與費用 / Confirm your opening message and fee", 400);
       if (input.pricingVersion !== pricing.version) throw new MemberError(`報價已更新，請重新載入並確認 ${pricing.inviteFee} Token 費用 / Pricing changed; reload and confirm the ${pricing.inviteFee} Token fee`, input.pricingVersion ? 409 : 400);
       if (!(await checkRateLimit(`network-invite:${userId}`, pricing.dailyInvites, DAY_MS, false, tx)).ok) throw new MemberError(`今日邀請上限為 ${pricing.dailyInvites} 次 / Daily limit: ${pricing.dailyInvites} invitations`, 429);

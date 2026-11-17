@@ -1,3 +1,4 @@
+import { memberCreditsEnabled } from "@/lib/credits/authority";
 import NotificationBell from "@/components/dashboard/NotificationBell";
 import TokenBalance from "@/components/dashboard/TokenBalance";
 import DashboardUserProvider from "@/components/dashboard/DashboardUserProvider";
@@ -39,7 +40,7 @@ export default async function DashboardLayout({ children, params }: Props) {
     account.email;
 
   return (
-    <DashboardUserProvider userId={account.id}><RewardsProvider userId={account.id}>
+    <DashboardUserProvider userId={account.id}><RewardsProvider userId={account.id} creditsMode={await memberCreditsEnabled(account.id)}>
     <div
       className="nova-theme flex min-h-screen flex-col bg-light md:flex-row"
       data-brand="nova"

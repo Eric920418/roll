@@ -83,7 +83,7 @@ test("order receipts invalidate only after transaction commit; rollback leaves t
   const input = { requestId: "existing-receipt", revision: 0, country: "TW", description: "Buyer operations", count: 5 as const };
   const payloadHash = native("node:crypto").createHash("sha256").update(JSON.stringify(input)).digest("hex");
   const mocks: Record<string, unknown> = {
-    "server-only": {}, "@/lib/billing/commerce": {}, "@/lib/tokens/service": {}, "@/lib/tokens/expiry": {},
+    "server-only": {}, "@/lib/credits/pricing": {}, "@/lib/billing/commerce": {}, "@/lib/tokens/service": {}, "@/lib/tokens/expiry": {},
     "@/lib/network/access": {}, "@/lib/discovery/policy": {}, "@/lib/icp/schema": {}, "./client": {}, "./backup": {}, "./schema": policy,
     "@/lib/prospecting/schedule": { invalidateProspectingSchedule: () => events.push("invalidate") },
     "@/lib/prisma": { prisma: { $transaction: async (fn: (tx: unknown) => Promise<unknown>) => {

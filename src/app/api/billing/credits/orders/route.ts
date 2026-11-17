@@ -1,5 +1,6 @@
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
+import { localCreditsEnabled } from "@/lib/credits/local";
 import { prisma } from "@/lib/prisma";
 import { requirePlan } from "@/lib/billing/gate";
 import { createCreditOrder, getOrder, isPaypalConfigured } from "@/lib/billing/paypal";
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getUserSession();
     if (!session) return unauthorized();
+    if (localCreditsEnabled()) return fail("本機點數模式不建立真實付款訂單 / Local Credits mode does not create real payment orders", 409);
     const account = await requirePlan("pro");
     if (!account) return fail("只有有效 Pro 以上方案或試用帳號可以加購 NOVA 次數。", 403);
     if (!isPaypalConfigured()) return fail("PayPal 金流尚未設定。", 503);

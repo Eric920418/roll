@@ -142,6 +142,7 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  creditAuthority CreditAuthority?
   planLocalizations PlanLocalization[]
   evidenceWorkspace EvidenceWorkspace?
   roundtableMatches RoundtableMatchRequest[]
@@ -1722,4 +1723,101 @@ model PlanLocalization {
   leaseToken String?
   leaseUntil DateTime?
   @@unique([userId, planId, locale, sourceHash])
+}
+
+// Credits uses additive credits.sql: constraints and immutable receipt triggers are required.
+model CreditControl {
+  id String @id
+  schemaVersion Int
+  mode String
+  activatedAt DateTime? @db.Timestamptz(6)
+}
+model CreditAccount {
+  id String @id
+  status String
+  version Int @default(0)
+  activationSequence Int?
+  sourceHash String
+  source Json
+  importedCycle DateTime? @db.Timestamptz(6)
+  legacyMonthlyGrant BigInt
+  earned BigInt @default(0)
+  referralDebt BigInt @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  activatedAt DateTime? @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @db.Timestamptz(6)
+  authority CreditAuthority?
+  lots CreditLot[]
+  holds CreditHold[]
+  entries CreditEntry[]
+  transitions CreditTransition[]
+}
+model CreditAuthority {
+  userId String @id
+  accountId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account CreditAccount @relation(fields: [accountId], references: [id], onDelete: NoAction)
+}
+model CreditLot {
+  accountId String
+  key String
+  ordinal Int
+  origin String
+  remaining BigInt
+  expiresAt DateTime? @db.Timestamptz(6)
+  account CreditAccount @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  allocations CreditAllocation[]
+  @@id([accountId, key])
+  @@unique([accountId, ordinal])
+  @@index([accountId, expiresAt], map: "CreditLot_expiry")
+}
+model CreditHold {
+  accountId String
+  key String
+  amount BigInt
+  kind String
+  status String
+  expiresAt DateTime @db.Timestamptz(6)
+  account CreditAccount @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  allocations CreditAllocation[]
+  @@id([accountId, key])
+  @@index([accountId, status, expiresAt], map: "CreditHold_pending")
+}
+model CreditAllocation {
+  accountId String
+  holdKey String
+  lotKey String
+  position Int
+  amount BigInt
+  hold CreditHold @relation(fields: [accountId, holdKey], references: [accountId, key], onDelete: NoAction)
+  lot CreditLot @relation(fields: [accountId, lotKey], references: [accountId, key], onDelete: NoAction)
+  @@id([accountId, holdKey, lotKey])
+  @@unique([accountId, holdKey, position])
+}
+model CreditEntry {
+  accountId String
+  key String
+  sequence Int
+  content String
+  kind String
+  reason String
+  at DateTime @db.Timestamptz(6)
+  availableDelta BigInt
+  reservedDelta BigInt
+  earnedDelta BigInt
+  debtDelta BigInt
+  account CreditAccount @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  @@id([accountId, key])
+  @@unique([accountId, sequence])
+}
+model CreditTransition {
+  key String @id
+  accountId String?
+  action String
+  contentHash String
+  actor String
+  reason String
+  result Json
+  at DateTime @default(now()) @db.Timestamptz(6)
+  account CreditAccount? @relation(fields: [accountId], references: [id], onDelete: NoAction)
 }

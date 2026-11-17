@@ -1,4 +1,5 @@
 "use client";
+import CreditsWallet from "./CreditsWallet";
 import { analyticsFetch } from "@/lib/analytics";
 
 import { planContent } from "@/lib/billing/catalog";
@@ -66,7 +67,8 @@ export default function BillingPanel({
   const tPricing = useTranslations("Product.pricing");
   const tErr = useTranslations("Billing.errors");
   const router = useRouter();
-  const { data: rewards } = useRewards();
+  const { data: rewards, refresh: refreshRewards } = useRewards();
+  const credits = rewards?.credits ?? usage?.credits;
   const rewardRemaining = rewards?.rewardRemaining ?? usage?.rewardRemaining ?? 0;
 
   const [busy, setBusy] = useState<string | null>(null);
@@ -196,7 +198,7 @@ export default function BillingPanel({
         </div>
       </div>
 
-      {usage && (
+      {credits ? <CreditsWallet data={credits} refresh={() => void refreshRewards()} /> : usage && (
         <div className="rounded-2xl border border-dark/10 bg-white p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>

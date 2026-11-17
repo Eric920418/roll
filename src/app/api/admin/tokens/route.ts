@@ -1,3 +1,4 @@
+import { creditsEnabledFor } from "@/lib/credits/authority";
 import { z } from "zod";
 import { invalidateProspectingSchedule } from "@/lib/prospecting/schedule";
 import { getAdminSession } from "@/lib/auth/guard";
@@ -35,6 +36,7 @@ export async function PATCH(req: Request) {
       const tx = raw as unknown as Prisma.TransactionClient;
       const original = await tx.prospectingOrder.findUniqueOrThrow({ where: { id: input.orderId } });
       await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${original.userId} FOR UPDATE`;
+      await creditsEnabledFor(tx, original.userId);
       const order = await tx.prospectingOrder.findUniqueOrThrow({ where: { id: input.orderId } });
       const fee = await resourceFee(tx, "search", order.id);
       if (!fee) throw new MemberError("Token reservation missing");
@@ -51,7 +53,7 @@ export async function PATCH(req: Request) {
         if (!input.providerOrderId || order.providerOrderId && order.providerOrderId !== input.providerOrderId) throw new MemberError("A matching provider receipt ID is required");
         await tx.prospectingOrder.update({ where: { id: order.id }, data: { providerOrderId: input.providerOrderId, nextAttemptAt: new Date(), failureCode: "receipt_attached", failureMessage: "管理員已補供應商收據，等待核對 / Provider receipt attached; verification pending" } });
       } else {
-        await settleTokens(tx, fee.id, "refund", "管理員核對供應商確認未交付 / Administrator verified provider confirmed no delivery");
+        await settleTokens(tx, fee.id, "refund", "管理員核對供應商確認未交付 / Administrator verified provider confirmed no delivery", true);
         await tx.prospectingOrder.update({ where: { id: order.id }, data: { status: "failed", reservedCount: 0, failureCode: "admin_confirmed_no_delivery", failureMessage: "管理員已核對未交付，20 Token 已退回 / Administrator verified no delivery; 20 Token returned" } });
       }
       await tx.tokenReservation.update({ where: { id: fee.id }, data: { metadata: { ...metadata, reconciliation: [...history, audit] } } });

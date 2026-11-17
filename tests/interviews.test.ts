@@ -48,6 +48,7 @@ test("Interview transactions and completion in isolated PostgreSQL", { skip: !co
   let uid: string | null = owner.id, allowed = true, failAward = false;
   const mocks: Record<string, unknown> = {
     "server-only": {}, "@/lib/prisma": { prisma: db },
+    "@/lib/credits/authority": { creditsEnabledFor: async () => false, memberCreditsEnabled: async () => false },
     "@/lib/auth/guard": { getUserSession: async () => uid ? { uid } : null },
     "@/lib/billing/gate": { requirePlan: async () => allowed ? { id: uid, plan: "pro" } : null, getEffectivePlan: () => "pro" },
     "@/lib/auth/account": { getCurrentAccount: async () => null },

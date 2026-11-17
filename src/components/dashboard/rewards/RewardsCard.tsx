@@ -9,7 +9,7 @@ import { REWARD_RULES } from "@/lib/rewards/policy";
 import { rewardRequest, useRewards } from "./RewardsProvider";
 export default function RewardsCard() {
   const t = useTranslations("Rewards"), locale = useLocale() as Locale;
-  const { data, error, update, refresh } = useRewards();
+  const { data, error, update, refresh, creditsMode } = useRewards();
   const [visitError, setVisitError] = useState("");
   useEffect(() => {
     let active = true;
@@ -19,6 +19,8 @@ export default function RewardsCard() {
   async function retry() {
     try { update(await rewardRequest<RewardSummary>("/api/rewards/visit", { method: "POST" })); setVisitError(""); } catch (cause) { setVisitError(cause instanceof Error ? cause.message : String(cause)); }
   }
+  if (creditsMode && !data) return <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-5"><h2>{locale === "zh-tw" ? "點數載入中…" : "Loading Credits…"}</h2>{(error || visitError) && <p role="alert" className="whitespace-pre-wrap break-words">{visitError || error}</p>}<button type="button" className="min-h-11 underline" onClick={() => void refresh()}>{t("retry")}</button></section>;
+  if (data?.credits) return <section className="min-w-0 rounded-2xl border border-dark/10 bg-white px-5 py-3"><Link href={pathForLocale("/dashboard/rewards", locale)} className="flex min-h-11 flex-wrap items-center justify-between gap-3"><h2 className="font-bold">{locale === "zh-tw" ? "點數" : "Credits"} {data.credits.available.toLocaleString()}</h2><span className="text-xs">{locale === "zh-tw" ? "累積成就" : "Lifetime earned"} {data.credits.lifetimeEarned.toLocaleString()} →</span></Link>{(error || visitError) && <div role="alert"><p className="whitespace-pre-wrap break-words">{visitError || error}</p><button type="button" className="min-h-11 underline" onClick={() => void (visitError ? retry() : refresh())}>{t("retry")}</button></div>}</section>;
   const progress = data ? Math.min(data.balance / REWARD_RULES.redemptionPoints * 100, 100) : 0;
   return <section aria-labelledby="home-rewards-heading" className="min-w-0 rounded-2xl border border-dark/10 bg-white px-5 py-3">
     <Link href={pathForLocale("/dashboard/rewards", locale)} className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2">

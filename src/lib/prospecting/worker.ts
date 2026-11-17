@@ -53,7 +53,7 @@ async function completeCheck(order: ProspectingOrder, token: string) {
     const context = await exclusions(order.userId, tx), fee = await resourceFee(tx, "search", order.id);
     const frozen = (fee?.metadata as { exclusions?: string[] } | undefined)?.exclusions;
     const eligible = uniqueProspects(companies, fresh.checkedAt ? frozen || context.names : [...(frozen || []), ...context.names]).slice(0, order.count);
-    if (fee) await settleTokens(tx, fee.id, eligible.length === order.count ? "capture" : "refund", eligible.length === order.count ? "五家新公司已核對交付 / Five new companies verified and delivered" : "合格交付不足，原預扣 Token 退回 / Insufficient verified delivery; original Token hold returned");
+    if (fee) await settleTokens(tx, fee.id, eligible.length === order.count ? "capture" : "refund", eligible.length === order.count ? "五家新公司已核對交付 / Five new companies verified and delivered" : "合格交付不足，原預扣 Token 退回 / Insufficient verified delivery; original Token hold returned", true);
     if (eligible.length < companies.length) rejections.known_or_duplicate = companies.length - eligible.length;
     const grant = await tx.prospectingTrialGrant.findUnique({ where: { userId: order.userId } });
     if (order.poc && eligible.length && (!fee || eligible.length === order.count) && !grant) await tx.prospectingTrialGrant.create({ data: { userId: order.userId, orderId: order.id } });
@@ -85,7 +85,7 @@ async function acceptResponse(order: ProspectingOrder, token: string, payload: u
     if (!saved.count) throw new ProspectingError("處理權已變更 / Processing lease changed", 409, "lease_changed");
     if (data.status === "failed" && !uncertain) {
       const fee = await resourceFee(tx, "search", order.id);
-      if (fee) await settleTokens(tx, fee.id, "refund", "供應商確認未交付 / Provider confirmed no delivery");
+      if (fee) await settleTokens(tx, fee.id, "refund", "供應商確認未交付 / Provider confirmed no delivery", true);
     }
   });
   return data.status === "completed";
@@ -184,7 +184,7 @@ async function failedAttempt(order: ProspectingOrder, token: string, error: unkn
   await tx.prospectingOrder.updateMany({ where: { id: order.id, leaseToken: token }, data: { status: definite ? "failed" : fresh.status === "checking" ? "checking" : delayed ? "reconciling" : fresh.status,
     ...(definite ? { reservedCount: 0 } : {}), failureCode: known ? error.code : "processing_unconfirmed", failureMessage: message,
     ...(provider && error.requestId ? { providerRequestId: error.requestId } : {}), nextAttemptAt: new Date(Date.now() + retry * 1000) } });
-    if (definite) { const fee = await resourceFee(tx, "search", order.id); if (fee) await settleTokens(tx, fee.id, "refund", "搜尋確定未送出／被拒絕 / Search confirmed unsubmitted or rejected"); }
+    if (definite) { const fee = await resourceFee(tx, "search", order.id); if (fee) await settleTokens(tx, fee.id, "refund", "搜尋確定未送出／被拒絕 / Search confirmed unsubmitted or rejected", true); }
   });
   if (definite && provider && error.status === 404 && order.audienceParentId) await prisma.prospectingWorkspace.updateMany({ where: { userId: order.userId, omradeIcpId: order.audienceParentId }, data: { omradeIcpId: null, omradeIcpVersion: null, audienceHash: null } });
 }

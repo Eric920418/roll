@@ -112,7 +112,7 @@ test("Quiz rejects null, blank, string, boolean and missing choices before any a
 
 test("Rewards recommendations omit the quiz while retaining real profile and Ready task actions", async () => {
   const source = load<typeof import("../src/lib/rewards/service")>("src/lib/rewards/service.ts", {
-    "server-only": {}, "./policy": rewardPolicy, "@/lib/prisma": { prisma: {
+    "@/lib/credits/authority": { creditsEnabledFor: async () => false, memberCreditsEnabled: async () => false }, "server-only": {}, "./policy": rewardPolicy, "@/lib/prisma": { prisma: {
       rewardEntry: { findUnique: async () => ({ id: "profile-claimed" }), findMany: async () => [] },
       playbookQuizAttempt: { findUnique: () => { throw new Error("Quiz is not a required next step"); } },
     } }, "@/lib/auth/account": {}, "@/lib/billing/gate": {},
@@ -132,7 +132,7 @@ test("Reminder branding uses the main absolute logo and keeps safe escaped links
   try {
     process.env.AUTH_SECRET = "local-test-secret"; process.env.NEXT_PUBLIC_APP_URL = "https://example.test"; process.env.RESEND_FROM_EMAIL = "NOVA AI <test@example.invalid>";
     const reminders = load<typeof import("../src/lib/rewards/reminders")>("src/lib/rewards/reminders.ts", {
-      "server-only": {}, "./policy": rewardPolicy, "@/lib/prisma": {}, "@/lib/auth/account": {}, "@/lib/billing/plans": {}, "@/lib/billing/gate": {},
+      "@/lib/credits/authority": { creditsEnabledFor: async () => false, memberCreditsEnabled: async () => false }, "server-only": {}, "./policy": rewardPolicy, "@/lib/prisma": {}, "@/lib/auth/account": {}, "@/lib/billing/plans": {}, "@/lib/billing/gate": {},
       "./service": { RewardError },
     });
     for (const locale of ["en", "zh-tw"]) {

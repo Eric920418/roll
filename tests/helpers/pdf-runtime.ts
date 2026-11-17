@@ -3,12 +3,12 @@ import { createRequire } from 'node:module';
 import { resolve, dirname } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-export function pdfRuntime(mocks: Record<string, unknown>, globals: Record<string, unknown> = {}) {
+export function pdfRuntime(mocks: Record<string, unknown>, globals: Record<string, unknown> = {}, root = resolve(".")) {
     const cache = new Map<string, {
         exports: unknown;
     }>(), native = createRequire(import.meta.url);
     function load<T>(file: string): T {
-        const full = resolve(file), cached = cache.get(full);
+        const full = resolve(root, file), cached = cache.get(full);
         if (cached)
             return cached.exports as T;
         const loaded = { exports: {} };
@@ -18,7 +18,7 @@ export function pdfRuntime(mocks: Record<string, unknown>, globals: Record<strin
                 if (Object.hasOwn(mocks, id))
                     return mocks[id];
                 if (id.startsWith('@/') || id.startsWith('.')) {
-                    const base = id.startsWith('@/') ? resolve('src', id.slice(2)) : resolve(dirname(full), id);
+                    const base = id.startsWith('@/') ? resolve(root, 'src', id.slice(2)) : resolve(dirname(full), id);
                     const target = [base, base + '.ts', base + '.tsx'].find(p => existsSync(p) && /\.tsx?$/.test(p));
                     if (target)
                         return load(target);

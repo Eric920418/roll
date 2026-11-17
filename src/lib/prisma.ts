@@ -4,6 +4,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { requireDatabaseUrl } from "./database-config";
+import { localCreditsEnabled } from "./credits/local";
 
 // Neon serverless 在 Node.js 環境需要 WebSocket constructor
 neonConfig.webSocketConstructor = ws;
@@ -38,6 +39,7 @@ async function withReadRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> 
 }
 
 function createPrismaClient() {
+  localCreditsEnabled();
   const connectionString = requireDatabaseUrl(process.env.DATABASE_URL);
   const localQa = process.env.ROLL_LOCAL_POSTGRES === "true";
   if (localQa) {

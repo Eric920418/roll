@@ -7,6 +7,8 @@ import { USER_SESSION_COOKIE } from "@/lib/auth/session";
 import { ok, unauthorized, failFromError } from "@/lib/api";
 import { isPaypalConfigured, cancelSubscription } from "@/lib/billing/paypal";
 import { del } from "@vercel/blob";
+import type { Prisma } from "@prisma/client";
+import { assertCreditDeletionAllowed } from "@/lib/credits/deletion";
 
 export async function POST(req: Request) {
   const blocked = browserMutationGuard(req, false);
@@ -20,6 +22,8 @@ export async function POST(req: Request) {
       include: { investorPortal: { select: { businessPlanPath: true } } },
     });
     if (!user) return unauthorized();
+
+    await assertCreditDeletionAllowed(prisma as unknown as Prisma.TransactionClient, session.uid);
 
     // best-effort 取消 PayPal 訂閱，避免刪帳號後仍被扣款（未設定金鑰則略過）
     if (user.paypalSubscriptionId && isPaypalConfigured()) {
@@ -42,6 +46,8 @@ export async function POST(req: Request) {
     // cascade 連帶刪除 profile / quizSubmissions / subscriptions
     await rewardTransaction(async tx => {
       await prepareReferralDeletion(tx, session.uid);
+      await assertCreditDeletionAllowed(tx, session.uid);
+      await tx.setting.deleteMany({ where: { key: `localCredits.v1:${session.uid}` } });
       await tx.user.delete({ where: { id: session.uid } });
     });
 

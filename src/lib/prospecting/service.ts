@@ -1,4 +1,4 @@
-import { tokenQuote } from "@/lib/billing/commerce";
+import { memberTokenQuote } from "@/lib/credits/pricing";
 import { invalidateProspectingSchedule } from "@/lib/prospecting/schedule";
 import "server-only";
 import { grantTokens, reserveTokens, resourceFee, tokenSnapshot } from "@/lib/tokens/service";
@@ -71,7 +71,7 @@ export async function prospectSnapshot(userId: string, cursor?: string) {
   const delivered = usage._sum.deliveredCount || 0, reserved = usage._sum.reservedCount || 0;
   const gift = rights.poc ? await prisma.tokenLedger.findUnique({ where: { eventKey: `poc:${userId}` } }) : null;
   const pricing = { ...tokens.pricing, searchFee: gift?.availableDelta || tokens.pricing.searchFee };
-  return { pricing, tokens: { available: tokens.available, reserved: tokens.reserved }, enabled: configured() || backupEnabled(), provider: backupEnabled() ? "anthropic_backup" : "omrade", backupUntil: backupEnabled() ? backupUntil() : null, access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
+  return { pricing, tokens: { available: tokens.available, reserved: tokens.reserved, ...(tokens.mode ? { mode: tokens.mode } : {}) }, enabled: configured() || backupEnabled(), provider: backupEnabled() ? "anthropic_backup" : "omrade", backupUntil: backupEnabled() ? backupUntil() : null, access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
     quota: { period: utcPeriod(), limit: pricing.monthlyCompanies, delivered, reserved, remaining: Math.max(0, pricing.monthlyCompanies - delivered - reserved) },
     pending: pending ? orderView(pending, context.names, values) : null, orders: await Promise.all(orders.slice(0, 20).map(async o => ({ ...orderView(o, context.names, values), tokenFee: await feeView(o.id) }))), nextCursor: orders.length > 20 ? orders[19].id : null };
 }
@@ -92,7 +92,7 @@ export async function createProspectOrder(userId: string, input: z.infer<typeof 
     const replay = await tx.prospectingOrder.findUnique({ where: { userId_requestId: { userId, requestId: input.requestId } } });
     if (replay) { if (replay.payloadHash !== payloadHash) throw new ProspectingError("同一次提交已使用不同內容；請比較最新版 / Request ID already used with different content", 409, "idempotency_conflict"); return { id: replay.id, status: replay.status }; }
     if (input.planId && !await tx.actionPlan.findFirst({ where: { id: input.planId, userId, activeKey: userId, archivedAt: null }, select: { id: true } })) throw new ProspectingError("找不到本人有效計畫 / Active plan not found", 404, "plan_not_found");
-    const pricing = await tokenQuote(tx);
+    const pricing = await memberTokenQuote(tx, userId);
     if (input.pricingVersion !== pricing.version || input.count !== 5) throw new ProspectingError(`新搜尋固定五家公司，請重新載入確認報價 / New searches require five companies; reload and confirm current pricing`, input.pricingVersion && input.pricingVersion !== pricing.version ? 409 : 400, "pricing_confirmation_required");
     const backup = backupEnabled();
     if ((input.provider || "omrade") !== (backup ? backupProvider : "omrade")) throw new ProspectingError("搜尋服務已切換，請重載並重新同意傳送條件 / Search provider changed; reload and confirm consent", 409, "provider_confirmation_required");

@@ -1,4 +1,6 @@
 import "server-only";
+import { creditsEnabledFor } from "@/lib/credits/authority";
+import { units } from "@/lib/credits/policy";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { PaypalOrder } from "./paypal";
@@ -40,6 +42,7 @@ export async function fulfillCreditOrder(
             return { userId: purchase.userId, added: false };
           }
 
+          const unified = await creditsEnabledFor(tx as unknown as Prisma.TransactionClient, purchase.userId);
           await tx.aiCreditPurchase.update({
             where: { id: purchase.id },
             data: {
@@ -48,7 +51,8 @@ export async function fulfillCreditOrder(
               completedAt: new Date(),
             },
           });
-          await tx.aiAllowance.upsert({
+          if (unified) await (await import("@/lib/credits/service")).grantCredit(tx as unknown as Prisma.TransactionClient, purchase.userId, { key: `purchase:${purchase.id}`, amount: units(purchase.credits), origin: "purchased", reason: "已付款加購點數 / Purchased Credits" });
+          else await tx.aiAllowance.upsert({
             where: { userId: purchase.userId },
             create: { userId: purchase.userId, bonusBalance: purchase.credits },
             update: { bonusBalance: { increment: purchase.credits } },

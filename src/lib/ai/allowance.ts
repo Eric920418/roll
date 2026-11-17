@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import type { Account } from "@/lib/auth/account";
 import { getEffectivePlan } from "@/lib/billing/gate";
 import { monthlyCycle } from "./allowance-cycle";
+import { creditsEnabledFor, memberCreditsEnabled } from "@/lib/credits/authority";
+import { reserve, settle, summary, units } from "@/lib/credits/policy";
 
 export const AI_INCLUDED_PER_MONTH = 150;
 const RESERVATION_MS = 15 * 60 * 1000;
@@ -15,9 +17,11 @@ export type AiUsageSummary = {
   bonusRemaining: number;
   resetsAt: string | null;
   rewardRemaining: number;
+  credits?: Awaited<ReturnType<typeof import("@/lib/credits/service").creditSnapshot>>;
 };
 
-async function allowanceCycleFor(account: Account, now: Date) {
+
+export async function allowanceCycleFor(account: Pick<Account, "plan" | "trialPlan" | "trialStartsAt" | "trialEndsAt" | "trialPolicy" | "founderStartedAt" | "founderEndsAt" | "planUpdatedAt" | "createdAt" | "paypalSubscriptionId" | "subscriptionStatus" | "currentPeriodEnd" | "rollonMember" | "betaAccess" | "id">, now: Date, db: Pick<Prisma.TransactionClient, "trialFeedbackGrant" | "subscription"> = prisma as unknown as Prisma.TransactionClient) {
   const effectivePlan = getEffectivePlan(account, now);
   if (effectivePlan === "free") return null;
 
@@ -41,7 +45,7 @@ async function allowanceCycleFor(account: Account, now: Date) {
     getEffectivePlan({ ...account, betaAccess: false }, now) === account.trialPlan &&
     paidPlan !== account.trialPlan;
   if (trialActive) {
-    const grant = await prisma.trialFeedbackGrant.findUnique({ where: { userId: account.id } });
+    const grant = await db.trialFeedbackGrant.findUnique({ where: { userId: account.id } });
     if (grant && grant.trialStartsAt.getTime() === account.trialStartsAt!.getTime() && grant.originalEndsAt <= now && grant.aiCycleStart && grant.aiCycleEnd) {
       return grant.createdAt < grant.originalEndsAt ? monthlyCycle(account.trialStartsAt!, new Date(grant.originalEndsAt.getTime() - 1)) : { start: grant.aiCycleStart, end: grant.aiCycleEnd };
     }
@@ -49,13 +53,15 @@ async function allowanceCycleFor(account: Account, now: Date) {
   }
 
   const sub = account.paypalSubscriptionId
-    ? await prisma.subscription.findUnique({
+    ? await db.subscription.findUnique({
         where: { paypalSubscriptionId: account.paypalSubscriptionId },
         select: { startedAt: true },
       })
     : null;
   return monthlyCycle(sub?.startedAt ?? account.founderStartedAt ?? account.planUpdatedAt ?? account.createdAt, now);
 }
+
+
 
 async function serializable<T>(
   work: (tx: Prisma.TransactionClient) => Promise<T>,
@@ -131,6 +137,16 @@ export async function reserveAiUsage(account: Account, scope: "paid" | "copilot"
   const cycle = await allowanceCycleFor(account, now);
   if (!cycle && scope !== "copilot") return null;
 
+  if (await memberCreditsEnabled(account.id)) return serializable(async tx => {
+    const { refreshCreditGrants, withCreditWallet } = await import("@/lib/credits/service");
+    await refreshCreditGrants(tx, account.id);
+    const available = await withCreditWallet(tx, account.id, wallet => summary(wallet).available);
+    if (available < 1) return null;
+    const usage = await tx.aiUsage.create({ data: { userId: account.id, source: "credits", expiresAt: new Date(now.getTime() + RESERVATION_MS) } });
+    await withCreditWallet(tx, account.id, wallet => reserve(wallet, { id: `ai:${usage.id}`, amount: units(1), kind: "ai", expiresAt: usage.expiresAt.toISOString() }, now));
+    return usage.id;
+  });
+
   return serializable(async (tx) => {
     const allowance = await currentState(tx, account.id, cycle, now);
     let source: "included" | "bonus" | "reward";
@@ -172,6 +188,12 @@ export async function completeAiUsage(
   await serializable(async (tx) => {
     const usage = await tx.aiUsage.findUnique({ where: { id: usageId } });
     if (!usage || usage.status !== "pending") return;
+    if (await creditsEnabledFor(tx, usage.userId)) {
+      const { withCreditWallet } = await import("@/lib/credits/service");
+      await withCreditWallet(tx, usage.userId, wallet => settle(wallet, `ai:${usage.id}`, succeeded ? "capture" : "refund", succeeded ? "AI 回答完成 / AI answer completed" : "AI 失敗，退回點數 / AI failed; Credits returned", new Date(), !succeeded));
+      await tx.aiUsage.updateMany({ where: { id: usage.id, status: "pending" }, data: { status: succeeded ? "succeeded" : "failed", completedAt: new Date() } });
+      return;
+    }
     const allowance = await tx.aiAllowance.findUnique({ where: { userId: usage.userId } });
     if (!allowance) return;
 
@@ -201,6 +223,11 @@ export async function completeAiUsage(
 }
 
 export async function getAiUsageSummary(account: Account): Promise<AiUsageSummary | null> {
+  if (await memberCreditsEnabled(account.id)) {
+    const { creditSnapshot } = await import("@/lib/credits/service");
+    const credits = await creditSnapshot(account.id);
+    return { included: 150, used: 0, remaining: credits.available, bonusRemaining: 0, rewardRemaining: 0, resetsAt: credits.expiring[0]?.expiresAt ?? null, credits };
+  }
   const now = new Date();
   const cycle = await allowanceCycleFor(account, now);
   const allowance = await serializable((tx) => currentState(tx, account.id, cycle, now));

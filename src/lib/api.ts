@@ -1,3 +1,4 @@
+import { creditFailure } from "./credits/errors";
 import { NextResponse } from "next/server";
 import { SecurityUnavailableError } from "./security/http";
 import { logSecurityError, publicErrorMessage } from "./security/log";
@@ -24,6 +25,8 @@ export function unauthorized() {
  *   避免把 Prisma / DB / 堆疊等內部細節外洩給 client。
  */
 export function failFromError(error: unknown, status = 500) {
+  const credits = creditFailure(error);
+  if (credits) return NextResponse.json({ error: credits.message, code: credits.code }, { status: 409, headers: { "Cache-Control": "private, no-store" } });
   if (status >= 500) {
     const requestId = logSecurityError("api.unexpected", error);
     if (isProviderCreditExhausted(error)) {

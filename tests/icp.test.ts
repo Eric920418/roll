@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url);
 function load<T>(path: string, mocks: Record<string, unknown>, globals: Record<string, unknown> = {}): T {
   const loaded = { exports: {} };
   runInNewContext(ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
-    module: loaded, exports: loaded.exports, require: (id: string) => id === "@/lib/ai/anthropic-options" ? { anthropicOptions } : id === "server-only" ? {} : id in mocks ? mocks[id] : require(id),
+    module: loaded, exports: loaded.exports, require: (id: string) => id === "./CreditsWallet" ? { default: () => null } : id === "@/lib/ai/anthropic-options" ? { anthropicOptions } : id === "server-only" ? {} : id in mocks ? mocks[id] : require(id),
     console: { error() {} }, process: { env: {} }, Date, Set, JSON, Object, Error, ...globals,
   });
   return loaded.exports as T;

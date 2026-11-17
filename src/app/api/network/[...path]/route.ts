@@ -1,4 +1,5 @@
-import { tokenQuote } from "@/lib/billing/commerce";
+import { memberCreditsEnabled } from "@/lib/credits/authority";
+import { memberPricing } from "@/lib/credits/pricing";
 import { getViewerPrivacy, writeViewerPrivacy, identifiedVisitors } from "@/lib/network/identified-visitors";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -17,7 +18,7 @@ async function handle(req: Request, context: Context) {
     if (req.method !== "GET") { const blocked = browserMutationGuard(req, true); if (blocked) return blocked; }
     const uid = await memberAccess(req.method !== "GET"); if (uid instanceof Response) return uid;
     const { path } = await context.params, action = path.join("/");
-    if (req.method === "GET" && action === "features") return privateOk({ enabled: networkEnabled(), ...await features(uid), pricing: await tokenQuote() });
+    if (req.method === "GET" && action === "features") return privateOk({ enabled: networkEnabled(), ...(await memberCreditsEnabled(uid) ? { credits: true } : {}), ...await features(uid), pricing: await memberPricing(uid) });
     requireEnabled();
     if (req.method === "GET") {
       if (path[0] === "profiles" && path.length === 3 && path[2] === "connection") return privateOk(await connectionForProfile(uid, path[1]!));

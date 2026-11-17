@@ -6,6 +6,7 @@ import { getEffectivePlan } from "@/lib/billing/gate";
 import { getActiveActionPlan } from "@/lib/action-plan/service";
 import { fortnightIndex, periodEnd } from "@/lib/playbook/quiz";
 import { REWARD_RULES as rules, completeRewardProfile, rewardKeys } from "./policy";
+import { creditsEnabledFor, memberCreditsEnabled } from "@/lib/credits/authority";
 
 export class RewardError extends Error {
   constructor(message: string, public status = 409, public code = "reward_conflict") { super(message); }
@@ -25,6 +26,7 @@ export async function rewardTransaction<T>(work: (tx: Prisma.TransactionClient) 
 }
 // Every award/redemption serializes on this row, including awards from other feature transactions.
 export async function lockRewardAccount(tx: Prisma.TransactionClient, userId: string) {
+  await creditsEnabledFor(tx, userId);
   const existing = await tx.rewardAccount.findUnique({ where: { userId } });
   const account = await tx.rewardAccount.upsert({ where: { userId }, create: { userId }, update: { balance: { increment: 0 } } });
   if (!existing) {
@@ -44,8 +46,14 @@ export async function awardReward(tx: Prisma.TransactionClient, userId: string, 
   if (await tx.rewardEntry.findUnique({ where: { userId_eventKey: { userId, eventKey } } })) return false;
   let points: number = rules[kind];
   if (kind === "action" && await tx.rewardEntry.count({ where: { userId, kind, dayKey: day, points: { gt: 0 } } }) >= rules.dailyActions) points = 0;
+  const unified = await creditsEnabledFor(tx, userId);
+  if (unified) {
+    const { grantCredit, withCreditWallet } = await import("@/lib/credits/service");
+    await withCreditWallet(tx, userId, () => undefined);
+    if (points) await grantCredit(tx, userId, { key: `reward:${eventKey}`, amount: points * 5, origin: "reward", earned: true, reason: `獎勵點數：${kind} / Reward Credits: ${kind}` });
+  }
   await tx.rewardEntry.create({ data: { userId, eventKey, kind, points, dayKey: day } });
-  if (points) await tx.rewardAccount.update({ where: { userId }, data: { balance: { increment: points } } });
+  if (points && !unified) await tx.rewardAccount.update({ where: { userId }, data: { balance: { increment: points } } });
   return points > 0;
 }
 export async function awardProfile(tx: Prisma.TransactionClient, userId: string) {
@@ -56,7 +64,9 @@ export async function claimVisit(userId: string) {
   await rewardTransaction(async tx => { await awardReward(tx, userId, "visit", rewardKeys().day); await awardProfile(tx, userId); });
 }
 export async function redeemReward(userId: string, requestId: string) {
+  if (await memberCreditsEnabled(userId)) throw new RewardError("獎勵已自動轉為點數，無須再次兌換 / Rewards are already Credits; no redemption required", 409, "credits_already_converted");
   return rewardTransaction(async tx => {
+    if (await creditsEnabledFor(tx, userId)) throw new RewardError("獎勵已轉為點數 / Rewards are already Credits; no redemption required", 409, "credits_already_converted");
     const account = await lockRewardAccount(tx, userId);
     const replay = await tx.rewardRedemption.findUnique({ where: { userId_requestId: { userId, requestId } } });
     if (replay) return replay;
@@ -95,6 +105,7 @@ export async function getRewardSummary(cursor?: string, redemptionRequestId?: st
   const account = await getCurrentAccount();
   if (!account) throw new RewardError("未授權，請重新登入 / Please log in", 401, "unauthorized");
   const userId = account.id, { day, month } = rewardKeys();
+  const credits = await memberCreditsEnabled(userId) ? await (await import("@/lib/credits/service")).creditSnapshot(userId) : undefined;
   const [wallet, entries, monthly, visit, allowance, reminder, delivery, activities, confirmedRedemption] = await Promise.all([
     prisma.rewardAccount.findUnique({ where: { userId } }),
     prisma.rewardEntry.findMany({ where: { userId, points: { not: 0 }, ...(cursor ? { id: { lt: cursor } } : {}) }, orderBy: { id: "desc" }, take: 51 }),
@@ -107,8 +118,9 @@ export async function getRewardSummary(cursor?: string, redemptionRequestId?: st
     redemptionRequestId ? prisma.rewardRedemption.findUnique({ where: { userId_requestId: { userId, requestId: redemptionRequestId } }, select: { requestId: true } }) : Promise.resolve(null),
   ]);
   return {
+    credits,
     confirmedRedemptionRequestId: confirmedRedemption?.requestId ?? null,
-    balance: wallet?.balance ?? 0, visitedToday: Boolean(visit), rewardRemaining: allowance?.rewardBalance ?? 0,
+    balance: credits?.available ?? wallet?.balance ?? 0, visitedToday: Boolean(visit), rewardRemaining: credits ? credits.available : allowance?.rewardBalance ?? 0,
     monthlyRedeemed: monthly._sum.credits ?? 0, ...activities,
     entries: entries.slice(0, 50).map(e => ({ id: e.id, kind: e.kind, points: e.points, createdAt: e.createdAt.toISOString() })),
     nextCursor: entries.length > 50 ? entries[49].id : null,

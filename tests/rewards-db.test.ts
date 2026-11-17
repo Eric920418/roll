@@ -26,7 +26,7 @@ test("Rewards integration in isolated PostgreSQL", { skip: !connectionString }, 
   let activePlan: { nextMoves: { id: string; title: string; done: boolean; dependency: { blocked: boolean } }[] } | null = null;
   const quizBank = [{ id: "one", options: ["a","b"], answerIndex: 0 }, { id: "two", options: ["a","b"], answerIndex: 1 }];
   const mocks: Record<string, unknown> = {
-    "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/auth/account": { getCurrentAccount: async () => db.user.findUnique({ where: { id: currentUser }, include: { profile: true } }), getBetaAccess: async () => false },
+    "@/lib/credits/authority": { creditsEnabledFor: async () => false, memberCreditsEnabled: async () => false }, "server-only": {}, "@/lib/prisma": { prisma: db }, "@/lib/auth/account": { getCurrentAccount: async () => db.user.findUnique({ where: { id: currentUser }, include: { profile: true } }), getBetaAccess: async () => false },
     "@/lib/billing/gate": { getEffectivePlan: (account: { plan: string }) => account.plan },
     "@/lib/action-plan/service": { getActiveActionPlan: async () => activePlan },
     "@/lib/playbook/quiz": { fortnightIndex: () => 0, periodEnd: () => new Date(Date.now()+86400000), selectForPeriod: () => quizBank, scoreAttempt: (_bank: unknown, answers: { questionId: string; choice: number }[]) => ({ score: 2, total: 2, results: answers }) },

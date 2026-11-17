@@ -1,0 +1,47 @@
+{
+  "asOf": "2026-11-16T04:00:00.000Z",
+  "cases": [
+    {
+      "userId": "legacy-member-example",
+      "tokenAvailable": 230,
+      "tokenReserved": 20,
+      "rewardPoints": 30,
+      "earnedRewardPoints": 130,
+      "bonus": 10,
+      "reward": 5,
+      "referralDebt": 0,
+      "earnedReferrals": 0,
+      "included": {
+        "remaining": 40,
+        "expiresAt": "2026-11-30T04:00:00.000Z",
+        "cycleStart": "2026-11-01T04:00:00.000Z"
+      },
+      "holds": [
+        {
+          "id": "original-search",
+          "amount": 20,
+          "kind": "search",
+          "status": "reserved",
+          "expiresAt": "2026-11-17T04:00:00.000Z",
+          "origin": "legacy_token",
+          "lotExpiresAt": null
+        }
+      ],
+      "monthlyGrant": 150
+    },
+    {
+      "userId": "free-member-with-old-purchases",
+      "tokenAvailable": 150,
+      "tokenReserved": 0,
+      "rewardPoints": 5,
+      "earnedRewardPoints": 105,
+      "bonus": 10,
+      "reward": 5,
+      "referralDebt": 2,
+      "earnedReferrals": 5,
+      "included": null,
+      "holds": [],
+      "monthlyGrant": 150
+    }
+  ]
+}

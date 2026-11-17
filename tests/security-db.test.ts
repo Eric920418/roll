@@ -14,7 +14,7 @@ import type { PaypalOrder } from "../src/lib/billing/paypal";
 function load<T>(file: string, mocks: Record<string, unknown>): T {
   const require = createRequire(import.meta.url), loaded = { exports: {} };
   const source = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
-  runInNewContext(source, { module: loaded, exports: loaded.exports, process, console, Date, Error, Buffer, URL, Request, Response, crypto: { randomUUID }, require: (id: string) => id === "server-only" ? {} : id in mocks ? mocks[id] : require(id) });
+  runInNewContext(source, { module: loaded, exports: loaded.exports, process, console, Date, Error, Buffer, URL, Request, Response, crypto: { randomUUID }, require: (id: string) => id === "@/lib/credits/authority" ? { creditsEnabledFor: async () => false, memberCreditsEnabled: async () => false } : id === "server-only" ? {} : id in mocks ? mocks[id] : require(id) });
   return loaded.exports as T;
 }
 const connectionString = process.env.ROLL_REWARDS_TEST_DATABASE_URL;
