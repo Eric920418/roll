@@ -3257,7 +3257,7 @@ Email 偏好集中「帳號與方案 → 通知」，保留原同意、時區與
 
 本機錢包使用百分之一點整數，依最早到期來源扣點、購買點最後扣，預扣保留逐來源配置；結算、退款及獎勵發放有請求去重。歷史預扣與已結算可退款訂單保留原數量，不套新價。確認的系統／供應商失敗跨到期日才補回不過期點數；主動取消、拒絕與七日未接受仍退回原來源及期限，原點數已過期就不轉成永久點，避免預扣跨月洗點。普通到期不影響累積成就。累積成就由有效歷史獎勵重建，月贈、購點、退款、轉換不重複計入；推薦撤回不足只抵扣未來推薦獎勵，不扣購買點。
 
-本機原型沿用既有 Setting 保存每會員來源批次、預扣及追加收據，不改 schema、既有餘額或會員方案；正式上線前須將批次及收據正規化、完成逐會員對帳與價格／權益核准，不能直接把本機旗標當正式開關。同一個已轉換的 QA 帳號不可關閉旗標後繼續消費舊帳；舊餘額僅保留作轉換對照，正式切換必須另做不可重複消費的切換管制。
+前一階段原型（已由下方正式帳本取代）沿用既有 Setting 保存每會員來源批次、預扣及追加收據，不改 schema、既有餘額或會員方案；正式上線前須將批次及收據正規化、完成逐會員對帳與價格／權益核准，不能直接把本機旗標當正式開關。同一個已轉換的 QA 帳號不可關閉旗標後繼續消費舊帳；舊餘額僅保留作轉換對照，正式切換必須另做不可重複消費的切換管制。
 
 已接入：共用 AI 預扣／完成（POLARIS、ICP、計畫、證據分析等）、交流／公司搜尋預扣與退款、任務獎勵、已付款加購入帳、推薦發放／撤回／欠額抵扣。會員錢包、帳號用量、獎勵頁、首頁、導覽與操作價格依本機模式顯示點數／Credits，載入狀態亦沿用同一名稱；舊兌換入口停止重複兌換。新獎勵、AI 與搜尋完成後會更新錢包。實際付款訂單入口於本機模式明確阻擋；刪除 QA 帳號時一併清理其本機錢包。
 
@@ -3313,10 +3313,57 @@ ROLL_UNIFIED_CREDITS_LOCAL=true ROLL_LOCAL_POSTGRES=true DATABASE_URL=postgresql
 
 重跑指令（只讀正式庫，沒有套用模式）：`pnpm exec tsx scripts/credits-production-audit.ts --production-readonly`。
 
-# 正式 Credits 帳本與隔離切換演練（2026-11-17，開發中，未發布）
+# 正式 Credits 帳本、切換與回滾（2026-11-17，隔離驗證，本輪不執行正式切換）
 
-本批建立追加式收據、來源批次與逐來源預扣的正規化帳本，僅在新建 loopback QA 資料庫演練。正式資料、設定與部署不操作。切換前逐會員重新對帳並綁定來源指紋；來源變動拒絕切換。尚無新帳務可退回原制度，有新交易後僅回滾相容程式，持續使用新帳本，避免重複開放舊餘額。驗證結果與執行方式於本批完成時補齊。
+本批只建置及驗證程式與 SQL，在四個新建 loopback QA 資料庫使用合成會員演練。沒有再次讀取正式會員、連線正式資料庫、執行正式 SQL、推送或部署；上一節 29 位正式會員的唯讀報告是當時快照，不能替代日後切換前的新對帳。
 
+`prisma/credits.sql` 為純新增結構，與 Prisma schema 同步：每會員帳戶、持續生效的切換歸屬、來源批次、預扣、逐來源配置、追加式收據、切換操作收據及全站切換狀態。金額為百分之一點整數。資料庫禁止修改／刪除收據、刪除批次、修改原來源／期限／預扣金額、TRUNCATE；延後至交易提交的約束逐一核對可用、預扣、累積成就、推薦欠額與連續收據序號，不平就整筆取消。不能用 `prisma db push` 取代這份 SQL，因為 Prisma schema 不包含這些函式與觸發器。尚未新增任何套件。
+
+切換是顯式操作，不再靠本機旗標或第一次查看餘額自動匯入舊會員。準備時重新核對餘額／帳本、AI 成功與預扣、付款加購、兌換、推薦欠額及原訂單收據，保存來源與權益指紋；不一致就停止，不補平或覆寫舊帳。準備與啟用分開：啟用時重新取得同一會員來源，指紋不同要求重做準備。全體切換核對完整會員清單，鎖定切換與註冊競爭；任何一位失敗，整批原子回滾。請求鍵、內容、操作人與原因綁定，相同請求重跑不重發、相同鍵但不同內容拒絕。資料庫在全站切換後對新註冊建立標記，再自動開新帳；不使用 createdAt 推測，避免註冊交易跨越切換時漏接。遺漏的舊會員拒絕走帳，不能誤當新會員重發。
+
+| 項目 | 正式帳本規則 |
+| --- | --- |
+| 舊可用 Token、已付加購、已兌換 AI、未兌換積分 | 保留原轉換比例及零頭，不新增到期日，不重發已兌換積分 |
+| 原當期 AI 與舊預扣 | 原 AI 週期、來源、預扣金額及已結算可退訂單保留 |
+| 原兩份月額度 | 原可累積月贈與原 AI 150 次分別發放；同月只發一次，後續較高新額度從新月份生效 |
+| 既有購買力與額度 | 搜尋／邀請費取原費率與現價較低者；月贈／公司限額／每日邀請取原權益與現值較高者 |
+| 累積成就 | 只累積有效獎勵；花點、到期、購點及退款不扣減或灌高成就 |
+| 後續走帳 | AI、交流、搜尋、任務獎勵、加購與推薦走同一新帳本；原餘額封存。既有業務收據保留供防重與流程使用，不得把其名目增減重新加到封存餘額 |
+
+會員路由直接讀持續生效的帳本歸屬，關掉 `ROLL_UNIFIED_CREDITS_LOCAL` 不會恢復舊餘額。資料庫另擋下舊程式對封存 Token／AI／獎勵／推薦餘額的寫入及不相容的帳務操作。非金錢的零分退訂紀錄仍可保存。已知帳本保護錯誤以完整中英文原因與錯誤碼回前端，SQL／連線字串不外洩。刪帳號前與提交時檢查未完成預扣；不能帶著預扣刪帳。刪除會員關聯後保留不含姓名／Email 的帳務收據及來源指紋；來源快照不保存完整會員或付款資料。歷史收據鍵仍可能含內部 ID，不宣稱為不可重新識別的匿名資料。
+
+**回滾不是還原舊餘額快照。**
+
+| 切換後狀態 | 回滾行為 |
+| --- | --- |
+| 沒有任何新收據，且原來源與權益指紋仍一致 | 帳戶標記 rolled_back，原帳重新生效；新帳開帳收據封存保留，不刪除；重做切換需新請求及新快照 |
+| 已有花點、預扣、領點、到期、退款，或原來源／權益變動 | 帳戶標記 compatible，新帳持續生效，保留所有新餘額、預扣及期限；僅能回滾到保留帳本適配器的相容程式 |
+| 全體回滾後 | 逐會員採上述安全路徑；新註冊仍使用新帳本。不可直接部署切換前任意舊版或停用／移除保護觸發器 |
+
+日後正式切換前，必須先保留已驗證的相容版本與資料庫備份、重新唯讀對帳並核准清單，再另行授權正式安裝／切換。備份用於復原演練，不可把舊資產表覆蓋到仍有新交易的帳本。此輪執行器刻意只接受 loopback `roll_rewards_qa*`，拒絕 production／Vercel／遠端／URL 參數，沒有正式庫執行開關，也不讀 `.env`；本機原型 Setting 已存在時拒絕重複匯入，請用新的隔離資料庫演練。
+
+隔離操作（每一行均須明確帶本機連線，不沿用正式 `.env`；不加 `--commit` 一律在交易內演練後 ROLLBACK）：
+
+```sh
+# 已有原系統 schema 的全新空 QA 庫；僅安裝新結構，逐表確認原資料指紋未變。
+ROLL_LOCAL_POSTGRES=true DATABASE_URL=postgresql://eric@localhost/roll_rewards_qa_credits_rehearsal_20261117 pnpm exec tsx scripts/credits-ledger.ts install --commit --request install-v1 --actor qa --reason isolated-rehearsal
+# 重新核對全部會員，保存準備紀錄與 0600 權限的待審清單（目標檔必須不存在）。
+ROLL_LOCAL_POSTGRES=true DATABASE_URL=postgresql://eric@localhost/roll_rewards_qa_credits_rehearsal_20261117 pnpm exec tsx scripts/credits-ledger.ts prepare --commit --request prepare-v1 --actor qa --reason isolated-rehearsal --out /tmp/credits-manifest-v1.json
+# 先演練；核對成功後加 --commit --request activate-v1 --actor qa --reason isolated-rehearsal。
+ROLL_LOCAL_POSTGRES=true DATABASE_URL=postgresql://eric@localhost/roll_rewards_qa_credits_rehearsal_20261117 pnpm exec tsx scripts/credits-ledger.ts activate --manifest /tmp/credits-manifest-v1.json
+# 唯讀對帳，不清理到期、不發月贈、不產生退款；包含封存帳的狀態，不能把封存餘額當可花總額。
+ROLL_LOCAL_POSTGRES=true DATABASE_URL=postgresql://eric@localhost/roll_rewards_qa_credits_rehearsal_20261117 pnpm exec tsx scripts/credits-ledger.ts verify
+# 先演練回滾；核對後加 --commit --request rollback-v1 --actor qa --reason isolated-rehearsal。
+ROLL_LOCAL_POSTGRES=true DATABASE_URL=postgresql://eric@localhost/roll_rewards_qa_credits_rehearsal_20261117 pnpm exec tsx scripts/credits-ledger.ts rollback
+```
+
+實際 CLI 演練：安裝前／後 **82 張原資料表指紋一致**；安裝與啟用的預設演練確實不保留新表／入帳，啟用後兩個合成會員分別保留 17／25 點；回滾演練後仍 active，正式執行本機回滾後 rolled_back，42 點原餘額原封不動。操作輸出、私有清單及回滾前後唯讀核對位於 `/tmp/nova-credit-final-*.json`，SQL 檔 SHA-256：`085f4d1e7104280e1d92452c062671b8c7530785e9fcf5be73912a66a195d921`。
+
+驗收：固定的本批交付快照 `/tmp/roll-credit-ledger-build-20261117` 完整隔離回歸 **700 項通過、0 失敗、0 略過**，包含同週期價格調整不重發／不鎖住錢包、下一月份取得較高新贈額及獨立 AI 額度。涵蓋來源變動與部分失敗整批取消、舊程式封存保護、旗標關閉仍走新帳、早期／有交易回滾、並行預扣與付款一次入帳、交易取消、跨月退款、推薦欠額、累積成就與保留會員全部原始欄位。TypeScript、Prisma schema 驗證、範圍 ESLint 通過；隔離程式副本以 Webpack 完成正式模式建置。未重新測手機實機或真實 AI／PayPal／寄信；沒有正式資料／設定讀寫、推送或部署。
+
+快照驗證紀錄與逐檔 SHA-256 在 `/tmp/nova-credit-ledger-verification.json`，測試／建置輸出在 `/tmp/roll-credit-ledger-fixed-snapshot-test.log`、`/tmp/roll-credit-ledger-release-build.log`。本批財務程式、SQL 與測試已逐檔確認和快照相同。共享工作區同時另有舊任務流程改動；最近一次現場全套在其 legacy-sequence／legacy-organize 測試載入處有 7 項失敗（`/tmp/roll-credit-ledger-release-check.log`），該結果不屬於固定快照的 700 項通過，不宣稱現場所有進行中的修改已完成整合驗收。本輪保留該批工作，沒有回退其他人的修改。 上述為前輪歷史結果；這 7 項已於下方「舊流程載入修正與整個工作區完整回歸」重新驗證通過。
+
+目前採逐會員鎖與完整收據核對確保正確性；尚未做大規模點數流量壓測。收據量成長後須先量測，再將相同交易約束下的核對改為增量讀取，不能為效能移除帳本平衡與防重檢查。
 # 舊計畫今日任務相容修正（2026-11-17）
 
 - 共用服務辨識原系統五項客戶驗證範本，以讀取投影改為訪談、定位、評分、分級、付費試點；原任務 ID、資料、完成、積分及資料庫依賴原檔保留，不逐位會員改資料。自訂任務或自訂依賴不擅自重排。
@@ -3331,3 +3378,25 @@ ROLL_UNIFIED_CREDITS_LOCAL=true ROLL_LOCAL_POSTGRES=true DATABASE_URL=postgresql
 - 實際操作發現評分只存一項會顯示 1／1，已把進度分母與完成規則統一為至少四項，避免未達標卻看似完成。新舊工作區均使用同一計算。
 - 相依任務只回傳必要的識別、狀態與數量資料，不在 DTO 展開原始工作區或確認連結雜湊。
 - 隔離 Chrome 實際操作完成四欄定位、草稿跨重新載入保留、準備五個確認連結、五份受訪者頁面回覆、確認完成及自動切至評分。評分可新增、儲存條件／判斷方式／權重；不足四項或權重不足時保持不可完成。390px 裝置模式實測文件寬等於 390px，桌面雙欄及手機堆疊畫面保存於本機既有視覺目錄 `legacy-workflow/`。這些是明確標示的本機 QA 資料，不冒充 Vivian 已完成回覆或實機驗收。
+
+# 舊流程載入修正與整個工作區完整回歸（2026-11-17，本輪未部署）
+
+本輪保留現有全部修改，直接對 `/Users/eric/Desktop/roll` 目前工作區執行完整測試，包含尚未提交的 Credits 帳本、註冊標記、唯讀核對與回滾修改，以及 `53f26d7` 的舊流程整合。原先 7 項載入失敗的修正已存在於目前 main：`legacy-sequence` 使用專案別名匯入，`legacy-organize` 在訪談及工作區整合測試中透過既有 loader 與相同資料庫／權限／獎勵替身載入，避免相對路徑解析到 tests 目錄或繞過 `server-only` 替身。本輪保留並驗證這些修正，不額外修改已通過的產品邏輯，也不以略過測試消除失敗。
+
+原本失敗的計畫建立版本／額度／五選項生成、訪談交易、里程碑安全反轉、任務工作區及本週行事曆，逐一比對原失敗名稱後確認全部通過。相關 5 個檔案共 **51 項通過、0 失敗、0 略過**。整個現場工作區 `pnpm test` 共 **702 項通過、0 失敗、0 略過**，含專用空切換資料庫的全體啟用／回滾測試；取代前一輪僅固定帳本快照通過、現場另有 7 項載入失敗的限制。TypeScript 通過；全站 `pnpm lint` **0 錯誤、14 個既有警告**。完整工作區的建置通過：複製當下全部 1,063 個版控與未忽略檔案，不帶 `.env*`，使用本機 QA 與 Webpack 建置；財務程式、舊流程、測試與其他來源檔已用逐檔 SHA-256 確認測試期間未變，唯一新增交付修改為本 README 的本輪記錄。Webhook／AI／寄信依既有測試替身驗證，未呼叫真實服務。
+
+完整回歸使用明確指定的本機資料庫，不讀正式環境檔、不連正式資料庫；僅建立與清除測試自己的合成會員與紀錄，不重設原庫、不執行資料覆寫或 `accept-data-loss`。本輪沒有推送或部署。
+
+```sh
+DATABASE_URL=postgresql://eric@localhost/roll_rewards_qa_credits_ledger_20261117 ROLL_LOCAL_POSTGRES=true ROLL_REWARDS_TEST_DATABASE_URL=postgresql://eric@localhost/roll_rewards_qa_credits_ledger_20261117 ROLL_CREDITS_CUTOVER_TEST_DATABASE_URL=postgresql://eric@localhost/roll_rewards_qa_credits_cutover_20261117 pnpm test
+pnpm lint
+pnpm exec tsc --noEmit --incremental false
+```
+
+可覆核輸出：`/tmp/roll-legacy-loaders-focused-20261117.log`、`/tmp/roll-workspace-regression-20261117.log`、`/tmp/roll-workspace-lint-20261117.log`、`/tmp/roll-workspace-typecheck-20261117.log`、`/tmp/roll-workspace-build-20261117.log`。原始碼指紋及驗證摘要為 `/tmp/roll-workspace-regression-source-20261117.json`、`/tmp/roll-workspace-regression-verification-20261117.json`（0600）；完整建置副本在 `/tmp/roll-workspace-regression-build-20261117`。未重做實機瀏覽器、真實金流或大規模壓測，本輪結果不代表正式切換已獲授權。
+
+# 完整變更 Git 交付（2026-11-17）
+
+依本輪「全部推送」要求，將現有 Credits 註冊標記、帳本歸屬保護、同週期贈額防重、一致唯讀核對、測試及 README 一併提交至 main。已先同步遠端並確認無分歧；所有程式／SQL／測試與 702 項完整回歸通過的來源指紋一致，無須因單純 Git 交付重跑相同測試。環境檔、私有會員報告及憑證不納入提交。
+
+此專案的 Vercel Git 整合已啟用 main 自動正式部署；Git 推送與程式部署不能視為完全獨立。正式資料庫結構安裝、會員點數轉換及回滾不屬於這次推送範圍，仍須另行授權；建置僅產生 Prisma client，不執行 db push、資料遷移或會員換點。

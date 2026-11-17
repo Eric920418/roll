@@ -142,6 +142,7 @@ model ContactMessage {
 
 /// 公開平台註冊用戶
 model User {
+  creditRegistration CreditRegistration?
   creditAuthority CreditAuthority?
   planLocalizations PlanLocalization[]
   evidenceWorkspace EvidenceWorkspace?
@@ -1731,6 +1732,10 @@ model CreditControl {
   schemaVersion Int
   mode String
   activatedAt DateTime? @db.Timestamptz(6)
+}
+model CreditRegistration {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 model CreditAccount {
   id String @id

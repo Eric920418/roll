@@ -34,10 +34,10 @@ export async function refreshCreditGrants(tx: Prisma.TransactionClient, userId: 
   const period = now.toISOString().slice(0, 7);
   const priorMonthly = await tx.tokenLedger.findUnique({ where: { eventKey: `monthly:${userId}:${period}` } });
   return withCreditWallet(tx, userId, wallet => {
-    if (account.effectivePlan !== "free" && !priorMonthly) grant(wallet, { key: `monthly:${period}`, amount: Math.max(wallet.legacyMonthlyGrant, units(quote.monthlyGrant)), origin: "monthly", reason: "原方案月贈點數（可累積） / Legacy monthly Credits (roll over)" }, now);
+    if (account.effectivePlan !== "free" && !priorMonthly && !wallet.events.some(e => e.key === `monthly:${period}`)) grant(wallet, { key: `monthly:${period}`, amount: Math.max(wallet.legacyMonthlyGrant, units(quote.monthlyGrant)), origin: "monthly", reason: "原方案月贈點數（可累積） / Legacy monthly Credits (roll over)" }, now);
     if (cycle) {
       const cycleKey = `included:${cycle.start.toISOString()}`;
-      if (wallet.importedCycle !== cycle.start.toISOString()) grant(wallet, { key: cycleKey, amount: units(150), origin: "included", expiresAt: cycle.end.toISOString(), reason: "原方案 AI 週期額度 / Original plan AI cycle allowance" }, now);
+      if (wallet.importedCycle !== cycle.start.toISOString() && !wallet.events.some(e => e.key === cycleKey)) grant(wallet, { key: cycleKey, amount: units(150), origin: "included", expiresAt: cycle.end.toISOString(), reason: "原方案 AI 週期額度 / Original plan AI cycle allowance" }, now);
     }
   }, now);
 }

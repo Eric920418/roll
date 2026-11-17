@@ -75,13 +75,14 @@ test("normalized ledger cutover and rollback preserve money, expiry and membersh
     await t.test("immutable receipts and deferred database accounting reject partial or unbalanced writes", async () => {
       const u = await user(1); await activate(u.id); const account = (await run(tx => storage.accountFor(tx, u.id)))!;
       await assert.rejects(db.$executeRaw`UPDATE "CreditEntry" SET reason='tampered' WHERE "accountId"=${account.id}`, /CREDITS_IMMUTABLE/);
+      await assert.rejects(db.$executeRaw`DELETE FROM "CreditAuthority" WHERE "userId"=${u.id}`, /CREDITS_IMMUTABLE/);
       await assert.rejects(db.$executeRaw`DELETE FROM "CreditEntry" WHERE "accountId"=${account.id}`, /CREDITS_IMMUTABLE/);
       await assert.rejects(db.$executeRaw`UPDATE "CreditLot" SET remaining=999 WHERE "accountId"=${account.id} AND key='migration:token'`, /CREDITS_UNBALANCED/);
       await assert.rejects(db.$executeRaw`UPDATE "CreditLot" SET "expiresAt"=${now} WHERE "accountId"=${account.id}`, /CREDITS_TERMS_IMMUTABLE/);
       await assert.rejects(run(async tx => { await credits.grantCredit(tx, u.id, { key: "atomic", amount: 500, origin: "purchased", reason: "transaction abort" }); throw new Error("forced abort"); }), /forced abort/);
       assert.equal((await credits.creditSnapshot(u.id)).available, 1);
       const snapshot = JSON.stringify(await db.$queryRaw`SELECT * FROM "CreditEntry" WHERE "accountId"=${account.id}`, (_, v) => typeof v === "bigint" ? v.toString() : v);
-      const report = await run(async tx => { await tx.$executeRaw`SET TRANSACTION READ ONLY`; return verify.verifyLedger(tx, now); });
+      const report = await db.$transaction(async tx => { await tx.$executeRaw`SET TRANSACTION READ ONLY`; return verify.verifyLedger(tx, now); }, { isolationLevel: "RepeatableRead", timeout: 20000 });
       assert.equal(report.balanced, true);
       assert.equal(JSON.stringify(await db.$queryRaw`SELECT * FROM "CreditEntry" WHERE "accountId"=${account.id}`, (_, v) => typeof v === "bigint" ? v.toString() : v), snapshot);
     });
@@ -100,6 +101,16 @@ test("normalized ledger cutover and rollback preserve money, expiry and membersh
       const [retained] = await db.$queryRaw<{ status: string }[]>`SELECT status FROM "CreditAccount" WHERE id=${account.id}`; assert.equal(retained.status, "closed");
       assert((await db.$queryRaw<unknown[]>`SELECT * FROM "CreditEntry" WHERE "accountId"=${account.id}`).length > 0);
     });
+    await t.test("automatic grants keep their issued terms when the catalog changes mid-cycle", async () => {
+      quote = { monthlyGrant: 150, inviteFee: 5, searchFee: 20, monthlyCompanies: 10, dailyInvites: 20, version: "original", grantStartsPeriod: "" };
+      const u = await user(0); await db.user.update({ where: { id: u.id }, data: { rollonMember: true } }); await activate(u.id);
+      assert.equal((await credits.creditSnapshot(u.id)).available, 300);
+      quote = { ...quote, monthlyGrant: 200, version: "new" };
+      assert.equal((await credits.creditSnapshot(u.id)).available, 300, "Already-issued month is neither duplicated nor rejected after a price change");
+      now.setTime(new Date("2026-12-17T06:00:00Z").getTime());
+      assert.equal((await credits.creditSnapshot(u.id)).available, 500, "Future month gets the improved grant plus the separate AI benefit");
+    });
+
   } finally {
     await db.user.deleteMany({ where: { id: { in: users } } }); await db.$disconnect();
   }
@@ -135,7 +146,8 @@ test("whole-cohort activation is atomic; new registrations enrol and mixed rollb
     const request = op(); await run(tx => cutover.rollbackAll(tx, request)); await run(tx => cutover.rollbackAll(tx, request));
     assert.equal(await authority.memberCreditsEnabled(a.id), true); assert.equal((await credits.creditSnapshot(a.id)).available, 1.23);
     assert.equal(await authority.memberCreditsEnabled(b.id), false, "No post-cutover transactions can still use original accounting");
-    const newcomer = await create(); assert.equal(await authority.memberCreditsEnabled(newcomer.id), true);
+    const newcomer = await db.user.create({ data: { email: `inflight-${randomUUID()}@example.invalid`, createdAt: new Date("2000-01-01T00:00:00Z") } }); users.push(newcomer.id);
+    assert.equal(await authority.memberCreditsEnabled(newcomer.id), true);
     assert.equal((await credits.creditSnapshot(newcomer.id)).available, 0);
     await run(tx => credits.withCreditWallet(tx, a.id, w => policy.adjust(w, "debit", -23, "admin correction")));
     await run(tx => credits.withCreditWallet(tx, a.id, w => policy.adjust(w, "debit", -23, "admin correction")));

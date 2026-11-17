@@ -3,6 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { readWallet, type CreditAccountRow } from "./storage";
 import { summary } from "./policy";
 export async function verifyLedger(tx: Prisma.TransactionClient, now = new Date()) {
+  const [mode] = await tx.$queryRaw<{ readOnly: string; isolation: string }[]>`SELECT current_setting('transaction_read_only') AS "readOnly",current_setting('transaction_isolation') AS isolation`;
+  if (mode.readOnly !== "on" || !["repeatable read", "serializable"].includes(mode.isolation)) throw new Error("核對需一致唯讀快照 / Verification requires a repeatable read-only snapshot");
   const rows = await tx.$queryRaw<CreditAccountRow[]>`SELECT * FROM "CreditAccount" ORDER BY id`;
   const results = [];
   for (const account of rows) {

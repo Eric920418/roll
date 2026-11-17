@@ -4,6 +4,16 @@ CREATE TABLE "CreditControl" (
   mode TEXT NOT NULL CHECK (mode IN ('legacy','active','compatible')), "activatedAt" TIMESTAMPTZ
 );
 INSERT INTO "CreditControl" VALUES ('main',1,'legacy',NULL);
+CREATE TABLE "CreditRegistration" (
+  "userId" TEXT PRIMARY KEY REFERENCES "User"(id) ON DELETE CASCADE
+);
+CREATE FUNCTION nova_credit_registration() RETURNS TRIGGER LANGUAGE plpgsql AS $$ BEGIN
+  IF EXISTS(SELECT 1 FROM "CreditControl" WHERE id='main' AND mode IN ('active','compatible')) THEN
+    INSERT INTO "CreditRegistration"("userId") VALUES(NEW.id);
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER credit_registration AFTER INSERT ON "User" FOR EACH ROW EXECUTE FUNCTION nova_credit_registration();
 CREATE TABLE "CreditAccount" (
   id TEXT PRIMARY KEY, status TEXT NOT NULL CHECK (status IN ('prepared','active','compatible','rolled_back','superseded','closed')),
   version INTEGER NOT NULL DEFAULT 0 CHECK (version >= 0), "activationSequence" INTEGER,
@@ -106,7 +116,7 @@ DO $$ DECLARE table_name TEXT; BEGIN
   FOREACH table_name IN ARRAY ARRAY['CreditAccount','CreditLot','CreditHold','CreditAllocation'] LOOP
     EXECUTE format('CREATE TRIGGER credit_no_delete BEFORE DELETE ON %I FOR EACH ROW EXECUTE FUNCTION nova_credit_immutable()',table_name);
   END LOOP;
-  FOREACH table_name IN ARRAY ARRAY['CreditAccount','CreditLot','CreditHold','CreditAllocation','CreditEntry','CreditTransition','CreditAuthority','CreditControl'] LOOP
+  FOREACH table_name IN ARRAY ARRAY['CreditAccount','CreditLot','CreditHold','CreditAllocation','CreditEntry','CreditTransition','CreditAuthority','CreditControl','CreditRegistration'] LOOP
     EXECUTE format('CREATE TRIGGER credit_no_truncate BEFORE TRUNCATE ON %I FOR EACH STATEMENT EXECUTE FUNCTION nova_credit_immutable()',table_name);
   END LOOP;
 END $$;
@@ -151,3 +161,12 @@ CREATE TRIGGER credit_lot_terms BEFORE UPDATE ON "CreditLot" FOR EACH ROW EXECUT
 CREATE TRIGGER credit_hold_terms BEFORE UPDATE ON "CreditHold" FOR EACH ROW EXECUTE FUNCTION nova_credit_terms_immutable();
 CREATE TRIGGER credit_account_terms BEFORE UPDATE ON "CreditAccount" FOR EACH ROW EXECUTE FUNCTION nova_credit_terms_immutable();
 CREATE TRIGGER credit_allocation_immutable BEFORE UPDATE ON "CreditAllocation" FOR EACH ROW EXECUTE FUNCTION nova_credit_immutable();
+
+CREATE FUNCTION nova_credit_authority_guard() RETURNS TRIGGER LANGUAGE plpgsql AS $$ BEGIN
+  IF (TG_OP='DELETE' AND EXISTS(SELECT 1 FROM "User" WHERE id=OLD."userId"))
+    OR (TG_OP='UPDATE' AND (NEW."userId"<>OLD."userId" OR EXISTS(SELECT 1 FROM "CreditAccount" WHERE id=OLD."accountId" AND status IN ('active','compatible')))) THEN
+    RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='CREDITS_IMMUTABLE: 不得移除或改指已生效帳本 / Active ledger authority cannot be removed or redirected';
+  END IF;
+  RETURN COALESCE(NEW,OLD);
+END $$;
+CREATE TRIGGER credit_authority_guard BEFORE UPDATE OR DELETE ON "CreditAuthority" FOR EACH ROW EXECUTE FUNCTION nova_credit_authority_guard();

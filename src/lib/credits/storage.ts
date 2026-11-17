@@ -6,6 +6,7 @@ export type CreditAccountRow = { id: string; status: string; version: number; ac
 export async function accountFor(tx: DB, uid: string) {
   return (await tx.$queryRaw<CreditAccountRow[]>`SELECT a.* FROM "CreditAccount" a JOIN "CreditAuthority" p ON p."accountId"=a.id WHERE p."userId"=${uid}`)[0] ?? null;
 }
+// shortcut: reconstruct full receipts per member; use incremental reads when measured ledger volume causes latency.
 export async function readWallet(tx: DB, account: CreditAccountRow): Promise<CreditWallet> {
   const id = account.id;
   const [lots, holds, allocations, events] = await Promise.all([
