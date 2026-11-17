@@ -53,6 +53,7 @@ export async function assertTaskWorkspaceComplete(tx: Prisma.TransactionClient, 
     if (organizeMetadata(saved.taskFinding).organizeData) {
       const view = await getLegacyOrganize(tx, userId, action.actionPlanId, action.id);
       if (!view.result.ready) throw new PlanWriteError(view.result.reasons.join("；"), 409);
+      await tx.actionItem.update({ where: { id: action.id }, data: { metricCurrent: view.result.current, metricTarget: view.result.target, metricUnit: view.step === "01-2" ? "confirmations" : "criteria" } });
       return;
     }
   }

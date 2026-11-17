@@ -107,6 +107,9 @@ test("Actual legacy five-task PostgreSQL path: ordering, records, links, replies
     failReward = true; assert.equal((await patch(tasks[2].id, { done: true })).status, 500); assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: tasks[2].id } })).done, false); failReward = false;
     assert.equal((await patch(tasks[2].id, { done: true })).status, 200); assert.equal((await patch(tasks[2].id, { done: true })).status, 200);
     assert.equal(await db.rewardEntry.count({ where: { userId: owner.id, eventKey: "action:" + tasks[2].id } }), 1);
+    const completedPositioning = await db.actionItem.findUniqueOrThrow({ where: { id: tasks[2].id } });
+    assert.equal(completedPositioning.metricCurrent, 5, "Completion persists the verified count instead of relying on future read-time recalculation");
+    assert.equal((await service.getActiveActionPlan(owner.id))!.actions.find(a => a.id === tasks[2].id)?.metric?.current, 5);
     active = (await service.getActiveActionPlan(owner.id))!; assert.equal(active.nextMoves[0].id, tasks[3].id);
     const criteria = { ...emptyFlowData("organize"), criteria: Array.from({ length: 4 }, (_, i) => ({ id: "c" + i, label: "Public criterion " + i, weight: 25, sources: data.selections.slice(0, 3), confirmed: true })) } as OrganizeData;
     assert.equal((await patch(tasks[3].id, { organizeData: criteria })).status, 200); assert.equal((await patch(tasks[3].id, { done: true })).status, 200);

@@ -1,6 +1,6 @@
 import { commercialStateSchema } from "@/lib/validation/schema";
 import { dependencySatisfied } from "./dependency";
-import { workspaceSchema, storedFindingSchema, type TaskWorkspace, type TaskFinding, workspaceKind, interviewTarget } from "./workspace";
+import { workspaceSchema, storedFindingSchema, type TaskWorkspace, type TaskFinding } from "./workspace";
 import { BOTTLENECKS, IMPACT_WEIGHTS, bottleneckLabel, urgencyWeight, shortStepTitle } from "./constants";
 
 export type RankableAction = {
@@ -195,7 +195,7 @@ export function rankActions(actions: RankableAction[], milestoneBlocks = new Map
       displayNumber: numbers.get(action.id),
       milestonePosition: positions.get(action.milestoneId || "") ?? null,
       completedAt: action.completedAt ? new Date(action.completedAt).toISOString() : null,
-      metric: workspaceKind(action) === "interview" && action.recordingMode !== "interview" ? { target: interviewTarget(action), unit: "companies", current: 0 } : { target: action.metricTarget ?? null, unit: action.metricUnit ?? null, current: action.metricCurrent ?? null },
+      metric: { target: action.metricTarget ?? null, unit: action.metricUnit ?? null, current: action.metricCurrent ?? null },
       title: (action.clientKey.startsWith("nova_v2_") && shortStepTitle(action.title)) || humanizeActionText(action.title),
       impact: { label: action.impact, weight: impactWeight },
       urgency: {

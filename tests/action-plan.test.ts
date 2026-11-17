@@ -26,6 +26,7 @@ import {
 } from "../src/lib/action-plan/dashboard";
 import { formatActionTime, legacyHoursForMinutes } from "../src/lib/action-plan/time";
 import type { ActionPlanDto } from "../src/lib/action-plan/service";
+import { pdfRuntime } from "./helpers/pdf-runtime";
 
 function action(overrides: Partial<RankableAction> = {}): RankableAction {
   return {
@@ -87,6 +88,28 @@ function generated(index: number): GeneratedAction {
     outcomeTime: { min: 2, max: 7 },
   };
 }
+
+test("Legacy conversation progress preserves stored values, including unknown and completed records", () => {
+  for (const title of ["Interview 8 founders", "Write a positioning statement"]) for (const done of [false, true]) {
+    for (const metric of [{ metricCurrent: null, metricTarget: null, metricUnit: null }, { metricCurrent: 3, metricTarget: 8, metricUnit: "companies" }, { metricCurrent: 8, metricTarget: 8, metricUnit: "companies" }]) {
+      const row = action({ title, done, ...metric, completedAt: done ? new Date("2026-10-01") : null }), before = JSON.stringify(row), displayed = rankActions([row])[0];
+      assert.deepEqual(displayed.metric, { current: metric.metricCurrent, target: metric.metricTarget, unit: metric.metricUnit });
+      assert.equal(displayed.done, done); assert.equal(displayed.completedAt, done ? "2026-10-01T00:00:00.000Z" : null);
+      assert.equal(displayed.rank, done ? null : 1); assert.equal(JSON.stringify(row), before);
+    }
+  }
+});
+
+test("Active legacy plan reads retain saved positioning progress and never recalculate completed organization evidence", async () => {
+  for (const completed of [false, true]) {
+    const row = action({ title: "Write a positioning statement", metricCurrent: completed ? 5 : 1, metricTarget: completed ? 5 : 1, metricUnit: completed ? "confirmations" : "statement", done: completed, completedAt: completed ? new Date("2026-10-01") : null, taskFinding: completed ? { organizeData: { kind: "organize" } } : null });
+    const plan = { id: "legacy", revision: 12, userId: "member", locale: "en", createdAt: new Date("2026-09-01"), stageReason: "Saved", bottleneckReason: "Saved", actions: [row], milestones: [] }, before = JSON.stringify(plan);
+    const load = pdfRuntime({ "server-only": {}, "@/lib/prisma": { prisma: { actionPlan: { findFirst: async () => plan } } }, "./legacy-organize": { getLegacyOrganize: async () => { throw new Error("Completed evidence must not be recalculated on read"); } } });
+    const service = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts"), result = (await service.getActiveActionPlan("member"))!;
+    assert.equal(result.actions[0].metric?.current, row.metricCurrent); assert.equal(result.actions[0].metric?.target, row.metricTarget); assert.equal(result.actions[0].metric?.unit, row.metricUnit);
+    assert.equal(result.actions[0].done, completed); assert.equal(result.nextMoves.length, completed ? 0 : 1); assert.equal(JSON.stringify(plan), before);
+  }
+});
 
 test("Priority score 使用固定權重公式並保留兩位小數", () => {
   assert.equal(priorityScore(action()), 250);

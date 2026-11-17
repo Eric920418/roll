@@ -64,7 +64,8 @@ test("This week integration in isolated PostgreSQL", { skip: !connectionString }
       await assert.rejects(service.mutateWeekPlan(other.id, true, schedule()), /changed/);
       await assert.rejects(service.mutateWeekPlan(user.id, true, schedule(second.id)), /locked/);
       const view = await service.getWeekPlan(user.id, true, "2026-09-28");
-      assert.deepEqual(JSON.parse(JSON.stringify(view.tasks[0].metric)), { target: 10, unit: "companies", current: 0 });
+      assert.deepEqual(JSON.parse(JSON.stringify(view.tasks[0].metric)), { target: 10, unit: "buyers", current: 3 });
+      assert.equal(view.interviewProgress?.current, 0, "Saved manual progress is retained but never counted as verified conversation evidence");
       assert.equal(view.tasks[1].dependency.blocked, true); assert.equal(view.tasks[1].dependency.actionRefs[0].displayNumber, 1);
     });
     await t.test("Parallel scheduling has one winner, drag replay is safe, moves require current revision", async () => {

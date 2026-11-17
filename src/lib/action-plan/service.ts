@@ -8,7 +8,6 @@ import { prisma } from "@/lib/prisma";
 import { generateBodySchema, type Diagnosis, type GeneratedAction } from "./schemas";
 import { rankActions, humanizeActionText, taskReference, wouldCreateCycle, type ActionPlanActionDto } from "./ranking";
 import { legacyHoursForMinutes } from "./time";
-import { workspaceKind } from "@/lib/action-plan/workspace";
 
 const actionInclude = {
   dependencies: {
@@ -86,13 +85,10 @@ export async function getActiveActionPlan(userId: string): Promise<ActionPlanDto
   } else {
     for (const stored of plan.actions) {
       const meta = stored.taskFinding;
-      if (meta && typeof meta === "object" && "organizeData" in meta) {
+      if (!stored.done && meta && typeof meta === "object" && "organizeData" in meta) {
         const { getLegacyOrganize } = await import("./legacy-organize");
         const view = await getLegacyOrganize(prisma as unknown as Prisma.TransactionClient, userId, plan.id, stored.id), action = result.actions.find(a => a.id === stored.id);
         if (action) action.metric = { current: view.result.current, target: view.result.target, unit: view.step === "01-2" ? "confirmations" : "criteria" };
-      } else if (workspaceKind(stored) === "positioning" && !stored.done) {
-        const action = result.actions.find(a => a.id === stored.id);
-        if (action) action.metric = { current: 0, target: 5, unit: "confirmations" };
       }
     }
   }
