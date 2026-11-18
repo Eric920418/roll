@@ -78,6 +78,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       },
     });
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
+    const storedDependencies = current.dependencies;
     const effective = await legacyActionState(tx, found.actionPlanId), own = effective.find(a => a.id === id);
     if (own) {
       current.dependencies = own.dependencies;
@@ -227,11 +228,14 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       if (!current.done && action.done) await completeGettingStarted(tx, session.uid);
       if (!current.done && action.done) await awardReward(tx, session.uid, "action", id);
       if (process.env.MEMBER_NETWORK_ENABLED === "true") await (await import("@/lib/network/watches")).evaluateWatches(tx, session.uid);
-      await tx.actionDependency.deleteMany({ where: { actionId: id } });
-      if (action.dependencyActionIds.length) {
-        await tx.actionDependency.createMany({
-          data: action.dependencyActionIds.map((dependsOnId) => ({ actionId: id, dependsOnId, minimumCurrent: current.dependencies.find(e => e.dependsOnId === dependsOnId)?.minimumCurrent ?? null })),
-        });
+      const sameDependencies = action.dependencyActionIds.length === current.dependencies.length && current.dependencies.every(e => action.dependencyActionIds.includes(e.dependsOnId));
+      if (!sameDependencies) {
+        await tx.actionDependency.deleteMany({ where: { actionId: id } });
+        if (action.dependencyActionIds.length) {
+          await tx.actionDependency.createMany({
+            data: action.dependencyActionIds.map((dependsOnId) => ({ actionId: id, dependsOnId, minimumCurrent: storedDependencies.find(e => e.dependsOnId === dependsOnId)?.minimumCurrent ?? null })),
+          });
+        }
       }
     });
     const plan = await getActiveActionPlan(session.uid);

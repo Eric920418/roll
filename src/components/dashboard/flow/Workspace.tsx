@@ -147,7 +147,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
     }
     void saveAndComplete(draft);
   }
-  return <section id="goal-roadmap" data-first-task={firstTask ? "" : undefined} className="min-w-0 space-y-4">
+  return <section id="goal-roadmap" data-task-reference={referenceTask ? "" : undefined} className="min-w-0 space-y-4">
     <header data-next-step="goal" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-dark/10 pb-3">
       <div className="min-w-0">{title}{referenceTask && <p className="mt-2 text-xs text-dark/55">{w("目標：", "Goal: ")}{view.plan.roadmap?.goal || "—"} · {w("完成日期 ", "Due ")}{view.plan.roadmap?.deadline || "—"}</p>}</div>
       {view.archived && <p role="status" className="text-xs text-dark/55">{w("歷史版本，唯讀", "Archived, read only")}</p>}

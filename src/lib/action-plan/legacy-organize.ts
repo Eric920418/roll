@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes, createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { workspaceKind, workspaceSchema, storedFindingSchema } from "./workspace";
+import { legacySequence } from "@/lib/action-plan/legacy-sequence";
 import { planWorkspaceEvidence } from "./workspace-service";
 import { PlanWriteError, guardActionMilestone } from "./service";
 import { emptyFlowData, emptyRecord, flowDataSchema, type FlowData } from "./flow/catalog";
@@ -17,7 +18,7 @@ export function legacyOrganizeData(action: { title: string; clientKey?: string; 
   return data;
 }
 export async function legacyActionState(tx: Prisma.TransactionClient, planId: string) {
-  return tx.actionItem.findMany({ where: { actionPlanId: planId }, include: { dependencies: { include: { dependsOn: true } } } });
+  return legacySequence(await tx.actionItem.findMany({ where: { actionPlanId: planId }, include: { dependencies: { include: { dependsOn: true } } } }));
 }
 export async function getLegacyOrganize(tx: Prisma.TransactionClient, userId: string, planId: string, actionId: string, locale?: string) {
   const [actions, evidence] = await Promise.all([legacyActionState(tx, planId), planWorkspaceEvidence(tx, userId, planId)]);

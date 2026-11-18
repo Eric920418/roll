@@ -9,6 +9,7 @@ import { useLocale } from "next-intl";
 import TaskCheckbox from "./TaskCheckbox";
 import LearningResources from "./LearningResources";
 import { workspaceKind, workspaceComplete } from "@/lib/action-plan/workspace";
+import { STEPS, words } from "@/lib/action-plan/flow/catalog";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
 import { priorityTier } from "@/lib/action-plan/ranking";
 
@@ -38,16 +39,21 @@ export default function ActionTaskRow({ action, busy = false, readOnly = false, 
     const milestone = plan.roadmap?.milestones.find(m => m.id === action.milestoneId);
     const group = plan.actions.filter(a => a.milestoneId === action.milestoneId);
     const workId = `task-work-${action.id}`;
+    const positioning = workspaceKind(action) === "positioning";
+    const spec = organizeLayout && plan.legacyValidationSequence && STEPS[positioning ? 1 : 2];
+    const referenceTitle = positioning
+      ? zh ? "寫出一句話定位，並請 5 位受訪者確認" : "Write your positioning statement and ask five participants to confirm"
+      : zh ? "建立潛在客戶評分標準" : "Build your lead qualification criteria";
     return <article className="min-w-0 space-y-4" data-legacy-task>
       {organizeLayout && <h2 className="flex items-baseline gap-3 text-base font-bold"><span className="text-[10px] font-normal text-dark/45">01</span>{zh ? "本日優先行動" : "Today’s priority"}</h2>}
-      <section data-today-priority className="rounded-xl bg-black p-4 text-white sm:p-5">
+      <section data-today-priority className={organizeLayout ? "rounded-2xl bg-[#0b0b0d] p-5 text-white sm:p-6" : "rounded-xl bg-black p-4 text-white sm:p-5"}>
         <div className="flex flex-col items-start justify-between gap-4 lg:flex-row"><div className="min-w-0 w-full flex-1 lg:w-auto">
-          <p className="text-[10px] font-semibold tracking-wider text-white/55">{milestone ? `${zh ? "里程碑" : "Milestone"} ${milestone.position + 1} · ${planText(milestone.title, locale)}` : zh ? "目前計畫" : "Current plan"} · {zh ? "行動" : "Action"} {group.findIndex(a => a.id === action.id) + 1} / {group.length}</p>
-          <h2 className="mt-2 break-words text-lg font-bold sm:text-xl">{title}</h2>
+          <p className="text-[10px] font-semibold tracking-wider text-white/55">{milestone ? `${zh ? "里程碑" : "Milestone"} ${milestone.position + 1} · ${planText(milestone.title, locale)}` : zh ? "目前計畫" : "Current plan"} · {zh ? "行動" : "Action"} {group.findIndex(a => a.id === action.id) + 1} / {group.length}{organizeLayout && (zh ? " · 整理類" : " · Organize")}</p>
+          <h2 className="mt-2 break-words text-lg font-bold sm:text-xl">{spec ? referenceTitle : title}</h2>
           <div className="mt-3 flex flex-wrap gap-1" aria-hidden="true">{group.map(a => <span key={a.id} className={"h-1 w-7 rounded-full " + (a.done || a.id === action.id ? "bg-white" : "bg-white/20")} />)}</div>
         </div><button type="button" disabled={busy} className="min-h-11 shrink-0 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2 disabled:opacity-50" onClick={() => { const work = document.getElementById(organizeLayout ? workspaceKind(action) === "positioning" ? "positioning-recipients" : "add-criterion" : workId); if (organizeLayout && workspaceKind(action) === "scorecard") { work?.click(); } work?.scrollIntoView({ block: "start" }); work?.querySelector<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a")?.focus(); }}>{organizeLayout ? workspaceKind(action) === "positioning" ? (zh ? "寄送確認訊息" : "Prepare confirmations") : (zh ? "新增條件" : "Add criterion") : zh ? "繼續本步行動" : "Work on this step"}</button></div>
-        <dl className={"mt-3 grid gap-3 border-t border-white/15 pt-3 text-xs " + (organizeLayout ? "sm:grid-cols-3" : "grid-cols-2")}>
-          {organizeLayout && <div><dt className="text-[10px] text-white/50">{zh ? "完成標準" : "Completion criteria"}</dt><dd className="mt-2 font-semibold">{outcome}</dd></div>}
+        <dl className={"grid grid-cols-2 border-t border-white/15 text-xs " + (organizeLayout ? "mt-5 gap-5 pt-4 sm:grid-cols-[1.4fr_1fr_1fr]" : "mt-3 gap-3 pt-3")}>
+          {organizeLayout && <div className="col-span-2 sm:col-span-1"><dt className="text-[10px] text-white/50">{zh ? "完成標準" : "Completion criteria"}</dt><dd className="mt-2 max-w-80 font-semibold leading-6">{spec ? words(spec.criteria, locale) : outcome}</dd></div>}
           <div><dt className="text-[10px] tracking-wider text-white/50">{zh ? "目前進度" : "Saved progress"}</dt><dd className="mt-2 font-semibold">{action.metric?.target != null ? `${action.metric.current ?? 0} / ${action.metric.target} ${planUnit(action.metric.unit || "", locale)}` : status}</dd></div>
           <div><dt className="text-[10px] tracking-wider text-white/50">{milestone ? zh ? "里程碑期限" : "Milestone due" : zh ? "目標期限" : "Goal due"}</dt><dd className="mt-2 font-semibold">{milestone?.targetDate || plan.roadmap?.deadline || "—"}</dd></div>
         </dl>

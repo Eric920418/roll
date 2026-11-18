@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { generateBodySchema, type Diagnosis, type GeneratedAction } from "./schemas";
 import { rankActions, humanizeActionText, taskReference, wouldCreateCycle, type ActionPlanActionDto } from "./ranking";
 import { legacyHoursForMinutes } from "./time";
+import { legacySequence } from "@/lib/action-plan/legacy-sequence";
+import { workspaceKind } from "@/lib/action-plan/workspace";
 
 const actionInclude = {
   dependencies: {
@@ -17,6 +19,7 @@ const actionInclude = {
 
 export type ActionPlanDto = {
   workflowVersion?: 2;
+  legacyValidationSequence?: true;
   workflowNeedsReview?: boolean;
   personalization?: Personalization | null;
   sourceJourneyId?: string | null;
@@ -44,9 +47,11 @@ async function findActivePlanRecord(userId: string) {
 export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto {
   const milestones = milestoneViews(plan.milestones.map(m => ({ ...m, targetDate: m.targetDate.toISOString().slice(0, 10), achievedAt: m.achievedAt?.toISOString() || null })), plan.actions);
   const blocks = new Map(milestones.filter(m => m.status === "blocked").map(m => [m.id, m.title]));
-  const actions = rankActions(plan.actions, blocks, new Map(milestones.map(m => [m.id, m.position])));
+  const ordered = plan.activeKey && !plan.archivedAt ? legacySequence(plan.actions) : plan.actions;
+  const actions = rankActions(ordered, blocks, new Map(milestones.map(m => [m.id, m.position])));
   return {
     ...(plan.actions.some(a => a.clientKey.startsWith("nova_v2_")) ? { workflowVersion: 2 as const } : {}),
+    ...(ordered !== plan.actions ? { legacyValidationSequence: true as const } : {}),
     sourceJourneyId: plan.sourceJourneyId,
     personalization: personalizationSchema.safeParse(plan.personalization).data ?? null,
     diagnosticAnswers: generateBodySchema.shape.answers.safeParse(plan.diagnosticAnswers).data ?? null,
@@ -85,7 +90,9 @@ export async function getActiveActionPlan(userId: string): Promise<ActionPlanDto
   } else {
     for (const stored of plan.actions) {
       const meta = stored.taskFinding;
-      if (!stored.done && meta && typeof meta === "object" && "organizeData" in meta) {
+      const current = result.legacyValidationSequence && result.nextMoves[0]?.id === stored.id && stored.metricTarget == null;
+      if (!stored.done && ((meta && typeof meta === "object" && "organizeData" in meta) ||
+        (current && ["positioning", "scorecard"].includes(workspaceKind(stored) || "")))) {
         const { getLegacyOrganize } = await import("./legacy-organize");
         const view = await getLegacyOrganize(prisma as unknown as Prisma.TransactionClient, userId, plan.id, stored.id), action = result.actions.find(a => a.id === stored.id);
         if (action) action.metric = { current: view.result.current, target: view.result.target, unit: view.step === "01-2" ? "confirmations" : "criteria" };
