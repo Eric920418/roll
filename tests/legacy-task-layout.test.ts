@@ -36,7 +36,7 @@ test('Compact maps use real legacy milestone and action counts, including no roa
   const load = runtime('en'), Map = load<typeof import('../src/components/dashboard/ActionMap')>('src/components/dashboard/ActionMap.tsx').default;
   for (const milestones of [null, plan.roadmap]) {
     const html = renderToStaticMarkup(React.createElement(Map, { userId: 'owner', plan: { ...plan, roadmap: milestones }, event: null, compact: true } as React.ComponentProps<typeof Map>, 'Original steps'));
-    assert(html.includes('Expand steps')); assert.equal((html.match(/<li/g) || []).length, milestones?.milestones.length || 0); assert(!html.includes('steps completed')); if (milestones) { assert(html.includes('aria-current="step"')); assert.equal((html.match(/Original milestone/g) || []).length, 2); } else assert(html.includes('Current plan'));
+    assert(html.includes(`View all ${milestones?.milestones.length || 0} milestones`)); assert.equal((html.match(/<li/g) || []).length, milestones?.milestones.length || 0); assert(!html.includes('steps completed')); if (milestones) { assert(html.includes('aria-current="step"')); assert(html.includes('CURRENT POSITION')); } else assert(html.includes('Current plan'));
     assert(!html.includes('16 steps')); assert(!html.includes('View all 5 milestones'));
   }
 });
@@ -98,5 +98,23 @@ test('Legacy reference save uses the latest server result to finish without a se
     walk(tree); assert(save); assert.equal(extra, 0); await save(data);
     const patches = calls.filter(c => c.body).map(c => c.body!);
     assert.equal(patches.length, ready ? 2 : 1); if(ready) { assert.equal(patches[1].done, true); assert.equal(patches[1].revision, 2); }
+  }
+});
+
+
+test('Legacy reference tasks omit outside search, follow-up and previous findings without removing other workflows', () => {
+  for (const locale of ['en', 'zh-tw']) {
+    const empty = () => null, mark = (value: string) => function Marker() { return React.createElement('div', null, value); };
+    const load = runtime(locale, { './TaskWorkspace': { __esModule: true, default: empty }, './ValidationWorkspace': { __esModule: true, default: mark('EXTRA_FOLLOWUP') }, './prospecting/ProspectSearch': { __esModule: true, default: mark('EXTRA_SEARCH') }, './ConversationHistory': { __esModule: true, default: empty }, './ActionPlanManager': { ActionEditor: empty }, './InterviewWorkspace': { InterviewInsights: empty, CompletedTaskInsights: mark('EXTRA_FINDINGS') } });
+    const Panel = load<typeof import('../src/components/dashboard/RoadmapPanel')>('src/components/dashboard/RoadmapPanel.tsx').default;
+    for (const kind of ['positioning', 'scorecard', 'pilot'] as const) {
+      const task = { ...action, taskWorkspace: emptyWorkspace(kind) }, previous = { ...action, id: 'previous', done: true, taskWorkspace: emptyWorkspace('positioning') };
+      const current = { ...plan, nextMoves: [task], actions: [task, previous] }, before = JSON.stringify(current);
+      const html = renderToStaticMarkup(React.createElement(Panel, { userId: 'owner', initialPlan: current, onChanged() { throw new Error('Rendering cannot rewrite a member plan'); } }));
+      assert(html.includes('id="action-map"'));
+      if (kind === 'pilot') assert(html.includes('EXTRA_SEARCH') && html.includes('EXTRA_FOLLOWUP'));
+      else assert.doesNotMatch(html, /EXTRA_SEARCH|EXTRA_FOLLOWUP|EXTRA_FINDINGS|Edit goal|修改目標|Previous findings|前次重點/);
+      assert.equal(JSON.stringify(current), before);
+    }
   }
 });
