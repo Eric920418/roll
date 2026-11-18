@@ -4,33 +4,10 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { pdfRuntime } from './helpers/pdf-runtime';
 
-test('Guided fields navigate nested groups, retain field values and recover after removing a question', () => {
-  let selected: string | null = null;
-  const load = pdfRuntime({ react: { ...React, useState: () => [selected, (value: string) => { selected = value; }], useRef: () => ({ current: null }) } }, { requestAnimationFrame: (fn: () => void) => fn() });
-  const Guided = load<typeof import('../src/components/dashboard/flow/GuidedFields')>('src/components/dashboard/flow/GuidedFields.tsx').default;
-  const field = (name: string) => React.createElement('input', { key: name, 'aria-label': name, defaultValue: name + ' saved' });
-  const children = [React.createElement(React.Fragment, { key: 'a' }, field('one')), React.createElement(React.Fragment, { key: 'b' }, field('two')), field('three')];
-  const render = (nodes: React.ReactNode = children, guided = true) => Guided({ children: nodes, guided, locale: 'en' }) as React.ReactElement<{ children: React.ReactNode[] }>;
-  let tree = render(); let nodes = tree.props.children;
-  assert.match(renderToStaticMarkup(tree), /Guided work 1 \/ 3/);
-  const questions = nodes[1] as React.ReactElement<{ hidden: boolean }>[];
-  assert.equal(new Set(questions.map(q => q.key)).size, 3);
-  assert.deepEqual(Array.from(questions, q => q.props.hidden), [false, true, true]);
-  const controls = nodes[2] as React.ReactElement<{ children: React.ReactElement<{ onClick(): void; disabled: boolean }>[] }>;
-  controls.props.children[1].props.onClick();
-  tree = render(); nodes = tree.props.children;
-  assert.deepEqual(Array.from(nodes[1] as typeof questions, q => q.props.hidden), [true, false, true]);
-  assert.match(renderToStaticMarkup(tree), /two saved/);
-  tree = render([children[0], children[2]]);
-  assert.deepEqual(Array.from(tree.props.children[1] as typeof questions, q => q.props.hidden), [false, true]);
-  const full = renderToStaticMarkup(render(children, false));
-  assert(!full.includes('hidden')); assert(!full.includes('Guided work'));
-  assert(full.includes('one saved') && full.includes('two saved') && full.includes('three saved'));
-});
-
 test('Task templates show single-page work without mutating unconfirmed or completed records', () => {
   const load = pdfRuntime({ react: { ...React, useState: (initial: unknown) => [typeof initial === "function" ? initial() : initial, () => {}], useRef: () => ({ current: null }) } }, { crypto: globalThis.crypto });
   const Templates = load<typeof import('../src/components/dashboard/flow/Templates')>('src/components/dashboard/flow/Templates.tsx').default;
+  const Results = load<typeof import('../src/components/dashboard/flow/TaskResults')>('src/components/dashboard/flow/TaskResults.tsx').default;
   const catalog = load<typeof import('../src/lib/action-plan/flow/catalog')>('src/lib/action-plan/flow/catalog.ts');
   const cases = [
     { step: '04-2', data: { kind: 'conversation', market: '', records: [{ ...catalog.emptyRecord('customer'), company: 'Saved company', reason: 'Saved reason' }] } },
@@ -45,9 +22,14 @@ test('Task templates show single-page work without mutating unconfirmed or compl
     const props = { ...item, locale, view, onChange: () => { throw new Error('Rendering must not change a draft'); } } as unknown as React.ComponentProps<typeof Templates>;
     const guided = renderToStaticMarkup(React.createElement(Templates, props));
     assert(!guided.includes('data-guided-fields'));
-    if (item.data.kind !== 'conversation' && item.step !== '01-3') assert(guided.includes(locale === 'en' ? 'Switch to guided work' : '切換逐題整理'));
+    assert.doesNotMatch(guided, /Switch to guided work|切換逐題整理/);
     if (item.step === '01-3') { assert(!guided.includes('Switch to guided work')); assert.equal((guided.match(/aria-label="Criterion name"|aria-label="條件名稱"/g) || []).length, 1); assert(guided.includes('Criterion 2')); }
-    if(item.step==='03-2'){assert(guided.includes('<table'));assert(guided.includes('50%'));assert(guided.includes('20%'));assert(guided.includes('5%'));assert(guided.includes('checked'));}
+    if (item.step === '03-2') {
+      assert.doesNotMatch(guided, /<table/);
+      assert.match(guided, /checked/);
+      const results = renderToStaticMarkup(React.createElement(Results, { step: { id: item.step, data: item.data }, locale, view } as unknown as React.ComponentProps<typeof Results>));
+      for (const value of ['50%', '20%', '5%']) assert(results.includes(value));
+    }
     else assert(guided.includes('Saved') || guided.includes('Criterion'));
     assert.equal(JSON.stringify(item.data), original);
     const readOnly = renderToStaticMarkup(React.createElement(Templates, { ...props, disabled: true, readOnly: true }));

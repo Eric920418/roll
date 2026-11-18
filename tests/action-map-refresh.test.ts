@@ -100,7 +100,7 @@ test('First conversation step has only the reference sections and completes from
     assert(nodes.some(n => n.type === 'Findings' && n.props.reference));
     assert(nodes.some(n => n.type === 'TaskRoadmap'));
     assert.match(strings, /Record a customer conversation|記錄客戶對話/);
-    assert.doesNotMatch(strings, /Edit goal|修改目標|Confirm and complete|確認並完成|Save this step|儲存本步成果/);
+    assert.doesNotMatch(strings, /Confirm and complete|確認並完成|Save this step|儲存本步成果/);
     const save = nodes.find(n => n.type === 'button' && typeof n.props.onClick === 'function' && n.props.children === (locale === 'en' ? 'Save conversation' : '儲存紀錄'))!;
     assert.equal(typeof save.props.onClick, 'function');
     (save.props.onClick as () => void)();
@@ -134,7 +134,7 @@ test('Prepared participant links survive a clean focus refresh and remain isolat
   assert.equal((work().links as unknown[]).length, 0);
 });
 
-test('All sixteen steps retain compact types and criteria gates; company search uses only the four relevant step contexts', async () => {
+test('All sixteen steps use the PDF sections, with one map and company search only where specified', async () => {
   for (const locale of ['en', 'zh-tw']) for (const [index, spec] of STEPS.entries()) {
     const view = fixture(1, index);
     const original = view.steps[0].data; if (original.kind === 'conversation') original.market = 'TW';
@@ -149,8 +149,13 @@ test('All sixteen steps retain compact types and criteria gates; company search 
     assert.equal(Boolean(search), ['01-1', '03-1', '04-1', '05-2'].includes(spec.id));
     if (search) { assert.equal(search.step, spec.id); assert.equal(search.market, spec.id === '05-2' ? 'Japan' : 'TW'); assert.match(search.description, /Confirmed buying criterion/); assert(!search.description.includes('Observation only')); }
     const priority = tree.find(n => Object.hasOwn(n.props, 'data-today-priority'));
-    assert.equal(/Completion criteria|COMPLETION CRITERIA|完成標準/.test(JSON.stringify(priority)), ["01-1", "01-2", "01-3"].includes(spec.id));
-    assert.equal(tree.some(n => n.type === "TaskRoadmap"), ["01-1", "01-2", "01-3"].includes(spec.id));
+    assert.match(JSON.stringify(priority), /Completion criteria|完成標準/);
+    assert.equal(tree.filter(n => n.type === "TaskRoadmap").length, 1);
+    const text = JSON.stringify(tree.filter(n => n.type === "button").map(n => n.props.children));
+    assert.doesNotMatch(text, /Previous step|上一步|Rebuild draft|重新整理初稿|thirteen weeks created|每週開發待辦/);
+    const headings = tree.filter(n => n.type === 'TaskSection').map(n => n.props.number);
+    assert.deepEqual(headings, ["01", ...(["01-2", "01-3"].includes(spec.id) ? [] : ["02"]), ...(search ? ["04"] : [])]);
+    assert.equal(tree.filter(n => n.type === "Assist").length, spec.id === "01-1" ? 1 : 0);
     assert.equal(JSON.stringify(view), before);
   }
 });

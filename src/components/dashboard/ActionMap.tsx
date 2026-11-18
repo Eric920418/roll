@@ -12,7 +12,7 @@ export default function ActionMap({ userId, plan, event, children, compact = fal
   const locale = useLocale(), zh = locale === "zh-tw", ref = useRef<HTMLDetailsElement>(null);
   const [warning, setWarning] = useState(""), [open, setOpen] = useState(false);
   const milestones = plan.roadmap?.milestones || [];
-  const current = milestones.find(m => !m.achievedAt);
+  const current = milestones.find(m => compact && plan.legacyValidationSequence && m.id === plan.nextMoves[0]?.milestoneId) || milestones.find(m => !m.achievedAt);
   const currentActions = plan.actions.filter(a => a.milestoneId === current?.id), next = currentActions.find(a => a.id === plan.nextMoves[0]?.id) || currentActions.find(a => !a.done && !a.dependency.blocked);
   const completed = plan.actions.filter(a => a.done).length;
   const progress = milestones.map(m => ({ ...m, progress: m.achievedAt ? 100 : Math.min(99, actionProgress(plan.actions.filter(a => a.milestoneId === m.id))) }));

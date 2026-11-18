@@ -10,7 +10,7 @@ export default function Followups({ view, userId, locale, disabled, save }: { vi
   const [selected, select] = useState("");
   const [draft, setDraft] = useState<ReturnType<typeof followupSchema.parse> | null>(null), [error, setError] = useState("");
   const [showAll, setShowAll] = useState(false);
-  const rows = view.followups.filter(c=>!c.resolved && c.status === "sent" && c.step !== view.current), contact = rows.find(c=>c.actionId+":"+c.contactId===selected);
+  const rows = view.followups.filter(c => c.step === "02-1" && !c.resolved && c.status === "sent"), contact = rows.find(c=>c.actionId+":"+c.contactId===selected);
   const key = (id: string) => `nova:followup:${userId}:${view.plan.id}:${id}`;
   function choose(row: typeof rows[number]) {
     const id=row.actionId+":"+row.contactId; select(id); setError("");

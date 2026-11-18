@@ -118,3 +118,25 @@ test('Legacy reference tasks omit outside search, follow-up and previous finding
     }
   }
 });
+
+test('The standard legacy agenda shows four qualification actions and groups the original pilot under milestone two', () => {
+  const placeholder = () => null;
+  const load = runtime('zh-tw', {
+    './TaskWorkspace': { __esModule: true, default: placeholder }, './ValidationWorkspace': { __esModule: true, default: placeholder },
+    './prospecting/ProspectSearch': { __esModule: true, default: placeholder }, './ConversationHistory': { __esModule: true, default: placeholder },
+    './ActionPlanManager': { ActionEditor: placeholder }, './InterviewWorkspace': { InterviewInsights: placeholder, CompletedTaskInsights: placeholder },
+  });
+  const Panel = load<typeof import('../src/components/dashboard/RoadmapPanel')>('src/components/dashboard/RoadmapPanel.tsx').default;
+  const positioning = { ...action, clientKey: 'task_3', title: 'Write a positioning statement', displayNumber: 2 };
+  const pilot = { ...action, id: 'pilot', clientKey: 'task_2', title: 'Run paid pilot offer', displayNumber: 5 };
+  const items = [{ ...plan.actions[1], id: 'interview', clientKey: 'task_1' }, positioning,
+    { ...action, id: 'score', clientKey: 'task_4' }, { ...action, id: 'tier', clientKey: 'task_5' }, pilot];
+  const roadmap = plan.roadmap!;
+  const current = { ...plan, legacyValidationSequence: true as const, actions: items, nextMoves: [positioning],
+    roadmap: { ...roadmap, milestones: [...roadmap.milestones, { ...roadmap.milestones[0], id: 'commercial', position: 1, title: 'Paid pilot milestone' }] } };
+  const original = JSON.stringify(current);
+  const html = renderToStaticMarkup(React.createElement(Panel, { initialPlan: current, userId: 'owner', onChanged() { throw Error('Read-only rendering'); } }));
+  assert.match(html, /行動.*2.*\s\/\s.*4.*整理類/);
+  assert.match(html, /Paid pilot milestone.*Run paid pilot offer/);
+  assert.equal(JSON.stringify(current), original);
+});

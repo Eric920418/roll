@@ -157,7 +157,12 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged, title }: 
       (filter === "all" || (filter === "done" ? a.done : filter === "blocked" ? !a.done && a.dependency.blocked : !a.done && !a.dependency.blocked));
   }
   const featuredId = initialPlan?.nextMoves[0]?.id ?? initialPlan?.actions.find(a => !a.done && !a.dependency.blocked)?.id;
-  const featured = initialPlan?.actions.find(a => a.id === featuredId);
+  const pilotMilestone = initialPlan?.legacyValidationSequence && initialPlan.roadmap?.milestones.find(m => m.position === 1);
+  const actions = pilotMilestone ? initialPlan!.actions.map(a => a.clientKey === "task_2"
+    ? { ...a, displayNumber: 1, milestonePosition: pilotMilestone.position, milestoneId: pilotMilestone.id } : a)
+    : initialPlan?.actions;
+  const displayPlan = pilotMilestone ? { ...initialPlan!, actions: actions!, nextMoves: initialPlan!.nextMoves.map(a => actions!.find(row => row.id === a.id) || a) } : initialPlan;
+  const featured = actions?.find(a => a.id === featuredId);
   const referenceTask = Boolean(featured && ["positioning", "scorecard"].includes(workspaceKind(featured) || ""));
   const commercialFeatured = Boolean(featured && commercialTask(featured));
   const stageAction = !featuredId && current && ["awaiting", "unplanned"].includes(current.status);
@@ -165,7 +170,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged, title }: 
   function taskRow(a: ActionPlanActionDto, readOnly = false) {
     return <div key={a.id} id={readOnly ? undefined : `action-${a.id}`} tabIndex={-1} data-next-step={!readOnly && a.id === featuredId ? "record" : undefined} className="scroll-mt-24">
 
-      <ActionTaskRow organizeLayout={["positioning", "scorecard"].includes(workspaceKind(a) || "")} plan={initialPlan || undefined} action={a} compact focusMode featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
+      <ActionTaskRow organizeLayout={["positioning", "scorecard"].includes(workspaceKind(a) || "")} plan={displayPlan || undefined} action={a} compact focusMode featured={!readOnly && a.id === featuredId} readOnly={readOnly} busy={busy} revision={initialPlan?.revision}
         onToggle={readOnly ? undefined : () => { void changeTask(a.id, { done: !a.done }).then(saved => { if (saved && !a.done) { setCompletion(locale === "zh-tw" ? `已完成：${planText(a.title, locale)}` : `Completed: ${a.title}`); if (a.recordingMode === "interview") setInsights({ id: a.id, title: planText(a.title, locale) }); } }); }}
         results={!readOnly && a.id === featuredId && workspaceKind(a) === "interview" ? <InterviewFindings actionId={a.id} revision={initialPlan?.revision} /> : undefined}
         onMetric={readOnly ? undefined : metric => changeTask(a.id, metric, "PATCH", true)}
@@ -203,9 +208,9 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged, title }: 
   }, [commercialFeatured, featured?.id, initialPlan?.id, userId]);
   function milestoneCard(m: MilestoneView) {
     const isCurrent = m.id === current?.id;
-    return <details key={m.id} open={isCurrent || ((search.length > 0 || filter !== "all") && initialPlan?.actions.some(a => a.milestoneId === m.id && matches(a)))} className="min-w-0 rounded-xl border-0 border-dark/15 p-0 sm:border sm:p-4">
+    return <details key={m.id} open={isCurrent || ((search.length > 0 || filter !== "all") && actions?.some(a => a.milestoneId === m.id && matches(a)))} className="min-w-0 rounded-xl border-0 border-dark/15 p-0 sm:border sm:p-4">
       <summary className="cursor-pointer break-words [overflow-wrap:anywhere] text-sm font-semibold"><span>{m.position + 1}. {<PlanCopyText value={m.title || ""} />}</span><span className="ml-3 text-xs text-dark/60">{t(`status.${m.status}`)} · {m.targetDate}</span></summary>
-      <div className="mt-3 space-y-3">{initialPlan?.actions.filter(a => a.milestoneId === m.id && (a.id !== featuredId && matches(a))).map(a => taskRow(a))}</div>
+      <div className="mt-3 space-y-3">{actions?.filter(a => a.milestoneId === m.id && (a.id !== featuredId && matches(a))).map(a => taskRow(a))}</div>
       {m.outcomeNote && <p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm">{t("actualResult")}: {m.outcomeNote}</p>}
       {m.status === "awaiting" && <form onSubmit={e => { e.preventDefault(); void outcome(m, true); }} className="mt-4 space-y-3"><label className="block text-sm">{t("actualResult")}<textarea aria-label={t("actualResult")} required maxLength={4000} rows={3} className={`${input} mt-1`} value={note} onChange={e => storeNote(e.target.value)} /></label><button className={button} disabled={busy || !note.trim()}>{t("confirmOutcome")}</button></form>}
       {m.status === "unplanned" && <button type="button" className={`${button} mt-4`} disabled={busy} onClick={() => void open()}>{t("nextStage")}</button>}
@@ -225,7 +230,7 @@ export default function RoadmapPanel({ userId, initialPlan, onChanged, title }: 
     {error && !opened && <div role="alert" className="mt-3 space-y-3 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p><button type="button" className={button} disabled={busy} onClick={() => { setError(""); void reload(true); }}>{t("reload")}</button></div>}
     {notice && !opened && <p role="status" className="rounded-xl bg-dark/5 p-4 text-sm">{notice}</p>}
     {initialPlan && !referenceTask && <div id="prospects"><ProspectSearch userId={userId} planId={initialPlan.id} compact onSelect={company=>{setProspectPrefill({company:company.name,name:company.contact.name || "",prospectOrderId:company.orderId,prospectCompanyId:company.id});if(tools.current)tools.current.open=true;setToolsOpen(true);requestAnimationFrame(()=>{tools.current?.querySelector<HTMLElement>(":scope > summary")?.focus();tools.current?.scrollIntoView({block:"start"});});}} /></div>}
-    {initialPlan && <ActionMap userId={userId} plan={initialPlan} event={mapEvent} compact>
+    {displayPlan && <ActionMap userId={userId} plan={displayPlan} event={mapEvent} compact>
     {initialPlan && <div id="action-plan-list" tabIndex={-1} className="mt-7 scroll-mt-6">
       <details className="mt-3 text-sm"><summary className="min-h-11 cursor-pointer font-semibold">{locale === "zh-tw" ? "搜尋與篩選" : "Search and filter"}</summary><div className="mt-2 flex flex-wrap gap-2">
         <input aria-label={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} placeholder={locale === "zh-tw" ? "搜尋任務" : "Search tasks"} value={search} onChange={e => setSearch(e.target.value)} className={`${input} min-h-11 sm:w-auto`} />
