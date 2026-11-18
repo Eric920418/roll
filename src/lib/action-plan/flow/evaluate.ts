@@ -1,11 +1,17 @@
 import { companyKey } from "@/lib/customer-insights/interviews";
 import { today } from "@/lib/roadmap/schema";
-import { STEPS, CHAPTERS, followupSchema, emptyFlowData, emptyRecord, emptyContact, flowStoredSchema, flowStep, words, type FlowData, type StepId } from "./catalog";
+import { STEPS, CHAPTERS, followupSchema, emptyFlowData, emptyRecord, emptyContact, flowStoredSchema, flowKey, flowStep, words, type FlowData, type StepId } from "./catalog";
 
 export type FlowAction = { id: string; clientKey: string; done: boolean; completedAt: Date | string | null; taskWorkspace: unknown; taskFinding: unknown };
 export type FlowProof = { id: string; company: string; name: string; kind: "signed" | "paid"; amount: string; currency: string; date: string; approved: boolean; revoked: boolean; reviewStatus?: "pending" | "approved" | "rejected"; reviewNote?: string };
 export type FlowContext = { actions: FlowAction[]; proofs: FlowProof[]; locale: string; now?: Date };
 export type Confirmation = { version: string; leadId: string; statement: string; answer: "yes" | "no"; at: string; feedback?: string };
+export function carriedInterview(action?: FlowAction) {
+  const meta = action?.taskFinding as { legacyFlow?: { clientKey?: string; market?: string; completed?: boolean } } | null;
+  return action?.clientKey === flowKey("01-1") && meta?.legacyFlow?.clientKey === "task_1"
+    ? { market: meta.legacyFlow.market || "", completed: meta.legacyFlow.completed === true }
+    : null;
+}
 export function storedData(action?: FlowAction) { return flowStoredSchema.safeParse(action?.taskWorkspace).data?.data; }
 export function dataAt(context: FlowContext, step: StepId) { return storedData(context.actions.find(a => flowStep(a)?.id === step)) || emptyFlowData(STEPS.find(s => s.id === step)!.kind); }
 export function validConversation(r: ReturnType<typeof emptyRecord>, day = today()) { return Boolean(["yes", "possible"].includes(r.fit || "") && r.company && r.name && r.relationship && r.pain && r.severity && r.solution && r.wtp && r.wtp !== "not_asked" && r.date && r.date <= day); }
@@ -98,17 +104,23 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
     require(unique(data.records.map(r => r.id)) && unique(data.records.map(r => companyKey(r.company) + "|" + companyKey(r.name))), "對象不能重複", "Conversation participants must be distinct");
     if (step === "01-1") {
       target = 10;
-      current = new Set(data.records.filter(r => (r.fit == null || ["yes","possible"].includes(r.fit)) && r.company && r.name && r.relationship && r.pain && r.severity && r.solution && r.wtp && r.wtp !== "not_asked" && dateValid(r.date)).map(r => companyKey(r.company) + "|" + companyKey(r.name))).size;
-      require(data.market, "請選擇原市場", "Choose the original market");
+      const action = context.actions.find(a => flowStep(a)?.id === step);
+      if (action?.done && carriedInterview(action)?.completed) {
+        current = data.records.filter(r => r.company && r.name).length;
+      } else {
+        current = new Set(data.records.filter(r => (r.fit == null || ["yes","possible"].includes(r.fit)) && r.company && r.name && r.relationship && r.pain && r.severity && r.solution && r.wtp && r.wtp !== "not_asked" && dateValid(r.date)).map(r => companyKey(r.company) + "|" + companyKey(r.name))).size;
+        require(data.market, "請選擇原市場", "Choose the original market");
+        require(current >= target, "完整有效對話不足 " + current + "/" + target, "Not enough complete conversations: " + current + "/" + target);
+      }
     } else {
       target = 5; const paid = new Set(paidCompanies(context).map(p => companyKey(p.company)));
       const reviews = data.records.filter(r => paid.has(companyKey(r.company)) && r.name && r.reason && r.missing && r.referral && dateValid(r.date) && approvedProofs(context, true).some(p => companyKey(p.company) === companyKey(r.company) && p.date <= r.date));
       current = new Set(reviews.map(r => companyKey(r.company))).size;
+      require(current >= target, "完整有效對話不足 " + current + "/" + target, "Not enough complete conversations: " + current + "/" + target);
       const retentionReasons = new Map<string, Set<string>>();
       for (const r of reviews) retentionReasons.set(r.reason, new Set([...(retentionReasons.get(r.reason) || []), companyKey(r.company)]));
       summary.push(...[...retentionReasons].sort((a, b) => b[1].size - a[1].size).slice(0, 3).map(([reason, companies]) => reason + " · " + companies.size + w(" 家客戶佐證", " customer sources")));
     }
-    require(current >= target, "完整有效對話不足 " + current + "/" + target, "Not enough complete conversations: " + current + "/" + target);
   }
   if (data.kind === "organize") {
     require(unique(data.confirmed) && unique(data.selections), "確認項目不能重複", "Duplicate confirmations or selections");
@@ -186,7 +198,9 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
     }
     if (step === "05-2") {
       const original = dataAt(context, "01-1");
-      require(data.market && original.kind === "conversation" && companyKey(data.market) !== companyKey(original.market), "請選擇與原市場不同的市場", "Choose a market different from your original market");
+      const priorMarket = original.kind === "conversation" ? original.market : "";
+      const originalMarket = priorMarket || (carriedInterview(context.actions.find(a => flowStep(a)?.id === "01-1")) ? data.originalMarket : "");
+      require(originalMarket && data.market && companyKey(data.market) !== companyKey(originalMarket), "請選擇與原市場不同的市場", "Choose a market different from your original market");
       const conversations = new Set(sent.filter(c => c.status === "conversation" && c.pain && c.solution && c.wtp && c.wtp !== "not_asked").map(c => companyKey(c.company)));
       current = conversations.size; target = 10;
       const openedAt = context.actions.find(a => flowStep(a)?.id === "05-1")?.completedAt;
@@ -223,7 +237,7 @@ export function seedData(context: FlowContext, step: StepId): FlowData {
       { label: w("痛點嚴重程度為高", "High pain severity"), sources: first.filter(r => r.severity === "high").map(r => r.id) },
       { label: w("明確有付費意願", "Explicit willingness to pay"), sources: first.filter(r => r.wtp === "willing").map(r => r.id) },
       { label: w("目前已有替代做法", "An existing workaround"), sources: first.filter(r => r.solution).map(r => r.id) },
-      { label: first[0]?.pain || w("待補充的需求條件", "A demand criterion to complete"), sources: first.filter(r => r.pain === first[0]?.pain).map(r => r.id) },
+      { label: first[0]?.pain || w("待補充的需求條件", "A demand criterion to complete"), sources: first.filter(r => r.pain && r.pain === first[0]?.pain).map(r => r.id) },
     ].map((c, i) => ({ id: "criterion_" + i, ...c, weight: 25, confirmed: false }));
     if (step === "01-4") data.tiers = first.map(r => ({ leadId: r.id, matches: criteria(context).filter(c => c.sources.includes(r.id)).map(c => c.id), override: "", reason: "", confirmed: false }));
     if (step === "02-3") { const proof = approvedProofs(context)[0], proposals = dataAt(context, "02-1"); data.values = { price: proof ? proof.currency + " " + proof.amount : "", scope: proposals.kind === "outreach" ? proposals.contacts.find(c => c.status !== "draft")?.offer || "" : "", terms: "" }; }
@@ -231,7 +245,7 @@ export function seedData(context: FlowContext, step: StepId): FlowData {
     if (step === "05-1") data.values = { target: "", conversion: "" };
   }
   if (data.kind === "outreach" && ["02-1", "04-1"].includes(step)) {
-    data.contacts = first.filter(r => tiers(context).some(t => t.leadId === r.id && t.tier === "A")).map(r => ({ ...emptyContact("proposal_" + r.id), company: r.company, name: r.name, leadId: r.id, offer: w("您好，您提到「" + r.pain + "」，目前以「" + r.solution + "」處理。我們想邀請您測試一個小範圍試點。價格：[價格與幣別]；範圍：[交付範圍]；期間：[實際期間]；成功標準：[可衡量成果]。方便確認是否符合您的需求嗎？", "Hello, you mentioned “" + r.pain + "” and currently use “" + r.solution + "”. We would like to propose a limited pilot. Price: [price and currency]; scope: [deliverables]; duration: [actual period]; success: [measurable outcome]. Would this fit your needs?") }));
+    data.contacts = first.filter(r => tiers(context).some(t => t.leadId === r.id && t.tier === "A")).map(r => ({ ...emptyContact("proposal_" + r.id), company: r.company, name: r.name, leadId: r.id, offer: w("您好，" + (r.pain && r.solution ? "您提到「" + r.pain + "」，目前以「" + r.solution + "」處理。" : "") + "我們想邀請您測試一個小範圍試點。價格：[價格與幣別]；範圍：[交付範圍]；期間：[實際期間]；成功標準：[可衡量成果]。方便確認是否符合您的需求嗎？", "Hello, " + (r.pain && r.solution ? "you mentioned “" + r.pain + "” and currently use “" + r.solution + "”. " : "") + "We would like to propose a limited pilot. Price: [price and currency]; scope: [deliverables]; duration: [actual period]; success: [measurable outcome]. Would this fit your needs?") }));
     const original = dataAt(context, "01-1"); data.market = original.kind === "conversation" ? original.market : "";
   }
   if (data.kind === "conversation" && step === "04-2") data.records = paidCompanies(context).map((p, i) => ({ ...emptyRecord("review_" + i), company: p.company, name: p.name }));

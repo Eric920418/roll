@@ -58,7 +58,7 @@ test("Qualification table uses real willing participants, unique valid evidence 
 });
 
 test("Saving a criterion explicitly confirms only the edited row and never mutates the existing draft", () => {
-  const load = pdfRuntime({ react: { ...React, useState: (value: unknown) => [value, () => {}] } });
+  const load = pdfRuntime({ react: { ...React, useRef: (value: unknown) => ({ current: value }), useState: (value: unknown) => [value, () => {}] } });
   const Work = load<typeof import("../src/components/dashboard/flow/OrganizeWork")>("src/components/dashboard/flow/OrganizeWork.tsx").default;
   const data = { ...emptyFlowData("organize"), criteria: ["a", "b"].map(id => ({ id, label: "Criterion " + id, weight: 50, sources: [], confirmed: false })) } as Extract<FlowData, { kind: "organize" }>;
   const before = JSON.stringify(data), view = { steps: [{ id: "01-3", data }], leads: [], positioningReplies: [] } as unknown as FlowView;

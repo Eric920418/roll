@@ -8,6 +8,8 @@ import { PlanWriteError } from "@/lib/action-plan/service";
 import { getFlow, mutateFlow, flowMutationSchema } from "@/lib/action-plan/flow/service";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 
+export const maxDuration = 60;
+
 function response(data: unknown) { const result = ok(data); result.headers.set("Cache-Control", "private, no-store"); return result; }
 function failure(error: unknown) {
   if (error instanceof PlanWriteError) return fail(error.message, error.status);
@@ -30,6 +32,7 @@ export async function POST(req: NextRequest) {
     const text = await req.text(); if (text.length > 2_000_000) return fail("內容過大，請縮短紀錄 / Records are too large", 413);
     const input = flowMutationSchema.parse(JSON.parse(text));
     if (input.action === "confirmLink" && !(await checkRateLimit("flow-confirm-link:" + session.uid, 100, DAY_MS)).ok) return fail("今日確認連結已達 100 次，請明天再試 / Daily confirmation link limit reached", 429);
+    if (input.action === "confirmEmail" && !(await checkRateLimit("flow-confirm-email:" + session.uid, 10, DAY_MS)).ok) return fail("今日確認信寄送已達上限 / Daily confirmation email limit reached", 429);
     return response(await mutateFlow(session.uid, input, req.nextUrl.searchParams.get("locale") === "zh-tw" ? "zh-tw" : "en"));
   } catch (error) { return failure(error); }
 }

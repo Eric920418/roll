@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { generateBodySchema, type Diagnosis, type GeneratedAction } from "./schemas";
 import { rankActions, humanizeActionText, taskReference, wouldCreateCycle, type ActionPlanActionDto } from "./ranking";
 import { legacyHoursForMinutes } from "./time";
-import { legacySequence } from "@/lib/action-plan/legacy-sequence";
+import { canUpgradeLegacyPlan, legacySequence } from "@/lib/action-plan/legacy-sequence";
 import { workspaceKind } from "@/lib/action-plan/workspace";
 
 const actionInclude = {
@@ -20,6 +20,7 @@ const actionInclude = {
 export type ActionPlanDto = {
   workflowVersion?: 2;
   legacyValidationSequence?: true;
+  legacyUpgradeAvailable?: true;
   workflowNeedsReview?: boolean;
   personalization?: Personalization | null;
   sourceJourneyId?: string | null;
@@ -52,6 +53,7 @@ export function serializePlan(plan: NonNullable<PlanWithActions>): ActionPlanDto
   return {
     ...(plan.actions.some(a => a.clientKey.startsWith("nova_v2_")) ? { workflowVersion: 2 as const } : {}),
     ...(ordered !== plan.actions ? { legacyValidationSequence: true as const } : {}),
+    ...(canUpgradeLegacyPlan(plan) ? { legacyUpgradeAvailable: true as const } : {}),
     sourceJourneyId: plan.sourceJourneyId,
     personalization: personalizationSchema.safeParse(plan.personalization).data ?? null,
     diagnosticAnswers: generateBodySchema.shape.answers.safeParse(plan.diagnosticAnswers).data ?? null,

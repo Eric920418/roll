@@ -52,6 +52,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } },
       select: {
         id: true,
+        clientKey: true,
         title: true,
         taskWorkspace: true,
         taskFinding: true,
@@ -78,6 +79,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       },
     });
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
+    if (current.clientKey.startsWith("nova_v2_")) throw new PlanWriteError("請使用新版今日任務工作區 / Use the new task workspace", 409);
     const storedDependencies = current.dependencies;
     const effective = await legacyActionState(tx, found.actionPlanId), own = effective.find(a => a.id === id);
     if (own) {
@@ -283,11 +285,13 @@ export async function DELETE(req: NextRequest, { params }: Context) {
       where: { id, actionPlan: { userId: session.uid, activeKey: session.uid, archivedAt: null } },
       select: {
         id: true,
+        clientKey: true,
         milestoneId: true,
         requiredBy: { select: { action: { select: { id: true, title: true } } } },
       },
     });
     if (!current) throw new PlanWriteError("找不到 Action。", 404);
+    if (current.clientKey.startsWith("nova_v2_")) throw new PlanWriteError("請使用新版今日任務工作區 / Use the new task workspace", 409);
     await guardActionMilestone(tx, found.actionPlanId, current.milestoneId, "delete");
     if (current.requiredBy.length) {
       const blockers = current.requiredBy.map((edge) => edge.action.title).join("\n• ");

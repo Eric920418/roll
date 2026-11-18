@@ -1,8 +1,12 @@
 import { evidenceStateSchema } from "@/lib/evidence/schema";
-import { legacyOrganizeData } from "../legacy-organize";
+import { legacyOrganizeData, organizeMetadata } from "../legacy-organize";
 import { workspaceKind } from "../workspace";
+import { planWorkspaceEvidence } from "../workspace-service";
+import { canUpgradeLegacyPlan } from "../legacy-sequence";
+import { upgradeLegacyFlow } from "./persist";
+import { assertConfirmationEmailConfigured, mailHash, mailToken, prepareMail, sendConfirmationEmail, type MailAttempt } from "./confirmation-email";
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -13,8 +17,8 @@ import { completeGettingStarted } from "@/lib/getting-started/service";
 import { salesRecordSchema, sameScope } from "@/lib/validation/schema";
 import { today } from "@/lib/roadmap/schema";
 import { companyKey } from "@/lib/customer-insights/interviews";
-import { STEPS, flowKey, flowStep, flowStoredSchema, flowDataSchema, stepIdSchema, flowMilestones, emptyFlowData, followupSchema } from "./catalog";
-import { flowView, dataAt, records, positioningReplies, criteria, tiers, channels, paidCompanies, customerMetrics, weeklyTarget, evaluateStep, type FlowContext, type Confirmation, validConversation, followupContacts, contactFollowups, outreachWeeks } from "./evaluate";
+import { STEPS, flowKey, flowStep, flowStoredSchema, flowDataSchema, stepIdSchema, flowMilestones, emptyFlowData, emptyRecord, followupSchema } from "./catalog";
+import { flowView, dataAt, records, positioningReplies, criteria, tiers, channels, paidCompanies, customerMetrics, weeklyTarget, evaluateStep, carriedInterview, type FlowContext, type Confirmation, validConversation, followupContacts, contactFollowups, outreachWeeks } from "./evaluate";
 
 type DB = Prisma.TransactionClient;
 const include = { milestones: true, actions: { include: { dependencies: { select: { minimumCurrent: true, dependsOn: { select: { id: true, clientKey: true, title: true, done: true, commercialValidation: true, metricCurrent: true, metricUnit: true } } } } } } } as const;
@@ -27,9 +31,19 @@ export async function readPlan(userId: string, planId?: string, tx: DB = prisma 
 export async function flowContext(plan: { id: string; userId: string; locale: string; actions: FlowContext["actions"] }, tx: DB = prisma as unknown as DB): Promise<FlowContext> {
   const deals = await tx.deal.findMany({ where: { userId: plan.userId, validation: { not: Prisma.DbNull } }, select: { validation: true } });
   const proofs = deals.flatMap(d => { const record = salesRecordSchema.safeParse(d.validation).data; return record && sameScope(record.scope, { planId: plan.id }) ? record.proofs.map(p => ({ ...p, company: record.company, name: record.name, approved: p.review?.status === "approved", reviewStatus: p.review?.status || "pending", reviewNote: p.review?.note || "", revoked: Boolean(p.revokedAt) })) : []; });
-  return { actions: plan.actions, proofs, locale: plan.locale };
+  const interview = plan.actions.find(a => flowStep(a)?.id === "01-1");
+  const legacy = carriedInterview(interview);
+  if (!legacy || !interview || flowStoredSchema.safeParse(interview.taskWorkspace).success) return { actions: plan.actions, proofs, locale: plan.locale };
+
+  const { leads } = await planWorkspaceEvidence(tx, plan.userId, plan.id);
+  const records = leads.map(l => ({
+    ...emptyRecord(l.id), fit: undefined, company: l.company, name: l.name, date: l.insight.date,
+    pain: l.insight.notes, solution: l.insight.answers[0], wtp: l.insight.commercial?.willingness || "not_asked",
+  }));
+  const converted = { ...interview, taskWorkspace: { version: 2, step: "01-1", data: { kind: "conversation", market: legacy.market, records } } };
+  return { actions: plan.actions.map(a => a.id === interview.id ? converted : a), proofs, locale: plan.locale };
 }
-const metadata = (value: unknown): { positioningVersion?: string; links?: Array<{ version: string; leadId: string; hash: string; statement: string; expires: string }>; responses?: Confirmation[]; share?: { hash: string; expires: string; fingerprint: string } | null; completionRequest?: string; outcome?: unknown } => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const metadata = (value: unknown): { positioningVersion?: string; links?: Array<{ version: string; leadId: string; hash: string; statement: string; expires: string }>; responses?: Confirmation[]; mail?: MailAttempt[]; share?: { hash: string; expires: string; fingerprint: string } | null; completionRequest?: string; outcome?: unknown } => organizeMetadata(value);
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 export function reportFingerprint(plan: Record, context: FlowContext) {
   const actions = [...plan.actions].sort((a, b) => a.id.localeCompare(b.id)).map(a => [a.id, a.done, a.taskWorkspace]);
@@ -43,14 +57,24 @@ export async function getFlow(userId: string, planId?: string, locale?: string) 
   const history = await prisma.actionPlan.findMany({ where: { userId, archivedAt: { not: null } }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, goal: true, createdAt: true } });
   const isV2 = plan.actions.some(a => a.clientKey.startsWith("nova_v2_"));
   const steps = isV2 ? flowView(context) : [];
+  const leads = records(context);
+  const participantEmails: Array<{ leadId: string; email: string }> = [];
+  if (steps.find(s => !s.done)?.id === "01-2" && !plan.archivedAt) {
+    const contacts = await prisma.contact.findMany({ where: { userId, email: { not: null } }, select: { name: true, company: true, email: true } });
+    for (const lead of leads) {
+      const matches = contacts.filter(c => c.company && companyKey(c.company) === companyKey(lead.company) && companyKey(c.name) === companyKey(lead.name));
+      if (matches.length === 1 && matches[0].email) participantEmails.push({ leadId: lead.id, email: matches[0].email });
+    }
+  }
   const financial = metadata(plan.actions.find(a => flowStep(a)?.id === "04-3" && a.done)?.taskFinding).outcome as { metrics?: ReturnType<typeof customerMetrics> } | undefined;
   const growth = metadata(plan.actions.find(a => flowStep(a)?.id === "05-1" && a.done)?.taskFinding).outcome as { weekly?: ReturnType<typeof weeklyTarget> } | undefined;
   const reservations = await prisma.tokenReservation.findMany({ where: { userId, kind: "search", metadata: { path: ["planId"], equals: plan.id } }, include: { ledger: true } });
   const searchTokens = { recordedOrders: reservations.length, spent: -reservations.flatMap(r => r.ledger).reduce((n, e) => n + e.availableDelta + e.reservedDelta, 0), reserved: reservations.filter(r => r.status === "reserved").reduce((n, r) => n + r.amount, 0) };
   return { searchTokens, followups: followupContacts(context), weeks: outreachWeeks(context), plan: serializePlan(plan), archived: Boolean(plan.archivedAt), steps, current: steps.find(s => !s.done)?.id || null,
-    positioningReplies: positioningReplies(context), leads: records(context), criteria: criteria(context), tiers: tiers(context), channels: channels(context), payments: paidCompanies(context).map(p => ({ company: p.company, name: p.name, currency: p.currency })),
+    positioningReplies: positioningReplies(context), leads, participantEmails, criteria: criteria(context), tiers: tiers(context), channels: channels(context), payments: paidCompanies(context).map(p => ({ company: p.company, name: p.name, currency: p.currency })),
     metrics: financial?.metrics || customerMetrics(context), weekly: growth?.weekly || weeklyTarget(context),
     proofStatus: context.proofs.map(p => ({ company: p.company, kind: p.kind, approved: p.approved, revoked: p.revoked, status: p.reviewStatus || "pending", note: p.reviewNote || "" })),
+    needsOriginalMarket: Boolean(context.actions.some(a => carriedInterview(a)) && !steps.some(s => s.id === "01-1" && s.data.kind === "conversation" && s.data.market.trim())),
     integrity: steps.filter(s => s.done && !s.ready).map(s => ({ step: s.id, reasons: s.reasons })),
     reportCode: "NV-" + hash(plan.id).slice(0, 4).toUpperCase() + "-" + hash(plan.id).slice(4, 8).toUpperCase(),
     shared: isV2 ? Boolean(metadata(plan.actions.find(a => flowStep(a)?.id === "05-3")?.taskFinding).share) : await legacyReportShared(plan),
@@ -59,10 +83,12 @@ export async function getFlow(userId: string, planId?: string, locale?: string) 
 }
 export type FlowView = Awaited<ReturnType<typeof getFlow>>;
 export const flowMutationSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("upgradeLegacy"), planId: z.string().min(1), revision: z.number().int().nonnegative() }).strict(),
   z.object({ action: z.literal("supplement"), planId: z.string().min(1), revision: z.number().int().nonnegative(), requestId: z.string().uuid() }).strict(),
   z.object({ action: z.literal("followup"), planId: z.string().min(1), revision: z.number().int().nonnegative(), sourceActionId: z.string().min(1), update: followupSchema }).strict(),
   z.object({ action: z.literal("save"), planId: z.string().min(1), revision: z.number().int().nonnegative(), step: stepIdSchema, data: flowDataSchema }).strict(),
   z.object({ action: z.literal("complete"), planId: z.string().min(1), revision: z.number().int().nonnegative(), step: stepIdSchema, requestId: z.string().uuid() }).strict(),
+  z.object({ action: z.literal("confirmEmail"), planId: z.string().min(1), revision: z.number().int().nonnegative(), reminder: z.boolean(), recipients: z.array(z.object({ leadId: z.string().min(1).max(200), email: z.string().trim().toLowerCase().email().max(254) }).strict()).min(1).max(25) }).strict(),
   z.object({ action: z.literal("confirmLink"), planId: z.string().min(1), revision: z.number().int().nonnegative(), leadId: z.string().min(1).optional(), leadIds: z.array(z.string().min(1)).min(1).max(25).optional() }).strict().refine(v => Boolean(v.leadId) !== Boolean(v.leadIds), "Select one participant or a participant list"),
   z.object({ action: z.literal("share"), planId: z.string().min(1), revision: z.number().int().nonnegative(), enabled: z.boolean() }).strict(),
   z.object({ action: z.literal("goal"), planId: z.string().min(1), revision: z.number().int().nonnegative(), goal: z.string().trim().min(3).max(2000), deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).strict(),
@@ -70,8 +96,17 @@ export const flowMutationSchema = z.discriminatedUnion("action", [
 export async function mutateFlow(userId: string, input: z.infer<typeof flowMutationSchema>, locale?: string) {
   let link: string | undefined;
   const links: Array<{ leadId: string; href: string }> = [];
+  const queued: Array<{ actionId: string; mail: MailAttempt; to: string; statement: string }> = [];
   await prisma.$transaction(async raw => {
     const tx = raw as DB, found = await readPlan(userId, input.planId, tx);
+    if (input.action === "upgradeLegacy") {
+      if (found.actions.some(a => carriedInterview(a))) return;
+      await lockActivePlan(tx, userId, found.id, input.revision);
+      const plan = await readPlan(userId, found.id, tx);
+      if (!canUpgradeLegacyPlan(plan)) throw new PlanWriteError("這份計畫已更新或使用自訂流程，請重新載入 / The plan changed or uses a custom workflow. Reload the page.", 409);
+      await upgradeLegacyFlow(tx, plan);
+      return;
+    }
     if (input.action === "share" && !found.actions.some(a => a.clientKey.startsWith("nova_v2_"))) {
       await lockActivePlan(tx, userId, found.id, input.revision);
       link = await shareLegacyReport(tx, found, input.enabled);
@@ -89,7 +124,7 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
     const current = STEPS.find(s => !plan.actions.find(a => a.clientKey === flowKey(s.id))?.done);
     if (input.action === "supplement") {
       const action = plan.actions.find(a => flowStep(a)?.id === "01-4"), data = dataAt(context, "01-4"), leads = records(context), graded = tiers(context);
-      if (current?.id !== "01-4" || !action || data.kind !== "organize" || graded.filter(t => t.confirmed && t.tier === "A").length >= 3 || leads.some(r => !graded.some(t => t.leadId === r.id && t.confirmed)) || (data.supplements || []).some(r => r.records.length !== 3 || !r.records.every(v => validConversation(v)))) throw new PlanWriteError("先完成現有分級及補訪；A 級不足三位時才可開新一輪 / Finish existing tiers and supplemental conversations before starting a round with fewer than three A leads", 409);
+      if (current?.id !== "01-4" || !action || data.kind !== "organize" || (leads.length >= 10 && graded.filter(t => t.confirmed && t.tier === "A").length >= 3) || leads.some(r => !graded.some(t => t.leadId === r.id && t.confirmed)) || (data.supplements || []).some(r => r.records.length !== 3 || !r.records.every(v => validConversation(v)))) throw new PlanWriteError("先完成現有分級及補訪；受訪者不足十位或 A 級不足三位才能開新一輪 / Finish existing tiers and supplemental conversations. You need fewer than ten participants or fewer than three A leads to start another round", 409);
       if (leads.length + 3 > 250) throw new PlanWriteError("工作區最多保留 250 位對象，無法再新增一輪 / The workspace limit is 250 participants; another round cannot be added", 409);
       const next = flowDataSchema.parse({ ...data, supplements: [...(data.supplements || []), { id: input.requestId, records: [] }] });
       await tx.actionItem.update({ where: { id: action.id }, data: { taskWorkspace: { version: 2, step: "01-4", data: next } as Prisma.InputJsonValue } }); return;
@@ -109,12 +144,38 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
       }
       return;
     }
-    if (input.action === "confirmLink") {
+    if (input.action === "confirmLink" || input.action === "confirmEmail") {
       const action = plan.actions.find(a => flowStep(a)?.id === "01-2");
       const data = dataAt(context, "01-2");
-      const ids = input.leadIds || [input.leadId!], leads = records(context);
+      const ids = input.action === "confirmEmail" ? input.recipients.map(r => r.leadId) : input.leadIds || [input.leadId!], leads = records(context);
       if (current?.id !== "01-2" || !action || data.kind !== "organize" || !data.confirmed.includes("positioning") || !data.values.positioning?.trim() || new Set(ids).size !== ids.length || ids.some(id => !leads.some(r => r.id === id))) throw new PlanWriteError("先儲存並確認定位，並選擇本計畫受訪者 / Save confirmed positioning and select a plan interviewee", 409);
       const old = metadata(action.taskFinding);
+      if (input.action === "confirmEmail") {
+        assertConfirmationEmailConfigured();
+        const version = old.positioningVersion, addresses = input.recipients.map(r => r.email);
+        if (!version || new Set(addresses).size !== addresses.length || ids.some(id => !data.selections.includes(id) || positioningReplies(context).some(reply => reply.leadId === id && reply.answer))) {
+          throw new PlanWriteError("請從已選且還未回覆的受訪者中寄送，每人使用不同地址 / Send to selected participants who have not replied, using a distinct address for each.", 409);
+        }
+        const attempts = (old.mail || []).filter(m => m.version === version);
+        let entries = (old.links || []).filter(l => l.version === version && Date.parse(l.expires) > Date.now());
+        for (const recipient of input.recipients) {
+          const previous = attempts.find(m => m.leadId === recipient.leadId);
+          const mail = prepareMail(previous, {
+            id: randomUUID(), leadId: recipient.leadId, version, recipientHash: mailHash(recipient.email),
+            createdAt: new Date().toISOString(), status: "pending", locale: locale === "zh-tw" ? "zh-tw" : "en",
+          }, input.reminder);
+          if (mail !== previous) {
+            if (previous && previous.recipientHash !== mail.recipientHash) entries = entries.filter(l => l.leadId !== recipient.leadId);
+            const expires = new Date(Date.parse(mail.createdAt) + 30 * 86_400_000).toISOString();
+            entries.push({ leadId: mail.leadId, version, hash: hash(mailToken(action.id, mail)), statement: data.values.positioning, expires });
+          }
+          queued.push({ actionId: action.id, mail, to: recipient.email, statement: data.values.positioning });
+        }
+        await tx.actionItem.update({ where: { id: action.id }, data: {
+          taskFinding: { ...old, links: entries, mail: [...attempts.filter(m => !ids.includes(m.leadId)), ...queued.map(item => item.mail)] } as Prisma.InputJsonValue,
+        } });
+        return;
+      }
       const entries = ids.map(leadId => {
         const token = randomBytes(32).toString("base64url");
         links.push({ leadId, href: "/task-confirm/" + action.id + "?token=" + token });
@@ -144,7 +205,7 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
     if (input.action === "save") {
       if (input.data.kind !== current.kind) throw new PlanWriteError("表單類型與目前步驟不符 / Wrong template for the current step", 400);
       if(input.step === "01-1" && input.data.kind === "conversation") {
-        const previous=flowStoredSchema.safeParse(action.taskWorkspace).data?.data,old=previous?.kind==="conversation"?previous.records:[];
+        const previous = dataAt(context, "01-1"), old = previous.kind === "conversation" ? previous.records : [];
         const workspace=await tx.evidenceWorkspace.findUnique({where:{userId}}),state=evidenceStateSchema.parse(workspace?.data||{});let updated=false;
         for(const r of input.data.records){const prior=old.find(v=>v.id===r.id);if((!prior || prior.fit!=null) && r.fit==null)throw new PlanWriteError("新增對話請選擇客群符合度 / Select customer fit for each new conversation",400);if(prior?.hypothesisId&&r.hypothesisId!==prior.hypothesisId)throw new PlanWriteError("原假設關聯不可覆寫 / Original hypothesis link cannot be overwritten",409);if(!prior&&state.selectedId){r.hypothesisId=state.selectedId;state.links.push({id:action.id+":"+r.id,hypothesisId:state.selectedId,fit:r.fit||"uncertain",relationship:["friend","colleague","stranger","prospect"].includes(r.relationship)?r.relationship as "friend"|"colleague"|"stranger"|"prospect":"prospect"});updated=true;}}
         if(workspace&&updated){evidenceStateSchema.parse(state);const moved=await tx.evidenceWorkspace.updateMany({where:{userId,revision:workspace.revision},data:{data:state as Prisma.InputJsonValue,revision:{increment:1}}});if(!moved.count)throw new PlanWriteError("假設已更新，對話草稿保留 / Hypothesis changed; conversation draft retained",409);}
@@ -185,7 +246,28 @@ export async function mutateFlow(userId: string, input: z.infer<typeof flowMutat
     await completeGettingStarted(tx, userId);
     await awardReward(tx, userId, "action", action.id);
   }, { timeout: 15000 });
-  return { ...(await getFlow(userId, input.planId, locale)), link, links };
+  const emailResults: Array<{ leadId: string; status: MailAttempt["status"]; error: string }> = [];
+  if (queued.length) {
+    let slot = 0;
+    const results = await Promise.all(queued.map(async item => {
+      if (item.mail.status === "accepted") return { item, result: { status: "accepted" as const, error: "" } };
+      const delay = slot++ * 550;
+      if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+      return { item, result: await sendConfirmationEmail(item) };
+    }));
+    await prisma.$transaction(async tx => {
+      await lockActivePlan(tx as DB, userId, input.planId);
+      const action = await tx.actionItem.findUniqueOrThrow({ where: { id: queued[0].actionId } });
+      const old = metadata(action.taskFinding);
+      const mail = old.mail?.map(attempt => {
+        const result = results.find(r => r.item.mail.id === attempt.id)?.result;
+        return result && attempt.status !== "accepted" ? { ...attempt, status: result.status } : attempt;
+      });
+      if (mail) await tx.actionItem.update({ where: { id: action.id }, data: { taskFinding: { ...old, mail } as Prisma.InputJsonValue } });
+      emailResults.push(...results.map(({ item, result }) => ({ leadId: item.mail.leadId, ...result })));
+    });
+  }
+  return { ...(await getFlow(userId, input.planId, locale)), link, links, emailResults };
 }
 export async function confirmation(actionId: string, token: string, answer?: "yes" | "no", feedback = "") {
   feedback = z.string().trim().max(1000).parse(feedback);

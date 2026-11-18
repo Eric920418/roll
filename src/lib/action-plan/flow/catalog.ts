@@ -43,7 +43,7 @@ const contact = z.object({ id: id.min(1), company: text, name: text, leadId: id,
 export const flowDataSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("conversation"), market: text, records: z.array(conversationRecordSchema).max(250) }).strict(),
   z.object({ kind: z.literal("organize"), values: z.record(id, text), confirmed: z.array(id).max(30), criteria: z.array(z.object({ id: id.min(1), label: text, weight: z.number().int().min(1).max(100), sources: z.array(id).max(250), confirmed: z.boolean(), assessment: z.enum(["boolean", "range", "level"]).optional(), research: text.optional(), rationale: text.optional() }).strict()).max(6), tiers: z.array(z.object({ leadId: id, matches: z.array(id).max(6), override: z.enum(["", "A", "B", "C"]), reason: text, confirmed: z.boolean() }).strict()).max(250), selections: z.array(id).max(250), supplements: z.array(z.object({ id: z.string().uuid(), records: z.array(conversationRecordSchema).max(3) }).strict()).max(80).optional() }).strict(),
-  z.object({ kind: z.literal("outreach"), market: text, contacts: z.array(contact).max(500) }).strict(),
+  z.object({ kind: z.literal("outreach"), market: text, originalMarket: text.optional(), contacts: z.array(contact).max(500) }).strict(),
   z.object({ kind: z.literal("document"), sections: z.array(z.object({ id: id.regex(/^[0-3]$/), body: text, confirmed: z.boolean() }).strict()).max(4) }).strict(),
 ]);
 export type FlowData = z.infer<typeof flowDataSchema>;
@@ -64,7 +64,7 @@ export function flowMilestones(startsAt: string, deadline: string, locale: strin
     targetDate: new Date(start + Math.ceil(span * [0.04, 0.14, 0.34, 0.67, 1][position])).toISOString().slice(0, 10),
   }));
 }
-export function flowActions(diagnosis: Diagnosis, locale: string): GeneratedAction[] {
+export function flowActions(diagnosis: Pick<Diagnosis, "companyStage" | "stageReason" | "bottleneckGroup" | "bottleneckCode" | "bottleneckReason">, locale: string): GeneratedAction[] {
   return STEPS.map((step, index) => ({
     clientKey: flowKey(step.id), title: words(step.title, locale), impact: "High", urgencyType: "scheduled", urgencyDays: 7,
     dependencyLevel: index ? 1 : 0, dependencyNotes: index ? words(["完成上一步後開啟", "Complete the previous step to unlock"], locale) : null,

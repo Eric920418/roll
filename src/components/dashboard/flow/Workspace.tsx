@@ -9,7 +9,7 @@ import type { ActionPlanDto } from "@/lib/action-plan/service";
 import { pathForLocale } from "@/lib/routes";
 import Templates, { button, TextField } from "./Templates";
 import CurrentFindings from "./CurrentFindings";
-import OrganizeWork, { TaskRoadmap, TaskSection, type ParticipantLink } from "./OrganizeWork";
+import OrganizeWork, { TaskRoadmap, TaskSection, type ConfirmationRecipient } from "./OrganizeWork";
 import LearningResources from "../LearningResources";
 import TaskAssist from "./TaskAssist";
 import Proofs from "./Proofs";
@@ -23,9 +23,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [link, setLink] = useState(""), [editingGoal, setEditingGoal] = useState(false);
   const [goal, setGoal] = useState(plan.roadmap?.goal || ""), [deadline, setDeadline] = useState(plan.roadmap?.deadline || "");
   const [savedVersion, setSavedVersion] = useState(0);
-  const [participantLinks, setParticipantLinks] = useState<ParticipantLink[]>([]);
   const [comparison, setComparison] = useState(false);
-  const linkScope = useRef("");
   const loadRequest = useRef(0);
   const backgroundRequest = useRef(false);
   const supplementRequest = useRef<string | null>(null);
@@ -38,14 +36,15 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
     if (data && id && restore && !next.archived && !step?.done) {
       try {
         const saved = localStorage.getItem(cacheKey(next.plan.id, id));
-        if (saved) { const parsed = flowDataSchema.safeParse(JSON.parse(saved)); if (parsed.success && parsed.data.kind === step?.kind) { data = parsed.data; setNotice(zh ? "已恢復這一步的未儲存草稿。" : "Unsaved draft restored for this step."); } }
+        const legacy = !saved && ["01-2", "01-3"].includes(id)
+          ? JSON.parse(localStorage.getItem(`nova:legacy-organize:${userId}:${step?.actionId}`) || "null")
+          : null;
+        const restored = saved ? JSON.parse(saved) : legacy?.revision === (next.plan.revision || 0) - 1 ? legacy?.data : null;
+        if (restored) { const parsed = flowDataSchema.safeParse(restored); if (parsed.success && parsed.data.kind === step?.kind) { data = parsed.data; setNotice(zh ? "已恢復這一步的未儲存草稿。" : "Unsaved draft restored for this step."); } }
       } catch { setNotice(zh ? "無法讀取本機草稿，伺服器紀錄保留。" : "Local draft unavailable; server records are retained."); }
     }
-    const positioning = next.steps.find(s => s.id === "01-2")?.data;
-    const scope = next.plan.id + ":" + id + ":" + (positioning?.kind === "organize" ? positioning.values.positioning : "");
-    if (scope !== linkScope.current) { setParticipantLinks([]); linkScope.current = scope; }
     setDraft(data); setComparison(false); setLink("");
-  }, [cacheKey, zh]);
+  }, [cacheKey, userId, zh]);
   const load = useCallback(async (id = plan.id, preserve = false, background = false) => {
     const request = ++loadRequest.current; if (!background) setLoading(true);
     try {
@@ -85,10 +84,10 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
     try { localStorage.setItem(cacheKey(view.plan.id, selected), JSON.stringify(data)); }
     catch { setNotice(w("本機暫存失敗，離開前請先儲存。", "Local draft could not be saved; save before leaving.")); }
   }
-  async function mutate(body: object, move = false, revision = view?.plan.revision) {
+  async function mutate(body: object, move = false, revision = view?.plan.revision, onError?: (message: string) => void) {
     if (!view || busyRef.current || loading) return; loadRequest.current++; setLoading(false); busyRef.current = true; setBusy(true); setError(""); setNotice("");
     try {
-      const next = await memberFetch<FlowView & { link?: string; links?: ParticipantLink[] }>(base, { method: "POST", body: JSON.stringify({ planId: view.plan.id, revision, ...body }) });
+      const next = await memberFetch<FlowView & { link?: string; emailResults?: Array<{ leadId: string; status: string; error: string }> }>(base, { method: "POST", body: JSON.stringify({ planId: view.plan.id, revision, ...body }) });
       setView(next);
       if ("data" in body) setSavedVersion(v=>v+1);
       if (next.link) setLink(new URL(pathForLocale(next.link, locale), window.location.origin).href);
@@ -96,13 +95,13 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
         try { localStorage.removeItem(cacheKey(view.plan.id, selected)); } catch { setNotice(w("伺服器已儲存，本機草稿清除失敗。", "Saved on the server; local draft could not be removed.")); }
         choose(next, move ? next.current || selected : selected, false);
       }
-      if (next.links?.length) setParticipantLinks(previous => [...previous.filter(item => !next.links!.some(link => link.leadId === item.leadId)), ...next.links!.map(item => ({ ...item, href: new URL(pathForLocale(item.href, locale), window.location.origin).href }))]);
+
       if (next.plan.id === plan.id) onChanged(next.plan);
       router.refresh();
       setNotice(move ? w("已完成並保存成果，下一步已開啟。", "Completed and retained; the next step is now open.") : w("已儲存，完成標準已重新核對。", "Saved; completion criteria were checked."));
       if (move) requestAnimationFrame(() => { heading.current?.focus(); heading.current?.scrollIntoView({ block: "start" }); });
       return next;
-    } catch (error) { setError(error instanceof Error ? error.message : String(error)); return null; }
+    } catch (error) { const message = error instanceof Error ? error.message : String(error); (onError || setError)(message); return null; }
     finally { busyRef.current = false; setBusy(false); }
   }
   async function startSupplement() {
@@ -129,10 +128,20 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
     if (next?.steps.find(s => s.id === selected)?.ready) return mutate({ action: "complete", step: selected, requestId: crypto.randomUUID() }, true, next.plan.revision);
     return next;
   }
-  async function prepareConfirmations(ids: string[], save: boolean) {
-    const data = draft?.kind === "organize" ? { ...draft, confirmed: [...new Set([...draft.confirmed, "positioning"])] } : draft;
-    const next = save && data ? await saveAndComplete(data) : view;
-    if (next && (!save || next.current === selected)) await mutate({ action: "confirmLink", leadIds: ids }, false, next.plan.revision);
+  async function emailConfirmations(recipients: ConfirmationRecipient[], reminder: boolean) {
+    if (!view || draft?.kind !== "organize") return w("請先載入定位草稿", "Load the positioning draft first");
+    let error = "";
+    const data = { ...draft, confirmed: [...new Set([...draft.confirmed, "positioning"])] };
+    const next = reminder || saved && draft.confirmed.includes("positioning") ? view : await mutate({ action: "save", step: "01-2", data }, false, view.plan.revision, message => { error = message; });
+    if (!next) return error || w("無法儲存，請重試。", "Unable to save. Retry.");
+    const sent = await mutate({ action: "confirmEmail", recipients, reminder }, false, next.plan.revision, message => { error = message; });
+    if (!sent?.emailResults) return error || w("無法確認寄送，請重試。", "Could not confirm the send. Retry.");
+    const accepted = sent.emailResults.filter(item => item.status === "accepted").length;
+    setNotice(w(`寄送服務已接受 ${accepted} 封確認信。`, `Email service accepted ${accepted} confirmation messages.`));
+    return sent.emailResults.filter(item => item.error).map(item => {
+      const lead = sent.leads.find(r => r.id === item.leadId);
+      return [lead?.company, lead?.name, item.error].filter(Boolean).join(" · ");
+    }).join("\n");
   }
   const linkPanel = link && <div role="status" className="space-y-3 rounded-xl border border-dark/20 p-4"><label className="block text-sm">{w("專屬連結（可複製）", "Dedicated link (copy to share)")}<input readOnly className="mt-1 min-h-11 w-full rounded-xl border px-3 text-sm" value={link} onFocus={e => e.target.select()} /></label><button type="button" className={button} disabled={disabled} onClick={() => { void navigator.clipboard.writeText(link).then(() => setNotice(w("連結已複製", "Link copied"))).catch(() => setError(w("無法使用剪貼簿，請手動複製上方連結。", "Clipboard unavailable; copy the link manually."))); }}>{w("複製連結", "Copy link")}</button></div>;
   function saveConversation() {
@@ -230,7 +239,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
       </div>}
       {comparison && <details className="rounded-xl border p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w("最新已存成果", "Latest saved result")}</summary><Templates step={step.id} data={step.data} view={view} locale={locale} disabled readOnly onChange={() => {}} /></details>}
 
-      {organizeStep && draft.kind === "organize" ? <OrganizeWork key={step.id} step={organizeStep} data={draft} view={view} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => saveAndComplete(data || draft)} onLinks={prepareConfirmations} links={participantLinks} onRefresh={() => void load(view.plan.id, true)} notice={notice} /> : <>
+      {organizeStep && draft.kind === "organize" ? <OrganizeWork key={step.id} step={organizeStep} data={draft} view={view} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => saveAndComplete(data || draft)} onEmail={emailConfirmations} links={[]} onRefresh={() => void load(view.plan.id, true)} notice={notice} /> : <>
         <div data-task-section="work" className="space-y-3">
           <TaskSection number="02" title={words(STEP_WORK[step.id], locale)} />
           <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]" data-task-columns>
@@ -258,7 +267,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
         </form>
       </dialog>}
               {isEvidenceStep && (!readOnly || repairStep === selected) && <Proofs userId={userId} view={view} onChanged={() => void load(view.plan.id, true)} />}
-              {!readOnly && step.id === "01-4" && draft.kind === "organize" && view.tiers.filter(t => t.confirmed && t.tier === "A").length < 3 && <button type="button" className={button} disabled={disabled || !saved || view.leads.some(l => !view.tiers.some(t => t.leadId === l.id && t.confirmed)) || Boolean(draft.supplements?.some(r => r.records.length < 3 || !view.leads.some(l => l.id === r.records[0]?.id)))} onClick={() => void startSupplement()}>{w("補做三次對話", "Add three supplemental conversations")}</button>}
+              {!readOnly && step.id === "01-4" && draft.kind === "organize" && (view.leads.length < 10 || view.tiers.filter(t => t.confirmed && t.tier === "A").length < 3) && <button type="button" className={button} disabled={disabled || !saved || view.leads.some(l => !view.tiers.some(t => t.leadId === l.id && t.confirmed)) || Boolean(draft.supplements?.some(r => r.records.length < 3 || !view.leads.some(l => l.id === r.records[0]?.id)))} onClick={() => void startSupplement()}>{w("補做三次對話", "Add three supplemental conversations")}</button>}
               {!readOnly && <div className="flex flex-wrap items-start justify-end gap-3 border-t border-dark/10 pt-3">
                 {firstTask && <details className="min-w-0 flex-1">
                   <summary className="min-h-11 cursor-pointer py-3 text-xs text-dark/60">{w("貼上會議紀錄或語音轉寫", "Paste meeting notes or transcribe audio")}</summary>

@@ -122,16 +122,25 @@ test('Flow refresh preserves unsaved input and its original revision, including 
   assert.equal((clean.find('Templates').data as { market: string }).market, 'US'); assert.equal(clean.find('Templates').step, '01-1');
 });
 
-test('Prepared participant links survive a clean focus refresh and remain isolated to their step', async () => {
-  const view = Object.assign(fixture(1, 1), { links: [{ leadId: 'participant', href: '/task-confirm/qa?token=synthetic' }] });
-  const h = harness(view); await h.settle();
-  const work = () => h.render().find(n => n.type === 'OrganizeWork')!.props;
-  (work().onLinks as (ids: string[], save: boolean) => void)(['participant'], false); await h.settle();
-  assert.equal((work().links as unknown[]).length, 1);
+test('Positioning sends explicitly and shows delivery failures without advancing the step', async () => {
+  const view = fixture(1, 1), data = view.steps[1].data;
+  assert(data.kind === 'organize');
+  data.values.positioning = 'A saved positioning statement';
+  data.confirmed = ['positioning'];
+  const writes: string[] = [];
+  const h = harness(view, 'en', '', payload => {
+    writes.push(payload.action);
+    return Object.assign(structuredClone(view), { emailResults: [{ leadId: 'participant', status: 'pending', error: 'SMTP unavailable' }] });
+  });
+  await h.settle();
   h.event('focus'); await h.settle();
-  assert.equal((work().links as unknown[]).length, 1, 'Reading replies must not discard prepared messages');
-  const next = fixture(2, 2); h.setServer(next); h.setProps(next); await h.settle();
-  assert.equal((work().links as unknown[]).length, 0);
+  assert.deepEqual(writes, []);
+  const work = h.render().find(n => n.type === 'OrganizeWork')!.props;
+  const error = await (work.onEmail as (recipients: Array<{ leadId: string; email: string }>, reminder: boolean) => Promise<string>)([{ leadId: 'participant', email: 'member@example.invalid' }], false);
+  assert.deepEqual(writes, ['confirmEmail']);
+  assert.equal(error, 'SMTP unavailable');
+  await h.settle();
+  assert.equal(h.find('Templates').step, '01-2');
 });
 
 test('All sixteen steps use the PDF sections, with one map and company search only where specified', async () => {

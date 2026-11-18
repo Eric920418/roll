@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { emptyFlowData } from "../src/lib/action-plan/flow/catalog";
+import { emptyFlowData, type FlowData } from "../src/lib/action-plan/flow/catalog";
 import { emptyInsight } from "../src/lib/customer-insights/schema";
 import { pdfRuntime } from "./helpers/pdf-runtime";
 import { evaluateStep } from "../src/lib/action-plan/flow/evaluate";
@@ -119,4 +119,94 @@ test("Actual legacy five-task PostgreSQL path: ordering, records, links, replies
     assert.equal(await db.meetingNote.count({ where: { userId: owner.id } }), 10); assert.equal((await db.actionItem.findUniqueOrThrow({ where: { id: tasks[0].id } })).done, true);
     assert.equal((await legacy.getLegacyOrganize(db as never, owner.id, plan.id, tasks[2].id)).positioningReplies.filter(r => r.answer === "yes").length, 5);
   } finally { await db.user.deleteMany({ where: { id: { in: [owner.id, other.id] } } }); await db.$disconnect(); }
+});
+
+test("An active standard legacy plan keeps its source IDs, emails its positioning, then separates proposals and proof", { skip: !process.env.ROLL_REWARDS_TEST_DATABASE_URL }, async () => {
+  const connectionString = process.env.ROLL_REWARDS_TEST_DATABASE_URL!, url = new URL(connectionString);
+  assert(["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) && url.pathname.startsWith("/roll_rewards_qa"));
+  const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  const owner = await db.user.create({ data: { email: randomUUID() + "@legacy.invalid", plan: "business" } });
+  const deliveries: Array<{ key: string | null; to: string; href: string }> = [];
+  let lostResponse = true;
+  const load = pdfRuntime({
+    "server-only": {}, "@/lib/prisma": { prisma: db },
+    "@/lib/security/log": { logSecurityError() {} },
+    "@/lib/credits/authority": { creditsEnabledFor: async () => false, memberCreditsEnabled: async () => false },
+    "@/lib/getting-started/service": { completeGettingStarted: async () => {} },
+    "@/lib/playbook/quiz": { fortnightIndex: () => 0, periodEnd: () => new Date() },
+  }, {
+    process: { env: { AUTH_SECRET: "not-a-production-key", RESEND_API_KEY: "mock", RESEND_FROM_EMAIL: "test@example.invalid", NEXT_PUBLIC_APP_URL: "https://example.invalid" } },
+    fetch: async (url: string, req: RequestInit) => {
+      assert.equal(url, "https://api.resend.com/emails");
+      const body = JSON.parse(String(req.body));
+      deliveries.push({ key: new Headers(req.headers).get("Idempotency-Key"), to: body.to[0], href: body.text.split("\n").at(-1) });
+      if (lostResponse && body.to[0] === "participant-0@example.invalid") return new Response(null, { status: 502 });
+      return Response.json({ id: "mock-message" });
+    },
+  });
+  const service = load<typeof import("../src/lib/action-plan/service")>("src/lib/action-plan/service.ts");
+  const flow = load<typeof import("../src/lib/action-plan/flow/service")>("src/lib/action-plan/flow/service.ts");
+  try {
+    const plan = await db.actionPlan.create({ data: { userId: owner.id, activeKey: owner.id, requestId: randomUUID(), locale: "en", companyStage: "MVP", stageReason: "Saved", stageConfidence: 80, bottleneckGroup: "Sales", bottleneckCode: "no_icp", bottleneckReason: "Saved", bottleneckConfidence: 80, goal: "Validate target market", goalStartsAt: new Date("2026-09-01"), goalDeadline: new Date("2027-06-01") } });
+    const milestones = await Promise.all(Array.from({ length: 5 }, (_, position) => db.planMilestone.create({ data: { actionPlanId: plan.id, position, title: "Original milestone " + position, expectedOutcome: "Original outcome", acceptanceCriteria: "Original standard", targetDate: new Date("2027-01-01") } })));
+    const rows = fixture(randomUUID());
+    await db.actionItem.createMany({ data: rows.map((row, i) => ({ id: row.id, actionPlanId: plan.id, clientKey: row.clientKey, title: row.title, source: row.source, milestoneId: milestones[0].id, done: row.done, completedAt: row.done ? new Date("2026-10-05") : null, recordingMode: i === 0 ? "interview" : null, metricCurrent: i === 0 ? 10 : null, metricTarget: i === 0 ? 10 : null, dependencyLevel: i ? 1 : 0, impact: "High", urgencyType: "scheduled", difficulty: 2, actionTimeMinHours: 1, actionTimeMaxHours: 2, companyStage: "MVP", stageFit: 4, stageFitReason: "Saved", bottleneckGroup: "Sales", bottleneckCode: "no_icp", bottleneckFit: 4, bottleneckFitReason: "Saved", outcomeCategory: "customers", expectedOutcome: "Saved result", outcomeTimeMinDays: 1, outcomeTimeMaxDays: 7 })) });
+    await db.actionDependency.createMany({ data: rows.flatMap(row => row.dependencies.map(edge => ({ actionId: row.id, dependsOnId: edge.dependsOn.id, minimumCurrent: edge.minimumCurrent }))) });
+    const notes = await Promise.all(Array.from({ length: 10 }, (_, i) => db.meetingNote.create({ data: { userId: owner.id, title: "Legacy source " + i, insight: { ...emptyInsight("discover"), actionId: rows[0].id, company: "Company " + i, name: "Person " + i, answers: ["Actual workaround", "", "", ""] } } })));
+    const initial = (await service.getActiveActionPlan(owner.id))!;
+    assert.equal(initial.legacyUpgradeAvailable, true);
+    const upgrade = { action: "upgradeLegacy" as const, planId: plan.id, revision: initial.revision! };
+    await assert.rejects(flow.mutateFlow("another-account", upgrade), /not found/);
+    let view: Awaited<ReturnType<typeof flow.getFlow>> = await flow.mutateFlow(owner.id, upgrade);
+    assert.equal(view.steps.length, 16);
+    assert.equal(view.current, "01-2");
+    assert.equal(view.steps[0].current, 10);
+    assert.equal(view.steps[0].ready, true);
+    assert.equal(view.steps[0].completedAt, "2026-10-05T00:00:00.000Z");
+    assert.equal(view.steps[4].actionId, rows[1].id);
+    assert.equal(view.plan.actions.find(a => a.id === rows[1].id)?.milestoneId, milestones[1].id);
+    assert.deepEqual([...view.leads.map(r => r.id)].sort(), notes.map(n => n.id).sort());
+    assert(view.leads.every(r => !r.pain && !r.date && r.wtp === "not_asked"));
+    assert.equal(await db.actionItem.count({ where: { actionPlanId: plan.id } }), 16);
+    assert.equal((await flow.mutateFlow(owner.id, upgrade)).plan.revision, view.plan.revision);
+    const save = async (step: "01-2" | "01-3" | "01-4" | "02-1", data: FlowData) => {
+      view = await flow.mutateFlow(owner.id, { action: "save", planId: plan.id, revision: view.plan.revision!, step, data });
+    };
+    const complete = async (step: "01-2" | "01-3" | "01-4" | "02-1" | "02-2") => {
+      view = await flow.mutateFlow(owner.id, { action: "complete", planId: plan.id, revision: view.plan.revision!, step, requestId: randomUUID() });
+    };
+    const recipients = notes.slice(0, 5).map((note, i) => ({ leadId: note.id, email: "participant-" + i + "@example.invalid" }));
+    const ids = recipients.map(r => r.leadId);
+    await save("01-2", { kind: "organize", values: { positioning: "We help founders validate demand." }, selections: ids, confirmed: ["positioning"], tiers: [], criteria: [] });
+    const send = (list = recipients) => flow.mutateFlow(owner.id, { action: "confirmEmail", planId: plan.id, revision: view.plan.revision!, recipients: list, reminder: false });
+    await assert.rejects(send([{ leadId: "foreign", email: "foreign@example.invalid" }]), /select a plan interviewee/);
+    const mailed = await send(); view = mailed;
+    assert.equal(mailed.emailResults.filter(r => r.status === "accepted").length, 4);
+    assert.equal(mailed.emailResults[0].status, "pending");
+    assert.equal(deliveries.length, 5);
+    lostResponse = false;
+    const retried = await send(); view = retried;
+    assert.equal(retried.emailResults.filter(r => r.status === "accepted").length, 5);
+    assert.equal(deliveries.length, 6);
+    assert.deepEqual(deliveries[0], deliveries[5]);
+    await assert.rejects(complete("01-2"), /five interviewee responses/);
+    for (const sent of deliveries.slice(0, 5)) await flow.confirmation(rows[2].id, new URL(sent.href).searchParams.get("token")!, "yes");
+    view = await flow.getFlow(owner.id); await complete("01-2");
+    assert.equal(view.current, "01-3");
+    const criteria = Array.from({ length: 4 }, (_, i) => ({ id: "criterion-" + i, label: "Actual criterion " + i, weight: 25, sources: ids.slice(0, 3), confirmed: true }));
+    await save("01-3", { kind: "organize", criteria, confirmed: [], values: {}, selections: [], tiers: [] }); await complete("01-3");
+    assert.equal(view.current, "01-4");
+    await save("01-4", { kind: "organize", criteria: [], confirmed: [], values: {}, selections: [], tiers: view.leads.map(lead => ({ leadId: lead.id, matches: criteria.filter(c => c.sources.includes(lead.id)).map(c => c.id), override: "", reason: "", confirmed: true })) });
+    await complete("01-4");
+    assert.equal(view.current, "02-1");
+    const proposals = view.steps.find(s => s.id === "02-1")!.data;
+    if (proposals.kind !== "outreach") throw new Error("Wrong proposal template");
+    assert.equal(proposals.contacts.length, 3);
+    await save("02-1", { ...proposals, contacts: proposals.contacts.map(row => ({ ...row, offer: "Paid pilot with defined deliverables for USD 500", channel: "Email", status: "sent", date: "2026-10-06" })) });
+    await complete("02-1");
+    assert.equal(view.current, "02-2");
+    await assert.rejects(complete("02-2"), /approved payment or contract/);
+    assert.equal(await db.rewardEntry.count({ where: { userId: owner.id, eventKey: "action:" + rows[1].id } }), 1);
+    assert.deepEqual((await db.meetingNote.findMany({ where: { userId: owner.id }, orderBy: { id: "asc" } })).map(n => n.insight), [...notes].sort((a, b) => a.id.localeCompare(b.id)).map(n => n.insight));
+  } finally { await db.user.delete({ where: { id: owner.id } }); await db.$disconnect(); }
 });

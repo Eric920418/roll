@@ -33,3 +33,22 @@ export function legacySequence<T extends LegacyAction>(actions: T[]): T[] {
     return { ...a, executionOrder, dependencies: a.id === positioning.id ? a.dependencies.filter(e => e.dependsOn.id !== pilot.id) : a.dependencies };
   });
 }
+
+export function canUpgradeLegacyPlan(plan: {
+  activeKey: string | null;
+  archivedAt: Date | null;
+  goal: string | null;
+  goalStartsAt: Date | null;
+  goalDeadline: Date | null;
+  actions: Array<LegacyAction & { done: boolean; taskFinding?: unknown }>;
+  milestones: Array<{ id: string; position: number; achievedAt: Date | null }>;
+}) {
+  const { actions, milestones } = plan;
+  return Boolean(plan.activeKey && !plan.archivedAt && plan.goal && plan.goalStartsAt && plan.goalDeadline &&
+    actions.length === 5 && new Set(milestones.map(m => m.position)).size === 5 &&
+    milestones.length === 5 && milestones.every(m => m.position >= 0 && m.position < 5 && !m.achievedAt) &&
+    actions.every(a => a.milestoneId === milestones.find(m => m.position === 0)?.id &&
+      (!a.done || a.clientKey === "task_1") &&
+      !(a.taskFinding && typeof a.taskFinding === "object" && "pending" in a.taskFinding && a.taskFinding.pending)) &&
+    legacySequence(actions) !== actions);
+}

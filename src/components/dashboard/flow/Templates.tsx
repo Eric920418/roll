@@ -46,6 +46,7 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
     {data.kind === "document" && <div className="flex flex-wrap gap-2" role="group" aria-label={w("文件章節", "Document chapters")}>{(CHAPTERS[step] || []).map((title,i)=><button key={i} type="button" className={button + " text-left aria-pressed:bg-black aria-pressed:text-white"} aria-pressed={(editing || "0")===String(i)} onClick={()=>setEditing(String(i))}>{words(title,locale)}</button>)}</div>}
     <fieldset disabled={disabled && step !== "01-3"} className="min-w-0 space-y-3">
     <legend className="sr-only">{words(STEP_WORK[step], locale)}</legend>
+    {step === "05-2" && data.kind === "outreach" && view.needsOriginalMarket && <TextField label={w("原市場／國家", "Original market / country")} value={data.originalMarket || ""} onChange={originalMarket => onChange({ ...data, originalMarket })} />}
     {(data.kind === "outreach" && step === "01-1" || step === "05-2" && (data.kind === "conversation" || data.kind === "outreach")) && <TextField label={w("目標市場／國家", "Target market / country")} value={data.market} onChange={market => onChange({ ...data, market })} />}
     {data.kind === "conversation" && (() => {
       const row = conversationRow!;

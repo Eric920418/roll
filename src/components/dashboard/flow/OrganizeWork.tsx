@@ -10,17 +10,20 @@ import LearningResources from "../LearningResources";
 import { button } from "./Templates";
 
 type Data = Extract<FlowData, { kind: "organize" }>;
+export type ConfirmationRecipient = { leadId: string; email: string };
 export type ParticipantLink = { leadId: string; href: string };
 export function TaskSection({ number, title, detail }: { number: string; title: string; detail?: ReactNode }) {
   return <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-baseline gap-3 text-base font-bold"><span className="text-[10px] font-normal tracking-widest text-dark/45">{number}</span>{title}</h2>{detail && <div className="text-xs text-dark/45">{detail}</div>}</div>;
 }
 
-export default function OrganizeWork({ step, data, view, locale, disabled, readOnly, onChange, onSave, onLinks, links, notice }: {
-  step: "01-2" | "01-3"; data: Data; view: Pick<FlowView, "leads" | "positioningReplies"> & { steps: Array<{ id: StepId; data: FlowData }> }; locale: string; disabled: boolean; readOnly: boolean;
-  onChange(data: Data): void; onSave(data?: Data): void; onLinks(ids: string[], save: boolean): void; links: ParticipantLink[]; onRefresh(): void; notice: string;
+export default function OrganizeWork({ step, data, view, locale, disabled, readOnly, onChange, onSave, onLinks, onEmail, links, notice }: {
+  step: "01-2" | "01-3"; data: Data; view: Pick<FlowView, "leads" | "positioningReplies"> & { participantEmails?: FlowView["participantEmails"]; steps: Array<{ id: StepId; data: FlowData }> }; locale: string; disabled: boolean; readOnly: boolean;
+  onChange(data: Data): void; onSave(data?: Data): void; onLinks?(ids: string[], save: boolean): void; onEmail?(recipients: ConfirmationRecipient[], reminder: boolean): Promise<string | null>; links: ParticipantLink[]; onRefresh(): void; notice: string;
 }) {
   const zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;
   const [selected, setSelected] = useState(""), [copyStatus, setCopyStatus] = useState("");
+  const sendDialog = useRef<HTMLDialogElement>(null);
+  const [toSend, setToSend] = useState<string[]>([]), [reminder, setReminder] = useState(false), [emails, setEmails] = useState<Record<string, string>>({}), [sendError, setSendError] = useState(""), [sending, setSending] = useState(false);
   const positioning = step === "01-2", active = data.criteria.find(c => c.id === selected) || data.criteria[0];
   const savedData = view.steps.find(s => s.id === step)?.data;
   const recipients = data.selections.filter(id => view.leads.some(l => l.id === id));
@@ -28,6 +31,17 @@ export default function OrganizeWork({ step, data, view, locale, disabled, readO
   const canPrepare = completedText(data.values.positioning || "") && (data.values.positioningMode !== "structured" || Boolean(preview)) && (!preview || preview === data.values.positioning);
   const confirmed = view.positioningReplies.filter(r => r.answer === "yes").length;
   const tableLeads = view.leads.filter(l => recipients.includes(l.id) || links.some(v => v.leadId === l.id) || view.positioningReplies.some(r => r.leadId === l.id && r.answer));
+  function send(ids: string[], save: boolean) {
+    if (!onEmail) { onLinks?.(ids, save); return; }
+    if (save && confirmed >= 5 && savedData?.kind === "organize" && savedData.values.positioning === data.values.positioning) {
+      onSave(data); return;
+    }
+    const pending = ids.filter(id => savedData?.kind !== "organize" || data.values.positioning !== savedData.values.positioning || !view.positioningReplies.some(reply => reply.leadId === id && reply.answer));
+    setToSend(pending);
+    setReminder(!save);
+    setSendError("");
+    sendDialog.current?.showModal();
+  }
   async function copy(item: ParticipantLink) {
     const lead = view.leads.find(l => l.id === item.leadId);
     const statement = savedData?.kind === "organize" ? savedData.values.positioning : "";
@@ -48,7 +62,7 @@ export default function OrganizeWork({ step, data, view, locale, disabled, readO
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dark/10 pt-4">
           <p className="text-xs text-dark/50">{positioning ? w("NOVA 會產生一段確認訊息，受訪者點選即可回覆。", "NOVA prepares a confirmation message that participants can open to reply.") : w(`權重總和需為 100%，目前 ${data.criteria.reduce((sum, c) => sum + c.weight, 0)}%`, `Total required: 100%; currently ${data.criteria.reduce((sum, c) => sum + c.weight, 0)}%`)}</p>
           {!readOnly && !positioning && active && !completedText(active.label) && <p role="status" className="text-xs text-amber-800">{w("請填寫至少 3 個字元的具體條件，不要使用待補文字。", "Enter a specific criterion with at least three characters; avoid placeholders.")}</p>}
-          {!readOnly && <div className="flex flex-wrap gap-2"><button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled || (positioning ? recipients.length < 5 || !canPrepare : !active || !completedText(active.label))} onClick={() => positioning ? onLinks(recipients, true) : onSave({ ...data, criteria: data.criteria.map(c => c.id === active?.id ? { ...c, confirmed: true } : c) })}>{positioning ? w("儲存並寄送", "Save and send") : w("儲存條件", "Save criterion")}</button></div>}
+          {!readOnly && <div className="flex flex-wrap gap-2"><button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled || (positioning ? recipients.length < 5 || !canPrepare : !active || !completedText(active.label))} onClick={() => positioning ? send(recipients, true) : onSave({ ...data, criteria: data.criteria.map(c => c.id === active?.id ? { ...c, confirmed: true } : c) })}>{positioning ? w("儲存並寄送", "Save and send") : w("儲存條件", "Save criterion")}</button></div>}
         </div>
         {!positioning && !readOnly && <button id="add-criterion" type="button" hidden disabled={disabled || data.criteria.length >= 6} onClick={() => { const id = crypto.randomUUID(); onChange({ ...data, criteria: [...data.criteria, { id, label: "", weight: 10, sources: [], confirmed: false }] }); setSelected(id); }}>{w("新增條件", "Add criterion")}</button>}
       </section>
@@ -59,9 +73,38 @@ export default function OrganizeWork({ step, data, view, locale, disabled, readO
       </aside>
     </div>
     </div>
+    {positioning && onEmail && <dialog ref={sendDialog} aria-labelledby="positioning-email-title" className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-dark/15 bg-white p-5 text-dark backdrop:bg-black/35" onCancel={event => { if (sending) event.preventDefault(); }}>
+      <form className="space-y-4" onSubmit={async event => {
+        event.preventDefault();
+        if (sending || !toSend.length) return;
+        const selected = new FormData(event.currentTarget);
+        setSending(true); setSendError("");
+        try {
+          const error = await onEmail(toSend.map(leadId => ({ leadId, email: String(selected.get(leadId) || "") })), reminder);
+          if (error) setSendError(error);
+          else sendDialog.current?.close();
+        } finally { setSending(false); }
+      }}>
+        <h3 id="positioning-email-title" className="font-bold">{w("寄送確認訊息", "Send confirmation messages")}</h3>
+        <fieldset className="space-y-3" disabled={sending}>
+          {toSend.map(id => {
+            const lead = view.leads.find(l => l.id === id);
+            return <label key={id} className="block text-sm">{lead?.company} · {lead?.name}
+              <input name={id} type="email" required maxLength={254} placeholder={w("收件 Email", "Recipient email")} value={emails[id] ?? view.participantEmails?.find(r => r.leadId === id)?.email ?? ""} onChange={event => setEmails(values => ({ ...values, [id]: event.target.value }))} className="mt-1 min-h-11 w-full rounded-lg border border-dark/20 px-3 text-sm" />
+            </label>;
+          })}
+        </fieldset>
+        {!toSend.length && <p role="status" className="text-sm">{w("所選受訪者都已回覆，請選擇其他受訪者。", "All selected participants have replied. Choose other participants.")}</p>}
+        {sendError && <p role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{sendError}</p>}
+        <div className="flex justify-end gap-2">
+          <button className={button} disabled={sending} type="button" onClick={() => sendDialog.current?.close()}>{w("取消", "Cancel")}</button>
+          <button className={button + " bg-black text-white"} disabled={sending || !toSend.length} type="submit">{sending ? w("寄送中…", "Sending…") : w("寄送", "Send")}</button>
+        </div>
+      </form>
+    </dialog>}
     {positioning ? <section data-next-step="insights" data-task-section="results" id="positioning-confirmations" className="scroll-mt-6 space-y-3" aria-label={w("受訪者確認", "Participant confirmations")}>
       <TaskSection number="03" title={w(`受訪者確認：${confirmed} 位認為描述準確`, `Participant confirmations: ${confirmed} say it fits`)} detail={<span className="inline-flex items-center gap-3">{w("目標 5 位", "Target: five")}</span>} />
-      <div className="overflow-x-auto rounded-2xl border border-dark/10 bg-white px-5"><table className="w-full min-w-115 text-left text-sm"><thead className="text-xs text-dark/45"><tr>{[w("受訪者", "Participant"), w("回覆", "Response"), w("回饋", "Feedback")].map(label => <th scope="col" key={label} className="border-b border-dark/10 py-4 pr-4 font-medium">{label}</th>)}</tr></thead><tbody>{tableLeads.map(l => { const reply = view.positioningReplies.find(r => r.leadId === l.id), item = links.find(v => v.leadId === l.id); return <tr key={l.id} className="border-b border-dark/5 last:border-0"><th scope="row" className="py-4 pr-4 font-semibold">{l.company} · {l.name}</th><td className="pr-4"><span className={"inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs " + (reply?.answer === "yes" ? "bg-black text-white" : reply?.answer === "no" ? "bg-amber-50 text-amber-800" : "bg-dark/5 text-dark/55")}>{reply?.answer === "yes" ? w("符合", "Fits") : reply?.answer === "no" ? w("不太像", "Does not fit") : w("未回覆", "No response")}</span></td><td className="py-2 text-xs">{reply?.answer ? <span>{reply.feedback || "—"}</span> : !readOnly && <button type="button" className={button + " rounded-full!"} disabled={disabled || JSON.stringify(data) !== JSON.stringify(savedData)} onClick={() => item ? void copy(item) : onLinks([l.id], false)}>{w("再次提醒", "Remind again")}</button>}</td></tr>; })}</tbody></table>{!tableLeads.length && <p className="py-5 text-sm text-dark/60">{w("選擇受訪者並儲存後，在這裡追蹤確認回覆。", "Choose participants and save to track their confirmations here.")}</p>}</div>
+      <div className="overflow-x-auto rounded-2xl border border-dark/10 bg-white px-5"><table className="w-full min-w-115 text-left text-sm"><thead className="text-xs text-dark/45"><tr>{[w("受訪者", "Participant"), w("回覆", "Response"), w("回饋", "Feedback")].map(label => <th scope="col" key={label} className="border-b border-dark/10 py-4 pr-4 font-medium">{label}</th>)}</tr></thead><tbody>{tableLeads.map(l => { const reply = view.positioningReplies.find(r => r.leadId === l.id), item = links.find(v => v.leadId === l.id); return <tr key={l.id} className="border-b border-dark/5 last:border-0"><th scope="row" className="py-4 pr-4 font-semibold">{l.company} · {l.name}</th><td className="pr-4"><span className={"inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs " + (reply?.answer === "yes" ? "bg-black text-white" : reply?.answer === "no" ? "bg-amber-50 text-amber-800" : "bg-dark/5 text-dark/55")}>{reply?.answer === "yes" ? w("符合", "Fits") : reply?.answer === "no" ? w("不太像", "Does not fit") : w("未回覆", "No response")}</span></td><td className="py-2 text-xs">{reply?.answer ? <span>{reply.feedback || "—"}</span> : !readOnly && <button type="button" className={button + " rounded-full!"} disabled={disabled || JSON.stringify(data) !== JSON.stringify(savedData)} onClick={() => item && !onEmail ? void copy(item) : send([l.id], false)}>{w("再次提醒", "Remind again")}</button>}</td></tr>; })}</tbody></table>{!tableLeads.length && <p className="py-5 text-sm text-dark/60">{w("選擇受訪者並儲存後，在這裡追蹤確認回覆。", "Choose participants and save to track their confirmations here.")}</p>}</div>
       {links.length > 0 && <details open className="space-y-3 rounded-2xl border border-dark/10 bg-white p-5"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{w("確認訊息已備妥，尚未寄送", "Confirmation messages ready; not sent")}</summary>{links.map(item => { const lead = view.leads.find(l => l.id === item.leadId); return <div key={item.leadId} className="flex flex-wrap items-center justify-between gap-2 border-t border-dark/10 py-3"><label className="min-w-0 flex-1 text-xs">{lead?.company} · {lead?.name}<input readOnly aria-label={(lead?.company || "") + w("確認連結", " confirmation link")} value={item.href} onFocus={e => e.target.select()} className="mt-2 min-h-11 w-full min-w-0 rounded-lg border px-3 text-xs" /></label><button type="button" className={button} onClick={() => void copy(item)}>{w("複製訊息", "Copy message")}</button></div>; })}</details>}
       {copyStatus && <p role="status" className="whitespace-pre-wrap break-words text-sm">{copyStatus}</p>}
     </section> : <section data-next-step="insights" data-task-section="results" className="space-y-3"><TaskSection number="03" title={w(`評分標準：${data.criteria.length} 項條件，${data.criteria.filter(c => c.confirmed && completedText(c.label)).length} 項已確認`, `Qualification standard: ${data.criteria.length} criteria, ${data.criteria.filter(c => c.confirmed && completedText(c.label)).length} confirmed`)} detail={w("佐證＝有意願付費者中符合條件的比例", "Evidence: share of willing participants supporting the criterion")} /><CriteriaTable data={data} view={view} locale={locale} selected={active?.id} onSelect={id => { setSelected(id); document.getElementById("task-work")?.scrollIntoView({ block: "start" }); document.querySelector<HTMLInputElement>("#task-work input")?.focus(); }} /></section>}
