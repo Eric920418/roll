@@ -158,11 +158,15 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
   const report = step?.id === "05-3" && !view.current && !view.archived;
   const canEditGoal = !view.archived && !readOnly;
   const isEvidenceStep = step && ["02-2", "04-1", "05-2"].includes(step.id);
+  const weeklyStep = step?.id === "05-1";
+  const canConfirmWeekly = weeklyStep && saved && view.weekly.calculable;
   const repairStep = !view.archived && view.integrity.find(item => ["02-2", "04-1", "05-2"].includes(item.step))?.step;
   const recordButton = firstTask ? w("記錄客戶對話", "Record a customer conversation")
     : organizeStep === "01-2" ? w("寄送確認訊息", "Send confirmation messages")
     : organizeStep === "01-3" ? w("新增條件", "Add criterion")
     : step?.id === "02-2" ? w("上傳證明", "Upload evidence")
+    : step?.id === "05-1" ? w("設定目標", "Set target")
+    : step?.id === "05-2" ? w("記錄客戶對話", "Record a customer conversation")
     : step ? words(STEP_WORK[step.id], locale) : "";
 
   function selectStep(id: StepId) {
@@ -266,18 +270,30 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
           </div>
         </form>
       </dialog>}
-              {isEvidenceStep && (!readOnly || repairStep === selected) && <Proofs userId={userId} view={view} onChanged={() => void load(view.plan.id, true)} />}
+              {isEvidenceStep && (!readOnly || repairStep === selected) && (step.id === "05-2" && step.data.kind === "outreach"
+                ? <details className="rounded-xl border border-dark/15 px-4">
+                    <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{w("上傳付款證明", "Upload payment evidence")}</summary>
+                    <div className="pb-4"><Proofs userId={userId} view={view} companiesForEvidence={step.data.contacts.filter(row => row.status === "conversation")} onChanged={() => void load(view.plan.id, true)} /></div>
+                  </details>
+                : <Proofs userId={userId} view={view} onChanged={() => void load(view.plan.id, true)} />)}
               {!readOnly && step.id === "01-4" && draft.kind === "organize" && (view.leads.length < 10 || view.tiers.filter(t => t.confirmed && t.tier === "A").length < 3) && <button type="button" className={button} disabled={disabled || !saved || view.leads.some(l => !view.tiers.some(t => t.leadId === l.id && t.confirmed)) || Boolean(draft.supplements?.some(r => r.records.length < 3 || !view.leads.some(l => l.id === r.records[0]?.id)))} onClick={() => void startSupplement()}>{w("補做三次對話", "Add three supplemental conversations")}</button>}
-              {!readOnly && saved && !step.ready && ["05-1", "05-2"].includes(step.id) && step.reasons.length > 0 && <p role="status" className="text-sm text-dark/70">{step.reasons.join(" · ")}</p>}
+              {!readOnly && saved && !step.ready && (weeklyStep && !canConfirmWeekly || step.id === "05-2") && step.reasons.length > 0 && <p role="status" className="text-sm text-dark/70">{weeklyStep ? step.reasons[0] : step.reasons.join(" · ")}</p>}
               {!readOnly && <div className="flex flex-wrap items-start justify-end gap-3 border-t border-dark/10 pt-3">
                 {firstTask && <details className="min-w-0 flex-1">
                   <summary className="min-h-11 cursor-pointer py-3 text-xs text-dark/60">{w("貼上會議紀錄或語音轉寫", "Paste meeting notes or transcribe audio")}</summary>
                   <TaskAssist embedded key={view.plan.id+":"+step.id} userId={userId} step={step.id} view={view} locale={locale} disabled={disabled} onBusy={value => { busyRef.current = value; setBusy(value); }} onView={next => { setView(next); onChanged(next.plan); }} onRefresh={() => void load(view.plan.id, true)} onApply={data => { change(data); setSavedVersion(v => v + 1); }} />
                 </details>}
                 {firstTask ? <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={saveConversation}>{w("儲存紀錄", "Save conversation")}</button>
+                  : weeklyStep && draft.kind === "organize" ? <div className="flex flex-wrap items-center justify-end gap-3">
+                    {canConfirmWeekly && view.weekly.assumed && <p className="text-xs text-dark/65">{w("調整的比率為待驗證假設。", "Adjusted rates are unverified assumptions.")}</p>}
+                    <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={() => {
+                      if (canConfirmWeekly) void saveAndComplete({ ...draft, confirmed: ["target", "activity", ...(view.weekly.assumed ? ["assumption"] : [])] });
+                      else void mutate({ action: "save", step: step.id, data: draft });
+                    }}>{canConfirmWeekly ? w("確認並完成", "Confirm and complete") : w("計算每週開發量", "Calculate weekly activity")}</button>
+                  </div>
                   : (saved && step.ready || step.id === "02-2")
                     ? <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled || !step.ready} onClick={() => void mutate({ action: "complete", step: step.id, requestId: crypto.randomUUID() }, true)}>{w("確認並完成", "Confirm and complete")}</button>
-                    : <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={() => void mutate({ action: "save", step: step.id, data: draft })}>{step.id === "05-1" ? w("計算每週開發量", "Calculate weekly activity") : w("儲存本步成果", "Save this step")}</button>}
+                    : <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={() => void mutate({ action: "save", step: step.id, data: draft })}>{w("儲存本步成果", "Save this step")}</button>}
               </div>}
             </section>
             <aside className="min-w-0 space-y-4 rounded-2xl border border-dark/10 bg-white p-5 sm:p-6" aria-label={w("方法指引", "Method guide")}>

@@ -168,3 +168,55 @@ test('All sixteen steps use the PDF sections, with one map and company search on
     assert.equal(JSON.stringify(view), before);
   }
 });
+
+test('Quarterly target renders one set of inputs and a single confirmation after calculation', async () => {
+  const initial = fixture(1, 13);
+  const step = initial.steps[13];
+  assert(step.data.kind === 'organize');
+  step.data.values = { target: '6400', contactToConversation: '20', conversationToPaid: '25' };
+  step.saved = false;
+  const load = pdfRuntime({ 'next-intl': { useLocale: () => 'en' } }, { crypto: { randomUUID: () => 'record' } });
+  const Templates = load<typeof import('../src/components/dashboard/flow/Templates')>('src/components/dashboard/flow/Templates.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(Templates, { step: '05-1', data: step.data, view: initial, locale: 'en', onChange() {} }));
+  assert.equal((html.match(/<input[^>]+aria-label="Quarterly revenue target/g) || []).length, 1);
+  assert.match(html, /Renewal rate/);
+  assert.match(html, /Contact-to-conversation rate/);
+  assert.match(html, /Conversation-to-sale rate/);
+  assert.doesNotMatch(html, /Conversion override|type="checkbox"/);
+
+  const writes: Array<{ action: string; revision: number; data?: typeof step.data }> = [];
+  const h = harness(initial, 'en', '', payload => {
+    writes.push(payload);
+    const next = structuredClone(initial);
+    next.plan.revision = 1 + writes.length;
+    next.weekly.calculable = true;
+    next.weekly.assumed = true;
+    next.steps[13].saved = true;
+    const submitted = writes.at(-1)?.data;
+    if (submitted?.kind === 'organize') {
+      next.steps[13].data = submitted;
+      next.steps[13].ready = submitted.confirmed.includes('activity');
+    }
+    if (payload.action === 'complete') {
+      next.steps[13].done = true;
+      next.current = '05-2';
+    }
+    return next;
+  });
+  async function click(label: string) {
+    const actions = h.render().filter(n => n.type === 'button' && n.props.children === label);
+    assert.equal(actions.length, 1);
+    (actions[0].props.onClick as () => void)();
+    await h.settle();
+  }
+  await h.settle();
+  await click('Calculate weekly activity');
+  assert.deepEqual(writes.map(w => w.action), ['save']);
+  assert.match(JSON.stringify(h.render()), /Adjusted rates are unverified assumptions/);
+  await click('Confirm and complete');
+  const confirmed = writes[1].data;
+  assert(confirmed?.kind === 'organize');
+  assert.deepEqual([...confirmed.confirmed], ['target', 'activity', 'assumption']);
+  assert.deepEqual(writes.map(w => [w.action, w.revision]), [['save', 1], ['save', 2], ['complete', 3]]);
+  assert.equal(h.find('Templates').step, '05-2');
+});

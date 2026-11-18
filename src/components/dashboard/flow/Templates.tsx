@@ -96,13 +96,12 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
         });
         return <>
           <TextField label={w("季度營收目標", "Quarterly revenue target") + (currency ? " (" + currency + ")" : "")} type="number" value={data.values.target || ""} onChange={value => update("target", value)} />
-          <label className="block text-sm">{w("平均客單價", "Average revenue per customer")}<input className={field} readOnly value={averageRevenue ? currency + " " + averageRevenue.toLocaleString(locale, { maximumFractionDigits: 2 }) : "—"} /></label>
-          <label className="block text-sm">{w("續約率", "Renewal rate")}<input className={field} readOnly value={renewalRate == null ? w("不適用（無到期客戶）", "N/A (no renewal-eligible customers)") : rate(renewalRate) + "%"} /></label>
-          <TextField label={w("聯絡到對話率（%）", "Contact-to-conversation rate (%)")} type="number" value={data.values.contactToConversation || ""} placeholder={rate(contactToConversation)} onChange={value => update("contactToConversation", value)} />
-          <TextField label={w("對話到成交率（%）", "Conversation-to-sale rate (%)")} type="number" value={data.values.conversationToPaid || ""} placeholder={rate(conversationToPaid)} onChange={value => update("conversationToPaid", value)} />
-          {confirm("target", w("確認季度目標", "Confirm quarterly target"))}
-          {confirm("activity", w("確認每週開發量與 13 週待辦", "Confirm weekly activity and thirteen weekly tasks"))}
-          {(data.values.contactToConversation || data.values.conversationToPaid || data.values.conversion) && confirm("assumption", w("我知道調整的轉換率仍待驗證", "I understand the adjusted rates are assumptions"))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">{w("平均客單價", "Average revenue per customer")}<input className={field} readOnly value={averageRevenue ? currency + " " + averageRevenue.toLocaleString(locale, { maximumFractionDigits: 2 }) : "—"} /></label>
+            <label className="block text-sm">{w("續約率", "Renewal rate")}<input className={field} readOnly value={renewalRate == null ? w("不適用（無到期客戶）", "N/A (no renewal-eligible customers)") : rate(renewalRate) + "%"} /></label>
+            <TextField label={w("聯絡到對話率（%）", "Contact-to-conversation rate (%)")} type="number" value={data.values.contactToConversation || ""} placeholder={rate(contactToConversation)} onChange={value => update("contactToConversation", value)} />
+            <TextField label={w("對話到成交率（%）", "Conversation-to-sale rate (%)")} type="number" value={data.values.conversationToPaid || ""} placeholder={rate(conversationToPaid)} onChange={value => update("conversationToPaid", value)} />
+          </div>
         </>;
       })()}
     </>}

@@ -116,6 +116,10 @@ export function weeklyTarget(context: FlowContext, draft = dataAt(context, "05-1
   };
 }
 
+export function validWeeklyTarget(weekly: Pick<ReturnType<typeof weeklyTarget>, "target" | "conversion" | "weeklyContacts">) {
+  return weekly.target > 0 && weekly.target <= 1e12 && weekly.conversion > 0 && weekly.conversion <= 1 && weekly.weeklyContacts > 0 && weekly.weeklyContacts <= 1000000;
+}
+
 export function savedWeeklyTarget(context: FlowContext) {
   const action = context.actions.find(a => flowStep(a)?.id === "05-1" && a.done);
   const meta = action?.taskFinding as { outcome?: { weekly?: ReturnType<typeof weeklyTarget> } } | null;
@@ -209,7 +213,7 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
     }
     if (step === "05-1") {
       const weekly = savedWeeklyTarget(context) || weeklyTarget(context, data);
-      require(weekly.target > 0 && weekly.target <= 1e12 && Number.isFinite(weekly.target) && weekly.conversion > 0 && weekly.conversion <= 1 && weekly.weeklyContacts > 0 && weekly.weeklyContacts <= 1000000, "請提供正數目標、有效客單價，以及大於 0% 且不超過 100% 的聯絡到對話率與對話到成交率", "A positive target, valid customer revenue and contact-to-conversation and conversation-to-sale rates above 0% and at most 100% are required");
+      require(validWeeklyTarget(weekly), "請提供正數目標、有效客單價，以及大於 0% 且不超過 100% 的聯絡到對話率與對話到成交率", "A positive target, valid customer revenue and contact-to-conversation and conversation-to-sale rates above 0% and at most 100% are required");
       current = ["target", "activity"].filter(c => data.confirmed.includes(c)).length; target = 2;
       require(current === target && (!weekly.assumed || data.confirmed.includes("assumption")), "請確認目標、開發量及調整的轉換率假設", "Confirm the target, activity and any conversion assumptions");
     }

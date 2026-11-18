@@ -78,7 +78,6 @@ export const ORGANIZE_FIELDS: Partial<Record<StepId, Array<{ key: string; label:
   "01-2": [{ key: "positioning", label: ["一句話定位", "Positioning statement"] }],
   "02-3": [{ key: "price", label: ["價格與幣別", "Price and currency"] }, { key: "scope", label: ["試點範圍", "Pilot scope"] }, { key: "terms", label: ["成交條件", "Commercial terms"] }],
   "04-3": [{ key: "currency", label: ["計算幣別（例如 USD）", "Currency (for example USD)"] }, { key: "spend", label: ["現金行銷支出", "Cash marketing spend"], number: true }],
-  "05-1": [{ key: "target", label: ["季度營收目標", "Quarterly revenue target"], number: true }, { key: "conversion", label: ["調整成交率（選填，0–1；屬假設）", "Conversion override (optional, 0–1; an assumption)"], number: true }],
 };
 export const CHAPTERS: Partial<Record<StepId, Words[]>> = {
   "03-3": [["名單來源", "Lead sources"], ["聯絡訊息", "Outreach message"], ["對話腳本", "Conversation script"], ["成交步驟", "Closing steps"]],
