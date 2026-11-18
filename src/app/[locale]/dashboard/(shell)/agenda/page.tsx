@@ -55,11 +55,13 @@ export default async function AgendaPage({ params, searchParams }: Props) {
       <AgendaBoard title={title} guided={guided || !actionPlan} userId={account.id}
         actionPlan={actionPlan}
       />
-      <GettingStartedHint mode="next" />
-      <RoundtableCommitments />
-      {savedDiscovery?.journeyId && (savedDiscovery.total > 0 || savedDiscovery.setup?.confirmed) && <div className="my-7"><DiscoveryJourney userId={account.id} compactTrial /></div>}
-      {!actionPlan && !savedDiscovery?.journeyId && <details id="prospects" className="mt-6 scroll-mt-6 rounded-2xl border border-dark/15 bg-white p-5"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "搜尋優先聯絡的公司" : "Find companies worth contacting"}</summary><ProspectSearch userId={account.id} /></details>}
-      <InvestorProgress confirmationOnly />
+      <div data-agenda-extras>
+        <GettingStartedHint mode="next" />
+        <RoundtableCommitments />
+        {savedDiscovery?.journeyId && (savedDiscovery.total > 0 || savedDiscovery.setup?.confirmed) && <div className="my-7"><DiscoveryJourney userId={account.id} compactTrial /></div>}
+        {!actionPlan && !savedDiscovery?.journeyId && <details id="prospects" className="mt-6 scroll-mt-6 rounded-2xl border border-dark/15 bg-white p-5"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{locale === "zh-tw" ? "搜尋優先聯絡的公司" : "Find companies worth contacting"}</summary><ProspectSearch userId={account.id} /></details>}
+        <InvestorProgress confirmationOnly />
+      </div>
     </div>
   );
 }

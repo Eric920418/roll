@@ -69,6 +69,9 @@ test('Flat conversation forms expose required inputs and retain all saved values
     for(const value of ['Original company','Original person','Original quote','Original solution','2026-11-09']) assert(html.includes(value));
     assert(html.includes('data-conversation-form'));assert.equal((html.match(/aria-pressed="true"/g)||[]).length,4);
     assert(!html.includes('hidden'));assert.equal(JSON.stringify(row),original);
+    const reference = renderToStaticMarkup(React.createElement(Editor, { row, locale, guided: false, reference: true, onChange() {} }));
+    assert.doesNotMatch(reference, /<details|data-use-guided|其他資料與輸入工具/);
+    assert(reference.includes('Original quote'));
     for (const guided of [false, true]) {
       const withMarket=renderToStaticMarkup(React.createElement(Editor,{row,locale,guided,marketField:React.createElement('input',{'aria-label':'Target market',defaultValue:'Original market'}),recordOptions:React.createElement('button',{type:'button'},'Remove draft record'),onChange:()=>{throw new Error('Rendering cannot write');}}));
       assert(withMarket.includes('Original market'));assert(withMarket.includes('Remove draft record'));assert.equal(JSON.stringify(row),original);

@@ -472,3 +472,8 @@ body {
   background: var(--color-primary);
   color: white;
 }
+
+/* Keep the first conversation step focused on its five reference sections. */
+main:has([data-first-task]) :is([data-dashboard-toolbar], [data-trial-banner], [data-agenda-extras]) {
+  display: none;
+}

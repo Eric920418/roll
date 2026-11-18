@@ -30,7 +30,7 @@ test('Milestone bars reflect saved progress, retain confirmation gates, and adva
   }
 });
 
-function harness(initial = fixture(), locale = 'en', hash = '') {
+function harness(initial = fixture(), locale = 'en', hash = '', write?: (payload: { action: string; revision: number }) => FlowView) {
   const slots: unknown[] = [], effects: Array<() => void> = [], timers: Array<() => void> = [];
   let cursor = 0, props = initial.plan, server = initial, reads = 0, writes = 0;
   let pending: ((value: FlowView) => void) | null = null;
@@ -44,7 +44,7 @@ function harness(initial = fixture(), locale = 'en', hash = '') {
     useEffectEvent(fn: (...args: unknown[]) => unknown) { const cell = hooks.useRef(fn) as { current: typeof fn }; cell.current = fn; return hooks.useCallback((...args: unknown[]) => cell.current(...args), []); },
   };
   const load = pdfRuntime({ react: hooks, 'next-intl': { useLocale: () => locale }, 'next/navigation': { useRouter: () => ({ refresh() {} }) },
-    '@/lib/member-fetch': { memberFetch: async (_url: string, init?: { method: string }) => { if (init?.method !== 'POST') { reads++; if (pending) return new Promise<FlowView>(resolve => { pending = resolve; }); } else writes++; return structuredClone(server); } },
+    '@/lib/member-fetch': { memberFetch: async (_url: string, init?: { method: string; body?: string }) => { if (init?.method !== 'POST') { reads++; if (pending) return new Promise<FlowView>(resolve => { pending = resolve; }); } else { writes++; if (write) return structuredClone(write(JSON.parse(init.body!))); } return structuredClone(server); } },
     '../ActionMap': { __esModule: true, default: 'Map' }, '../ActionPlanBuilder': { __esModule: true, default: 'Builder' }, './Templates': { __esModule: true, default: 'Templates', button: '', TextField: 'Field' }, './OrganizeWork': { __esModule: true, default: 'OrganizeWork', TaskRoadmap: 'TaskRoadmap', TaskSection: 'TaskSection' }, './CurrentFindings': { __esModule: true, default: 'Findings' }, './PositioningEditor': { positioningPreview: () => '' }, '../LearningResources': { __esModule: true, default: 'Resources' }, './TaskAssist': { __esModule: true, default: 'Assist' }, './Proofs': { __esModule: true, default: 'Proofs' }, './Followups': { __esModule: true, default: 'Followups' },
   }, { window: Object.assign(events, { location: { hash, origin: 'http://localhost' } }), document: Object.assign(documentEvents, { visibilityState: 'visible', getElementById: () => null }), localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, requestAnimationFrame: (fn: () => void) => fn(), setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {}, crypto: { randomUUID: () => 'request' } });
   const Workspace = load<typeof import('../src/components/dashboard/flow/Workspace')>('src/components/dashboard/flow/Workspace.tsx').default;
@@ -80,14 +80,33 @@ test('Flow reloads refreshed parent progress and milestone without reloading the
   assert.equal(h.find('Templates').view.steps[4].current, 2, 'Use server-evaluated progress, not stale stored counters');
 });
 
-test('Conversation priority omits its duplicate button while other step actions and forms remain available', async () => {
-  for (const locale of ['en', 'zh-tw']) for (const completed of [0, 1]) {
-    const h = harness(fixture(1, completed), locale); await h.settle();
-    const priority = h.render().find(n => Object.hasOwn(n.props, 'data-today-priority'))!;
-    const content = JSON.stringify(priority);
-    assert.equal(content.includes('"type":"button"'), completed === 1);
-    assert(!content.includes('Record a conversation')); assert(!content.includes('記錄客戶對話'));
-    assert.equal(h.find('Templates').step, STEPS[completed].id);
+test('First conversation step has only the reference sections and completes from Save when the server is ready', async () => {
+  for (const locale of ['en', 'zh-tw']) for (const ready of [false, true]) {
+    const plan = fixture();
+    const data = plan.steps[0].data;
+    assert(data.kind === 'conversation');
+    data.market = 'TW';
+    const writes: Array<{ action: string; revision: number }> = [];
+    const h = harness(plan, locale, '', payload => {
+      writes.push(payload);
+      const next = fixture(writes.length + 1, Number(payload.action === 'complete'));
+      next.steps[0] = { ...next.steps[0], data, ready };
+      return next;
+    });
+    await h.settle();
+    const nodes = h.render(), strings = JSON.stringify(nodes);
+    const headings = nodes.filter(n => n.type === 'TaskSection').map(n => n.props.number);
+    assert.deepEqual(headings, ['01', '02', '04']);
+    assert(nodes.some(n => n.type === 'Findings' && n.props.reference));
+    assert(nodes.some(n => n.type === 'TaskRoadmap'));
+    assert.match(strings, /Record a customer conversation|記錄客戶對話/);
+    assert.doesNotMatch(strings, /Edit goal|修改目標|Confirm and complete|確認並完成|Save this step|儲存本步成果/);
+    const save = nodes.find(n => n.type === 'button' && typeof n.props.onClick === 'function' && n.props.children === (locale === 'en' ? 'Save conversation' : '儲存紀錄'))!;
+    assert.equal(typeof save.props.onClick, 'function');
+    (save.props.onClick as () => void)();
+    await h.settle();
+    assert.deepEqual(writes.map(({ action, revision }) => [action, revision]), ready ? [['save', 1], ['complete', 2]] : [['save', 1]]);
+    assert.equal(h.find('Templates').step, ready ? '01-2' : '01-1');
   }
 });
 
@@ -130,8 +149,8 @@ test('All sixteen steps retain compact types and criteria gates; company search 
     assert.equal(Boolean(search), ['01-1', '03-1', '04-1', '05-2'].includes(spec.id));
     if (search) { assert.equal(search.step, spec.id); assert.equal(search.market, spec.id === '05-2' ? 'Japan' : 'TW'); assert.match(search.description, /Confirmed buying criterion/); assert(!search.description.includes('Observation only')); }
     const priority = tree.find(n => Object.hasOwn(n.props, 'data-today-priority'));
-    assert.equal(/Completion criteria|COMPLETION CRITERIA|完成標準/.test(JSON.stringify(priority)), ["01-2", "01-3"].includes(spec.id));
-    assert.equal(tree.some(n => n.type === "TaskRoadmap"), ["01-2", "01-3"].includes(spec.id));
+    assert.equal(/Completion criteria|COMPLETION CRITERIA|完成標準/.test(JSON.stringify(priority)), ["01-1", "01-2", "01-3"].includes(spec.id));
+    assert.equal(tree.some(n => n.type === "TaskRoadmap"), ["01-1", "01-2", "01-3"].includes(spec.id));
     assert.equal(JSON.stringify(view), before);
   }
 });

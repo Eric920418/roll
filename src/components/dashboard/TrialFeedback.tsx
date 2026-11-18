@@ -61,7 +61,7 @@ export default function TrialFeedback({ userId, discovery = false }: { userId: s
   const defaultDraft = zh ? "我正在試用 @Nova AI。\n\n[請填入自己的使用心得]\n\nhttps://rollon.com.tw/product" : "I've been trying @Nova AI.\n\n[Add your own experience here]\n\nhttps://rollon.com.tw/product";
   const incentive = zh ? "完成回饋，延長原試用 3 天（每帳號一次）" : "Complete feedback for 3 extra days of your original trial (once per account)";
   return <>
-    {inNextSteps && !status?.paid && trial?.available && <section className={`mb-5 rounded-2xl border ${discovery ? "border-dark/15 p-5" : "border-2 border-black p-6"}`}>
+    {inNextSteps && !status?.paid && trial?.available && <section data-trial-banner className={`mb-5 rounded-2xl border ${discovery ? "border-dark/15 p-5" : "border-2 border-black p-6"}`}>
       <div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-widest">Free trial</p><h2 className="mt-2 text-xl font-bold">{trial.active ? (zh ? `試用還剩 ${trial.daysRemaining} 天` : `${trial.daysRemaining} days left in your trial`) : (zh ? "試用已結束" : "Your trial has ended")}</h2></div><button className={`${button} bg-black text-white`} onClick={show}>{status?.submitted ? (status.eligible ? (zh ? "領取 3 天原試用延長" : "Claim 3 extra trial days") : (zh ? "查看回饋" : "View feedback")) : (zh ? "給予回饋" : "Give feedback")}</button></div>
       {!status?.submitted && status?.eligible && <p className="mt-3 text-sm">{incentive}</p>}
       {discovery && status?.eligible && <p className="mt-2 text-sm">{zh ? "三家訪談上限維持不變。" : "The three-company conversation limit stays the same."}</p>}

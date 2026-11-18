@@ -6,13 +6,14 @@ type Row = Extract<FlowData, {
     kind: 'conversation';
 }>['records'][number];
 const field = 'mt-2 min-h-11 w-full rounded-xl border p-3 text-sm';
-export default function ConversationEditor({ row, locale, guided, marketField, recordOptions, secondary, onChange }: {
+export default function ConversationEditor({ row, locale, guided, marketField, recordOptions, secondary, reference = false, onChange }: {
     row: Row;
     locale: string;
     guided: boolean;
     marketField?: ReactNode;
     recordOptions?: ReactNode;
     secondary?: ReactNode;
+    reference?: boolean;
     onChange(value: Row): void;
 }) {
     const [wizard, setWizard] = useState(guided), [step, setStep] = useState(0), w = (a: string, b: string) => locale === 'zh-tw' ? a : b;
@@ -40,5 +41,6 @@ export default function ConversationEditor({ row, locale, guided, marketField, r
  <div hidden={wizard && step !== 5} className="space-y-4">{text('nextStep', '約定的下一步（選填）', 'Agreed next step (optional)', 'text', true)}{text('nextDate', '約定時間（選填）', 'Agreed date (optional)', 'date')}{text('quote', '對方原話（選填）', 'Exact customer quote (optional)', 'text', true)}</div>
  <div hidden={wizard && step !== 6} className="space-y-3 rounded-xl bg-dark/5 p-4"><h4 className="font-bold">{w('對話摘要 · 儲存前確認', 'Conversation summary · review before saving')}</h4><p>{row.company} · {row.name} · {row.date}</p><p className="whitespace-pre-wrap">{row.pain}</p><p>{row.solution}</p></div>
  {wizard && <div className="flex justify-between gap-3"><button type="button" className={button} disabled={step === 0} onClick={() => setStep(step - 1)}>{w('上一題', 'Back')}</button><button type="button" className={button} disabled={step === 6} onClick={() => setStep(step + 1)}>{step === 5 ? w('確認摘要', 'Review summary') : w('下一題', 'Next')}</button></div>}</div>;
+    if (reference) return <div className="space-y-3" data-conversation-form>{main}</div>;
     return <div className="space-y-3" data-conversation-form>{main}<details className="border-t border-dark/10"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold">{w('其他資料與輸入工具（選填）','Other details and input tools (optional)')}</summary><div className="space-y-4">{!wizard && <>{text('role','職稱','Role')}{text('loss','問題造成的損失','Time or money lost')}{text('amount','願付金額','Willing amount','number')}{choice('currency','幣別','Currency',(typeof Intl.supportedValuesOf==='function'?Intl.supportedValuesOf('currency'):['USD','TWD','EUR']).map(v=>[v,v]))}{text('buyer','最終購買決策者','Final buying decision')}{text('nextStep','約定的下一步','Agreed next step')}{text('nextDate','約定時間','Agreed date','date')}{text('quote','對方原話','Exact customer quote','text',true)}<button data-use-guided className={button} type="button" onClick={()=>setWizard(true)}>{w('使用逐題引導','Use guided questions')}</button></>}{recordOptions}{secondary}</div></details></div>;
 }
