@@ -122,10 +122,24 @@ test("HTML reader pins public DNS, rejects private/oversized/non-HTML sources an
   const url = "https://buyer.example.com/contact", website = "https://buyer.example.com";
   assert(await checker([{}]).read(url, website));
   for (const address of ["127.0.0.1", "10.0.0.1", "169.254.169.254", "::1"]) assert.equal(await checker([{}], address).read(url, website), null);
-  for (const reply of [{ status: 403 }, { type: "application/pdf" }, { size: 262145 }, { html: "x".repeat(262145) }]) assert.equal(await checker([reply]).read(url, website), null);
+  const large = "<p>Public contact page</p>" + " ".repeat(828604);
+  assert.equal((await checker([{ size: Buffer.byteLength(large), html: large }]).read(url, website))?.html, large);
+  assert.equal((await checker([{ html: large }]).read(url, website))?.html, large);
+  for (const reply of [{ status: 403 }, { type: "application/pdf" }, { size: 1048577 }, { html: "x".repeat(1048577) }]) assert.equal(await checker([reply]).read(url, website), null);
   assert(await checker([{ status: 302, location: "/contact-us" }, {}]).read(url, website));
   for (const location of ["http://buyer.example.com/contact", "https://different.example.com/contact", "https://127.0.0.1/contact"]) { const c = checker([{ status: 302, location }, {}]); assert.equal(await c.read(url, website), null); assert.equal(c.attempts(), 1); }
   const loop = checker(Array(4).fill({ status: 302, location: "/contact" })); assert.equal(await loop.read(url, website), null); assert.equal(loop.attempts(), 3);
+});
+test("Official business contact links after long navigation are found without requesting irrelevant or private URLs", async () => {
+  const raw = providerCompany(), target = raw.website_url + "/contact/service-request-form", calls: string[] = [];
+  const navigation = Array.from({ length: 330 }, (_, i) => `<a href="/products/${i}">Product</a>`).join("");
+  const candidate = { ...raw, contacts: { emails: [] }, fit_evidence: [{ criterion: "Public B2B operations", source_url: raw.website_url + "/about" }] };
+  const result = await contactModule.verifyCompany(candidate, "TW", async url => {
+    calls.push(url);
+    return { url, html: url === raw.website_url ? navigation + '<a href="https://127.0.0.1/contact">Private</a><a href="https://external.example.com/contact">External</a><a href="/privacy/contact">Privacy</a><a href="/contact/service-request-form">Sales inquiry</a>' : url === target ? '<form><textarea name="message"></textarea></form>' : "Public B2B services" };
+  });
+  assert.equal(result.company?.contact.kind, "page"); assert.equal(result.company?.contact.value, target);
+  assert.deepEqual(calls, [raw.website_url + "/about", raw.website_url, target]);
 });
 test("Client enforces fixed HTTPS origin, stable POST key, Retry-After and safe credential errors", async () => {
   let status = 429;

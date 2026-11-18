@@ -39,11 +39,15 @@ export default function LegacyOrganizeWork({ userId, action, plan, busy, onChang
   async function mutate(body: object) {
     if (sending.current) return; sending.current = true; setSaving(true); setError("");
     try {
-      const next = await memberFetch<ActionPlanDto & { confirmationLinks?: ParticipantLink[] }>(`/api/action-plans/actions/${action.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision, ...body }) });
+      let next = await memberFetch<ActionPlanDto & { confirmationLinks?: ParticipantLink[] }>(`/api/action-plans/actions/${action.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision, ...body }) });
+      if ("organizeData" in body) {
+        const latest = await memberFetch<{ organize: LegacyOrganizeView }>(`/api/customer-insights?actionId=${encodeURIComponent(action.id)}&scope=plan&locale=${zh ? "zh-tw" : "en"}`);
+        if (latest.organize.result.ready) next = await memberFetch<ActionPlanDto>(`/api/action-plans/actions/${action.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision: next.revision, done: true }) });
+      }
       dirty.current = false; setConflict(false); setRevision(next.revision || 0); onChanged(next);
       if (next.confirmationLinks) setLinks(next.confirmationLinks.map(l => ({ ...l, href: new URL(l.href, window.location.origin).href })));
       try { localStorage.removeItem(key); } catch { setNotice(w("已儲存，但本機草稿未清除。", "Saved, but local draft cleanup failed.")); }
-      await load(); setNotice(w("已儲存。完成仍需確認，不會因儲存自動入帳。", "Saved. Completion still requires confirmation."));
+      await load(); setNotice(w("已儲存。", "Saved."));
     } catch (cause) { if (cause instanceof MemberFetchError && cause.status === 409) setConflict(true); setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { sending.current = false; setSaving(false); }
   }
@@ -52,11 +56,8 @@ export default function LegacyOrganizeWork({ userId, action, plan, busy, onChang
   return <div className="space-y-5" data-legacy-organize>
     {error && <div role="alert" className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p><button type="button" disabled={saving} className={button} onClick={() => void load(conflict)}>{conflict ? w("更新版本（保留草稿）", "Update version; keep draft") : w("重新載入", "Retry")}</button></div>}
     {!view || !draft ? !error && <p role="status">{w("載入任務紀錄中…", "Loading saved work…")}</p> : <>
-      <OrganizeWork step={view.step} data={draft} view={{ ...view, steps: [{ id: view.step, data: view.data }] }} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => void mutate({ organizeData: data || draft })} onLinks={(ids, save) => void mutate({ ...(save ? { organizeData: draft } : {}), confirmationRecipients: ids })} links={links} onRefresh={() => void load()} notice={notice} />
-      {!readOnly && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dark/10 p-4"><p className="text-sm">{view.result.current} / {view.result.target} {w("已確認", "confirmed")}</p><button type="button" disabled={disabled || unsaved || !view.result.ready} className={button + " bg-black text-white"} onClick={() => void mutate({ done: true })}>{w("確認並完成", "Confirm and complete")}</button>{!view.result.ready && <p className="w-full whitespace-pre-wrap text-xs text-dark/60">{view.result.reasons.join("；")}</p>}</div>}
-      {readOnly && <button type="button" disabled={busy || saving} className={button} onClick={() => void mutate({ done: false })}>{w("撤銷完成（保留紀錄與積分）", "Undo completion; retain records and points")}</button>}
+      <OrganizeWork step={view.step} data={draft} view={{ ...view, steps: [{ id: view.step, data: view.data }] }} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => mutate({ organizeData: data || draft })} onLinks={(ids, save) => mutate({ ...(save ? { organizeData: { ...draft, confirmed: [...new Set([...draft.confirmed, "positioning"])] } } : {}), ...(!save || !view.result.ready || unsaved ? { confirmationRecipients: ids } : {}) })} links={links} onRefresh={() => void load()} notice={notice} />
       {notice && unsaved && <details className="rounded-xl border p-4 text-sm"><summary className="min-h-11 cursor-pointer">{w("比對伺服器已儲存內容", "Compare the saved version")}</summary><p className="whitespace-pre-wrap">{Object.values(view.data.values).join("\n")}</p>{view.data.criteria.map(c => <p key={c.id}>{c.label} · {c.weight}%</p>)}</details>}
     </>}
-    {action.taskWorkspace && <details className="rounded-xl border border-dark/10 p-4 text-sm"><summary className="min-h-11 cursor-pointer py-2">{w("原有工作紀錄（保留）", "Original saved work (retained)")}</summary>{action.taskWorkspace.kind === "positioning" ? <div className="whitespace-pre-wrap">{[action.taskWorkspace.who, action.taskWorkspace.pain, action.taskWorkspace.outcome, action.taskWorkspace.how, action.taskWorkspace.reaction].map((v, i) => <p key={i}>{v}</p>)}</div> : action.taskWorkspace.kind === "scorecard" && action.taskWorkspace.criteria.map(c => <p key={c.id}>{c.criterion} · {c.weight}/5 · {c.fit}</p>)}</details>}
   </div>;
 }

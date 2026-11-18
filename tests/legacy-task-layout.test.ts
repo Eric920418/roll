@@ -83,3 +83,20 @@ test('Separating legacy guidance keeps the original form and opens findings erro
   const error = renderToStaticMarkup(React.createElement(Workspace, { ...props, showGuide: false, action: { ...props.action, title: 'Define and document your ideal customer profile', taskWorkspace: emptyWorkspace('icp'), taskFinding: { result: null, pending: false, error: 'HTTP 502 · provider_error · safe-trace' } } }));
   assert.match(error, /<details[^>]*open/); assert(error.includes('HTTP 502 · provider_error · safe-trace'));
 });
+
+
+test('Legacy reference save uses the latest server result to finish without a separate completion button', async () => {
+  for (const ready of [false, true]) {
+    const data = { kind: 'organize', values: {}, confirmed: [], selections: [], criteria: [], tiers: [] };
+    const view = { step: '01-3', data, revision: plan.revision, leads: [], positioningReplies: [], result: { ready, current: ready ? 4 : 3, target: 4, reasons: [] } };
+    let index = 0; const calls: { body?: { organizeData?: unknown; done?: boolean; revision?: number } }[] = [];
+    const load = runtime('en', { react: { ...React, useState: (value: unknown) => [[view, data, plan.revision][index++] ?? value, () => {}], useEffect() {}, useRef: (value: unknown) => ({ current: value }), useCallback: (fn: unknown) => fn }, '@/lib/member-fetch': { MemberFetchError: class extends Error {}, memberFetch: async (_url: string, init?: { body: string }) => { const body = init?.body ? JSON.parse(init.body) : undefined; calls.push({ body }); return body ? { ...plan, revision: body.done ? 3 : 2 } : { organize: view }; } } });
+    const Work = load<typeof import('../src/components/dashboard/LegacyOrganizeWork')>('src/components/dashboard/LegacyOrganizeWork.tsx').default;
+    const tree = Work({ userId: 'owner', action, plan, busy: false, onChanged() {} });
+    let save: ((data: unknown) => void) | undefined; let extra = 0;
+    function walk(node: React.ReactNode) { React.Children.forEach(node, child => { if(!React.isValidElement<{ children?: React.ReactNode; step?: string; onSave?(data: unknown): void }>(child)) return; if(child.props.step === '01-3') save = child.props.onSave; if(child.type === 'button' && /Confirm and complete|Undo completion/.test(String(child.props.children))) extra++; walk(child.props.children); }); }
+    walk(tree); assert(save); assert.equal(extra, 0); await save(data);
+    const patches = calls.filter(c => c.body).map(c => c.body!);
+    assert.equal(patches.length, ready ? 2 : 1); if(ready) { assert.equal(patches[1].done, true); assert.equal(patches[1].revision, 2); }
+  }
+});

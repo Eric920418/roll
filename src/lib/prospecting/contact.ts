@@ -7,6 +7,7 @@ import { publicProspectAddress } from "@/lib/validation/prospect-contact";
 import { providerCompanySchema, type PublicProspect } from "./schema";
 const host = (url: string) => new URL(url).hostname.replace(/^www\./, "");
 const official = (url: string, website: string) => publicWebsite(url) && (host(url) === host(website) || host(url).endsWith(`.${host(website)}`));
+const maxHtmlBytes = 1_048_576;
 const contactPath = (url: string) => /(?:contact|enquir|inquir|聯絡|聯繫|联系我们)/i.test(new URL(url).pathname + new URL(url).hash) && !/(?:privacy|legal|careers?|jobs?|terms)/i.test(new URL(url).pathname);
 export async function readPublicPage(value: string, website: string): Promise<{ url: string; html: string } | null> {
   const signal = AbortSignal.timeout(7000); let url = value;
@@ -19,9 +20,9 @@ export async function readPublicPage(value: string, website: string): Promise<{ 
       }) }, result => {
         const status = result.statusCode || 0;
         if (status < 200 || status >= 300) { resolve({ status, location: result.headers.location }); result.destroy(); return; }
-        if (!/text\/html|application\/xhtml\+xml/i.test(result.headers["content-type"] || "") || Number(result.headers["content-length"] || 0) > 262144) { result.destroy(); resolve(null); return; }
+        if (!/text\/html|application\/xhtml\+xml/i.test(result.headers["content-type"] || "") || Number(result.headers["content-length"] || 0) > maxHtmlBytes) { result.destroy(); resolve(null); return; }
         const chunks: Buffer[] = []; let size = 0;
-        result.on("data", chunk => { size += chunk.length; if (size > 262144) { result.destroy(); resolve(null); } else chunks.push(Buffer.from(chunk)); });
+        result.on("data", chunk => { size += chunk.length; if (size > maxHtmlBytes) { result.destroy(); resolve(null); } else chunks.push(Buffer.from(chunk)); });
         result.on("end", () => resolve({ status, html: Buffer.concat(chunks).toString("utf8") }));
         result.on("error", () => resolve(null)); result.on("aborted", () => resolve(null));
       });
@@ -82,7 +83,7 @@ export async function verifyCompany(raw: unknown, country: string, read = readPu
     let page = [...pages.values()].find(qualifies);
     if (!page) {
       const homepage = pages.get(c.website_url);
-      const links = homepage ? [...homepage.html.matchAll(/href\s*=\s*["']([^"']{1,2000})["']/gi)].slice(0, 100).flatMap(m => { try { const u = new URL(m[1], homepage.url).href; return official(u, c.website_url) && contactPath(u) ? [u] : []; } catch { return []; } }) : [];
+      const links = homepage ? [...homepage.html.matchAll(/href\s*=\s*["']([^"']{1,2000})["']/gi)].flatMap(m => { try { const u = new URL(m[1], homepage.url).href; return official(u, c.website_url) && contactPath(u) ? [u] : []; } catch { return []; } }) : [];
       if (links[0] && !pages.has(links[0])) { const fetched = await read(links[0], c.website_url); if (fetched && qualifies(fetched)) page = fetched; }
     }
     if (page) contact = { kind: "page", value: page.url, source: page.url, name: null, role: null };

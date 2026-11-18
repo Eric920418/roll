@@ -12,7 +12,7 @@ function service(fetcher?: typeof fetch, env = {}) {
   const compiled = { exports: {} as typeof import("../src/lib/admin/analytics") };
   runInNewContext(ts.transpileModule(readFileSync("src/lib/admin/analytics.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
     module: compiled, exports: compiled.exports, require: (id: string) => id === "server-only" ? {} : id === "@/lib/analytics" ? require("../src/lib/analytics") : require(id),
-    process: { env: { UMAMI_REPORTS_ENABLED: "true", NEXT_PUBLIC_UMAMI_WEBSITE_ID: "00000000-0000-4000-8000-000000000001", UMAMI_API_KEY: "private-test-key", UMAMI_COLLECTION_STARTED_AT: "2026-11-04T00:00:00.000Z", ...env } },
+    process: { env: { UMAMI_REPORTS_ENABLED: "true", NEXT_PUBLIC_UMAMI_WEBSITE_ID: "00000000-0000-4000-8000-000000000001", UMAMI_API_KEY: "private-test-key", UMAMI_COLLECTION_STARTED_AT: new Date(Date.now() - 5 * 86400000).toISOString(), ...env } },
     URLSearchParams, Date, AbortSignal, fetch: fetcher,
   });
   return compiled.exports;

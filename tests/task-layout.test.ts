@@ -100,3 +100,55 @@ test("Positioning response table only exposes this plan's current statement repl
   assert(positioningReplies(context).every(r => r.answer === null));
   assert.deepEqual(positioningReplies({ locale: "en", proofs: [], actions: [] }), []);
 });
+
+
+test("Reference positioning uses four fields and a live preview without extra confirmation controls", () => {
+  const load = pdfRuntime({ react: { ...React, useState: (value: unknown) => [value, () => {}] } });
+  const Editor = load<typeof import("../src/components/dashboard/flow/PositioningEditor")>("src/components/dashboard/flow/PositioningEditor.tsx").default;
+  const data = { ...emptyFlowData("organize"), values: { positioningWho: "Founders", positioningWhen: "before hiring", positioningPain: "unclear demand", positioningMethod: "customer evidence", positioning: "Original statement" }, confirmed: ["positioning"] } as Extract<FlowData, { kind: "organize" }>;
+  const before = JSON.stringify(data);
+  for (const locale of ["zh-tw", "en"]) {
+    let changed = data;
+    const tree = Editor({ data, locale, compact: true, onChange: next => { changed = next; } }) as React.ReactElement<{ children: React.ReactNode[] }>;
+    const fields = tree.props.children[0] as React.ReactElement<{ onChange(value: string): void }>[];
+    assert.equal(fields.length, 4); fields[0].props.onChange("B2B founders");
+    assert(changed.values.positioning.includes("B2B founders")); assert.equal(changed.values.positioningMode, "structured"); assert(!changed.confirmed.includes("positioning"));
+    const html = renderToStaticMarkup(tree);
+    assert.doesNotMatch(html, /<details|type="checkbox"|Apply preview|套用預覽|Edit the full/);
+    assert.equal(JSON.stringify(data), before);
+  }
+});
+
+test("Reference step save completes only after the server reports ready and retains the latest revision", async () => {
+  for (const ready of [false, true]) {
+    const data = { ...emptyFlowData("organize"), criteria: [] } as Extract<FlowData, { kind: "organize" }>;
+    const plan = { id: "reference-plan", revision: 1, workflowVersion: 2, actions: [], roadmap: { goal: "Goal", deadline: "2027-01-01", milestones: [] } } as unknown as import("../src/lib/action-plan/service").ActionPlanDto;
+    const step = { id: "01-3", actionId: "criterion-task", kind: "organize", current: 3, target: 4, saved: true, done: false, ready: false, reasons: ["Extra waiting explanation"], data, summary: [] };
+    const view = { plan, current: "01-3", steps: [step], criteria: [], followups: [], integrity: [], archived: false, weeks: [], metrics: {}, positioningReplies: [], leads: [] } as unknown as FlowView;
+    let state = 0; const calls: Record<string, unknown>[] = [];
+    const react = { ...React, useState: (value: unknown) => [[view, "01-3", data][state++] ?? (typeof value === "function" ? (value as () => unknown)() : value), () => {}], useEffect() {}, useEffectEvent: (fn: unknown) => fn, useCallback: (fn: unknown) => fn, useRef: (value: unknown) => ({ current: value }) };
+    const load = pdfRuntime({ react, "next-intl": { useLocale: () => "zh-tw" }, "next/navigation": { useRouter: () => ({ refresh() {} }) }, "@/lib/member-fetch": { memberFetch: async (_url: string, input: { body: string }) => { const body = JSON.parse(input.body); calls.push(body); return { ...view, plan: { ...plan, revision: calls.length + 1 }, current: body.action === "complete" ? "01-4" : "01-3", steps: [{ ...step, ready, done: body.action === "complete" }] }; } } }, { crypto: globalThis.crypto, localStorage: { removeItem() {} }, requestAnimationFrame: (fn: () => void) => fn() });
+    const Work = load<typeof import("../src/components/dashboard/flow/Workspace")>("src/components/dashboard/flow/Workspace.tsx").default;
+    const tree = Work({ userId: "reference-owner", plan, onChanged() {} });
+    let save: ((data: FlowData) => void) | undefined; let finishButtons = 0;
+    function walk(node: React.ReactNode) { React.Children.forEach(node, child => { if (!React.isValidElement<{ children?: React.ReactNode; step?: string; onSave?(data: FlowData): void }>(child)) return; if(child.props.step === "01-3" && child.props.onSave) save = child.props.onSave; if(child.type === "button" && child.props.children === "確認並完成") finishButtons++; walk(child.props.children); }); }
+    walk(tree); assert(save); assert.equal(finishButtons, 0); await save(data);
+    assert.deepEqual(calls.map(c => c.action), ready ? ["save", "complete"] : ["save"]);
+    if(ready) assert.equal(calls[1].revision, 2);
+    assert.equal(view.steps[0].done, false, "Rendering and callbacks cannot rewrite the input plan");
+  }
+});
+
+
+test("Reference criterion form keeps the five pictured fields without extra expandable controls", () => {
+  const load = pdfRuntime({ react: { ...React, useState: (value: unknown) => [value, () => {}] } });
+  const Editor = load<typeof import("../src/components/dashboard/flow/CriteriaEditor")>("src/components/dashboard/flow/CriteriaEditor.tsx").default;
+  const data = { ...emptyFlowData("organize"), criteria: [{ id: "a", label: "Existing criterion", weight: 25, sources: ["source-a"], confirmed: true }] } as Extract<FlowData, { kind: "organize" }>;
+  const before = JSON.stringify(data);
+  for (const locale of ["zh-tw", "en"]) {
+    const html = renderToStaticMarkup(React.createElement(Editor, { data, view: { leads: [] }, locale, onChange() { throw new Error("Render cannot edit evidence"); }, selected: "a", onSelect() {} }));
+    assert.doesNotMatch(html, /<details|type="checkbox"|Evidence and confirmation|佐證與確認|Custom weight|自訂權重/);
+    assert(html.includes(locale === "en" ? "Rationale" : "依據"));
+    assert.equal(JSON.stringify(data), before);
+  }
+});
