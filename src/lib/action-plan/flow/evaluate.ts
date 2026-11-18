@@ -1,4 +1,5 @@
 import { companyKey } from "@/lib/customer-insights/interviews";
+import { countryCode } from "@/lib/member-options";
 import { today } from "@/lib/roadmap/schema";
 import { STEPS, CHAPTERS, followupSchema, emptyFlowData, emptyRecord, emptyContact, flowStoredSchema, flowKey, flowStep, words, type FlowData, type StepId } from "./catalog";
 
@@ -74,14 +75,57 @@ export function customerMetrics(context: FlowContext) {
   const revenue = proofs.reduce((sum, p) => sum + Math.round(Number(p.amount) * 100), 0) / 100;
   return { currency: values.currency || "", customers: companies.length, eligible: eligible.size, renewed, renewalRate: eligible.size ? renewed / eligible.size : null, averageRevenue: companies.length ? revenue / companies.length : 0, acquisitionCost: companies.length && values.spend !== "" && Number.isFinite(Number(values.spend)) ? Number(values.spend) / companies.length : null, revenue };
 }
-export function weeklyTarget(context: FlowContext) {
-  const data = dataAt(context, "05-1"), metrics = customerMetrics(context);
-  const values = data.kind === "organize" ? data.values : {}, channelRows = channels(context);
-  const contacts = channelRows.reduce((s, c) => s + c.total, 0), conversations = channelRows.reduce((s, c) => s + c.conversation, 0), won = channelRows.reduce((s, c) => s + c.paid, 0);
-  const conversion = values.conversion ? Number(values.conversion) : contacts ? won / contacts : 0, conversationRate = contacts ? conversations / contacts : 0;
-  const weeklyContacts = metrics.averageRevenue && conversion > 0 ? Math.ceil(Number(values.target) / metrics.averageRevenue / conversion / 13) : 0;
-  return { currency: metrics.currency, target: Number(values.target) || 0, conversion, assumed: Boolean(values.conversion), weeklyContacts, weeklyConversations: Math.ceil(weeklyContacts * conversationRate) };
+function percentage(value: string) {
+  const rate = /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(value) ? Number(value) / 100 : 0;
+  return rate > 0 && rate <= 1 ? rate : null;
 }
+function ceilRatio(amount: number, divisor: number) {
+  const result = amount / divisor;
+  return Number.isFinite(result) ? Math.ceil(result - result * Number.EPSILON) : null;
+}
+export function weeklyTarget(context: FlowContext, draft = dataAt(context, "05-1")) {
+  const financial = context.actions.find(a => flowStep(a)?.id === "04-3" && a.done)?.taskFinding as { outcome?: { metrics?: ReturnType<typeof customerMetrics> } } | null;
+  const metrics = financial?.outcome?.metrics || customerMetrics(context);
+  const values = draft.kind === "organize" ? draft.values : {}, outreach = dataAt(context, "03-1");
+  const contacts = outreach.kind === "outreach" ? weeklyContacts(context, outreach) : [];
+  const conversations = contacts.filter(validOutreachConversation);
+  const firstPayment = new Map<string, string>();
+  for (const payment of approvedProofs(context, true)) {
+    const key = companyKey(payment.company);
+    const existing = firstPayment.get(key);
+    if (!existing || payment.date < existing) firstPayment.set(key, payment.date);
+  }
+  const paid = conversations.filter(row => (firstPayment.get(companyKey(row.company)) || "") >= row.date).length;
+  const recordedContactRate = contacts.length ? conversations.length / contacts.length : null;
+  const recordedCloseRate = conversations.length ? paid / conversations.length : null;
+  const contactToConversation = values.contactToConversation ? percentage(values.contactToConversation) : recordedContactRate;
+  const legacyRate = contactToConversation ? Number(values.conversion) / contactToConversation : 0;
+  const conversationToPaid = values.conversationToPaid ? percentage(values.conversationToPaid)
+    : values.conversion ? (legacyRate > 0 && legacyRate <= 1 ? legacyRate : null) : recordedCloseRate;
+  const target = Number(values.target);
+  const payingCustomers = target > 0 && target <= 1e12 && metrics.averageRevenue > 0 ? ceilRatio(target, metrics.averageRevenue) : null;
+  const neededConversations = payingCustomers && conversationToPaid ? ceilRatio(payingCustomers, conversationToPaid) : null;
+  const neededContacts = neededConversations && contactToConversation ? ceilRatio(neededConversations, contactToConversation) : null;
+  return {
+    currency: metrics.currency, target: Number.isFinite(target) ? target : 0, averageRevenue: metrics.averageRevenue, renewalRate: metrics.renewalRate,
+    contactToConversation, conversationToPaid, payingCustomers, neededConversations, neededContacts,
+    conversion: (contactToConversation || 0) * (conversationToPaid || 0),
+    assumed: Boolean(values.contactToConversation || values.conversationToPaid || values.conversion),
+    weeklyContacts: neededContacts ? Math.ceil(neededContacts / 13) : 0,
+    weeklyConversations: neededConversations ? Math.ceil(neededConversations / 13) : 0,
+  };
+}
+
+export function savedWeeklyTarget(context: FlowContext) {
+  const action = context.actions.find(a => flowStep(a)?.id === "05-1" && a.done);
+  const meta = action?.taskFinding as { outcome?: { weekly?: ReturnType<typeof weeklyTarget> } } | null;
+  return meta?.outcome?.weekly;
+}
+
+const marketKey = (value: string) => countryCode(value.normalize("NFKC")) || companyKey(value);
+const validOutreachConversation = (row: { status: string; pain: string; solution: string; wtp: string }) =>
+  row.status === "conversation" && Boolean(row.pain && row.solution && row.wtp && row.wtp !== "not_asked");
+
 function week(date: string) {
   const day = new Date(date + "T00:00:00Z"), offset = (day.getUTCDay() + 6) % 7;
   day.setUTCDate(day.getUTCDate() - offset); return day.toISOString().slice(0, 10);
@@ -164,10 +208,10 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       require(current === target, "請確認三項計算結果；沒有到期客戶時續約率列為不適用", "Confirm three metrics; no renewal-eligible customers means the renewal rate is not applicable");
     }
     if (step === "05-1") {
-      const next = { ...context, actions: context.actions.map(a => flowStep(a)?.id === step ? { ...a, taskWorkspace: { version: 2, step, data } } : a) }, weekly = weeklyTarget(next);
-      require(weekly.target > 0 && weekly.target <= 1e12 && Number.isFinite(weekly.target) && weekly.conversion > 0 && weekly.conversion <= 1 && weekly.weeklyContacts > 0 && weekly.weeklyContacts <= 1000000, "需有正數目標、有效轉換率與客單價", "A positive target, valid conversion and customer revenue are required");
+      const weekly = savedWeeklyTarget(context) || weeklyTarget(context, data);
+      require(weekly.target > 0 && weekly.target <= 1e12 && Number.isFinite(weekly.target) && weekly.conversion > 0 && weekly.conversion <= 1 && weekly.weeklyContacts > 0 && weekly.weeklyContacts <= 1000000, "請提供正數目標、有效客單價，以及大於 0% 且不超過 100% 的聯絡到對話率與對話到成交率", "A positive target, valid customer revenue and contact-to-conversation and conversation-to-sale rates above 0% and at most 100% are required");
       current = ["target", "activity"].filter(c => data.confirmed.includes(c)).length; target = 2;
-      require(current === target && (!data.values.conversion || data.confirmed.includes("assumption")), "請確認目標、開發量及調整的轉換率假設", "Confirm the target, activity and any conversion assumption");
+      require(current === target && (!weekly.assumed || data.confirmed.includes("assumption")), "請確認目標、開發量及調整的轉換率假設", "Confirm the target, activity and any conversion assumptions");
     }
   }
   if (data.kind === "outreach") {
@@ -184,7 +228,7 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       for (const start of [...weeks.keys()].sort()) {
         const slots = Array.from({ length: 4 }, (_, i) => { const d = new Date(start); d.setUTCDate(d.getUTCDate() + i * 7); return d.toISOString().slice(0, 10); });
 
-        const rows = slots.flatMap(s => weeks.get(s) || []), count = rows.filter(c => c.status === "conversation" && c.pain && c.solution && c.wtp && c.wtp !== "not_asked").length;
+        const rows = slots.flatMap(s => weeks.get(s) || []), count = rows.filter(validOutreachConversation).length;
         if (rows.length > bestContacts) { bestContacts = rows.length; bestConversations = count; }
         if (slots.every(s => (weeks.get(s)?.length || 0) >= 20) && count >= 12) valid = true;
       }
@@ -200,8 +244,8 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       const original = dataAt(context, "01-1");
       const priorMarket = original.kind === "conversation" ? original.market : "";
       const originalMarket = priorMarket || (carriedInterview(context.actions.find(a => flowStep(a)?.id === "01-1")) ? data.originalMarket : "");
-      require(originalMarket && data.market && companyKey(data.market) !== companyKey(originalMarket), "請選擇與原市場不同的市場", "Choose a market different from your original market");
-      const conversations = new Set(sent.filter(c => c.status === "conversation" && c.pain && c.solution && c.wtp && c.wtp !== "not_asked").map(c => companyKey(c.company)));
+      require(originalMarket && data.market && marketKey(data.market) !== marketKey(originalMarket), "請選擇與原市場不同的市場", "Choose a market different from your original market");
+      const conversations = new Set(sent.filter(validOutreachConversation).map(c => companyKey(c.company)));
       current = conversations.size; target = 10;
       const openedAt = context.actions.find(a => flowStep(a)?.id === "05-1")?.completedAt;
       const since = openedAt ? today(new Date(openedAt)) : day;
@@ -242,7 +286,7 @@ export function seedData(context: FlowContext, step: StepId): FlowData {
     if (step === "01-4") data.tiers = first.map(r => ({ leadId: r.id, matches: criteria(context).filter(c => c.sources.includes(r.id)).map(c => c.id), override: "", reason: "", confirmed: false }));
     if (step === "02-3") { const proof = approvedProofs(context)[0], proposals = dataAt(context, "02-1"); data.values = { price: proof ? proof.currency + " " + proof.amount : "", scope: proposals.kind === "outreach" ? proposals.contacts.find(c => c.status !== "draft")?.offer || "" : "", terms: "" }; }
     if (step === "04-3") data.values = { currency: approvedProofs(context, true)[0]?.currency || "", spend: "" };
-    if (step === "05-1") data.values = { target: "", conversion: "" };
+    if (step === "05-1") data.values = { target: "" };
   }
   if (data.kind === "outreach" && ["02-1", "04-1"].includes(step)) {
     data.contacts = first.filter(r => tiers(context).some(t => t.leadId === r.id && t.tier === "A")).map(r => ({ ...emptyContact("proposal_" + r.id), company: r.company, name: r.name, leadId: r.id, offer: w("您好，" + (r.pain && r.solution ? "您提到「" + r.pain + "」，目前以「" + r.solution + "」處理。" : "") + "我們想邀請您測試一個小範圍試點。價格：[價格與幣別]；範圍：[交付範圍]；期間：[實際期間]；成功標準：[可衡量成果]。方便確認是否符合您的需求嗎？", "Hello, " + (r.pain && r.solution ? "you mentioned “" + r.pain + "” and currently use “" + r.solution + "”. " : "") + "We would like to propose a limited pilot. Price: [price and currency]; scope: [deliverables]; duration: [actual period]; success: [measurable outcome]. Would this fit your needs?") }));
@@ -255,8 +299,7 @@ export function seedData(context: FlowContext, step: StepId): FlowData {
     const statement = positioning.kind === "organize" ? positioning.values.positioning || "" : "";
     const firstProposal = proposals.kind === "outreach" ? proposals.contacts.find(c => c.status !== "draft")?.offer || "" : "";
     const financial = context.actions.find(a => flowStep(a)?.id === "04-3" && a.done)?.taskFinding as { outcome?: { metrics?: ReturnType<typeof customerMetrics> } } | null;
-    const growth = context.actions.find(a => flowStep(a)?.id === "05-1" && a.done)?.taskFinding as { outcome?: { weekly?: ReturnType<typeof weeklyTarget> } } | null;
-    const metrics = financial?.outcome?.metrics || customerMetrics(context), weekly = growth?.outcome?.weekly || weeklyTarget(context);
+    const metrics = financial?.outcome?.metrics || customerMetrics(context), weekly = savedWeeklyTarget(context) || weeklyTarget(context);
     const amounts = new Map<string, number>();
     for (const proof of approvedProofs(context, true)) amounts.set(proof.currency, (amounts.get(proof.currency) || 0) + Math.round(Number(proof.amount) * 100));
     const retained = kept.kind === "organize" ? kept.selections : [];
@@ -300,7 +343,7 @@ export function outreachWeeks(context: FlowContext) {
   const rows = [];
   for (let date = start; date <= last && rows.length < 520; date = new Date(Date.parse(date) + 7 * 86400000).toISOString().slice(0, 10)) {
     const contacts = qualified.filter(c=>week(c.date)===date), count=contacts.length;
-    rows.push({ date, contacts: count, missing: Math.max(0, 20 - count), conversations: contacts.filter(c => c.status === "conversation" && c.pain && c.solution && c.wtp && c.wtp !== "not_asked").length });
+    rows.push({ date, contacts: count, missing: Math.max(0, 20 - count), conversations: contacts.filter(validOutreachConversation).length });
   }
   return rows;
 }

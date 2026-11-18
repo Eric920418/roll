@@ -257,7 +257,19 @@ test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replie
       await save("04-3", { kind: "organize", values: { currency: "USD", spend: "1000" }, confirmed: ["renewal", "revenue", "cost"], criteria: [], tiers: [], selections: ["customer 0"] });
       assert.equal(current.metrics.renewalRate, 1); assert.equal(current.metrics.averageRevenue, 120); assert.equal(current.metrics.acquisitionCost, 200);
       await complete("04-3");
-      await save("05-1", { kind: "organize", values: { target: "12000", conversion: "" }, confirmed: ["target", "activity"], criteria: [], tiers: [], selections: [] }); await complete("05-1");
+      const quarterly = { kind: "organize", values: { target: "12000" }, confirmed: ["target", "activity"], criteria: [], tiers: [], selections: [] } as const;
+      await save("05-1", { ...quarterly, confirmed: [...quarterly.confirmed], criteria: [], tiers: [], selections: [] });
+      assert.equal(current.weekly.renewalRate, 1);
+      assert.equal(current.weekly.contactToConversation, 12 / 80);
+      assert.equal(current.weekly.conversationToPaid, 1 / 12);
+      const overrides = { ...quarterly, confirmed: ["target", "activity", "assumption"], criteria: [], tiers: [], selections: [], values: { target: "12000", contactToConversation: "20", conversationToPaid: "25" } };
+      await save("05-1", { ...overrides, values: { ...overrides.values, conversationToPaid: "101" } });
+      await assert.rejects(complete("05-1"), /above 0% and at most 100%/);
+      await save("05-1", { ...overrides, confirmed: ["target", "activity"] });
+      await assert.rejects(complete("05-1"), /conversion assumptions/);
+      await save("05-1", overrides);
+      assert.deepEqual([current.weekly.payingCustomers, current.weekly.neededConversations, current.weekly.neededContacts, current.weekly.weeklyContacts, current.weekly.weeklyConversations], [100, 400, 2000, 154, 31]);
+      await complete("05-1");
       assert.equal(await db.weekCalendarItem.count({ where: { userId: owner.id } }), 13);
       await complete("05-1"); assert.equal(await db.weekCalendarItem.count({ where: { userId: owner.id } }), 13);
     });
@@ -265,7 +277,13 @@ test("Sixteen-step PostgreSQL workflow: ownership, server gates, external replie
       const contacts = Array.from({ length: 10 }, (_, i) => ({ ...emptyContact("j" + i), company: "Japan " + i, name: "Buyer " + i, date: "2026-09-07", channel: "Partner", status: "conversation" as const, offer: "USD100 reporting pilot", pain: "Manual reports", solution: "Spreadsheets", wtp: "willing" as const }));
       await save("05-2", { kind: "outreach", market: "TW", contacts }); await assert.rejects(complete("05-2"), /different/);
       const proof = await paid("Japan 0", "2026-09-07"); await review.reviewEvidence("reviewer@qa.invalid", { ...proof, status: "approved", note: "New-market company payment verified" }); await refresh();
-      await save("05-2", { kind: "outreach", market: "JP", contacts }); await complete("05-2");
+      for (const market of ["台灣", "臺灣", "Taiwan", "ＴＷ"]) {
+        await save("05-2", { kind: "outreach", market, contacts });
+        await assert.rejects(complete("05-2"), /different/);
+      }
+      await save("05-2", { kind: "outreach", market: "日本", contacts }); await complete("05-2");
+      assert.equal(current.weekly.neededContacts, 2000, "New market payments do not alter the confirmed funnel");
+
       assert.equal(current.metrics.averageRevenue, 120, "New market payments do not rewrite the confirmed financial snapshot");
       const reportDraft = current.steps.find(s => s.id === "05-3")!.data;
       assert.equal(reportDraft.kind, "document");

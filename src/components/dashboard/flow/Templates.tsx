@@ -86,7 +86,25 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
       </>}
 
       {step === "04-3" && <><p className="font-semibold">{w("哪些已付款客戶已到續約時間？", "Which paying customers are eligible for renewal?")}</p>{view.payments.filter(p => p.currency === data.values.currency).map(p => { const key = p.company.trim().normalize("NFKC").toLowerCase().replace(/\s+/g, " "); return <label key={key} className="flex min-h-11 items-center gap-3 text-sm"><input className="h-5 w-5" type="checkbox" checked={data.selections.includes(key)} onChange={e => onChange({ ...data, selections: e.target.checked ? [...data.selections, key] : data.selections.filter(v => v !== key) })} />{p.company}</label>; })}{["renewal", "revenue", "cost"].map((key, i) => confirm(key, w(["確認續約率（無到期客戶為不適用）", "確認平均客單價", "確認現金取得成本"][i], ["Confirm renewal rate (N/A without eligible customers)", "Confirm revenue per customer", "Confirm cash acquisition cost"][i])))}</>}
-      {step === "05-1" && <>{confirm("target", w("確認季度目標", "Confirm quarterly target"))}{confirm("activity", w("確認每週開發量與 13 週待辦", "Confirm weekly activity and thirteen weekly tasks"))}{data.values.conversion && confirm("assumption", w("我知道調整的轉換率仍待驗證", "I understand the adjusted conversion remains an assumption"))}</>}
+      {step === "05-1" && (() => {
+        const { currency, averageRevenue, renewalRate, contactToConversation, conversationToPaid } = view.weekly;
+        const rate = (value: number | null | undefined) => value == null ? "—" : (value * 100).toLocaleString(locale, { maximumFractionDigits: 2 });
+        const update = (key: string, value: string) => onChange({
+          ...data,
+          values: { ...data.values, ...(key === "target" ? {} : { conversion: "" }), [key]: value },
+          confirmed: data.confirmed.filter(v => v !== "activity" && (key === "target" ? v !== "target" : v !== "assumption")),
+        });
+        return <>
+          <TextField label={w("季度營收目標", "Quarterly revenue target") + (currency ? " (" + currency + ")" : "")} type="number" value={data.values.target || ""} onChange={value => update("target", value)} />
+          <label className="block text-sm">{w("平均客單價", "Average revenue per customer")}<input className={field} readOnly value={averageRevenue ? currency + " " + averageRevenue.toLocaleString(locale, { maximumFractionDigits: 2 }) : "—"} /></label>
+          <label className="block text-sm">{w("續約率", "Renewal rate")}<input className={field} readOnly value={renewalRate == null ? w("不適用（無到期客戶）", "N/A (no renewal-eligible customers)") : rate(renewalRate) + "%"} /></label>
+          <TextField label={w("聯絡到對話率（%）", "Contact-to-conversation rate (%)")} type="number" value={data.values.contactToConversation || ""} placeholder={rate(contactToConversation)} onChange={value => update("contactToConversation", value)} />
+          <TextField label={w("對話到成交率（%）", "Conversation-to-sale rate (%)")} type="number" value={data.values.conversationToPaid || ""} placeholder={rate(conversationToPaid)} onChange={value => update("conversationToPaid", value)} />
+          {confirm("target", w("確認季度目標", "Confirm quarterly target"))}
+          {confirm("activity", w("確認每週開發量與 13 週待辦", "Confirm weekly activity and thirteen weekly tasks"))}
+          {(data.values.contactToConversation || data.values.conversationToPaid || data.values.conversion) && confirm("assumption", w("我知道調整的轉換率仍待驗證", "I understand the adjusted rates are assumptions"))}
+        </>;
+      })()}
     </>}
     {data.kind === "outreach" && <>
 

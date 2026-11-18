@@ -74,15 +74,18 @@ export default function TaskResults({ step, view, locale, children }: {
       [w("現金取得成本", "Cash acquisition cost"), acquisitionCost == null ? "—" : `${currency} ${acquisitionCost}`],
     ];
   } else if (step.id === "05-1") {
-    const { currency, target, weeklyContacts, weeklyConversations, assumed } = view.weekly;
+    const { payingCustomers, neededConversations, neededContacts, weeklyContacts, weeklyConversations, assumed } = view.weekly;
+    const count = (value: number | null | undefined) => value ? value.toLocaleString(locale) : "—";
     title = w("每週開發量", "Weekly activity");
-    headers = [w("項目", "Item"), w("目標", "Target")];
+    headers = [w("項目", "Item"), w("數量", "Count"), w("算法", "Calculation")];
     rows = [
-      [w("季度營收", "Quarterly revenue"), `${currency} ${target}`],
-      [w("每週聯絡", "Weekly contacts"), String(weeklyContacts)],
-      [w("每週對話", "Weekly conversations"), String(weeklyConversations)],
+      [w("付款客戶", "Paying customers"), count(payingCustomers), w("季度營收目標 ÷ 平均客單價", "Quarterly target ÷ average revenue per customer")],
+      [w("需要的對話", "Conversations needed"), count(neededConversations), w("付款客戶 ÷ 對話到成交率", "Paying customers ÷ conversation-to-sale rate")],
+      [w("需要聯絡的公司", "Companies to contact"), count(neededContacts), w("需要的對話 ÷ 聯絡到對話率", "Conversations needed ÷ contact-to-conversation rate")],
+      [w("每週聯絡", "Weekly contacts"), count(weeklyContacts), w("需要聯絡的公司 ÷ 13 週", "Companies to contact ÷ 13 weeks")],
+      [w("每週對話", "Weekly conversations"), count(weeklyConversations), w("需要的對話 ÷ 13 週", "Conversations needed ÷ 13 weeks")],
     ];
-    if (assumed) rows.push([w("轉換率", "Conversion rate"), w("待驗證假設", "Unverified assumption")]);
+    if (assumed) rows.push([w("手動調整的比率", "Adjusted rates"), w("待驗證假設", "Unverified assumptions"), "—"]);
   }
 
   return <section data-next-step="insights" data-task-section="results" className="space-y-3">

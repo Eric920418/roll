@@ -268,6 +268,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
       </dialog>}
               {isEvidenceStep && (!readOnly || repairStep === selected) && <Proofs userId={userId} view={view} onChanged={() => void load(view.plan.id, true)} />}
               {!readOnly && step.id === "01-4" && draft.kind === "organize" && (view.leads.length < 10 || view.tiers.filter(t => t.confirmed && t.tier === "A").length < 3) && <button type="button" className={button} disabled={disabled || !saved || view.leads.some(l => !view.tiers.some(t => t.leadId === l.id && t.confirmed)) || Boolean(draft.supplements?.some(r => r.records.length < 3 || !view.leads.some(l => l.id === r.records[0]?.id)))} onClick={() => void startSupplement()}>{w("補做三次對話", "Add three supplemental conversations")}</button>}
+              {!readOnly && saved && !step.ready && ["05-1", "05-2"].includes(step.id) && step.reasons.length > 0 && <p role="status" className="text-sm text-dark/70">{step.reasons.join(" · ")}</p>}
               {!readOnly && <div className="flex flex-wrap items-start justify-end gap-3 border-t border-dark/10 pt-3">
                 {firstTask && <details className="min-w-0 flex-1">
                   <summary className="min-h-11 cursor-pointer py-3 text-xs text-dark/60">{w("貼上會議紀錄或語音轉寫", "Paste meeting notes or transcribe audio")}</summary>
@@ -276,7 +277,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
                 {firstTask ? <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={saveConversation}>{w("儲存紀錄", "Save conversation")}</button>
                   : (saved && step.ready || step.id === "02-2")
                     ? <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled || !step.ready} onClick={() => void mutate({ action: "complete", step: step.id, requestId: crypto.randomUUID() }, true)}>{w("確認並完成", "Confirm and complete")}</button>
-                    : <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={() => void mutate({ action: "save", step: step.id, data: draft })}>{w("儲存本步成果", "Save this step")}</button>}
+                    : <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={() => void mutate({ action: "save", step: step.id, data: draft })}>{step.id === "05-1" ? w("計算每週開發量", "Calculate weekly activity") : w("儲存本步成果", "Save this step")}</button>}
               </div>}
             </section>
             <aside className="min-w-0 space-y-4 rounded-2xl border border-dark/10 bg-white p-5 sm:p-6" aria-label={w("方法指引", "Method guide")}>
