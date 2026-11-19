@@ -3,17 +3,17 @@ import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useRef, useStat
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { memberFetch } from "@/lib/member-fetch";
-import { STEPS, MILESTONES, STEP_WORK, TEMPLATE_NAMES, flowDataSchema, words, type FlowData, type StepId } from "@/lib/action-plan/flow/catalog";
+import { STEPS, MILESTONES, STEP_WORK, STEP_BUTTONS, TEMPLATE_NAMES, flowDataSchema, words, type FlowData, type StepId } from "@/lib/action-plan/flow/catalog";
 import type { FlowView } from "@/lib/action-plan/flow/service";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import { pathForLocale } from "@/lib/routes";
+import { today } from "@/lib/roadmap/schema";
 import Templates, { button, TextField } from "./Templates";
 import CurrentFindings from "./CurrentFindings";
 import OrganizeWork, { TaskRoadmap, TaskSection, type ConfirmationRecipient } from "./OrganizeWork";
 import LearningResources from "../LearningResources";
 import TaskAssist from "./TaskAssist";
 import Proofs from "./Proofs";
-import Followups from "./Followups";
 import TaskResults from "./TaskResults";
 const ProspectSearch = lazy(() => import("../prospecting/ProspectSearch"));
 
@@ -161,13 +161,23 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
   const weeklyStep = step?.id === "05-1";
   const canConfirmWeekly = weeklyStep && saved && view.weekly.calculable;
   const repairStep = !view.archived && view.integrity.find(item => ["02-2", "04-1", "05-2"].includes(item.step))?.step;
-  const recordButton = firstTask ? w("記錄客戶對話", "Record a customer conversation")
-    : organizeStep === "01-2" ? w("寄送確認訊息", "Send confirmation messages")
-    : organizeStep === "01-3" ? w("新增條件", "Add criterion")
-    : step?.id === "02-2" ? w("上傳證明", "Upload evidence")
-    : step?.id === "05-1" ? w("設定目標", "Set target")
-    : step?.id === "05-2" ? w("記錄客戶對話", "Record a customer conversation")
-    : step ? words(STEP_WORK[step.id], locale) : "";
+  const recordButton = step ? words(STEP_BUTTONS[step.id], locale) : "";
+  const proofOnly = step?.id === "02-2" || step?.id === "04-1";
+  const editorSaves = step?.id === "01-4" || step?.id === "03-3" || step?.id === "04-2";
+
+  function saveCurrentStep() {
+    if (!step || !draft) return;
+    if (draft.kind === "organize") {
+      const keys = step.id === "02-3" ? ["price", "scope", "terms"].filter(key => draft.values[key]?.trim())
+        : step.id === "03-2" && draft.selections.length === 2 ? ["channels"]
+        : step.id === "04-3" ? ["renewal", "revenue", "cost"] : [];
+      return saveAndComplete({ ...draft, confirmed: [...new Set([...draft.confirmed, ...keys])] });
+    }
+    if (step.id === "05-3" && draft.kind === "document") {
+      return saveAndComplete({ ...draft, sections: draft.sections.map(chapter => ({ ...chapter, confirmed: Boolean(chapter.body.trim()) })) });
+    }
+    return saveAndComplete(draft);
+  }
 
   function selectStep(id: StepId) {
     if (!view || (!readOnly && !saved && !window.confirm(w("尚未儲存的草稿會保留在此裝置，仍要切換？", "Unsaved input stays on this device. Switch steps?")))) return;
@@ -215,6 +225,11 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
             </div>
             {!readOnly && <button type="button" className="min-h-11 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2" disabled={disabled || organizeStep === "01-3" && draft.kind === "organize" && draft.criteria.length >= 6} onClick={() => {
               if (organizeStep === "01-3") document.getElementById("add-criterion")?.click();
+              if (step.id === "05-2") {
+                (document.getElementById("second-market-conversation") as HTMLDialogElement | null)?.showModal();
+                return;
+              }
+              if (step.id === "03-1") document.getElementById("new-outreach-record")?.click();
               const target = document.getElementById(organizeStep === "01-2" ? "positioning-recipients" : "task-work");
               target?.scrollIntoView({ block: "start" });
               requestAnimationFrame(() => target?.querySelector<HTMLElement>("input:not(:disabled), textarea:not(:disabled), button:not(:disabled), select:not(:disabled)")?.focus());
@@ -223,7 +238,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
           <dl className="mt-5 grid grid-cols-2 gap-5 border-t border-white/15 pt-4 text-xs sm:grid-cols-[1.4fr_1fr_1fr]">
             <div className="col-span-2 sm:col-span-1"><dt className="text-white/65">{w("完成標準", "Completion criteria")}</dt><dd className="mt-2 max-w-80 font-semibold leading-6">{words(spec.criteria, locale)}</dd></div>
             <div><dt className="text-white/65">{w("目前進度", "Saved progress")}</dt><dd className="mt-2 font-semibold">
-              {draft.kind === "conversation" ? <button type="button" className="min-h-11 text-left hover:underline focus-visible:outline-2" aria-label={w(`目前進度 ${step.current} / ${step.target}，查看已儲存對話`, `Progress ${step.current} / ${step.target}, view saved conversations`)} onClick={() => (document.getElementById("first-task-records") as HTMLDialogElement | null)?.showModal()}>{step.current} / {step.target} {w("次", "conversations")}</button> : <>{step.current} / {step.target}{organizeStep === "01-2" ? w(" 位確認", " confirmed") : organizeStep === "01-3" ? w(" 項確認", " confirmed") : ""}</>}
+              {firstTask ? <button type="button" className="min-h-11 text-left hover:underline focus-visible:outline-2" aria-label={w(`目前進度 ${step.current} / ${step.target}，查看已儲存對話`, `Progress ${step.current} / ${step.target}, view saved conversations`)} onClick={() => (document.getElementById("first-task-records") as HTMLDialogElement | null)?.showModal()}>{step.current} / {step.target} {w("次", "conversations")}</button> : <>{step.current} / {step.target}{organizeStep === "01-2" ? w(" 位確認", " confirmed") : organizeStep === "01-3" ? w(" 項確認", " confirmed") : ""}</>}
             </dd></div>
             <div><dt className="text-white/65">{w("截止日期", "Due date")}</dt><dd className="mt-2 font-semibold">{milestone?.targetDate || "—"}</dd></div>
           </dl>
@@ -249,7 +264,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
           <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]" data-task-columns>
             <section id="task-work" className="min-w-0 space-y-4 rounded-2xl border border-dark/10 bg-white p-5 sm:p-6" aria-label={words(STEP_WORK[step.id], locale)}>
               {notice && <p role="status" className="text-sm">{notice}</p>}
-              {step.id !== "02-2" && <Templates resetVersion={savedVersion} reference={draft.kind === "conversation"} step={step.id} data={draft} view={view} locale={locale} disabled={readOnly || disabled} readOnly={readOnly} onChange={change} />}
+              {!proofOnly && <Templates onSave={data => void saveAndComplete(data)} resetVersion={savedVersion} reference={draft.kind === "conversation"} step={step.id} data={draft} view={view} locale={locale} disabled={readOnly || disabled} readOnly={readOnly} onChange={change} />}
               {firstTask && !readOnly && draft.kind === "conversation" && <dialog id="first-task-market" aria-labelledby="first-task-market-title" className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl border bg-white p-5 text-dark backdrop:bg-black/35">
         <form className="space-y-4" onSubmit={event => {
           event.preventDefault();
@@ -273,12 +288,12 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
               {isEvidenceStep && (!readOnly || repairStep === selected) && (step.id === "05-2" && step.data.kind === "outreach"
                 ? <details className="rounded-xl border border-dark/15 px-4">
                     <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">{w("上傳付款證明", "Upload payment evidence")}</summary>
-                    <div className="pb-4"><Proofs userId={userId} view={view} companiesForEvidence={step.data.contacts.filter(row => row.status === "conversation")} onChanged={() => void load(view.plan.id, true)} /></div>
+                    <div className="pb-4"><Proofs userId={userId} view={view} paidOnly companiesForEvidence={step.data.contacts.filter(row => row.status === "conversation")} onChanged={() => void load(view.plan.id, true)} /></div>
                   </details>
-                : <Proofs userId={userId} view={view} onChanged={() => void load(view.plan.id, true)} />)}
+                : <Proofs userId={userId} view={view} paidOnly={step.id === "04-1"} companiesForEvidence={step.id === "02-2" ? view.steps.flatMap(entry => entry.id === "02-1" && entry.data.kind === "outreach" ? entry.data.contacts.filter(contact => contact.status !== "draft") : []) : undefined} onChanged={() => void load(view.plan.id, true)} />)}
               {!readOnly && step.id === "01-4" && draft.kind === "organize" && (view.leads.length < 10 || view.tiers.filter(t => t.confirmed && t.tier === "A").length < 3) && <button type="button" className={button} disabled={disabled || !saved || view.leads.some(l => !view.tiers.some(t => t.leadId === l.id && t.confirmed)) || Boolean(draft.supplements?.some(r => r.records.length < 3 || !view.leads.some(l => l.id === r.records[0]?.id)))} onClick={() => void startSupplement()}>{w("補做三次對話", "Add three supplemental conversations")}</button>}
-              {!readOnly && saved && !step.ready && (weeklyStep && !canConfirmWeekly || step.id === "05-2") && step.reasons.length > 0 && <p role="status" className="text-sm text-dark/70">{weeklyStep ? step.reasons[0] : step.reasons.join(" · ")}</p>}
-              {!readOnly && <div className="flex flex-wrap items-start justify-end gap-3 border-t border-dark/10 pt-3">
+              {!readOnly && saved && !step.ready && (weeklyStep ? !canConfirmWeekly : !firstTask && !proofOnly) && step.reasons.length > 0 && <p role="status" className="text-sm text-dark/70">{weeklyStep ? step.reasons[0] : step.reasons.join(" · ")}</p>}
+              {!readOnly && !editorSaves && <div className="flex flex-wrap items-start justify-end gap-3 border-t border-dark/10 pt-3">
                 {firstTask && <details className="min-w-0 flex-1">
                   <summary className="min-h-11 cursor-pointer py-3 text-xs text-dark/60">{w("貼上會議紀錄或語音轉寫", "Paste meeting notes or transcribe audio")}</summary>
                   <TaskAssist embedded key={view.plan.id+":"+step.id} userId={userId} step={step.id} view={view} locale={locale} disabled={disabled} onBusy={value => { busyRef.current = value; setBusy(value); }} onView={next => { setView(next); onChanged(next.plan); }} onRefresh={() => void load(view.plan.id, true)} onApply={data => { change(data); setSavedVersion(v => v + 1); }} />
@@ -291,15 +306,15 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
                       else void mutate({ action: "save", step: step.id, data: draft });
                     }}>{canConfirmWeekly ? w("確認並完成", "Confirm and complete") : w("計算每週開發量", "Calculate weekly activity")}</button>
                   </div>
-                  : (saved && step.ready || step.id === "02-2")
-                    ? <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled || !step.ready} onClick={() => void mutate({ action: "complete", step: step.id, requestId: crypto.randomUUID() }, true)}>{w("確認並完成", "Confirm and complete")}</button>
-                    : <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={() => void mutate({ action: "save", step: step.id, data: draft })}>{w("儲存本步成果", "Save this step")}</button>}
+                  : proofOnly
+                    ? <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled || !step.ready} onClick={() => void saveAndComplete(draft)}>{w("確認並完成", "Confirm and complete")}</button>
+                    : <button type="button" className={button + " rounded-full! bg-black text-white"} disabled={disabled} onClick={() => void saveCurrentStep()}>{step.id === "05-3" ? w("產生報告", "Generate report") : step.id === "03-1" ? w("儲存紀錄", "Save outreach") : w("儲存", "Save")}</button>}
               </div>}
             </section>
             <aside className="min-w-0 space-y-4 rounded-2xl border border-dark/10 bg-white p-5 sm:p-6" aria-label={w("方法指引", "Method guide")}>
               <div>
                 <p className="text-[10px] tracking-wider text-dark/55">{w("方法指引", "METHOD GUIDE")}</p>
-                <h3 className="mt-2 text-sm font-bold">{firstTask ? w("如何進行一次有效的客戶對話", "How to run an effective customer conversation") : words(STEP_WORK[step.id], locale)}</h3>
+                {firstTask && <h3 className="mt-2 text-sm font-bold">{w("如何進行一次有效的客戶對話", "How to run an effective customer conversation")}</h3>}
               </div>
               <LearningResources kind={firstTask ? "interview" : step.id === "02-1" ? "pilot" : null} question={words(spec.title, locale)} visual />
               {firstTask ? <><h4 className="text-xs font-bold">{w("建議提問", "Suggested questions")}</h4><ol className="list-decimal space-y-1 pl-5 text-xs leading-6">
@@ -312,20 +327,21 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
             </aside>
           </div>
         </div>
-        {firstTask ? <CurrentFindings view={view} locale={locale} reference /> : <TaskResults step={step} view={view} locale={locale}>
-          {!readOnly && step.id === "02-2" && view.followups.some(c => c.step === "02-1" && !c.resolved && c.status === "sent") && <Followups key={view.plan.id} view={view} userId={userId} locale={locale} disabled={disabled} save={mutate} />}
-          {(step.id === "03-3" || step.id === "05-3" && !report) && step.saved && <a className={button} href={pathForLocale("/task-report/" + step.actionId, locale)} target="_blank" rel="noopener noreferrer">{w("預覽／列印為 PDF", "Preview / print to PDF")}</a>}
+        {firstTask ? <CurrentFindings view={view} locale={locale} reference /> : <TaskResults step={step} view={view} locale={locale} updateProposal={step.id === "02-1" && step.done && view.current && !view.archived && !disabled
+          ? (contactId, status) => void mutate({ action: "followup", sourceActionId: step.actionId, update: { id: crypto.randomUUID(), contactId, status, date: today(), note: "" } })
+          : undefined}>
+          {(step.id === "03-3" || step.id === "05-3" && !report) && step.done && <a className={button} href={pathForLocale("/task-report/" + step.actionId, locale)} target="_blank" rel="noopener noreferrer">{w("預覽／列印為 PDF", "Preview / print to PDF")}</a>}
           {report && <div id="flow-report" className="scroll-mt-6 space-y-3">
             <div className="flex flex-wrap gap-3">
               <a className={button} href={pathForLocale("/task-report/" + step.actionId, locale)} target="_blank" rel="noopener noreferrer">{w("預覽／列印為 PDF", "Preview / print to PDF")}</a>
-              <button className={button} disabled={disabled || view.integrity.length > 0} type="button" onClick={() => void mutate({ action: "share", enabled: true })}>{w("建立報告分享連結", "Create report sharing link")}</button>
+              {(!view.shared || !link) && <button className={button} disabled={disabled || view.integrity.length > 0} type="button" onClick={() => void mutate({ action: "share", enabled: true })}>{w("建立報告分享連結", "Create report sharing link")}</button>}
               {view.shared && <button className={button} disabled={disabled} type="button" onClick={() => void mutate({ action: "share", enabled: false }).then(next => { if (next) setLink(""); })}>{w("撤銷報告分享", "Revoke report sharing")}</button>}
             </div>
             {linkPanel}
           </div>}
         </TaskResults>}
       </>}
-      {prospects && <section data-task-section="companies" className="space-y-3"><TaskSection number="04" title={w("建議優先聯絡的 5 家公司", "5 companies to contact first")} />{prospects}</section>}
+      {prospects && <section data-task-section="companies" className="space-y-3"><TaskSection number="04" title={step.id === "03-1" ? w("本週建議聯絡的公司", "Companies to contact this week") : step.id === "04-1" ? w("建議接觸的 A 級公司", "Suggested A-tier companies") : step.id === "05-2" ? w("建議聯絡的公司", "Suggested companies") : w("建議優先聯絡的 5 家公司", "5 companies to contact first")} />{prospects}</section>}
       <TaskRoadmap view={view} selected={step.id} locale={locale} onSelect={selectStep} />
     </article>}
   </section>;

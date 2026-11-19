@@ -1,46 +1,32 @@
 "use client";
-import { useState, type ReactNode } from 'react';
-import type { FlowData } from '@/lib/action-plan/flow/catalog';
-import { button, TextField } from './Templates';
-type Row = Extract<FlowData, {
-    kind: 'conversation';
-}>['records'][number];
-const field = 'mt-2 min-h-11 w-full rounded-xl border p-3 text-sm';
-export default function ConversationEditor({ row, locale, guided, marketField, recordOptions, secondary, reference = false, onChange }: {
-    row: Row;
-    locale: string;
-    guided: boolean;
-    marketField?: ReactNode;
-    recordOptions?: ReactNode;
-    secondary?: ReactNode;
-    reference?: boolean;
-    onChange(value: Row): void;
-}) {
-    const [wizard, setWizard] = useState(guided), [step, setStep] = useState(0), w = (a: string, b: string) => locale === 'zh-tw' ? a : b;
-    const [shownRecord, setShownRecord] = useState(row.id);
-    if (shownRecord !== row.id) { setShownRecord(row.id); setStep(0); setWizard(guided); }
-    const text = (key: keyof Row, a: string, b: string, type = 'text', multiline = false) => <TextField label={w(a, b)} value={row[key] || ''} type={type} multiline={multiline} onChange={v => onChange({ ...row, [key]: v })}/>;
-    const choice = (key: keyof Row, a: string, b: string, options: Array<[
-        string,
-        string
-    ]>) => <label className="block text-sm">{w(a, b)}<select aria-label={w(a, b)} className={field} value={row[key] || ''} onChange={e => onChange({ ...row, [key]: e.target.value })}><option value="">{w('請選擇', 'Choose')}</option>{options.map(([k, label]) => <option key={k} value={k}>{label}</option>)}{row[key] && !options.some(([k]) => k === row[key]) && <option value={row[key]}>{row[key]}</option>}</select></label>;
-    const main = !wizard ? <div className="space-y-2.5">
-      <div className="grid grid-cols-2 gap-2.5">{text('company','公司','Company')}{text('name','對象姓名','Person')}{text('date','對話日期','Conversation date','date')}{marketField}</div>
-      {([['relationship','與你的關係','Your relationship',[['friend',w('親友','Friend / family')],['colleague',w('同事','Colleague')],['stranger',w('陌生人','Stranger')],['prospect',w('潛在客戶','Prospect')]]],['fit','是否符合目標客群','Target customer fit',[['yes',w('符合','Fits')],['possible',w('可能符合','Possible fit')],['uncertain',w('不確定','Uncertain')],['no',w('不符合','Not a fit')]]]] as const).map(([key,a,b,options])=><fieldset key={key}><legend className="mb-1 text-sm">{w(a,b)}</legend><div className="flex flex-wrap gap-1">{options.map(([value,label])=><button key={value} type="button" aria-pressed={row[key]===value} className={'min-h-11 min-w-11 rounded-lg border px-2 text-xs focus-visible:outline-2 '+(row[key]===value?'border-black bg-black text-white':'border-dark/15 bg-white')} onClick={()=>onChange({...row,[key]:value})}>{label}</button>)}</div>{row[key] && !options.some(([value])=>value===row[key]) && <p className="mt-1 break-words text-xs">{row[key]}</p>}</fieldset>)}
-      {text('solution','目前的解決方式','Current solution')}
-      {text('pain','主要痛點與原話','Main pain and customer wording','text',true)}
-      <div className="grid gap-2.5 sm:grid-cols-[0.65fr_1fr]"><fieldset><legend className="mb-1 text-sm">{w('痛點嚴重程度','Pain severity')}</legend><div className="flex flex-wrap gap-1">{(['low','medium','high'] as const).map((value,i)=><button key={value} type="button" aria-pressed={row.severity===value} className={'min-h-11 rounded-lg border px-4 text-xs focus-visible:outline-2 '+(row.severity===value?'border-black bg-black text-white':'border-dark/15 bg-white')} onClick={()=>onChange({...row,severity:value})}>{(locale === 'zh-tw' ? ['低','中','高'] : ['Low','Medium','High'])[i]}</button>)}</div></fieldset>
-      <fieldset><legend className="mb-1 text-sm">{w('付費意願','Willingness to pay')}</legend><div className="flex flex-wrap gap-1">{([['not_asked',w('尚未詢問','Not asked')],['willing',w('願意','Willing')],['considering',w('考慮中','Considering')],['declined',w('不願意','Declined')]] as const).map(([value,label])=><button key={value} type="button" aria-pressed={row.wtp===value} className={'min-h-11 min-w-11 rounded-lg border px-2 text-xs focus-visible:outline-2 '+(row.wtp===value?'border-black bg-black text-white':'border-dark/15 bg-white')} onClick={()=>onChange({...row,wtp:value})}>{label}</button>)}</div></fieldset></div>
+import type { FlowData } from "@/lib/action-plan/flow/catalog";
+import { OptionButtons, TextField } from "./Templates";
 
-    </div> : <div className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold">{wizard ? w(`逐題引導 ${step + 1}/7`, `Guided conversation ${step + 1}/7`) : w('完整表單', 'Complete form')}</p><button className={button} type="button" onClick={() => setWizard(!wizard)}>{wizard ? w('顯示完整表單', 'Show complete form') : w('使用逐題引導', 'Use guided questions')}</button></div>
- <div hidden={wizard && step !== 0} className="space-y-4"><h4 className="font-semibold">{w('先記下對象與日期', 'Start with the person and date')}</h4>{text('company', '公司', 'Company')}{text('name', '對象姓名', 'Person')}{text('role', '職稱（選填）', 'Role (optional)')}{text('date', '對話日期', 'Conversation date', 'date')}{marketField}</div>
- <div hidden={wizard && step !== 1} className="space-y-4"><h4 className="font-semibold">{w('這次對話與你的目標客戶有多相關？', 'How relevant is this person to your customer hypothesis?')}</h4>{choice('relationship', '你與對方的關係', 'Your relationship', [['friend', w('親友', 'Friend / family')], ['colleague', w('同事', 'Colleague')], ['stranger', w('陌生人', 'Stranger')], ['prospect', w('潛在客戶', 'Potential customer')]])}{choice('fit', '是否符合目標客群', 'Target customer fit', [['yes', w('符合', 'Fits')], ['possible', w('可能符合', 'Possibly fits')], ['uncertain', w('不確定', 'Uncertain')], ['no', w('不符合', 'Does not fit')]])}</div>
- <div hidden={wizard && step !== 2} className="space-y-4">{text('pain', '痛點與原話', 'Pain and customer wording', 'text', true)}{choice('severity', '痛點嚴重程度', 'Pain severity', [['low', w('低', 'Low')], ['medium', w('中', 'Medium')], ['high', w('高', 'High')]])}</div>
- <div hidden={wizard && step !== 3} className="space-y-4">{text('solution', '目前的解決方式', 'Current solution', 'text', true)}{text('loss', '問題造成的損失（選填）', 'Time or money lost (optional)', 'text', true)}</div>
- <div hidden={wizard && step !== 4} className="space-y-4">{choice('wtp', '付費意願', 'Willingness to pay', [['not_asked', w('尚未詢問（不計完成）', 'Not asked (incomplete)')], ['willing', w('願意', 'Willing')], ['considering', w('考慮中', 'Considering')], ['declined', w('不願意', 'Declined')]])}{text('amount', '願付金額（選填）', 'Willing amount (optional)', 'number')}{choice('currency', '幣別（選填）', 'Currency (optional)', (typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('currency') : ['USD', 'TWD', 'EUR', 'GBP', 'JPY', 'KRW', 'CNY', 'HKD', 'SGD', 'AUD', 'CAD']).map(v => [v, v]))}{text('buyer', '最終購買決策者（選填）', 'Final buying decision (optional)')}</div>
- <div hidden={wizard && step !== 5} className="space-y-4">{text('nextStep', '約定的下一步（選填）', 'Agreed next step (optional)', 'text', true)}{text('nextDate', '約定時間（選填）', 'Agreed date (optional)', 'date')}{text('quote', '對方原話（選填）', 'Exact customer quote (optional)', 'text', true)}</div>
- <div hidden={wizard && step !== 6} className="space-y-3 rounded-xl bg-dark/5 p-4"><h4 className="font-bold">{w('對話摘要 · 儲存前確認', 'Conversation summary · review before saving')}</h4><p>{row.company} · {row.name} · {row.date}</p><p className="whitespace-pre-wrap">{row.pain}</p><p>{row.solution}</p></div>
- {wizard && <div className="flex justify-between gap-3"><button type="button" className={button} disabled={step === 0} onClick={() => setStep(step - 1)}>{w('上一題', 'Back')}</button><button type="button" className={button} disabled={step === 6} onClick={() => setStep(step + 1)}>{step === 5 ? w('確認摘要', 'Review summary') : w('下一題', 'Next')}</button></div>}</div>;
-    if (reference) return <div className="space-y-3" data-conversation-form>{main}</div>;
-    return <div className="space-y-3" data-conversation-form>{main}<details className="border-t border-dark/10"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold">{w('其他資料與輸入工具（選填）','Other details and input tools (optional)')}</summary><div className="space-y-4">{!wizard && <>{text('role','職稱','Role')}{text('loss','問題造成的損失','Time or money lost')}{text('amount','願付金額','Willing amount','number')}{choice('currency','幣別','Currency',(typeof Intl.supportedValuesOf==='function'?Intl.supportedValuesOf('currency'):['USD','TWD','EUR']).map(v=>[v,v]))}{text('buyer','最終購買決策者','Final buying decision')}{text('nextStep','約定的下一步','Agreed next step')}{text('nextDate','約定時間','Agreed date','date')}{text('quote','對方原話','Exact customer quote','text',true)}<button data-use-guided className={button} type="button" onClick={()=>setWizard(true)}>{w('使用逐題引導','Use guided questions')}</button></>}{recordOptions}{secondary}</div></details></div>;
+type Row = Extract<FlowData, { kind: "conversation" }>["records"][number];
+
+export default function ConversationEditor({ row, locale, onChange }: { row: Row; locale: string; onChange(value: Row): void }) {
+  const w = (zh: string, en: string) => locale === "zh-tw" ? zh : en;
+  const update = (key: keyof Row, value: string) => onChange({ ...row, [key]: value });
+  const severity = row.severityRating ?? ({low: 1, medium: 3, high: 5} as const)[row.severity as "low" | "medium" | "high"];
+  return <div className="space-y-3" data-conversation-form>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <fieldset className="min-w-0"><legend className="text-sm">{w("對象（公司／姓名）", "Participant (company / name)")}</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <TextField hideLabel label={w("公司", "Company")} placeholder={w("公司", "Company")} value={row.company} onChange={value => update("company", value)} />
+          <TextField hideLabel label={w("對象姓名", "Person")} placeholder={w("姓名", "Name")} value={row.name} onChange={value => update("name", value)} />
+        </div>
+      </fieldset>
+      <TextField label={w("日期", "Date")} type="date" value={row.date} onChange={value => update("date", value)} />
+    </div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <OptionButtons label={w("與你的關係", "Your relationship")} value={row.relationship} options={[["friend", w("親友", "Friends or family")], ["colleague", w("同事", "Colleague")], ["stranger", w("陌生人", "Stranger")], ["prospect", w("潛在客戶", "Prospect")]]} onChange={value => update("relationship", value)} />
+      <OptionButtons label={w("是否符合目標客群", "Target customer fit")} value={row.fit || ""} options={[["yes", w("符合", "Fits")], ["possible", w("可能符合", "Possible fit")], ["uncertain", w("不確定", "Uncertain")], ...(row.fit === "no" ? [["no", w("不符合", "Not a fit")] as [string, string]] : [])]} onChange={value => update("fit", value)} />
+    </div>
+    <TextField label={w("目前的解決方式", "Current solution")} value={row.solution} onChange={value => update("solution", value)} />
+    <TextField multiline label={w("主要痛點", "Main pain point")} value={row.pain} onChange={value => update("pain", value)} />
+    <div className="grid gap-3 sm:grid-cols-2">
+      <OptionButtons label={w("痛點嚴重度", "Pain severity")} value={severity ? String(severity) : ""} options={["1", "2", "3", "4", "5"].map(value => [value, value])} onChange={value => onChange({ ...row, severityRating: Number(value), severity: Number(value) < 3 ? "low" : Number(value) === 3 ? "medium" : "high" })} />
+      <OptionButtons label={w("付費意願", "Willingness to pay")} value={row.wtp} options={[["willing", w("有意願", "Willing")], ["considering", w("評估中", "Considering")], ["declined", w("無意願", "Not willing")]]} onChange={value => update("wtp", value)} />
+    </div>
+  </div>;
 }

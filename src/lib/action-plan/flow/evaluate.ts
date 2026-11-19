@@ -43,11 +43,12 @@ export function positioningReplies(context: FlowContext) {
   });
 }
 export function criteria(context: FlowContext) { const data = dataAt(context, "01-3"); return data.kind === "organize" ? data.criteria : []; }
-export function score(context: FlowContext, matches: string[]) {
-  const usable = criteria(context).filter(c => c.confirmed && new Set(c.sources).size >= 3);
+export function scoreForCriteria(rows: ReturnType<typeof criteria>, matches: string[]) {
+  const usable = rows.filter(c => c.confirmed && new Set(c.sources).size >= 3);
   const total = usable.reduce((sum, c) => sum + c.weight, 0);
   return total ? Math.round(100 * usable.filter(c => matches.includes(c.id)).reduce((sum, c) => sum + c.weight, 0) / total) : 0;
 }
+export function score(context: FlowContext, matches: string[]) { return scoreForCriteria(criteria(context), matches); }
 export function tiers(context: FlowContext) {
   const data = dataAt(context, "01-4");
   return data.kind === "organize" ? data.tiers.map(t => { const value = score(context, t.matches); return { ...t, score: value, tier: t.override || (value >= 80 ? "A" : value >= 60 ? "B" : "C") }; }) : [];
@@ -162,7 +163,7 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       }
     } else {
       target = 5; const paid = new Set(paidCompanies(context).map(p => companyKey(p.company)));
-      const reviews = data.records.filter(r => paid.has(companyKey(r.company)) && r.name && r.reason && r.missing && r.referral && dateValid(r.date) && approvedProofs(context, true).some(p => companyKey(p.company) === companyKey(r.company) && p.date <= r.date));
+      const reviews = data.records.filter(r => paid.has(companyKey(r.company)) && r.reason && r.missing && r.referral && dateValid(r.date) && approvedProofs(context, true).some(p => companyKey(p.company) === companyKey(r.company) && p.date <= r.date));
       current = new Set(reviews.map(r => companyKey(r.company))).size;
       require(current >= target, "完整有效對話不足 " + current + "/" + target, "Not enough complete conversations: " + current + "/" + target);
       const retentionReasons = new Map<string, Set<string>>();
@@ -190,7 +191,7 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
       require((data.supplements || []).every(r => r.records.length === 3 && r.records.every(v => validConversation(v, day))), "請先完成本輪三次有效補訪", "Complete all three valid supplemental conversations in this round");
       current = data.tiers.filter(t => t.confirmed && ids.has(t.leadId)).length; target = first.length;
       require(first.length >= 10 && current === target && unique(data.tiers.map(t => t.leadId)) && data.tiers.length === target, "請完成全部受訪者分級", "Tier every interviewee");
-      require(data.tiers.every(t => unique(t.matches) && t.matches.every(id => cids.has(id)) && (!t.override || completedText(t.reason))), "分級條件無效或手動調整缺少理由", "Invalid criterion or missing override reason");
+      require(data.tiers.every(t => unique(t.matches) && unique(t.partial || []) && (t.partial || []).every(id => cids.has(id) && !t.matches.includes(id)) && t.matches.every(id => cids.has(id)) && (!t.override || completedText(t.reason))), "分級條件無效或手動調整缺少理由", "Invalid criterion or missing override reason");
       const next = { ...context, actions: context.actions.map(a => flowStep(a)?.id === step ? { ...a, taskWorkspace: { version: 2, step, data } } : a) };
       require(tiers(next).filter(t => t.confirmed && t.tier === "A").length >= 3, "至少需要 3 位 A 級客戶", "At least three A leads are required");
     }
@@ -220,7 +221,7 @@ export function evaluateStep(context: FlowContext, step: StepId, override?: Flow
   }
   if (data.kind === "outreach") {
     require(unique(data.contacts.map(c => c.id)), "聯絡識別碼不能重複", "Duplicate contact IDs");
-    const sent = data.contacts.filter(c => c.company && c.name && c.channel && completedText(c.offer) && c.status !== "draft" && dateValid(c.date));
+    const sent = data.contacts.filter(c => c.company && (step !== "02-1" || c.name) && c.channel && completedText(c.offer) && c.status !== "draft" && dateValid(c.date));
     if (step === "02-1") {
       current = new Set(sent.filter(c => aIds.has(c.leadId) && first.some(r => r.id === c.leadId && companyKey(r.company) === companyKey(c.company)) && completedText(c.offer)).map(c => c.leadId)).size; target = 3;
       require(current >= target, "須向 3 位本計畫 A 級客戶實際寄出提案", "Send proposals to three A leads from this plan");
@@ -311,7 +312,7 @@ export function seedData(context: FlowContext, step: StepId): FlowData {
       w("保留的名單管道：", "Retained lead channels: ") + retained.join("、") + "\n" + criteria(context).map(c => c.label + " · " + c.weight + "%").join("\n"),
       [statement, firstProposal].filter(Boolean).join("\n"),
       w("請回想最近一次遇到問題：目前怎麼處理、造成多少損失、由誰決定購買？接著確認付費意願與下一步。", "Ask about the last occurrence, current workaround, cost and buying decision. Then discuss willingness to pay and agree on the next step."),
-      terms.kind === "organize" ? Object.values(terms.values).join("\n") : "",
+      terms.kind === "organize" ? [terms.values.price, terms.values.scope, terms.values.terms].filter(Boolean).join("\n") : "",
     ] : [
       [statement, w("已保存對話：", "Saved conversations: ") + first.length, w("確認的評分條件：", "Confirmed qualification criteria: "), ...criteria(context).map(c => c.label + " · " + c.sources.length + w(" 份佐證", " sources")), w("A 級客戶：", "A leads: ") + tiers(context).filter(t => t.tier === "A").length].join("\n"),
       [w("目前有審核通過付款的公司：", "Companies with approved payments: ") + paidCompanies(context).length, ...[...amounts].map(([currency, cents]) => currency + " " + (cents / 100).toFixed(2)), w("已確認財務快照（現金支出）：", "Confirmed financial snapshot (cash spend): "), metrics.currency + " · " + w("平均客單價 ", "Revenue per customer ") + metrics.averageRevenue.toFixed(2) + " · " + w("取得成本 ", "Acquisition cost ") + (metrics.acquisitionCost?.toFixed(2) ?? "—"), w("續約率：", "Renewal rate: ") + (metrics.renewalRate === null ? w("無到期客戶，不適用", "N/A; no eligible customers") : Math.round(metrics.renewalRate * 100) + "%")].join("\n"),
@@ -335,7 +336,7 @@ function weeklyContacts(context: FlowContext, data: Extract<FlowData, {kind:"out
   const seen = new Set<string>();
   return [...data.contacts].sort((a,b)=>a.date.localeCompare(b.date)).filter(c=>{
     const key=companyKey(c.company);
-    if(seen.has(key) || !c.company || !c.name || !c.channel || !completedText(c.offer) || c.status==="draft" || !c.date || c.date<since || c.date>today(context.now) || score(context,c.matches)<60 || !unique(c.matches) || !c.matches.every(id=>ids.has(id)))return false;
+    if(seen.has(key) || !c.company || !c.channel || !completedText(c.offer) || c.status==="draft" || !c.date || c.date<since || c.date>today(context.now) || score(context,c.matches)<60 || !unique(c.matches) || !c.matches.every(id=>ids.has(id)))return false;
     seen.add(key);return true;
   });
 }
@@ -347,7 +348,7 @@ export function outreachWeeks(context: FlowContext) {
   const rows = [];
   for (let date = start; date <= last && rows.length < 520; date = new Date(Date.parse(date) + 7 * 86400000).toISOString().slice(0, 10)) {
     const contacts = qualified.filter(c=>week(c.date)===date), count=contacts.length;
-    rows.push({ date, contacts: count, missing: Math.max(0, 20 - count), conversations: contacts.filter(validOutreachConversation).length });
+    rows.push({ date, contacts: count, replies: contacts.filter(c => c.status !== "sent").length, missing: Math.max(0, 20 - count), conversations: contacts.filter(validOutreachConversation).length });
   }
   return rows;
 }

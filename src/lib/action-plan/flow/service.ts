@@ -73,7 +73,7 @@ export async function getFlow(userId: string, planId?: string, locale?: string) 
   return { searchTokens, followups: followupContacts(context), weeks: outreachWeeks(context), plan: serializePlan(plan), archived: Boolean(plan.archivedAt), steps, current: steps.find(s => !s.done)?.id || null,
     positioningReplies: positioningReplies(context), leads, participantEmails, criteria: criteria(context), tiers: tiers(context), channels: channels(context), payments: paidCompanies(context).map(p => ({ company: p.company, name: p.name, currency: p.currency })),
     metrics: financial?.metrics || customerMetrics(context), weekly: { ...weekly, calculable: validWeeklyTarget(weekly) },
-    proofStatus: context.proofs.map(p => ({ company: p.company, kind: p.kind, approved: p.approved, revoked: p.revoked, status: p.reviewStatus || "pending", note: p.reviewNote || "" })),
+    proofStatus: context.proofs.map(p => ({ company: p.company, kind: p.kind, amount: p.amount, currency: p.currency, date: p.date, approved: p.approved, revoked: p.revoked, status: p.reviewStatus || "pending", note: p.reviewNote || "" })),
     needsOriginalMarket: Boolean(context.actions.some(a => carriedInterview(a)) && !steps.some(s => s.id === "01-1" && s.data.kind === "conversation" && s.data.market.trim())),
     integrity: steps.filter(s => s.done && !s.ready).map(s => ({ step: s.id, reasons: s.reasons })),
     reportCode: "NV-" + hash(plan.id).slice(0, 4).toUpperCase() + "-" + hash(plan.id).slice(4, 8).toUpperCase(),

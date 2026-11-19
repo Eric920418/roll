@@ -38,13 +38,13 @@ export function isFlowAction(action: { clientKey?: string }) { return Boolean(ac
 export function flowStep(action: { clientKey: string }) { return STEPS.find(s => flowKey(s.id) === action.clientKey); }
 
 const text = z.string().trim().max(4000), id = z.string().trim().max(200);
-export const conversationRecordSchema = z.object({ fit:z.enum(['yes','possible','uncertain','no']).optional(),role:text.optional(),loss:text.optional(),amount:z.string().regex(/^\d{1,10}(\.\d{1,2})?$/,'請輸入數字，最多兩位小數，例如 3000 / Enter a number with at most two decimal places, for example 3000').or(z.literal('')).optional(),currency:z.string().regex(/^[A-Z]{3}$/).or(z.literal('')).optional(),buyer:text.optional(),nextStep:text.optional(),nextDate:dateSchema.or(z.literal('')).optional(),quote:text.optional(),hypothesisId:id.optional(), id: id.min(1), company: text, name: text, relationship: text, date: dateSchema.or(z.literal("")), pain: text, severity: z.enum(["", "low", "medium", "high"]), solution: text, wtp: z.enum(["", "not_asked", "willing", "considering", "declined"]), reason: text, missing: text, referral: text }).strict();
-const contact = z.object({ id: id.min(1), company: text, name: text, leadId: id, date: dateSchema.or(z.literal("")), channel: text, status: z.enum(["draft", "sent", "replied", "conversation", "agreed"]), offer: text, matches: z.array(id).max(6), pain: text, solution: text, wtp: z.enum(["", "not_asked", "willing", "considering", "declined"]) }).strict();
+export const conversationRecordSchema = z.object({ fit:z.enum(['yes','possible','uncertain','no']).optional(),role:text.optional(),loss:text.optional(),amount:z.string().regex(/^\d{1,10}(\.\d{1,2})?$/,'請輸入數字，最多兩位小數，例如 3000 / Enter a number with at most two decimal places, for example 3000').or(z.literal('')).optional(),currency:z.string().regex(/^[A-Z]{3}$/).or(z.literal('')).optional(),buyer:text.optional(),nextStep:text.optional(),nextDate:dateSchema.or(z.literal('')).optional(),quote:text.optional(),hypothesisId:id.optional(), severityRating:z.number().int().min(1).max(5).optional(), paidPeriod:text.optional(), renewalIntent:text.optional(), referralIntent:text.optional(), id: id.min(1), company: text, name: text, relationship: text, date: dateSchema.or(z.literal("")), pain: text, severity: z.enum(["", "low", "medium", "high"]), solution: text, wtp: z.enum(["", "not_asked", "willing", "considering", "declined"]), reason: text, missing: text, referral: text }).strict();
+const contact = z.object({ id: id.min(1), company: text, name: text, leadId: id, pilotDuration:text.optional(), pilotPrice:text.optional(), pilotSuccess:text.optional(), followupDate:dateSchema.or(z.literal("")).optional(), date: dateSchema.or(z.literal("")), channel: text, status: z.enum(["draft", "sent", "replied", "conversation", "agreed"]), offer: text, matches: z.array(id).max(6), pain: text, solution: text, wtp: z.enum(["", "not_asked", "willing", "considering", "declined"]) }).strict();
 export const flowDataSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("conversation"), market: text, records: z.array(conversationRecordSchema).max(250) }).strict(),
-  z.object({ kind: z.literal("organize"), values: z.record(id, text), confirmed: z.array(id).max(30), criteria: z.array(z.object({ id: id.min(1), label: text, weight: z.number().int().min(1).max(100), sources: z.array(id).max(250), confirmed: z.boolean(), assessment: z.enum(["boolean", "range", "level"]).optional(), research: text.optional(), rationale: text.optional() }).strict()).max(6), tiers: z.array(z.object({ leadId: id, matches: z.array(id).max(6), override: z.enum(["", "A", "B", "C"]), reason: text, confirmed: z.boolean() }).strict()).max(250), selections: z.array(id).max(250), supplements: z.array(z.object({ id: z.string().uuid(), records: z.array(conversationRecordSchema).max(3) }).strict()).max(80).optional() }).strict(),
-  z.object({ kind: z.literal("outreach"), market: text, originalMarket: text.optional(), contacts: z.array(contact).max(500) }).strict(),
-  z.object({ kind: z.literal("document"), sections: z.array(z.object({ id: id.regex(/^[0-3]$/), body: text, confirmed: z.boolean() }).strict()).max(4) }).strict(),
+  z.object({ kind: z.literal("organize"), values: z.record(id, text), confirmed: z.array(id).max(30), criteria: z.array(z.object({ id: id.min(1), label: text, weight: z.number().int().min(1).max(100), sources: z.array(id).max(250), confirmed: z.boolean(), assessment: z.enum(["boolean", "range", "level"]).optional(), research: text.optional(), rationale: text.optional() }).strict()).max(6), tiers: z.array(z.object({ leadId: id, matches: z.array(id).max(6), override: z.enum(["", "A", "B", "C"]), partial: z.array(id).max(6).optional(), reason: text, confirmed: z.boolean() }).strict()).max(250), selections: z.array(id).max(250), supplements: z.array(z.object({ id: z.string().uuid(), records: z.array(conversationRecordSchema).max(3) }).strict()).max(80).optional() }).strict(),
+  z.object({ kind: z.literal("outreach"), market: text, originalMarket: text.optional(), marketReason: text.optional(), localApproach: text.optional(), marketChannel: text.optional(), contacts: z.array(contact).max(500) }).strict(),
+  z.object({ kind: z.literal("document"), sections: z.array(z.object({ id: id.regex(/^[0-3]$/), body: text, owner:text.optional(), confirmed: z.boolean() }).strict()).max(4) }).strict(),
 ]);
 export type FlowData = z.infer<typeof flowDataSchema>;
 export const flowStoredSchema = z.object({ version: z.literal(2), step: stepIdSchema, data: flowDataSchema }).strict();
@@ -75,9 +75,8 @@ export function flowActions(diagnosis: Pick<Diagnosis, "companyStage" | "stageRe
   }));
 }
 export const ORGANIZE_FIELDS: Partial<Record<StepId, Array<{ key: string; label: Words; number?: boolean }>>> = {
-  "01-2": [{ key: "positioning", label: ["一句話定位", "Positioning statement"] }],
-  "02-3": [{ key: "price", label: ["價格與幣別", "Price and currency"] }, { key: "scope", label: ["試點範圍", "Pilot scope"] }, { key: "terms", label: ["成交條件", "Commercial terms"] }],
-  "04-3": [{ key: "currency", label: ["計算幣別（例如 USD）", "Currency (for example USD)"] }, { key: "spend", label: ["現金行銷支出", "Cash marketing spend"], number: true }],
+  "02-3": [{ key: "price", label: ["價格", "Price"] }, { key: "scope", label: ["試點範圍", "Pilot scope"] }, { key: "terms", label: ["成交條件", "Commercial terms"] }],
+  "04-3": [{ key: "currency", label: ["幣別", "Currency"] }, { key: "spend", label: ["現金行銷支出", "Cash marketing spend"], number: true }],
 };
 export const CHAPTERS: Partial<Record<StepId, Words[]>> = {
   "03-3": [["名單來源", "Lead sources"], ["聯絡訊息", "Outreach message"], ["對話腳本", "Conversation script"], ["成交步驟", "Closing steps"]],
@@ -87,4 +86,23 @@ export const CHAPTERS: Partial<Record<StepId, Words[]>> = {
 export const followupSchema = z.object({ id: z.string().uuid(), contactId: z.string().min(1).max(200), date: dateSchema, status: z.enum(["sent", "replied", "conversation", "agreed"]), note: z.string().trim().max(4000) }).strict();
 export const STEP_WORK: Record<StepId, Words> = {
 "01-1":["客戶對話紀錄","Customer conversation"], "01-2":["定位草稿","Positioning draft"], "01-3":["評分條件與權重","Qualification criteria and weights"], "01-4":["客戶分級","Customer tiers"], "02-1":["付費試點提案","Paid pilot proposal"], "02-2":["付款與簽約證明","Payment and contract evidence"], "02-3":["定價與成交條件","Pricing and terms"], "03-1":["每週聯絡紀錄","Weekly outreach"], "03-2":["管道成效比較","Channel performance"], "03-3":["開發流程手冊","Acquisition playbook"], "04-1":["付費客戶與證明","Paying customers and evidence"], "04-2":["付費客戶使用回顧","Paying customer review"], "04-3":["客戶指標與成本","Customer metrics and costs"], "05-1":["季度目標與每週開發量","Quarterly target and weekly activity"], "05-2":["第二市場開發","Second-market outreach"], "05-3":["市場驗證報告","Market validation report"]
+};
+
+export const STEP_BUTTONS: Record<StepId, Words> = {
+  "01-1": ["記錄客戶對話", "Record a customer conversation"],
+  "01-2": ["寄送確認訊息", "Send confirmation messages"],
+  "01-3": ["新增條件", "Add criterion"],
+  "01-4": ["開始分級", "Start tiering"],
+  "02-1": ["建立試點提案", "Create pilot proposal"],
+  "02-2": ["上傳證明", "Upload evidence"],
+  "02-3": ["確認定價", "Review pricing"],
+  "03-1": ["記錄聯絡", "Record outreach"],
+  "03-2": ["選擇管道", "Choose channels"],
+  "03-3": ["編輯手冊", "Edit playbook"],
+  "04-1": ["新增付費客戶", "Add a paying customer"],
+  "04-2": ["記錄使用回顧", "Record a customer review"],
+  "04-3": ["確認指標", "Review metrics"],
+  "05-1": ["設定目標", "Set target"],
+  "05-2": ["記錄客戶對話", "Record a customer conversation"],
+  "05-3": ["產生報告", "Generate report"],
 };
