@@ -120,7 +120,8 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
   const marketData = step?.id === "01-1" || step?.id === "05-2" ? draft : originalMarket;
   const positioning = view.steps.find(s => s.id === "01-2")?.data;
   const searchDescription = [positioning?.kind === "organize" && positioning.confirmed.includes("positioning") ? positioning.values.positioning : "", ...view.criteria.filter(c => c.confirmed && new Set(c.sources).size >= 3).map(c => c.label)].filter(Boolean).join("\n");
-  const prospects = step && !view.archived && ["01-1", "03-1", "04-1", "05-2"].includes(step.id) && <div id="prospects" className="scroll-mt-6"><Suspense fallback={<p role="status">{w("載入公司搜尋…", "Loading company search…")}</p>}><ProspectSearch key={view.plan.id + ":" + step.id} userId={userId} planId={view.plan.id} compact stepContext={{ step: step.id, market: marketData?.kind === "conversation" || marketData?.kind === "outreach" ? marketData.market : "", description: searchDescription }} /></Suspense></div>;
+  const positioningProspects = step?.id === "01-2" && (step.done || view.current === step.id);
+  const prospects = step && !view.archived && (positioningProspects || ["01-1", "03-1", "04-1", "05-2"].includes(step.id)) && <div id="prospects" data-task-section={positioningProspects ? "companies" : undefined} className="scroll-mt-6"><Suspense fallback={<p role="status">{w("載入公司搜尋…", "Loading company search…")}</p>}><ProspectSearch key={view.plan.id + ":" + step.id} userId={userId} planId={view.plan.id} compact showHeading={positioningProspects} stepContext={{ step: step.id, market: marketData?.kind === "conversation" || marketData?.kind === "outreach" ? marketData.market : "", description: searchDescription }} /></Suspense></div>;
   const firstTask = step?.id === "01-1";
   const organizeStep = step?.id === "01-2" || step?.id === "01-3" ? step.id : null;
   async function saveAndComplete(data: FlowData) {
@@ -258,7 +259,8 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
       </div>}
       {comparison && <details className="rounded-xl border p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold">{w("最新已存成果", "Latest saved result")}</summary><Templates step={step.id} data={step.data} view={view} locale={locale} disabled readOnly onChange={() => {}} /></details>}
 
-      {organizeStep && draft.kind === "organize" ? <OrganizeWork key={step.id} step={organizeStep} data={draft} view={view} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => saveAndComplete(data || draft)} onEmail={emailConfirmations} links={[]} onRefresh={() => void load(view.plan.id, true)} notice={notice} /> : <>
+      {organizeStep && draft.kind === "organize" ? <OrganizeWork key={step.id} step={organizeStep} data={draft} view={view} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => saveAndComplete(data || draft)} onEmail={emailConfirmations} links={[]} onRefresh={() => void load(view.plan.id, true)} notice={notice}
+        beforeResults={positioningProspects && prospects} /> : <>
         <div data-task-section="work" className="space-y-3">
           <TaskSection number="02" title={words(STEP_WORK[step.id], locale)} />
           <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]" data-task-columns>
@@ -341,7 +343,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
           </div>}
         </TaskResults>}
       </>}
-      {prospects && <section data-task-section="companies" className="space-y-3"><TaskSection number="04" title={step.id === "03-1" ? w("本週建議聯絡的公司", "Companies to contact this week") : step.id === "04-1" ? w("建議接觸的 A 級公司", "Suggested A-tier companies") : step.id === "05-2" ? w("建議聯絡的公司", "Suggested companies") : w("建議優先聯絡的 5 家公司", "5 companies to contact first")} />{prospects}</section>}
+      {prospects && !positioningProspects && <section data-task-section="companies" className="space-y-3"><TaskSection number="04" title={step.id === "03-1" ? w("本週建議聯絡的公司", "Companies to contact this week") : step.id === "04-1" ? w("建議接觸的 A 級公司", "Suggested A-tier companies") : step.id === "05-2" ? w("建議聯絡的公司", "Suggested companies") : w("建議優先聯絡的 5 家公司", "5 companies to contact first")} />{prospects}</section>}
       <TaskRoadmap view={view} selected={step.id} locale={locale} onSelect={selectStep} />
     </article>}
   </section>;

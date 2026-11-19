@@ -102,18 +102,20 @@ test('Legacy reference save uses the latest server result to finish without a se
 });
 
 
-test('Legacy reference tasks omit outside search, follow-up and previous findings without removing other workflows', () => {
+test('Legacy positioning puts company search inside the workspace before confirmations', () => {
   for (const locale of ['en', 'zh-tw']) {
     const empty = () => null, mark = (value: string) => function Marker() { return React.createElement('div', null, value); };
-    const load = runtime(locale, { './TaskWorkspace': { __esModule: true, default: empty }, './ValidationWorkspace': { __esModule: true, default: mark('EXTRA_FOLLOWUP') }, './prospecting/ProspectSearch': { __esModule: true, default: mark('EXTRA_SEARCH') }, './ConversationHistory': { __esModule: true, default: empty }, './ActionPlanManager': { ActionEditor: empty }, './InterviewWorkspace': { InterviewInsights: empty, CompletedTaskInsights: mark('EXTRA_FINDINGS') } });
+    const load = runtime(locale, { './TaskWorkspace': { __esModule: true, default: ({ beforeResults }: { beforeResults?: React.ReactNode }) => React.createElement('div', null, 'POSITIONING_FORM', beforeResults, 'CONFIRMATIONS') }, './ValidationWorkspace': { __esModule: true, default: mark('EXTRA_FOLLOWUP') }, './prospecting/ProspectSearch': { __esModule: true, default: mark('COMPANY_SEARCH') }, './ConversationHistory': { __esModule: true, default: empty }, './ActionPlanManager': { ActionEditor: empty }, './InterviewWorkspace': { InterviewInsights: empty, CompletedTaskInsights: mark('EXTRA_FINDINGS') } });
     const Panel = load<typeof import('../src/components/dashboard/RoadmapPanel')>('src/components/dashboard/RoadmapPanel.tsx').default;
     for (const kind of ['positioning', 'scorecard', 'pilot'] as const) {
       const task = { ...action, taskWorkspace: emptyWorkspace(kind) }, previous = { ...action, id: 'previous', done: true, taskWorkspace: emptyWorkspace('positioning') };
       const current = { ...plan, nextMoves: [task], actions: [task, previous] }, before = JSON.stringify(current);
       const html = renderToStaticMarkup(React.createElement(Panel, { userId: 'owner', initialPlan: current, onChanged() { throw new Error('Rendering cannot rewrite a member plan'); } }));
       assert(html.includes('id="action-map"'));
-      if (kind === 'pilot') assert(html.includes('EXTRA_SEARCH') && html.includes('EXTRA_FOLLOWUP'));
-      else assert.doesNotMatch(html, /EXTRA_SEARCH|EXTRA_FOLLOWUP|EXTRA_FINDINGS|Edit goal|修改目標|Previous findings|前次重點/);
+      if (kind === 'pilot') assert(html.includes('COMPANY_SEARCH') && html.includes('EXTRA_FOLLOWUP'));
+      else assert.doesNotMatch(html, /EXTRA_FOLLOWUP|EXTRA_FINDINGS|Edit goal|修改目標|Previous findings|前次重點/);
+      assert.equal((html.match(/id="prospects"/g) || []).length, kind === 'scorecard' ? 0 : 1);
+      if (kind === 'positioning') assert.match(html, /POSITIONING_FORM.*COMPANY_SEARCH.*CONFIRMATIONS/);
       assert.equal(JSON.stringify(current), before);
     }
   }

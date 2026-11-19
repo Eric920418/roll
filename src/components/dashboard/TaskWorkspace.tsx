@@ -1,6 +1,6 @@
 "use client";
 import { usePlanDisplay } from "./PlanLocalization";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
@@ -17,9 +17,9 @@ const questions = {
   icp: ["How to define an ICP?", "如何確認目標客戶？"], pilot: ["How to offer a paid pilot?", "如何提出付費試用？"], positioning: ["How to write a positioning statement?", "如何撰寫定位句？"], scorecard: ["How to build a lead scorecard?", "如何建立潛客評分卡？"], tiers: ["How to segment and tier leads?", "如何將潛客分群與分級？"],
 } as const;
 
-export default function TaskWorkspace({ userId, action, plan, busy, onChanged, onInsights, onAnalyze, showGuide = true }: { showGuide?: boolean; userId: string; action: ActionPlanActionDto; plan: ActionPlanDto; busy: boolean; onChanged: (plan: ActionPlanDto | null) => void; onInsights: () => void; onAnalyze: () => void }) {
+export default function TaskWorkspace({ userId, action, plan, busy, onChanged, onInsights, onAnalyze, showGuide = true, beforeResults }: { showGuide?: boolean; userId: string; action: ActionPlanActionDto; plan: ActionPlanDto; busy: boolean; onChanged: (plan: ActionPlanDto | null) => void; onInsights: () => void; onAnalyze: () => void; beforeResults?: ReactNode }) {
   const kind = workspaceKind(action), zh = useLocale() === "zh-tw";
-  if (kind === "positioning" || kind === "scorecard") return <LegacyOrganizeWork userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} />;
+  if (kind === "positioning" || kind === "scorecard") return <LegacyOrganizeWork userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} beforeResults={beforeResults} />;
   if (commercialTask(action)) return <div className="mt-5 space-y-3">{showGuide && <LearningResources collapsed kind="pilot" question={zh ? "如何提出付費試點？" : "How to offer a paid pilot?"} />}<a className={button} href={`#validation-${plan.id}`}>{zh ? "付款／簽約證據 →" : "Payment / contract evidence →"}</a></div>;
   return <>{kind === "interview" ? <InterviewWorkspace showGuide={showGuide} revision={plan.revision} userId={userId} action={action} busy={busy} onChanged={onChanged} onInsights={onInsights} /> : kind ? <WorkspaceForm showGuide={showGuide} key={action.id} userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} /> : null}
     {kind && kind !== "interview" && (showGuide ? <TaskFinding userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} onAnalyze={onAnalyze} /> : <details open={Boolean(action.taskFinding?.error)} className="rounded-xl border border-dark/10 p-3"><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">{zh ? "NOVA 整理結果" : "NOVA findings"}</summary><TaskFinding userId={userId} action={action} plan={plan} busy={busy} onChanged={onChanged} onAnalyze={onAnalyze} /></details>)}

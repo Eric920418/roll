@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import type { ActionPlanActionDto } from "@/lib/action-plan/ranking";
@@ -9,7 +9,7 @@ import { memberFetch, MemberFetchError } from "@/lib/member-fetch";
 import OrganizeWork, { type ParticipantLink } from "./flow/OrganizeWork";
 
 const button = "min-h-11 rounded-full border border-dark/15 px-5 py-2 text-sm font-semibold disabled:opacity-50";
-export default function LegacyOrganizeWork({ userId, action, plan, busy, onChanged }: { userId: string; action: ActionPlanActionDto; plan: ActionPlanDto; busy: boolean; onChanged(plan: ActionPlanDto | null): void }) {
+export default function LegacyOrganizeWork({ userId, action, plan, busy, onChanged, beforeResults }: { userId: string; action: ActionPlanActionDto; plan: ActionPlanDto; busy: boolean; onChanged(plan: ActionPlanDto | null): void; beforeResults?: ReactNode }) {
   const locale = useLocale(), zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;
   const [view, setView] = useState<LegacyOrganizeView | null>(null), [draft, setDraft] = useState<OrganizeData | null>(null), [revision, setRevision] = useState(plan.revision || 0);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [saving, setSaving] = useState(false), [conflict, setConflict] = useState(false), [links, setLinks] = useState<ParticipantLink[]>([]);
@@ -56,7 +56,7 @@ export default function LegacyOrganizeWork({ userId, action, plan, busy, onChang
   return <div className="space-y-5" data-legacy-organize>
     {error && <div role="alert" className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><p className="whitespace-pre-wrap break-words">{error}</p><button type="button" disabled={saving} className={button} onClick={() => void load(conflict)}>{conflict ? w("更新版本（保留草稿）", "Update version; keep draft") : w("重新載入", "Retry")}</button></div>}
     {!view || !draft ? !error && <p role="status">{w("載入任務紀錄中…", "Loading saved work…")}</p> : <>
-      <OrganizeWork step={view.step} data={draft} view={{ ...view, steps: [{ id: view.step, data: view.data }] }} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => mutate({ organizeData: data || draft })} onLinks={(ids, save) => mutate({ ...(save ? { organizeData: { ...draft, confirmed: [...new Set([...draft.confirmed, "positioning"])] } } : {}), ...(!save || !view.result.ready || unsaved ? { confirmationRecipients: ids } : {}) })} links={links} onRefresh={() => void load()} notice={notice} />
+      <OrganizeWork step={view.step} data={draft} view={{ ...view, steps: [{ id: view.step, data: view.data }] }} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => mutate({ organizeData: data || draft })} onLinks={(ids, save) => mutate({ ...(save ? { organizeData: { ...draft, confirmed: [...new Set([...draft.confirmed, "positioning"])] } } : {}), ...(!save || !view.result.ready || unsaved ? { confirmationRecipients: ids } : {}) })} links={links} onRefresh={() => void load()} notice={notice} beforeResults={beforeResults} />
       {notice && unsaved && <details className="rounded-xl border p-4 text-sm"><summary className="min-h-11 cursor-pointer">{w("比對伺服器已儲存內容", "Compare the saved version")}</summary><p className="whitespace-pre-wrap">{Object.values(view.data.values).join("\n")}</p>{view.data.criteria.map(c => <p key={c.id}>{c.label} · {c.weight}%</p>)}</details>}
     </>}
   </div>;

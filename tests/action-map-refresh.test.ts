@@ -51,7 +51,7 @@ function harness(initial = fixture(), locale = 'en', hash = '', write?: (payload
   type Node = { type: unknown; props: Record<string, unknown> };
   type ChildProps = { Map: { plan: FlowView['plan'] }; Templates: React.ComponentProps<typeof import('../src/components/dashboard/flow/Templates').default> };
   let nodes: Node[] = [];
-  function render() { cursor = 0; nodes = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (React.isValidElement<{ children?: React.ReactNode }>(child)) { nodes.push(child as Node); visit(child.props.children); } }); } visit(Workspace({ userId: 'qa', plan: props, onChanged: p => { props = p; } })); return nodes; }
+  function render() { cursor = 0; nodes = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (React.isValidElement<{ children?: React.ReactNode; beforeResults?: React.ReactNode }>(child)) { nodes.push(child as Node); visit(child.props.children); visit(child.props.beforeResults); } }); } visit(Workspace({ userId: 'qa', plan: props, onChanged: p => { props = p; } })); return nodes; }
   async function settle() { for (let i = 0; i < 8; i++) { render(); effects.splice(0).forEach(fn => fn()); timers.splice(0).forEach(fn => fn()); await Promise.resolve(); } render(); }
   return { settle, render, setServer: (v: FlowView) => { server = v; }, setProps: (v: FlowView) => { props = v.plan; }, reads: () => reads, writes: () => writes, event: (type: string) => events.dispatchEvent(new Event(type)), find: <K extends keyof ChildProps>(type: K) => nodes.find(n => n.type === type || type === 'Templates' && n.type === 'OrganizeWork')!.props as ChildProps[K],
     defer() { pending = () => {}; }, resolve(v: FlowView) { const fn = pending; pending = null; fn?.(structuredClone(v)); } };
@@ -61,6 +61,7 @@ test('Owned positioning and criteria links open read-only previews without compl
   for (const locale of ['en', 'zh-tw']) for (const step of ['01-2', '01-3']) {
     const view = fixture(), before = JSON.stringify(view), h = harness(view, locale, '#action-' + step); await h.settle();
     assert.equal(h.find('Templates').step, step); assert.equal(h.find('Templates').readOnly, true);
+    assert(!h.render().some(n => n.props.id === 'prospects'));
     const text = JSON.stringify(h.render()); assert(text.includes(locale === 'en' ? 'Read-only preview' : '唯讀預覽'));
     assert(!text.includes(locale === 'en' ? 'This completed result is retained' : '此步驟的完成成果已保留'));
     assert(!text.includes(locale === 'en' ? 'Confirm and complete' : '確認並完成'));
@@ -143,7 +144,7 @@ test('Positioning sends explicitly and shows delivery failures without advancing
   assert.equal(h.find('Templates').step, '01-2');
 });
 
-test('All sixteen steps use the PDF sections, with one map and company search only where specified', async () => {
+test('The sixteen steps keep one map and show company search only on the specified steps', async () => {
   for (const locale of ['en', 'zh-tw']) for (const [index, spec] of STEPS.entries()) {
     const view = fixture(1, index);
     const original = view.steps[0].data; if (original.kind === 'conversation') original.market = 'TW';
@@ -155,7 +156,8 @@ test('All sixteen steps use the PDF sections, with one map and company search on
     const tree = h.render(), badge = tree.find(n => Object.hasOwn(n.props, 'data-task-type'));
     assert.equal(badge?.props.children, TEMPLATE_NAMES[spec.kind][locale === 'zh-tw' ? 0 : 1]);
     const search = tree.find(n => n.props.stepContext)?.props.stepContext as { step: string; market: string; description: string } | undefined;
-    assert.equal(Boolean(search), ['01-1', '03-1', '04-1', '05-2'].includes(spec.id));
+    assert.equal(tree.filter(n => n.props.id === 'prospects').length, ['01-1', '01-2', '03-1', '04-1', '05-2'].includes(spec.id) ? 1 : 0);
+    if (spec.id === '01-2') assert(React.isValidElement(tree.find(n => n.type === 'OrganizeWork')?.props.beforeResults));
     if (search) { assert.equal(search.step, spec.id); assert.equal(search.market, spec.id === '05-2' ? 'Japan' : 'TW'); assert.match(search.description, /Confirmed buying criterion/); assert(!search.description.includes('Observation only')); }
     const priority = tree.find(n => Object.hasOwn(n.props, 'data-today-priority'));
     assert.match(JSON.stringify(priority), /Completion criteria|完成標準/);
@@ -163,7 +165,7 @@ test('All sixteen steps use the PDF sections, with one map and company search on
     const text = JSON.stringify(tree.filter(n => n.type === "button").map(n => n.props.children));
     assert.doesNotMatch(text, /Previous step|上一步|Rebuild draft|重新整理初稿|thirteen weeks created|每週開發待辦/);
     const headings = tree.filter(n => n.type === 'TaskSection').map(n => n.props.number);
-    assert.deepEqual(headings, ["01", ...(["01-2", "01-3"].includes(spec.id) ? [] : ["02"]), ...(search ? ["04"] : [])]);
+    assert.deepEqual(headings, ["01", ...(["01-2", "01-3"].includes(spec.id) ? [] : ["02"]), ...(search && spec.id !== '01-2' ? ["04"] : [])]);
     assert.equal(tree.filter(n => n.type === "Assist").length, spec.id === "01-1" ? 1 : 0);
     assert.equal(JSON.stringify(view), before);
   }

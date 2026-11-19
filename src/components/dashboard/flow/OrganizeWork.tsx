@@ -16,9 +16,10 @@ export function TaskSection({ number, title, detail }: { number: string; title: 
   return <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-baseline gap-3 text-base font-bold"><span className="text-[10px] font-normal tracking-widest text-dark/45">{number}</span>{title}</h2>{detail && <div className="text-xs text-dark/45">{detail}</div>}</div>;
 }
 
-export default function OrganizeWork({ step, data, view, locale, disabled, readOnly, onChange, onSave, onLinks, onEmail, links, notice }: {
+export default function OrganizeWork({ step, data, view, locale, disabled, readOnly, onChange, onSave, onLinks, onEmail, links, notice, beforeResults }: {
   step: "01-2" | "01-3"; data: Data; view: Pick<FlowView, "leads" | "positioningReplies"> & { participantEmails?: FlowView["participantEmails"]; steps: Array<{ id: StepId; data: FlowData }> }; locale: string; disabled: boolean; readOnly: boolean;
   onChange(data: Data): void; onSave(data?: Data): void; onLinks?(ids: string[], save: boolean): void; onEmail?(recipients: ConfirmationRecipient[], reminder: boolean): Promise<string | null>; links: ParticipantLink[]; onRefresh(): void; notice: string;
+  beforeResults?: ReactNode;
 }) {
   const zh = locale === "zh-tw", w = (a: string, b: string) => zh ? a : b;
   const [selected, setSelected] = useState(""), [copyStatus, setCopyStatus] = useState("");
@@ -102,6 +103,7 @@ export default function OrganizeWork({ step, data, view, locale, disabled, readO
         </div>
       </form>
     </dialog>}
+    {beforeResults}
     {positioning ? <section data-next-step="insights" data-task-section="results" id="positioning-confirmations" className="scroll-mt-6 space-y-3" aria-label={w("受訪者確認", "Participant confirmations")}>
       <TaskSection number="03" title={w(`受訪者確認：${confirmed} 位認為描述準確`, `Participant confirmations: ${confirmed} say it fits`)} detail={<span className="inline-flex items-center gap-3">{w("目標 5 位", "Target: five")}</span>} />
       <div className="overflow-x-auto rounded-2xl border border-dark/10 bg-white px-5"><table className="w-full min-w-115 text-left text-sm"><thead className="text-xs text-dark/45"><tr>{[w("受訪者", "Participant"), w("回覆", "Response"), w("回饋", "Feedback")].map(label => <th scope="col" key={label} className="border-b border-dark/10 py-4 pr-4 font-medium">{label}</th>)}</tr></thead><tbody>{tableLeads.map(l => { const reply = view.positioningReplies.find(r => r.leadId === l.id), item = links.find(v => v.leadId === l.id); return <tr key={l.id} className="border-b border-dark/5 last:border-0"><th scope="row" className="py-4 pr-4 font-semibold">{l.company} · {l.name}</th><td className="pr-4"><span className={"inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs " + (reply?.answer === "yes" ? "bg-black text-white" : reply?.answer === "no" ? "bg-amber-50 text-amber-800" : "bg-dark/5 text-dark/55")}>{reply?.answer === "yes" ? w("符合", "Fits") : reply?.answer === "no" ? w("不太像", "Does not fit") : w("未回覆", "No response")}</span></td><td className="py-2 text-xs">{reply?.answer ? <span>{reply.feedback || "—"}</span> : !readOnly && <button type="button" className={button + " rounded-full!"} disabled={disabled || JSON.stringify(data) !== JSON.stringify(savedData)} onClick={() => item && !onEmail ? void copy(item) : send([l.id], false)}>{w("再次提醒", "Remind again")}</button>}</td></tr>; })}</tbody></table>{!tableLeads.length && <p className="py-5 text-sm text-dark/60">{w("選擇受訪者並儲存後，在這裡追蹤確認回覆。", "Choose participants and save to track their confirmations here.")}</p>}</div>
