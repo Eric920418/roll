@@ -10,6 +10,7 @@ import { DIAGNOSTIC_QUESTIONS } from "@/lib/action-plan/builder-draft";
 import { diagnosisSchema, diagnoseBodySchema } from "@/lib/action-plan/schemas";
 import { PlanWriteError } from "@/lib/action-plan/service";
 import { getLatestQuizResult } from "@/lib/quiz/result";
+import { getWorksheetPlanContext } from "@/lib/icp/worksheet-service";
 import { DISCOVERY_POLICY, discoveryTrialActive, readDiscoverySetup, type DiscoverySetup } from "./policy";
 import { discoveryAccount, getDiscoverySnapshot } from "./service";
 
@@ -43,7 +44,8 @@ export async function prepareDiscoverySetup(account: Account, input: Input) {
   });
   if (claimed.cached) return { status: "ready" as const, diagnosis: claimed.cached };
   try {
-    const result = await diagnoseActionPlan({ locale: input.locale, answers, personalization: input.personalization, messages: [], profile: account.profile, quiz: await getLatestQuizResult(account.id) });
+    const [quiz, customerHypothesis] = await Promise.all([getLatestQuizResult(account.id), getWorksheetPlanContext(account.id)]);
+    const result = await diagnoseActionPlan({ locale: input.locale, answers, personalization: input.personalization, messages: [], profile: account.profile, quiz, customerHypothesis });
     if (result.status !== "ready") throw new PlanWriteError("三題已完成，請重試個人化分析 / All three answers are saved; retry the analysis", 422);
     const diagnosis = diagnosisSchema.parse(result.diagnosis);
     await prisma.$transaction(async raw => {

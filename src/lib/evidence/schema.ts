@@ -1,3 +1,4 @@
+import { savedWorksheetSchema } from "@/lib/icp/worksheet";
 import { today } from '@/lib/roadmap/schema';
 import { z } from 'zod';
 const text = z.string().trim().max(2000), id = z.string().min(1).max(200);
@@ -13,7 +14,7 @@ export const evidencePreferencesSchema = z.object({ acceptMessages: z.boolean().
             return false;
         }
     }).default('Asia/Taipei'), locale: z.enum(['en', 'zh-tw']).default('en') }).strict();
-export const evidenceStateSchema = z.object({ nextWeeklyAt: z.iso.datetime().nullable().optional(), stats: z.object({ week: z.string(), conversations: z.number(), weekConversations: z.number(), paid: z.number(), stage: z.number() }).optional(), preferences: evidencePreferencesSchema.default(() => evidencePreferencesSchema.parse({})), preferenceVersion: z.number().int().nonnegative().default(0), hypotheses: z.array(hypothesisSchema).max(60).default([]), selectedId: id.nullable().default(null), maxStage: z.number().int().min(1).max(5).default(1), selections: z.array(z.object({ id, at: z.string(), previousId: id.nullable() })).max(60).default([]), links: z.array(sourceLinkSchema).max(2000).default([]) }).strict();
+export const evidenceStateSchema = z.object({ worksheet: savedWorksheetSchema.optional(), nextWeeklyAt: z.iso.datetime().nullable().optional(), stats: z.object({ week: z.string(), conversations: z.number(), weekConversations: z.number(), paid: z.number(), stage: z.number() }).optional(), preferences: evidencePreferencesSchema.default(() => evidencePreferencesSchema.parse({})), preferenceVersion: z.number().int().nonnegative().default(0), hypotheses: z.array(hypothesisSchema).max(60).default([]), selectedId: id.nullable().default(null), maxStage: z.number().int().min(1).max(5).default(1), selections: z.array(z.object({ id, at: z.string(), previousId: id.nullable() })).max(60).default([]), links: z.array(sourceLinkSchema).max(2000).default([]) }).strict();
 export const evidenceMutationSchema = z.object({ requestId: z.uuid(), revision: z.number().int().nonnegative(), action: z.enum(['save', 'select', 'preferences']), hypothesis: hypothesisSchema.optional(), selectedId: id.optional(), preferences: evidencePreferencesSchema.optional(), links: z.array(sourceLinkSchema).max(500).optional() }).strict();
 export type EvidenceState = z.infer<typeof evidenceStateSchema>;
 export type EvidenceSource = {

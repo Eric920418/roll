@@ -10,6 +10,7 @@ import { PlanWriteError } from "@/lib/action-plan/service";
 import { DIAGNOSTIC_QUESTIONS } from "@/lib/action-plan/builder-draft";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
 import { getLatestQuizResult } from "@/lib/quiz/result";
+import { getWorksheetPlanContext } from "@/lib/icp/worksheet-service";
 import { diagnoseActionPlan } from "@/lib/action-plan/ai";
 import { prisma } from "@/lib/prisma";
 import { readDiscoverySetup } from "@/lib/discovery/policy";
@@ -40,8 +41,8 @@ export async function POST(req: NextRequest) {
       if (!parsed.data.requestId) return fail("缺少請求識別碼 / Request ID required", 400);
       return ok(await prepareDiscoverySetup(trial, { ...parsed.data, requestId: parsed.data.requestId }));
     }
-    const quiz = await getLatestQuizResult(session.uid);
-    return ok(await diagnoseActionPlan({ ...parsed.data, profile: account!.profile, quiz }));
+    const [quiz, customerHypothesis] = await Promise.all([getLatestQuizResult(session.uid), getWorksheetPlanContext(session.uid)]);
+    return ok(await diagnoseActionPlan({ ...parsed.data, profile: account!.profile, quiz, customerHypothesis }));
   } catch (error) {
     if (error instanceof PlanWriteError) return fail(error.message, error.status);
     if (error instanceof Error && /timeout|timed out/i.test(error.name + error.message)) {

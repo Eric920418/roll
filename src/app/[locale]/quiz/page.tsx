@@ -1,57 +1,31 @@
-import { requireUserPage } from "@/lib/auth/guard";
 import type { Metadata } from "next";
-import { setRequestLocale, getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/prisma";
-import { pick } from "@/lib/quiz/locale";
-import type { Choice } from "@/lib/quiz/match";
-import QuizClient, { type QuizQuestionView } from "@/components/quiz/QuizClient";
+import { redirect } from "next/navigation";
+import { setRequestLocale } from "next-intl/server";
+import CustomerWorksheet from "@/components/quiz/CustomerWorksheet";
+import { getCurrentAccount } from "@/lib/auth/account";
+import { requireUserPage } from "@/lib/auth/guard";
+import { destinationFor } from "@/lib/auth/onboarding";
+import { getSavedWorksheet } from "@/lib/icp/worksheet-service";
+import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
-type Props = { params: Promise<{ locale: string }> };
-
-export const dynamic = "force-dynamic"; // 題目可後台編輯，需即時
+type Props = { params: Promise<{ locale: Locale }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "Quiz" });
   return {
-    title: { absolute: t("metaTitle") },
-    description: t("metaDescription"),
+    title: { absolute: locale === "zh-tw" ? "建立你的客戶假設 | NOVA AI" : "Build your customer hypothesis | NOVA AI" },
     robots: { index: false, follow: false },
   };
 }
 
 export default async function QuizPage({ params }: Props) {
-  await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
-  const l = locale as Locale;
+  await requireUserPage(locale);
+  const account = await getCurrentAccount();
+  if (!account) redirect(pathForLocale("/login", locale));
+  if (!account.completed && account.onboardingStep < 4) redirect(destinationFor(account, locale));
 
-  const rows = await prisma.quizQuestion.findMany({
-    where: { published: true },
-    orderBy: { order: "asc" },
-  });
-
-  const questions: QuizQuestionView[] = rows.map((r) => {
-    const cols: [Choice, unknown][] = [
-      ["A", r.optionA],
-      ["B", r.optionB],
-      ["C", r.optionC],
-      ["D", r.optionD],
-    ];
-    const options = cols
-      .filter(([, v]) => v != null)
-      .map(([key, v]) => {
-        const o = (v ?? {}) as Record<string, unknown>;
-        return { key, label: pick(o.label, l), desc: pick(o.desc, l) };
-      });
-    return {
-      id: r.id,
-      prompt: pick(r.prompt, l),
-      subtitle: pick(r.subtitle, l),
-      options,
-    };
-  });
-
-  return <QuizClient questions={questions} />;
+  return <CustomerWorksheet userId={account.id} locale={locale} completed={account.completed} initial={await getSavedWorksheet(account.id)} />;
 }

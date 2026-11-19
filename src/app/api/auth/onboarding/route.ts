@@ -6,6 +6,7 @@ import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/auth/guard";
 import { ok, fail, unauthorized, failFromError } from "@/lib/api";
+import { saveWorksheet, worksheetInputSchema } from "@/lib/icp/worksheet-service";
 
 const str = (v: unknown): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
@@ -33,6 +34,12 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const step = body?.step;
     const data = body?.data ?? {};
+
+    if (step === "worksheet") {
+      const parsed = worksheetInputSchema.safeParse(data);
+      if (!parsed.success) return fail(parsed.error.issues.map(issue => [issue.path.join("."), issue.message].filter(Boolean).join(" · ")).join("\n"), 400);
+      return ok(await saveWorksheet(session.uid, parsed.data));
+    }
 
     // onboardingStep 只前進不倒退；已 completed 者重訪不改動步驟（避免把進度退回）。
     const current = await prisma.user.findUnique({

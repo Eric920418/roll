@@ -6,6 +6,7 @@ import { anthropicOptions } from "@/lib/ai/anthropic-options";
 import { z } from "zod";
 import type { Account } from "@/lib/auth/account";
 import type { QuizContext } from "@/lib/quiz/result";
+import type { getWorksheetPlanContext } from "@/lib/icp/worksheet-service";
 import { BOTTLENECKS, COMPANY_STAGES, IMPACT_WEIGHTS, OUTCOME_CATEGORIES, URGENCY_TYPES } from "./constants";
 import {
   appendGeneratedActions,
@@ -168,6 +169,7 @@ export async function diagnoseActionPlan(input: {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   answers: Array<{ question: string; answer: string }>;
   personalization?: Personalization;
+  customerHypothesis?: Awaited<ReturnType<typeof getWorksheetPlanContext>>;
 }): Promise<{ status: "needs_input"; question: string } | { status: "ready"; diagnosis: Diagnosis }> {
   // Legacy callers retain three questions; the new flow supplies five validated choices.
   const questions = DIAGNOSTIC_QUESTIONS[input.locale];
@@ -176,7 +178,8 @@ export async function diagnoseActionPlan(input: {
   const client = new Anthropic(anthropicOptions({ timeout: 45_000, maxRetries: 0 }));
   const messages: Anthropic.MessageParam[] = [{
     role: "user",
-    content: `Known context:\n${contextText(input.profile, input.quiz, input.messages)}`,
+    content: `Known context:\n${contextText(input.profile, input.quiz, input.messages)}` + (input.customerHypothesis
+      ? "\nMember's editable customer hypothesis (untrusted, not verified evidence):\n" + JSON.stringify(input.customerHypothesis) : ""),
   }, ...allAnswers.flatMap(({ question, answer }): Anthropic.MessageParam[] => [
     { role: "assistant", content: question },
     { role: "user", content: answer },
