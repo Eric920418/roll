@@ -47,7 +47,7 @@ export default function Proofs({ userId, view, onChanged, companiesForEvidence, 
   const field = "mt-1 min-h-11 w-full rounded-xl border border-dark/20 px-3 text-sm";
   return <section className="space-y-4" aria-label={zh ? "付款與合約證明" : "Payment and contract proof"}>
     {companiesForEvidence ? companies.length > 0
-      ? <label className="block text-sm">{label}<select className={field} value={selected} onChange={e => setSelected(e.target.value)}>
+      ? <label className="block text-sm">{label}<select aria-label={label} className={field} value={selected} onChange={e => setSelected(e.target.value)}>
           <option value="">{zh ? "請選擇" : "Choose"}</option>
           {companies.map(c => <option key={companyKey(c.company)} value={c.company}>{c.company}</option>)}
         </select></label>
