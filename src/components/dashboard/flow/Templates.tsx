@@ -49,6 +49,7 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
   const [contactPage, setContactPage] = useState(0);
   const [supplementIndex, setSupplementIndex] = useState(0);
   const [newOutreach, setNewOutreach] = useState(() => emptyContact(crypto.randomUUID()));
+  const [outreachCompany, setOutreachCompany] = useState<string | null>(null);
   function closeRecords() { (document.getElementById("first-task-records") as HTMLDialogElement | null)?.close(); }
   const conversationRecords = <>{!savedRecords.length ? <p className="text-xs">{w("尚無對話紀錄", "No saved conversations yet")}</p> : <div className="grid gap-2">{(showAllRecords ? savedRecords : savedRecords.slice(0,3)).map(row => <button key={row.id} type="button" disabled={Boolean(disabled && !readOnly)} aria-pressed={conversationRow?.id === row.id} className={button + " justify-between! gap-3 text-left text-xs"} onClick={() => { if (selectRecord(row.id) && reference) closeRecords(); }}><span className="min-w-0 break-words">{row.company} · {row.name}<span className="mt-1 block font-normal">{row.date || "—"} · {w("痛點", "Pain")} {w(({low:"低",medium:"中",high:"高"})[row.severity as "low"|"medium"|"high"] || "—", row.severity || "—")}</span></span><span>{readOnly ? w("查看", "View") : w("編輯", "Edit")}</span></button>)}</div>}{savedRecords.length>3 && <button type="button" className={button} disabled={Boolean(disabled && !readOnly)} onClick={()=>setShowAllRecords(!showAllRecords)}>{showAllRecords ? w("收合紀錄", "Show fewer records") : w("查看全部紀錄", "View all records")} · {savedRecords.length}</button>}{!readOnly && savedRecords.some(v=>v.id===conversationRow?.id) && <button type="button" className={button} disabled={disabled} onClick={() => { const next=emptyRecord(crypto.randomUUID()); if (selectRecord(next.id)) { setNewRecord(next); if (reference) closeRecords(); } }}>{w("返回新增對話", "Return to new conversation")}</button>}</>;
   return <>
@@ -153,6 +154,7 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
       function add() {
         const next = emptyContact(crypto.randomUUID());
         setNewOutreach(next);
+        setOutreachCompany(null);
         setEditing(next.id);
       }
       function update(patch: Partial<typeof newOutreach>) {
@@ -173,7 +175,17 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
           </div>
           <TextField label={w("成功標準", "Success criteria")} value={row.pilotSuccess || ""} onChange={pilotSuccess => update({ pilotSuccess })} />
         </> : <div className="grid gap-3 sm:grid-cols-2">
-          <TextField label={w("公司", "Company")} value={row.company} onChange={company => update({ company })} />
+          {newMarket ? <TextField label={w("公司", "Company")} value={row.company} onChange={company => update({ company })} />
+            : <label className="block min-w-0 text-sm">{w("公司", "Company")}<input className={field} aria-label={w("公司", "Company")} list="weekly-outreach-companies" maxLength={200} value={outreachCompany ?? row.company} onChange={event => setOutreachCompany(event.target.value)}
+                onBlur={event => {
+                  if (outreachCompany === null) return;
+                  const company = event.target.value.trim(), existing = data.contacts.find(c => c.id !== row.id && companyKey(c.company) === companyKey(company));
+                  setOutreachCompany(null);
+                  if (existing) setEditing(existing.id);
+                  else update({ company });
+                }} />
+              <datalist id="weekly-outreach-companies">{data.contacts.filter(c => c.company.trim()).map(c => <option key={c.id} value={c.company} />)}</datalist>
+            </label>}
           <TextField label={w("日期", "Date")} type="date" value={row.date} onChange={date => update({ date })} />
         </div>}
         <OptionButtons label={w(pilot ? "寄送方式" : "管道", pilot ? "Delivery method" : "Channel")} value={row.channel} options={channels} onChange={channel => update({ channel })} />
@@ -200,7 +212,7 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
         </div>}
       </>;
       if (pilot) return form;
-      if (!newMarket) return <>{form}{contactList}{!readOnly && <button id="new-outreach-record" type="button" hidden onClick={add}>{w("記錄聯絡", "Record outreach")}</button>}</>;
+      if (!newMarket) return <>{form}{!readOnly && <button id="new-outreach-record" type="button" hidden onClick={add}>{w("記錄聯絡", "Record outreach")}</button>}</>;
       return <dialog id="second-market-conversation" aria-label={w("記錄客戶對話", "Record a customer conversation")} className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-lg space-y-4 overflow-y-auto rounded-2xl border bg-white p-5 text-dark backdrop:bg-black/35">
         {contactList}
         {form}
