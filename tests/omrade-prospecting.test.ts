@@ -228,11 +228,22 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
     });
     await t.test("Failed full-count research releases all quota with a safe specific reason; UTC admission month accepts offsets", async () => {
       const user = await member(); mode = "insufficient";
-      const failed = await service.createProspectOrder(user.id, input()); await worker.runProspecting();
+      const requested = input();
+      const failed = await service.createProspectOrder(user.id, requested); await worker.runProspecting();
       const result = await service.getProspectOrder(user.id, failed.id);
       assert.equal(result.status, "failed"); assert.deepEqual(await balance(user.id), [150, 0]); assert.equal(result.delivered, 0); assert.equal(result.usable, 0);
       assert.equal(result.code, "provider_insufficient_matches"); assert.match(result.error!, /足額|enough/); assert(!result.error!.includes("private-test-key"));
-      assert.equal((await service.prospectSnapshot(user.id)).quota.reserved, 0);
+      const history = await service.prospectSnapshot(user.id);
+      assert.equal(history.quota.reserved, 0);
+      assert.equal(history.orders.length, 0);
+      assert.equal(history.failure, null);
+      const notice = await service.prospectSnapshot(user.id, undefined, requested.requestId);
+      assert.equal(notice.failure?.id, failed.id);
+      assert.equal(notice.failure?.tokenFee?.status, "released");
+      const other = await member();
+      assert.equal((await service.prospectSnapshot(other.id, undefined, requested.requestId)).failure, null);
+      await clean(other.id);
+      assert.equal((await service.createProspectOrder(user.id, requested)).id, failed.id, "Hidden receipts still prevent duplicate submissions");
       await clean(user.id);
       const inconsistentUser = await member(); mode = "bad-release";
       const inconsistentOrder = await service.createProspectOrder(inconsistentUser.id, input()); await worker.runProspecting();
@@ -368,7 +379,10 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       for (const company of ["Alpha", " ALPHA ", "Beta", "Gamma"]) await db.meetingNote.create({ data: { userId: user.id, title: "QA interview", body: "PRIVATE_INTERVIEW", insight: { ...emptyInsight("discover"), journeyId: journey.id, company, notes: "PRIVATE_INTERVIEW" } } });
       assert.equal((await service.eligibility(user.id)).interviews, 3);
       await assert.rejects(service.createProspectOrder(user.id, input(0, 10)), /五家|five/);
-      contactsAvailable = false; const first = await service.createProspectOrder(user.id, input()); await worker.runProspecting(); assert.equal((await service.getProspectOrder(user.id, first.id)).usable, 0); assert.equal(await db.prospectingTrialGrant.count({ where: { userId: user.id } }), 0);
+      const firstRequest = input();
+      contactsAvailable = false; const first = await service.createProspectOrder(user.id, firstRequest); await worker.runProspecting(); assert.equal((await service.getProspectOrder(user.id, first.id)).usable, 0); assert.equal(await db.prospectingTrialGrant.count({ where: { userId: user.id } }), 0);
+      const empty = await service.prospectSnapshot(user.id, undefined, firstRequest.requestId);
+      assert.equal(empty.orders.length, 0); assert.equal(empty.failure?.id, first.id);
       contactsAvailable = true; const second = await service.createProspectOrder(user.id, input(1)); await worker.runProspecting(); assert.equal((await service.getProspectOrder(user.id, second.id)).usable, 5); assert.equal(await db.prospectingTrialGrant.count({ where: { userId: user.id } }), 1); assert.equal((await service.prospectSnapshot(user.id)).quota.delivered, 10);
       await assert.rejects(worker.recheckProspectOrder(user.id, first.id), /POC/);
       await assert.rejects(service.addProspectContact(user.id, second.id, (await service.getProspectOrder(user.id, second.id)).companies[0].id), /升級|Upgrade/);

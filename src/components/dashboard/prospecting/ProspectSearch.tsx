@@ -23,19 +23,30 @@ export default function ProspectSearch({ userId, planId, active = true, onSelect
   const scoped = Boolean(stepContext), stepCountry = countryCode(stepContext?.market) || "", stepDescription = stepContext?.description || "";
   const [data, setData] = useState<Snapshot | null>(null), [country, setCountry] = useState(scoped ? stepCountry : "TW"), [description, setDescription] = useState(stepDescription), [count, setCount] = useState<5 | 10>(5);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(""), [consent, setConsent] = useState(false), [conflict, setConflict] = useState(false), [adding, setAdding] = useState<Selected | null>(null), [storageReady, setStorageReady] = useState(false);
+  const [failure, setFailure] = useState<Order | null>(null);
   const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null), selectedForFollowup = useRef<Selected | null>(null);
   const dirty = useRef(false), sending = useRef(false), loaded = useRef(false), attempt = useRef<{ key: string; body: ReturnType<typeof orderInputSchema.parse> } | null>(null);
-  const observedProvider = useRef<string | null>(null);
+  const observedProvider = useRef<string | null>(null), watchedSubmission = useRef<string | undefined>(undefined);
   const observedOrders = useRef(new Set<string>()), observedPricing = useRef<number | null>(null);
   const storageKey = `nova:prospects:${userId}${planId ? ":" + planId : ""}${stepContext ? ":" + stepContext.step : ""}`;
   const load = useCallback(async (cursor?: string) => {
     try {
-      const fresh = await memberFetch<Snapshot>(`/api/prospects${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`);
+      const watched = attempt.current?.body.requestId ?? watchedSubmission.current;
+      const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : watched ? `?submissionId=${encodeURIComponent(watched)}` : "";
+      const fresh = await memberFetch<Snapshot>(`/api/prospects${query}`);
+      if (fresh.failure && fresh.failure.submissionId === watched) {
+        setFailure(fresh.failure);
+        setNotice("");
+      }
+      if (!cursor) {
+        if (fresh.pending) watchedSubmission.current = fresh.pending.submissionId;
+        else if (watchedSubmission.current === watched && (fresh.failure || fresh.orders.some(order => order.submissionId === watched && order.status === "completed"))) watchedSubmission.current = undefined;
+      }
       if (observedPricing.current !== fresh.pricing.version || observedProvider.current !== fresh.provider) { setConsent(false); observedPricing.current = fresh.pricing.version; observedProvider.current = fresh.provider; }
       setData(previous => cursor && previous ? { ...fresh, orders: [...new Map([...previous.orders, ...fresh.orders].map(o => [o.id, o])).values()] } : fresh);
       if (!dirty.current && !attempt.current) { setCountry(scoped ? stepCountry : fresh.workspace.country); setDescription(scoped ? stepDescription || fresh.workspace.suggested : fresh.workspace.description); }
-      if (attempt.current && [...fresh.orders, ...(fresh.pending ? [fresh.pending] : [])].some(o => o.submissionId === attempt.current!.body.requestId)) {
+      if (attempt.current && [...fresh.orders, fresh.pending, fresh.failure].some(o => o?.submissionId === attempt.current!.body.requestId)) {
         const sent = attempt.current.body; attempt.current = null;
         try { if (scoped) localStorage.setItem(storageKey, JSON.stringify({ country: sent.country, description: sent.description, count: sent.count, attempt: null })); else localStorage.removeItem(storageKey); } catch { /* A later retry still uses the saved key. */ }
       }
@@ -70,9 +81,9 @@ export default function ProspectSearch({ userId, planId, active = true, onSelect
   useEffect(() => {
     if (!data) return;
     if (data.pending) observedOrders.current.add(data.pending.id);
-    for (const order of data.orders) if (observedOrders.current.has(order.id) && ["completed", "failed"].includes(order.status)) {
+    for (const order of [...data.orders, data.failure]) if (order && observedOrders.current.has(order.id) && ["completed", "failed"].includes(order.status)) {
       observedOrders.current.delete(order.id);
-      try { const key = `nova:prospect-outcome:${order.id}`; if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, "1"); track(order.status === "completed" && !deliveryShortfall(order) ? "flow_success" : "flow_error", { feature: "prospects" }); } } catch { /* Analytics never blocks the workspace. */ }
+      try { const key = `nova:prospect-outcome:${order.id}`; if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, "1"); track(order !== data.failure && order.status === "completed" && !deliveryShortfall(order) ? "flow_success" : "flow_error", { feature: "prospects" }); } } catch { /* Analytics never blocks the workspace. */ }
     }
   }, [data]);
   useEffect(() => {
@@ -90,7 +101,7 @@ export default function ProspectSearch({ userId, planId, active = true, onSelect
   }
   async function submit() {
     if (!data || sending.current || conflict) return;
-    setError(""); setNotice("");
+    setError(""); setNotice(""); setFailure(null);
     if (scoped && stepCountry && country !== stepCountry) { setError(zh ? "搜尋國家須與本步市場一致；請套用本步搜尋條件，或先修改任務市場。" : "The search country must match this step's market. Apply this step's criteria or update the task market first."); return; }
     const key = JSON.stringify({ provider: data.provider, planId, country, description: description.trim(), count: effectiveCount });
     if (attempt.current?.key !== key) attempt.current = { key, body: { ...(planId ? { planId } : {}), requestId: crypto.randomUUID(), provider: data.provider as "omrade" | "anthropic_backup", pricingVersion: data.pricing.version, revision: data.workspace.revision, country, description: description.trim(), count: effectiveCount } };
@@ -100,6 +111,7 @@ export default function ProspectSearch({ userId, planId, active = true, onSelect
     try {
       const created = await memberFetch<{ id: string }>("/api/prospects/orders", { method: "POST", body: JSON.stringify(parsed.data) });
       observedOrders.current.add(created.id);
+      watchedSubmission.current = parsed.data.requestId;
       attempt.current = null; setConsent(false);
       if (scoped) store(country, description, effectiveCount);
       else { dirty.current = false; try { localStorage.removeItem(storageKey); } catch { /* Server idempotency remains authoritative. */ } }
@@ -130,7 +142,7 @@ export default function ProspectSearch({ userId, planId, active = true, onSelect
     {notice && <p role="status" className="whitespace-pre-wrap rounded-xl bg-neutral-100 p-4 text-sm">{notice}</p>}
     {error && <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800"><p className="whitespace-pre-wrap break-words">{error}</p><button className={`${button} mt-3`} onClick={() => { setError(""); void load(); }}>{zh ? "重載資料，保留輸入" : "Reload data · keep input"}</button></div>}
     {compact && <button ref={trigger} type="button" className={button + " bg-black text-white"} onClick={openSearch}>{zh ? "尋找 5 家公司" : "Find 5 companies"}</button>}
-    <Container ref={(element: HTMLDialogElement | HTMLDivElement | null)=>{dialog.current=element instanceof HTMLDialogElement ? element : null;}} aria-labelledby={titleId} onClose={() => { const selected=selectedForFollowup.current; selectedForFollowup.current=null; if(selected && onSelect)onSelect(selected); else trigger.current?.focus(); }} className={compact ? "nova-theme fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-dark/20 bg-white p-5 text-dark shadow-2xl backdrop:bg-black/35 sm:p-7" : "static m-0 w-full max-w-none border-0 bg-transparent p-0 text-inherit"}>
+    <Container ref={(element: HTMLDialogElement | HTMLDivElement | null)=>{dialog.current=element instanceof HTMLDialogElement ? element : null;}} aria-labelledby={titleId} onClose={() => { setFailure(null); const selected=selectedForFollowup.current; selectedForFollowup.current=null; if(selected && onSelect)onSelect(selected); else trigger.current?.focus(); }} className={compact ? "nova-theme fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-dark/20 bg-white p-5 text-dark shadow-2xl backdrop:bg-black/35 sm:p-7" : "static m-0 w-full max-w-none border-0 bg-transparent p-0 text-inherit"}>
     {compact && <button type="button" className={button + " mb-4"} onClick={()=>dialog.current?.close()}>{zh ? "關閉搜尋" : "Close search"}</button>}
     <div className="space-y-5">
     <header><h2 id={titleId} tabIndex={-1} className="text-xl font-bold">{zh ? "尋找新公司" : "Find new companies"}</h2></header>
@@ -146,6 +158,10 @@ export default function ProspectSearch({ userId, planId, active = true, onSelect
         <label className="flex min-h-11 items-start gap-3 text-sm"><input type="checkbox" className="mt-1 size-5 shrink-0" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} />{zh ? `我確認這些搜尋條件及排除網域會傳送至 ${data.provider === "anthropic_backup" ? "Anthropic（臨時 AI 搜尋）" : "Omrade"}；不傳原始訪談、私人聯絡人或成交證明。` : `I confirm these targeting criteria and excluded domains will be sent to ${data.provider === "anthropic_backup" ? "Anthropic (temporary AI search)" : "Omrade"}, without raw conversations, private contacts or payment evidence.`}</label>
         {conflict && <div className="space-y-3 rounded-xl bg-amber-50 p-4 text-sm"><p>{zh ? "伺服器最新條件：" : "Latest server criteria:"} {countryLabel(data.workspace.country, locale)}</p><p className="whitespace-pre-wrap">{data.workspace.description}</p><button type="button" className={button} onClick={() => { setCountry(data.workspace.country); setDescription(data.workspace.description); dirty.current = false; attempt.current = null; setConflict(false); setConsent(false); }}>{zh ? "採用最新條件" : "Use latest criteria"}</button><button type="button" className={`${button} ml-2`} onClick={() => { attempt.current = null; setConflict(false); setConsent(false); }}>{zh ? "保留我的輸入並重新確認" : "Keep my input and reconfirm"}</button></div>}
         <button type="submit" className={`${button} bg-black text-white`} disabled={busy || !data.enabled || !data.access.canSearch || !consent || Boolean(data.pending) || conflict || data.quota.remaining < effectiveCount}>{busy ? (zh ? "處理中…" : "Working…") : data.access.poc ? (zh ? "領取五家公司 POC" : "Claim five-company POC") : (zh ? `搜尋 ${effectiveCount} 家新公司${credits ? ` · 預扣 ${data.pricing.searchFee} 點數` : ""}` : `Find ${effectiveCount} new companies${credits ? ` · ${data.pricing.searchFee} Credits held` : ""}`)}</button>
+        {failure && <div role="alert" className="rounded-xl bg-amber-50 p-3 text-sm">
+          <p className="whitespace-pre-wrap break-words">{failure.error || (zh ? "這次搜尋沒有交付合格公司。" : "This search returned no verified companies.")} {failure.code} {failure.requestId}</p>
+          {failure.tokenFee && ["released", "refunded"].includes(failure.tokenFee.status) && <p className="mt-1 font-semibold">{zh ? `已退回 ${failure.tokenFee.amount} ${unit}` : `${failure.tokenFee.amount} ${unit} returned`}</p>}
+        </div>}
       </form>
       {data.pending && <div role="status" className="rounded-xl bg-black p-5 text-white"><strong>{status(data.pending.status)}</strong><p className="mt-2 text-sm">{data.pending.provider === "anthropic_backup" ? (zh ? "臨時 AI 搜尋 · " : "Temporary AI search · ") : ""}{countryLabel(data.pending.country, locale)} · {data.pending.requested} {data.pending.provider === "anthropic_backup" ? (zh ? "家。依序搜尋並核對來源，可稍後回來查看；不會自動追加付費搜尋。" : "companies. Queued for research and source verification; you may return later. No automatic paid repeat searches.") : zh ? "家。處理可能需數分鐘，供應商窗口最長 40 分鐘；逾時仍保留原單對帳，可稍後回來查看。" : "companies. Processing may take several minutes within the provider's 40-minute window. Delayed orders are retained for reconciliation; you can return later."}</p>{data.pending.error && <p className="mt-2 whitespace-pre-wrap text-sm">{data.pending.error}</p>}</div>}
       <div className="space-y-5">{data.orders.map(order => <article key={order.id} className="space-y-4 rounded-xl border border-dark/15 p-4"><header><h3 className="text-lg font-bold">{order.provider === "anthropic_backup" ? (zh ? "臨時 AI 搜尋 · " : "Temporary AI · ") : ""}{countryLabel(order.country, locale)} · {deliveryShortfall(order) ? shortfallLabel(order) : status(order.status)}</h3><p className="mt-1 text-sm">{zh ? `請求 ${order.requested} · 供應商交付 ${order.delivered} · 目前可聯絡 ${order.usable}` : `Requested ${order.requested} · Provider delivered ${order.delivered} · Available to contact ${order.usable}`}</p><p className="mt-1 text-xs">{new Date(order.createdAt).toLocaleString(locale === "zh-tw" ? "zh-TW" : "en-US", { timeZone: "Asia/Taipei" })} · Taipei</p></header>

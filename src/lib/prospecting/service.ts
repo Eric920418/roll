@@ -57,15 +57,19 @@ export function orderView(order: ProspectingOrder, excluded: string[], workspace
     stale: !order.checkedAt || Date.now() - order.checkedAt.getTime() >= 86400000 || Boolean(workspace && (workspace.country !== order.country || workspace.description !== order.description)),
     companies, rejections: order.rejections, error: order.failureMessage, code: order.failureCode, requestId: order.providerRequestId };
 }
-export async function prospectSnapshot(userId: string, cursor?: string) {
+const emptyDelivery: Prisma.ProspectingOrderWhereInput = {
+  OR: [{ status: "failed" }, { status: "completed", result: { equals: [] } }],
+};
+export async function prospectSnapshot(userId: string, cursor?: string, submissionId?: string) {
   await expireTokens(userId);
   const tokens = await tokenSnapshot(userId);
   if (cursor && !await prisma.prospectingOrder.findFirst({ where: { id: cursor, userId }, select: { id: true } })) throw new ProspectingError("找不到名單頁次 / Invalid history cursor", 400, "invalid_cursor");
-  const [workspace, rights, context, orders, pending, usage] = await Promise.all([
+  const [workspace, rights, context, orders, pending, usage, failure] = await Promise.all([
     prisma.prospectingWorkspace.findUnique({ where: { userId } }), eligibility(userId), exclusions(userId),
-    prisma.prospectingOrder.findMany({ where: { userId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 21, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) }),
+    prisma.prospectingOrder.findMany({ where: { userId, NOT: emptyDelivery }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 21, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) }),
     prisma.prospectingOrder.findFirst({ where: { userId, status: { in: activeOrderStatuses } } }),
     prisma.prospectingOrder.aggregate({ where: { userId, period: utcPeriod() }, _sum: { reservedCount: true, deliveredCount: true } }),
+    submissionId && !cursor ? prisma.prospectingOrder.findUnique({ where: { userId_requestId: { userId, requestId: submissionId }, AND: emptyDelivery } }) : null,
   ]);
   const suggested = audienceDescription(readIcp(context.profile?.icpDetails)) || context.profile?.icp?.slice(0, 4000) || "";
   const values = workspace || { revision: 0, country: "TW", description: suggested };
@@ -74,7 +78,9 @@ export async function prospectSnapshot(userId: string, cursor?: string) {
   const pricing = { ...tokens.pricing, searchFee: gift?.availableDelta || tokens.pricing.searchFee };
   return { pricing, tokens: { available: tokens.available, reserved: tokens.reserved, ...(tokens.mode ? { mode: tokens.mode } : {}) }, enabled: configured() || backupEnabled(), provider: backupEnabled() ? "anthropic_backup" : "omrade", backupUntil: backupEnabled() ? backupUntil() : null, access: rights, workspace: { revision: values.revision, country: values.country, description: values.description, suggested },
     quota: { period: utcPeriod(), limit: pricing.monthlyCompanies, delivered, reserved, remaining: Math.max(0, pricing.monthlyCompanies - delivered - reserved) },
-    pending: pending ? orderView(pending, context.names, values) : null, orders: await Promise.all(orders.slice(0, 20).map(async o => ({ ...orderView(o, context.names, values), tokenFee: await feeView(o.id) }))), nextCursor: orders.length > 20 ? orders[19].id : null };
+    pending: pending ? orderView(pending, context.names, values) : null,
+    failure: failure ? { ...orderView(failure, context.names, values), tokenFee: await feeView(failure.id) } : null,
+    orders: await Promise.all(orders.slice(0, 20).map(async o => ({ ...orderView(o, context.names, values), tokenFee: await feeView(o.id) }))), nextCursor: orders.length > 20 ? orders[19].id : null };
 }
 export async function getProspectOrder(userId: string, id: string) {
   const [order, context, workspace] = await Promise.all([prisma.prospectingOrder.findFirst({ where: { id, userId } }), exclusions(userId), prisma.prospectingWorkspace.findUnique({ where: { userId } })]);

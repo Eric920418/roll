@@ -6,11 +6,14 @@ import { pdfRuntime } from './helpers/pdf-runtime';
 
 type SearchProps = React.ComponentProps<typeof import('../src/components/dashboard/prospecting/ProspectSearch').default>;
 const target = 'Confirmed reporting buyers';
+type FixtureOrder = ReturnType<typeof order>;
+type FixtureFailure = FixtureOrder & { error: string; code: string; requestId: string; tokenFee: { amount: number; status: string } };
 const order = (name: string, country: string, description: string) => ({ id: randomUUID(), submissionId: randomUUID(), country, description, status: 'completed', createdAt: '2026-11-01T00:00:00Z', requested: 5, delivered: 5, verified: 5, usable: 1, needsRecheck: false, companies: [{ id: randomUUID(), name, quality: 'strong', website: 'https://example.com', contact: { kind: 'page', value: 'https://example.com/contact', source: 'https://example.com/contact' }, evidence: [] }] });
 function harness(locale: string, stepContext?: SearchProps['stepContext'], storage = new Map<string, string>()) {
   const slots: unknown[] = [], effects: Array<() => void> = [], timers: Array<() => void> = [], posts: Array<Record<string, unknown>> = [];
   let cursor = 0, fail = false, context = stepContext;
-  const server = { enabled: true, pricing: { version: 1, searchFee: 20 }, workspace: { revision: 3, country: 'TW', description: 'Unrelated shared workspace', suggested: 'Saved buyer evidence' }, access: { canSearch: true, fullAccess: true }, quota: { remaining: 100 }, orders: [order('Old Taiwan company', 'TW', target), order('Wrong Japan conditions', 'JP', 'Other buyer criteria'), order('Matching Japan company', 'JP', target)], pending: null, nextCursor: null };
+  const browserWindow = Object.assign(new EventTarget(), { setInterval: () => 1, location: { hash: '' } });
+  const server = { enabled: true, pricing: { version: 1, searchFee: 20 }, workspace: { revision: 3, country: 'TW', description: 'Unrelated shared workspace', suggested: 'Saved buyer evidence' }, access: { canSearch: true, fullAccess: true }, quota: { remaining: 100 }, orders: [order('Old Taiwan company', 'TW', target), order('Wrong Japan conditions', 'JP', 'Other buyer criteria'), order('Matching Japan company', 'JP', target)], pending: null as FixtureOrder | null, failure: null as FixtureFailure | null, nextCursor: null };
   const changed = (a: unknown[] | undefined, b: unknown[]) => !a || a.length !== b.length || b.some((v, i) => v !== a[i]);
   const hooks = { ...React,
     useId: () => 'search-title',
@@ -20,16 +23,17 @@ function harness(locale: string, stepContext?: SearchProps['stepContext'], stora
     useEffect(fn: () => (() => void) | void, deps: unknown[]) { const i = cursor++, old = slots[i] as { deps: unknown[]; cleanup?: () => void } | undefined; if (changed(old?.deps, deps)) { slots[i] = { deps }; effects.push(() => { old?.cleanup?.(); Object.assign(slots[i]!, { cleanup: fn() }); }); } },
   };
   class FetchError extends Error { constructor(message: string, public status: number) { super(message); } }
-  const load = pdfRuntime({ react: hooks, 'next-intl': { useLocale: () => locale }, '@/components/ui/CountrySelect': { __esModule: true, default: 'CountrySelect' }, '@/lib/analytics': { track() {} }, '../PlanRefresh': { notifyPlanChanged() {} }, '@/lib/member-fetch': { MemberFetchError: FetchError, memberFetch: async (_url: string, init?: { method: string; body: string }) => {
+  const load = pdfRuntime({ react: hooks, 'next-intl': { useLocale: () => locale }, '@/components/ui/CountrySelect': { __esModule: true, default: 'CountrySelect' }, '@/lib/analytics': { track() {} }, '../PlanRefresh': { notifyPlanChanged() {} }, '@/lib/member-fetch': { MemberFetchError: FetchError, memberFetch: async (url: string, init?: { method: string; body: string }) => {
     if (init?.method === 'POST') { const body = JSON.parse(init.body); posts.push(body); if (fail) throw new FetchError('HTTP 503\nsearch_retry\ntrace-search', 503); const next = { ...order('New delivered company', body.country, body.description), submissionId: body.requestId }; server.orders.unshift(next); return { id: next.id }; }
-    return structuredClone(server);
-  } } }, { crypto: { randomUUID }, window: Object.assign(new EventTarget(), { setInterval: () => 1, location: { hash: '' } }), document: Object.assign(new EventTarget(), { visibilityState: 'visible' }), BroadcastChannel: undefined, HTMLDialogElement: class {}, localStorage: { getItem: (key: string) => storage.get(key) || null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) }, sessionStorage: { getItem: () => null, setItem() {} }, setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {}, clearInterval() {} });
+    const tracked = new URL(url, 'https://rollon.com.tw').searchParams.get('submissionId');
+    return structuredClone({ ...server, failure: tracked === server.failure?.submissionId ? server.failure : null });
+  } } }, { crypto: { randomUUID }, window: browserWindow, document: Object.assign(new EventTarget(), { visibilityState: 'visible' }), BroadcastChannel: undefined, HTMLDialogElement: class {}, localStorage: { getItem: (key: string) => storage.get(key) || null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) }, sessionStorage: { getItem: () => null, setItem() {} }, setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {}, clearInterval() {} });
   const Search = load<typeof import('../src/components/dashboard/prospecting/ProspectSearch')>('src/components/dashboard/prospecting/ProspectSearch.tsx').default;
   type Node = { type: unknown; props: Record<string, unknown> };
   function render() { cursor = 0; const nodes: Node[] = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (React.isValidElement<{ children?: React.ReactNode }>(child)) { nodes.push(child as Node); visit(child.props.children); } }); } visit(Search({ userId: 'owner', planId: 'plan', compact: true, stepContext: context })); return nodes; }
   function find(type: unknown) { const node = render().find(n => n.type === type); assert(node); return node.props; }
   async function settle() { for (let i = 0; i < 8; i++) { render(); effects.splice(0).forEach(fn => fn()); timers.splice(0).forEach(fn => fn()); await Promise.resolve(); } }
-  return { render, settle, posts, storage, orders: server.orders, context: (value: SearchProps['stepContext']) => { context = value; }, fail: (value: boolean) => { fail = value; }, country: () => find('CountrySelect').value,
+  return { render, settle, posts, storage, orders: server.orders, refresh: () => browserWindow.dispatchEvent(new Event('focus')), setOutcome: (pending: FixtureOrder | null, failure: FixtureFailure | null) => { server.pending = pending; server.failure = failure; }, context: (value: SearchProps['stepContext']) => { context = value; }, fail: (value: boolean) => { fail = value; }, country: () => find('CountrySelect').value,
     description: () => find('textarea').value,
     editCountry: (value: string) => (find('CountrySelect').onChange as (value: string) => void)(value),
     editDescription: (value: string) => (find('textarea').onChange as (e: { target: { value: string } }) => void)({ target: { value } }),
@@ -97,4 +101,23 @@ test('Failed local storage never lets a market update restore an older draft ove
   h.context({ step: '01-1', market: 'Japan', description: target }); await h.settle();
   assert.equal(h.description(), 'Current unsaved buyer description');
   assert.match(JSON.stringify(h.render()), /Local draft could not be saved/);
+});
+
+test('A failed search drops out of history while its current refund remains visible', async () => {
+  const h = harness('en');
+  const searching = { ...order('Failed company', 'TW', target), status: 'running', verified: 0, usable: 0, companies: [] };
+  const failure = { ...searching, status: 'failed', error: 'No qualifying companies', code: 'provider_insufficient_matches', requestId: 'safe-trace', tokenFee: { amount: 20, status: 'released' } };
+  h.setOutcome(searching, null);
+  await h.settle();
+  h.setOutcome(null, failure);
+  h.refresh();
+  await h.settle();
+  const view = JSON.stringify(h.render());
+  assert.match(view, /No qualifying companies/);
+  assert.match(view, /20 Token returned/);
+  assert.doesNotMatch(view, /Failed \/ not accepted|Failed company/);
+  const reopened = harness('en');
+  reopened.setOutcome(null, failure);
+  await reopened.settle();
+  assert.doesNotMatch(JSON.stringify(reopened.render()), /safe-trace|Failed \/ not accepted/);
 });
