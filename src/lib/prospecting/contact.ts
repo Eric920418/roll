@@ -52,6 +52,7 @@ export async function verifyCompany(raw: unknown, country: string, read = readPu
   const parsed = providerCompanySchema.safeParse(raw);
   if (!parsed.success) return { rejection: "invalid_fields" };
   const c = parsed.data;
+  if (c.icp_fit?.classification === "outside") return { rejection: "outside_icp" };
   if (c.country_code !== country) return { rejection: "wrong_country" };
   if (c.domain.toLowerCase().replace(/^www\./, "").replace(/\.$/, "") !== host(c.website_url)) return { rejection: "domain_mismatch" };
   // A provider label is not a quote: verify that at least one public fit source is readable.

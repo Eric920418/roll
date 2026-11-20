@@ -6,7 +6,7 @@ import { pdfRuntime } from './helpers/pdf-runtime';
 
 type SearchProps = React.ComponentProps<typeof import('../src/components/dashboard/prospecting/ProspectSearch').default>;
 const target = 'Confirmed reporting buyers';
-const order = (name: string, country: string, description: string) => ({ id: randomUUID(), submissionId: randomUUID(), country, description, status: 'completed', createdAt: '2026-11-01T00:00:00Z', requested: 5, delivered: 5, usable: 1, needsRecheck: false, companies: [{ id: randomUUID(), name, quality: 'strong', website: 'https://example.com', contact: { kind: 'page', value: 'https://example.com/contact', source: 'https://example.com/contact' }, evidence: [] }] });
+const order = (name: string, country: string, description: string) => ({ id: randomUUID(), submissionId: randomUUID(), country, description, status: 'completed', createdAt: '2026-11-01T00:00:00Z', requested: 5, delivered: 5, verified: 5, usable: 1, needsRecheck: false, companies: [{ id: randomUUID(), name, quality: 'strong', website: 'https://example.com', contact: { kind: 'page', value: 'https://example.com/contact', source: 'https://example.com/contact' }, evidence: [] }] });
 function harness(locale: string, stepContext?: SearchProps['stepContext'], storage = new Map<string, string>()) {
   const slots: unknown[] = [], effects: Array<() => void> = [], timers: Array<() => void> = [], posts: Array<Record<string, unknown>> = [];
   let cursor = 0, fail = false, context = stepContext;
@@ -29,13 +29,24 @@ function harness(locale: string, stepContext?: SearchProps['stepContext'], stora
   function render() { cursor = 0; const nodes: Node[] = []; function visit(value: React.ReactNode) { React.Children.forEach(value, child => { if (React.isValidElement<{ children?: React.ReactNode }>(child)) { nodes.push(child as Node); visit(child.props.children); } }); } visit(Search({ userId: 'owner', planId: 'plan', compact: true, stepContext: context })); return nodes; }
   function find(type: unknown) { const node = render().find(n => n.type === type); assert(node); return node.props; }
   async function settle() { for (let i = 0; i < 8; i++) { render(); effects.splice(0).forEach(fn => fn()); timers.splice(0).forEach(fn => fn()); await Promise.resolve(); } }
-  return { render, settle, posts, storage, context: (value: SearchProps['stepContext']) => { context = value; }, fail: (value: boolean) => { fail = value; }, country: () => find('CountrySelect').value,
+  return { render, settle, posts, storage, orders: server.orders, context: (value: SearchProps['stepContext']) => { context = value; }, fail: (value: boolean) => { fail = value; }, country: () => find('CountrySelect').value,
     description: () => find('textarea').value,
     editCountry: (value: string) => (find('CountrySelect').onChange as (value: string) => void)(value),
     editDescription: (value: string) => (find('textarea').onChange as (e: { target: { value: string } }) => void)({ target: { value } }),
     submit: () => (find('form').onSubmit as (e: { preventDefault(): void }) => void)({ preventDefault() {} }),
   };
 }
+
+test('Five provider results with only two verified companies are shown as incomplete', async () => {
+  for (const locale of ['en', 'zh-tw']) {
+    const h = harness(locale);
+    h.orders[0].verified = 2;
+    await h.settle();
+    const labels = h.render().filter(n => n.type === 'h3').map(n => JSON.stringify(n.props.children));
+    assert(labels.some(label => /Only 2 of 5 companies verified|僅核對到 2／5 家/.test(label)));
+    assert.equal(labels.filter(label => /Completed|已完成/.test(label)).length, 2, 'Companies already added later do not turn a fully verified order into a shortfall');
+  }
+});
 
 test('Step search excludes previous markets and conditions, isolates drafts, and preserves retry identity and complete errors', async () => {
   for (const locale of ['en', 'zh-tw']) {

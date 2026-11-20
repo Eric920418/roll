@@ -11,7 +11,8 @@ export const orderInputSchema = z.object({ requestId: z.string().uuid(), provide
 const httpsUrl = z.string().max(2000).refine(publicWebsite, "Public HTTPS source required");
 export const evidenceSchema = z.object({ criterion: z.string().trim().min(1).max(4000), source_url: httpsUrl, observed_at: z.string().max(80).optional() });
 export const providerCompanySchema = z.object({
-  company_id: z.string().uuid(), name: z.string().trim().min(1).max(200), domain: z.string().max(253), website_url: httpsUrl, country_code: z.string().length(2),
+  company_id: z.string().uuid(), name: z.string().trim().min(1).max(200), domain: z.string().max(253), website_url: httpsUrl, country_code: z.string().length(2).nullable(),
+  icp_fit: z.object({ classification: z.string().max(80) }).nullish(),
   match_quality: z.enum(["strong", "possible"]), match_note: z.string().max(4000).nullable().optional(), researched_at: z.string().max(80),
   fit_evidence: z.array(evidenceSchema).min(1).max(30),
   contacts: z.object({

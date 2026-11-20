@@ -51,6 +51,12 @@ test("Public email needs official HTML; shared inboxes, possible matches, privat
   assert.equal(checked.company?.quality, "possible"); assert.equal(checked.company?.contact.name, null);
   assert.equal(checked.company?.contact.kind, "email");
   assert.equal((await contactModule.verifyCompany(raw, "CA", html)).rejection, "wrong_country");
+  assert.equal((await contactModule.verifyCompany({ ...raw, country_code: null }, "TW", html)).rejection, "wrong_country");
+  for (const country_code of ["TW", null]) {
+    const fallback = { ...raw, country_code, icp_fit: { classification: "outside", score: null } };
+    assert.equal((await contactModule.verifyCompany(fallback, "TW", async () => assert.fail("Outside candidates should not trigger source checks"))).rejection, "outside_icp");
+  }
+  assert((await contactModule.verifyCompany({ ...raw, icp_fit: { classification: "adjacent" } }, "TW", html)).company);
   assert.equal((await contactModule.verifyCompany({ ...raw, website_url: "https://127.0.0.1" }, "TW", html)).rejection, "invalid_fields");
   assert.equal((await contactModule.verifyCompany(raw, "TW", async () => null)).rejection, "unavailable_fit_source");
   assert.equal((await contactModule.verifyCompany(raw, "TW", async url => ({ url, html: "We build B2B tools; no email, no form" }))).company, undefined);
