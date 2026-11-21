@@ -3,6 +3,7 @@ import { hasLocale } from "next-intl";
 import { routing } from "./routing";
 import { getMessageOverride } from "@/lib/cms/messages";
 import { deepMerge } from "@/lib/cms/deep-merge";
+import { logSecurityError } from "@/lib/security/log";
 
 const NOVA_NAMESPACES = ["Product", "Auth", "Quiz", "Dashboard"] as const;
 
@@ -31,7 +32,10 @@ export default getRequestConfig(async ({ requestLocale }) => {
   // 靜態翻譯檔作為 base / fallback，DB 覆蓋值 deep-merge 其上。
   // 使現有所有 t() 呼叫無需改動即可被 CMS 編輯。
   const base = (await import(`../../messages/${locale}.json`)).default;
-  const override = await getMessageOverride(locale);
+  const override = await getMessageOverride(locale).catch((error: unknown) => {
+    logSecurityError("cms.public.messages", error);
+    return {};
+  });
   const messages = deepMerge(base as Record<string, unknown>, override);
 
   // NOVA 是正式全大寫品牌名。CMS 仍可編輯 SaaS 文案，但不可把品牌名覆寫成 Nova。

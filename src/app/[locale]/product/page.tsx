@@ -6,7 +6,8 @@ import Footer from "@/components/layout/Footer";
 import ProductNav from "@/components/sections/product/ProductNav";
 import NovaLanding from "@/components/sections/product/NovaLanding";
 import Pricing from "@/components/sections/product/Pricing";
-import { SITE_URL, absoluteUrl } from "@/lib/routes";
+import { SITE_URL, absoluteUrl, pathForLocale } from "@/lib/routes";
+import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
 import type { Locale } from "@/i18n/routing";
 
 export const dynamic = "force-dynamic";
@@ -52,12 +53,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const [prices, tokens] = await Promise.all([activeBillingCatalog(), tokenQuote()]);
+  const language = locale as Locale;
+  const zh = language === "zh-tw";
+  const pricing = await Promise.all([activeBillingCatalog(), tokenQuote()])
+    .then(([prices, tokens]) => <Pricing prices={prices.catalog} tokenPricing={tokens} />)
+    .catch((error: unknown) => {
+      const reference = logSecurityError("nova.public.pricing", error);
+      return (
+        <section id="pricing" className="mx-auto max-w-[1312px] scroll-mt-24 px-6 py-16" aria-labelledby="pricing-heading">
+          <h2 id="pricing-heading" className="text-3xl font-semibold">{zh ? "方案價格" : "Pricing"}</h2>
+          <div role="alert" className="mt-4 space-y-2">
+            <p>{zh ? "方案價格暫時無法載入。" : "Plan prices are temporarily unavailable."}</p>
+            <p className="text-sm">{publicErrorMessage(reference)}</p>
+          </div>
+          <a href={`${pathForLocale("/product", language)}#pricing`} className="mt-3 inline-flex min-h-11 items-center underline">
+            {zh ? "重新載入價格" : "Reload prices"}
+          </a>
+        </section>
+      );
+    });
 
   return (
     <main className={`nova-theme ${s.square}`} data-brand="nova">
       <ProductNav />
-      <NovaLanding locale={locale as Locale} pricing={<Pricing prices={prices.catalog} tokenPricing={tokens} />} />
+      <NovaLanding locale={language} pricing={pricing} />
       <Footer brand="nova" />
     </main>
   );
