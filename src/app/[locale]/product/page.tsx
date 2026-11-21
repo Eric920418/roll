@@ -66,9 +66,11 @@ export default async function ProductPage({ params }: Props) {
             <p>{zh ? "方案價格暫時無法載入。" : "Plan prices are temporarily unavailable."}</p>
             <p className="text-sm">{publicErrorMessage(reference)}</p>
           </div>
-          <a href={`${pathForLocale("/product", language)}#pricing`} className="mt-3 inline-flex min-h-11 items-center underline">
-            {zh ? "重新載入價格" : "Reload prices"}
-          </a>
+          <form method="get" action={`${pathForLocale("/product", language)}#pricing`}>
+            <button type="submit" className="mt-3 min-h-11 cursor-pointer underline">
+              {zh ? "重新載入價格" : "Reload prices"}
+            </button>
+          </form>
         </section>
       );
     });
