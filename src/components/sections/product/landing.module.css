@@ -24,3 +24,7 @@
 .casePhoto{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover;object-position:center top;margin-bottom:24px}
 
 .coverCopy{margin-top:70px}.coverCopy h2{margin:0;font-size:clamp(32px,3.5vw,52px);overflow-wrap:anywhere}.coverCopy>p:last-child{max-width:440px;font-size:14px;line-height:1.7;color:#c8c8ce;margin-top:22px}.team h2{font-size:clamp(30px,3.2vw,46px);line-height:1.12;letter-spacing:-.03em}.team p{overflow-wrap:anywhere}
+.editableSection{overflow-wrap:anywhere}
+.editableSection .sectionHeading>div{min-width:0}
+.editableSection .sectionHeading .outlineButton{max-width:100%;flex-shrink:1}
+.communityCard>div:first-child{margin-bottom:20px}

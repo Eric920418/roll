@@ -6,6 +6,7 @@ import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { readAdminResponse } from "../src/lib/cms/admin-response";
 import * as assets from "../src/lib/cms/rollon-v10";
+import { novaCommunityDate, novaLandingHttps, novaLandingSections, resolveNovaLanding, validateNovaLanding } from "../src/lib/cms/nova-landing";
 import * as routes from "../src/lib/routes";
 
 test("Project Ark 整張卡片使用安全外部連結，雙語 Logo／標題可點且 NOVA 保留語系", async () => {
@@ -86,6 +87,32 @@ test("共用頁尾保留雙語指南與 NOVA，社群使用 CMS、清空隱藏�
 });
 
 const blob = "https://example.public.blob.vercel-storage.com/rollon-v10/photo.jpg";
+test("NOVA 區塊預設內容、中英覆寫及共用圖片、日期、連結沿用同一套驗證", () => {
+  for (const section of ["network", "community"] as const) {
+    const fields = novaLandingSections[section].groups.flatMap(group => group.fields);
+    assert.equal(new Set(fields.map(field => field.name)).size, fields.length);
+    assert.deepEqual(validateNovaLanding(section, resolveNovaLanding(section, {})), []);
+  }
+
+  const network = resolveNovaLanding("network", {
+    "founders.title.zh-tw": "創業夥伴",
+    "founders.image": blob,
+    "mentors.image": "https://untrusted.example/image.jpg",
+  });
+  assert.equal(network["founders.title.zh-tw"], "創業夥伴");
+  assert.equal(network["founders.title.en"], "Founders");
+  assert.equal(network["founders.image"], blob);
+  assert.equal(network["mentors.image"], "");
+
+  const community = resolveNovaLanding("community", { "roundtable.date": "2026-12-05", "roundtable.body.en": "" });
+  assert.equal(community["roundtable.body.en"], "");
+  assert.equal(novaCommunityDate(community["roundtable.date"], "zh-tw"), "2026 年 12 月 5 日");
+  assert.equal(novaCommunityDate(community["roundtable.date"], "en"), "DEC 5 · 2026");
+  assert.equal(novaLandingHttps("https://example.com/event"), "https://example.com/event");
+  assert.equal(novaLandingHttps("https://user:pass@example.com/event"), null);
+  assert.equal(validateNovaLanding("community", { "roundtable.date": "2026-02-29", "roundtable.link": "javascript:alert(1)", "roundtable.image": "https://fake.example/photo.webp", unknown: "" }).length, 4);
+});
+
 test("五頁 44 個圖片位置有唯一名稱、存在的預設素材，覆寫只影響對應位置", () => {
   assert.equal(Object.values(assets.rollonAssets).flat().length, 44);
   for (const page of Object.keys(assets.rollonPages) as assets.RollonCmsPage[]) {

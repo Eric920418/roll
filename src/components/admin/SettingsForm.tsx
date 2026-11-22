@@ -8,25 +8,29 @@ import ImageUploader from "./ImageUploader";
 export type SettingField = {
   name: string;
   label: string;
-  type: "text" | "image";
+  type: "text" | "image" | "textarea" | "date" | "url";
   folder?: string;
 };
 
 export default function SettingsForm({
   settingKey,
   title,
-  fields,
+  fields = [],
+  groups,
   initial,
 }: {
   settingKey: string;
   title: string;
-  fields: SettingField[];
+  fields?: SettingField[];
+  groups?: { label: string; fields: SettingField[] }[];
   initial: Record<string, unknown>;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {};
-    for (const f of fields) v[f.name] = (initial[f.name] as string) ?? "";
+    for (const f of [...fields, ...(groups?.flatMap(group => group.fields) ?? [])]) {
+      v[f.name] = (initial[f.name] as string) ?? "";
+    }
     return v;
   });
   const pending = useRef(false);
@@ -67,36 +71,45 @@ export default function SettingsForm({
   const inputClass =
     "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900";
 
+  function renderField(f: SettingField) {
+    if (f.type === "image") {
+      return <div key={f.name} className="sm:col-span-2">
+        <ImageUploader
+          label={f.label}
+          folder={f.folder ?? "cms"}
+          value={values[f.name]}
+          onChange={(url) => set(f.name, url)}
+          preservePrevious
+          disabled={saving || hasUploads}
+          onUploadingChange={(active) => setUploading(prev => ({ ...prev, [f.name]: active }))}
+        />
+      </div>;
+    }
+    const props = {
+      disabled: saving || hasUploads,
+      value: values[f.name],
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => set(f.name, e.target.value),
+      className: inputClass,
+    };
+    return <label key={f.name} className="flex flex-col gap-1.5 text-sm">
+      <span className="font-medium text-neutral-700">{f.label}</span>
+      {f.type === "textarea" ? <textarea {...props} rows={3} /> : <input {...props} type={f.type} />}
+    </label>;
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-neutral-200 bg-white p-6 flex flex-col gap-4 max-w-2xl"
+      className={`rounded-xl border border-neutral-200 bg-white p-6 flex flex-col gap-4 ${groups ? "" : "max-w-2xl"}`}
     >
       <h2 className="font-semibold">{title}</h2>
-      {fields.map((f) =>
-        f.type === "image" ? (
-          <ImageUploader
-            key={f.name}
-            label={f.label}
-            folder={f.folder ?? "cms"}
-            value={values[f.name]}
-            onChange={(url) => set(f.name, url)}
-            preservePrevious
-            disabled={saving || hasUploads}
-            onUploadingChange={(active) => setUploading(prev => ({ ...prev, [f.name]: active }))}
-          />
-        ) : (
-          <label key={f.name} className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-neutral-700">{f.label}</span>
-            <input
-              disabled={saving || hasUploads}
-              value={values[f.name]}
-              onChange={(e) => set(f.name, e.target.value)}
-              className={inputClass}
-            />
-          </label>
-        ),
-      )}
+      {fields.map(renderField)}
+      {groups?.map(group => (
+        <fieldset key={group.label} className="grid min-w-0 gap-4 rounded-lg border border-neutral-200 p-4 sm:grid-cols-2">
+          <legend className="px-2 text-sm font-semibold">{group.label}</legend>
+          {group.fields.map(renderField)}
+        </fieldset>
+      ))}
       {error && <p role="alert" className="text-sm text-red-600 whitespace-pre-wrap">{error}</p>}
       <div className="flex items-center gap-3">
         <button

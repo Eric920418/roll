@@ -1,5 +1,6 @@
 import { evidencePolicySchema } from "@/lib/evidence/schema";
 import { isRollonPage, validateRollonAssets } from "@/lib/cms/rollon-v10";
+import { isNovaLandingSection, novaLandingSettingPrefix, validateNovaLanding } from "@/lib/cms/nova-landing";
 import { browserMutationGuard } from "@/lib/security/http";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -32,6 +33,12 @@ export async function PUT(req: NextRequest) {
       const page = key.slice("rollonV10.".length);
       if (!isRollonPage(page)) return fail("未知官網頁面", 400);
       const errors = validateRollonAssets(page, value);
+      if (errors.length) return fail(errors.join("\n"), 400);
+    }
+    if (key.startsWith(novaLandingSettingPrefix)) {
+      const section = key.slice(novaLandingSettingPrefix.length);
+      if (!isNovaLandingSection(section)) return fail("未知 NOVA 產品頁區塊", 400);
+      const errors = validateNovaLanding(section, value);
       if (errors.length) return fail(errors.join("\n"), 400);
     }
     const saved = await prisma.setting.upsert({

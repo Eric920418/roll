@@ -6,15 +6,62 @@ import { deepMerge } from "@/lib/cms/deep-merge";
 import { flatten } from "@/lib/cms/messages-tree";
 import { staticMessages } from "@/lib/cms/static-messages";
 import { isRollonPage, rollonPages, rollonAssets, rollonSettingKey, resolveRollonAsset } from "@/lib/cms/rollon-v10";
+import { novaLandingSections, novaLandingSettingKey, resolveNovaLanding, type NovaLandingSection } from "@/lib/cms/nova-landing";
 import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
 import SettingsForm from "@/components/admin/SettingsForm";
 import TranslationsEditor from "@/components/admin/TranslationsEditor";
 
 export const dynamic = "force-dynamic";
 
+const websitePages = { ...rollonPages, nova: { label: "NOVA" } };
+const novaSections = Object.keys(novaLandingSections) as NovaLandingSection[];
+
+function WebsiteNav({ page }: { page: keyof typeof websitePages }) {
+  return <nav aria-label="官網管理頁面" className="mb-5 flex flex-wrap gap-2">
+    {Object.entries(websitePages).map(([key, item]) => <Link key={key} href={`/admin/website?page=${key}`} aria-current={key === page ? "page" : undefined} className={`rounded-lg border px-4 py-2 text-sm ${key === page ? "bg-neutral-900 text-white" : "bg-white"}`}>{item.label}</Link>)}
+  </nav>;
+}
+
+async function NovaWebsiteEditor() {
+  let values: Record<string, unknown>[];
+  try {
+    values = await Promise.all(novaSections.map(section => getSetting(novaLandingSettingKey(section))));
+  } catch (error) {
+    return <p role="alert" className="whitespace-pre-wrap text-red-700">{publicErrorMessage(logSecurityError("admin.website.nova.read", error))}</p>;
+  }
+  return <div className="pb-24">
+    <h1 className="mb-4 text-2xl font-bold">新版官網</h1>
+    <WebsiteNav page="nova" />
+    <div className="mb-6 flex flex-wrap gap-4 text-sm underline">
+      <Link href="/product" target="_blank">預覽英文 ↗</Link>
+      <Link href="/zh-tw/product" target="_blank">預覽繁中 ↗</Link>
+      <Link href="/admin/translations?namespace=Product">NOVA 其他文案</Link>
+    </div>
+    <p className="mb-5 text-sm text-neutral-600">圖片、日期與連結由中英文共用。請儲存各區塊，再開啟前台預覽確認。</p>
+    {novaSections.map((section, index) => {
+      const { label, groups } = novaLandingSections[section];
+      return <details key={section} className="mb-5 rounded-xl border border-neutral-200 bg-white p-5">
+        <summary className="cursor-pointer font-semibold">{label}</summary>
+        <div className="mt-4">
+          <SettingsForm
+            settingKey={novaLandingSettingKey(section)}
+            title={`編輯${label}`}
+            initial={resolveNovaLanding(section, values[index])}
+            groups={groups.map(group => ({
+              label: group.label,
+              fields: group.fields.map(field => ({ name: field.name, label: field.label, type: field.type, folder: "nova-landing" })),
+            }))}
+          />
+        </div>
+      </details>;
+    })}
+  </div>;
+}
+
 export default async function WebsitePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   await requireAdminPage();
   const params = await searchParams;
+  if (params.page === "nova") return <NovaWebsiteEditor />;
   const page = isRollonPage(params.page) ? params.page : "home";
   const config = rollonPages[page];
   let data;
@@ -31,14 +78,12 @@ export default async function WebsitePage({ searchParams }: { searchParams: Prom
   return <div className="pb-24">
     <h1 className="mb-2 text-2xl font-bold">新版官網</h1>
     <p className="mb-4 text-sm text-neutral-600">五頁文字、數字、照片及 Logo 在此管理。中英文圖片共用；版面與區塊順序固定依 PDF，文案請保留原稿換行。</p>
-    <nav aria-label="官網管理頁面" className="mb-5 flex flex-wrap gap-2">
-      {Object.entries(rollonPages).map(([key, item]) => <Link key={key} href={`/admin/website?page=${key}`} aria-current={key === page ? "page" : undefined} className={`rounded-lg border px-4 py-2 text-sm ${key === page ? "bg-neutral-900 text-white" : "bg-white"}`}>{item.label}</Link>)}
-    </nav>
+    <WebsiteNav page={page} />
     <div className="mb-6 flex flex-wrap gap-4 text-sm underline">
       <Link href={config.path} target="_blank">預覽英文 ↗</Link>
       <Link href={page === "home" ? "/zh-tw" : `/zh-tw${config.path}`} target="_blank">預覽繁中 ↗</Link>
       <Link href="/admin/settings">聯絡資訊</Link><Link href="/admin/messages">聯絡表單收件</Link>
-      <Link href="/admin/translations?namespace=Product">NOVA 文案</Link><Link href="/product" target="_blank">預覽 NOVA ↗</Link>
+      <Link href="/admin/translations?namespace=Product">NOVA 文案翻譯</Link><Link href="/product" target="_blank">預覽 NOVA ↗</Link>
     </div>
     <details key={`${page}-images`} className="mb-8 rounded-xl border border-neutral-200 bg-white p-5">
       <summary className="cursor-pointer font-semibold">{config.label}：照片與 Logo（{rollonAssets[page].length} 個位置）</summary>
