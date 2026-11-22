@@ -58,12 +58,12 @@ export default function DiscoveryJourney({ userId, planId, showCommercial = true
 
     <section data-next-step="goal" className="rounded-2xl bg-black p-4 text-white sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0"><p className="text-xs font-semibold text-white/55">{zh ? "本日優先行動" : "Today's priority"}</p><h2 className="mt-2 text-lg font-bold sm:text-xl">{zh ? `與 ${data.target} 間目標公司對話，了解真實需求` : `Understand real needs through ${data.target} company conversations`}</h2></div>
+        <div className="min-w-0"><h2 className="text-lg font-bold sm:text-xl">{zh ? `與 ${data.target} 間目標公司對話，了解真實需求` : `Understand real needs through ${data.target} company conversations`}</h2></div>
         {!data.canCreate && <a className={`${button} shrink-0 self-start bg-white text-black`} href={`#discovery-record-${data.journeyId}`}>{zh ? "查看已存對話" : "View saved conversations"}</a>}
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-white/20 pt-4">
-        <div data-next-step="insights"><dt className="text-xs text-white/55">{zh ? "目前進度" : "Current progress"}</dt><dd className="mt-1 text-sm font-semibold">{Math.min(data.total, data.target)} / {data.target} {zh ? "間公司" : "companies"}</dd></div>
-        <div><dt className="text-xs text-white/55">{data.paid ? (zh ? "工作區" : "Workspace") : (zh ? "試用狀態" : "Trial status")}</dt><dd className="mt-1 text-sm font-semibold">{data.paid ? (zh ? "完整客戶探索" : "Full customer discovery") : data.active ? (zh ? `還有 ${data.daysRemaining} 天` : `${data.daysRemaining} days remaining`) : (zh ? "試用已結束" : "Trial ended")}</dd></div>
+        <div data-next-step="insights"><dt className="sr-only">{zh ? "目前進度" : "Current progress"}</dt><dd className="text-sm font-semibold">{Math.min(data.total, data.target)} / {data.target} {zh ? "間公司" : "companies"}</dd></div>
+        <div><dt className="sr-only">{data.paid ? (zh ? "工作區" : "Workspace") : (zh ? "試用狀態" : "Trial status")}</dt><dd className="text-sm font-semibold">{data.paid ? (zh ? "完整客戶探索" : "Full customer discovery") : data.active ? (zh ? `還有 ${data.daysRemaining} 天` : `${data.daysRemaining} days remaining`) : (zh ? "試用已結束" : "Trial ended")}</dd></div>
       </dl>
       <progress aria-label={zh ? "訪談里程碑進度" : "Conversation milestone progress"} value={Math.min(data.total, data.target)} max={data.target} className="mt-4 block h-1 w-full overflow-hidden rounded-full bg-white/20 [&::-webkit-progress-bar]:bg-white/20 [&::-webkit-progress-value]:bg-white [&::-moz-progress-bar]:bg-white" />
     </section>

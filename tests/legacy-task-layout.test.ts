@@ -36,7 +36,8 @@ test('Compact maps use real legacy milestone and action counts, including no roa
   const load = runtime('en'), Map = load<typeof import('../src/components/dashboard/ActionMap')>('src/components/dashboard/ActionMap.tsx').default;
   for (const milestones of [null, plan.roadmap]) {
     const html = renderToStaticMarkup(React.createElement(Map, { userId: 'owner', plan: { ...plan, roadmap: milestones }, event: null, compact: true } as React.ComponentProps<typeof Map>, 'Original steps'));
-    assert(html.includes(`View all ${milestones?.milestones.length || 0} milestones`)); assert.equal((html.match(/<li/g) || []).length, milestones?.milestones.length || 0); assert(!html.includes('steps completed')); if (milestones) { assert(html.includes('aria-current="step"')); assert(html.includes('CURRENT POSITION')); } else assert(html.includes('Current plan'));
+    assert(html.includes(`View all ${milestones?.milestones.length || 0} milestones`)); assert.equal((html.match(/<li/g) || []).length, milestones?.milestones.length || 0); assert(!html.includes('steps completed')); if (milestones) { assert(html.includes('aria-current="step"')); assert(html.includes('Original milestone')); } else assert(html.includes('Current plan'));
+    assert.doesNotMatch(html, /CURRENT POSITION|Expand to view every milestone|2026-12-01|2027-04-01/);
     assert(!html.includes('16 steps')); assert(!html.includes('View all 5 milestones'));
   }
 });
@@ -138,7 +139,9 @@ test('The standard legacy agenda shows four qualification actions and groups the
     roadmap: { ...roadmap, milestones: [...roadmap.milestones, { ...roadmap.milestones[0], id: 'commercial', position: 1, title: 'Paid pilot milestone' }] } };
   const original = JSON.stringify(current);
   const html = renderToStaticMarkup(React.createElement(Panel, { initialPlan: current, userId: 'owner', onChanged() { throw Error('Read-only rendering'); } }));
-  assert.match(html, /行動.*2.*\s\/\s.*4.*整理類/);
+  const priority = html.match(/data-today-priority[\s\S]*?<\/section>/)?.[0] || '';
+  assert.match(priority, /寫出一句話定位/);
+  assert.doesNotMatch(priority, /整理類|寄送確認訊息|text-white\/\d+/);
   assert.match(html, /Paid pilot milestone.*Run paid pilot offer/);
   assert.equal(JSON.stringify(current), original);
 });

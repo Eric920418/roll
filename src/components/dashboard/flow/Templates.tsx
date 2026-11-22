@@ -66,7 +66,7 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
       {!["JP", "SG", "US"].includes(countryCode(data.market) || "") && <TextField hideLabel label={w("市場", "Market")} value={data.market} onChange={market => onChange({ ...data, market })} />}
       <TextField multiline label={w("選擇原因", "Reason for choosing this market")} value={data.marketReason || ""} onChange={marketReason => onChange({ ...data, marketReason })} />
       <TextField multiline label={w("在地化調整", "Local adaptation")} value={data.localApproach || ""} onChange={localApproach => onChange({ ...data, localApproach })} />
-      <OptionButtons label={w("第一批名單來源", "Initial lead source")} value={data.marketChannel || ""} options={[["referral", w("既有客戶介紹", "Customer referrals")], ["nova", w("NOVA 商機媒合", "NOVA Matchmaking")], ["event", w("活動", "Events")], ["linkedin", "LinkedIn"]]} onChange={marketChannel => onChange({ ...data, marketChannel })} />
+      <OptionButtons label={w("第一批名單來源", "Initial lead source")} value={data.marketChannel || ""} options={[["referral", w("既有客戶介紹", "Customer referrals")], ["nova", w("NOVA 新創生態系", "NOVA Value Network")], ["event", w("活動", "Events")], ["linkedin", "LinkedIn"]]} onChange={marketChannel => onChange({ ...data, marketChannel })} />
     </div>}
     {data.kind === "conversation" && (() => {
       const row = conversationRow!;
@@ -163,7 +163,7 @@ export default function Templates({ step, data, view, locale, disabled, readOnly
         setEditing(row.id);
         onChange({ ...outreach, contacts: outreach.contacts.some(c => c.id === row.id) ? outreach.contacts.map(c => c.id === row.id ? next : c) : [...outreach.contacts, next] });
       }
-      const channels: Array<[string, string]> = [["Email", "Email"], ["LinkedIn", "LinkedIn"], ...(pilot ? [["Meeting", w("面談", "In person")]] : [["Event", w("活動", "Event")], ["Referral", w("介紹", "Referral")], ["NOVA", w("NOVA 商機媒合", "NOVA Matchmaking")]]).map(([key,label]): [string, string] => [key,label])];
+      const channels: Array<[string, string]> = [["Email", "Email"], ["LinkedIn", "LinkedIn"], ...(pilot ? [["Meeting", w("面談", "In person")]] : [["Event", w("活動", "Event")], ["Referral", w("介紹", "Referral")], ["NOVA", w("NOVA 新創生態系", "NOVA Value Network")]]).map(([key,label]): [string, string] => [key,label])];
       if (row?.channel && !channels.some(([key]) => key === row.channel)) channels.push([row.channel, row.channel]);
       const form = row ? <div className="space-y-3">
         {pilot ? <>

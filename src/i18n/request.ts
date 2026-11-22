@@ -5,11 +5,14 @@ import { getMessageOverride } from "@/lib/cms/messages";
 import { deepMerge } from "@/lib/cms/deep-merge";
 import { logSecurityError } from "@/lib/security/log";
 
-const NOVA_NAMESPACES = ["Product", "Auth", "Quiz", "Dashboard"] as const;
+const NOVA_NAMESPACES = ["Product", "Auth", "Quiz", "Dashboard", "Matchmaking"] as const;
 
 function normalizeNovaBrand(value: unknown): unknown {
   if (typeof value === "string") {
-    return value.replace(/\bNova\b/g, "NOVA");
+    return value
+      .replace(/\bNova\b/g, "NOVA")
+      .replace(/(https?:\/\/[^\s<]+|\/[^\s<]+)|商機媒合|\b(?:business matching|matchmaking)\b/gi,
+        (name, url: string | undefined) => url ?? (name === "商機媒合" ? "新創生態系" : "Value Network"));
   }
   if (Array.isArray(value)) {
     return value.map(normalizeNovaBrand);

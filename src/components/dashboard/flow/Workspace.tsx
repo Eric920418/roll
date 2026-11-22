@@ -3,7 +3,7 @@ import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useRef, useStat
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { memberFetch } from "@/lib/member-fetch";
-import { STEPS, MILESTONES, STEP_WORK, STEP_BUTTONS, TEMPLATE_NAMES, flowDataSchema, words, type FlowData, type StepId } from "@/lib/action-plan/flow/catalog";
+import { STEPS, STEP_WORK, STEP_BUTTONS, flowDataSchema, words, type FlowData, type StepId } from "@/lib/action-plan/flow/catalog";
 import type { FlowView } from "@/lib/action-plan/flow/service";
 import type { ActionPlanDto } from "@/lib/action-plan/service";
 import { pathForLocale } from "@/lib/routes";
@@ -162,7 +162,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
   const weeklyStep = step?.id === "05-1";
   const canConfirmWeekly = weeklyStep && saved && view.weekly.calculable;
   const repairStep = !view.archived && view.integrity.find(item => ["02-2", "04-1", "05-2"].includes(item.step))?.step;
-  const recordButton = step ? words(STEP_BUTTONS[step.id], locale) : "";
+  const recordButton = step && step.id !== "01-2" ? words(STEP_BUTTONS[step.id], locale) : null;
   const proofOnly = step?.id === "02-2" || step?.id === "04-1";
   const editorSaves = step?.id === "01-4" || step?.id === "03-3" || step?.id === "04-2";
 
@@ -212,36 +212,33 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
 
     {step && spec && draft && <article key={view.plan.id + ":" + step.id} id={"action-" + step.actionId} data-next-step="record" className="scroll-mt-6 space-y-6">
       <div data-task-section="priority" className="space-y-3">
-        <TaskSection number="01" title={w("本日優先行動", "Today’s priority")} />
+        <TaskSection title={w("本日優先行動", "Today’s priority")} />
         <section data-today-priority className="rounded-2xl bg-[#0b0b0d] p-5 text-white sm:p-6">
           <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold tracking-wider text-white/55">
-                {w("里程碑", "Milestone")} {String(spec.milestone + 1).padStart(2, "0")} · {words(MILESTONES[spec.milestone], locale)} · {w("行動", "Action")} {milestoneSteps.findIndex(s => s.id === step.id) + 1} / {milestoneSteps.length} · <span data-task-type>{words(TEMPLATE_NAMES[spec.kind], locale)}</span>
-              </p>
-              <h2 ref={heading} tabIndex={-1} className="mt-2 scroll-mt-6 break-words text-lg font-bold focus:outline-none sm:text-xl">
+              <h2 ref={heading} tabIndex={-1} className="scroll-mt-6 break-words text-lg font-bold focus:outline-none sm:text-xl">
                 {step.id === "01-2" ? w(spec.previousTitle[0], "Write your positioning statement and ask five participants to confirm") : step.id === "01-3" ? w(spec.previousTitle[0], "Build your lead qualification criteria") : words(spec.previousTitle, locale)}
               </h2>
               <div className="mt-3 flex gap-1" aria-hidden="true">{milestoneSteps.map(s => <span key={s.id} className={"h-1 w-7 rounded-full " + (s.done || s.id === step.id ? "bg-white" : "bg-white/20")} />)}</div>
             </div>
-            {!readOnly && <button type="button" className="min-h-11 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2" disabled={disabled || organizeStep === "01-3" && draft.kind === "organize" && draft.criteria.length >= 6} onClick={() => {
+            {!readOnly && recordButton && <button type="button" className="min-h-11 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2" disabled={disabled || organizeStep === "01-3" && draft.kind === "organize" && draft.criteria.length >= 6} onClick={() => {
               if (organizeStep === "01-3") document.getElementById("add-criterion")?.click();
               if (step.id === "05-2") {
                 (document.getElementById("second-market-conversation") as HTMLDialogElement | null)?.showModal();
                 return;
               }
               if (step.id === "03-1") document.getElementById("new-outreach-record")?.click();
-              const target = document.getElementById(organizeStep === "01-2" ? "positioning-recipients" : "task-work");
+              const target = document.getElementById("task-work");
               target?.scrollIntoView({ block: "start" });
               requestAnimationFrame(() => target?.querySelector<HTMLElement>("input:not(:disabled), textarea:not(:disabled), button:not(:disabled), select:not(:disabled)")?.focus());
             }}>{recordButton}</button>}
           </div>
           <dl className="mt-5 grid grid-cols-2 gap-5 border-t border-white/15 pt-4 text-xs sm:grid-cols-[1.4fr_1fr_1fr]">
-            <div className="col-span-2 sm:col-span-1"><dt className="text-white/65">{w("完成標準", "Completion criteria")}</dt><dd className="mt-2 max-w-80 font-semibold leading-6">{words(spec.criteria, locale)}</dd></div>
-            <div><dt className="text-white/65">{w("目前進度", "Saved progress")}</dt><dd className="mt-2 font-semibold">
+            <div className="col-span-2 sm:col-span-1"><dt className="sr-only">{w("完成標準", "Completion criteria")}</dt><dd className="max-w-80 font-semibold leading-6">{words(spec.criteria, locale)}</dd></div>
+            <div><dt className="sr-only">{w("目前進度", "Saved progress")}</dt><dd className="font-semibold">
               {firstTask ? <button type="button" className="min-h-11 text-left hover:underline focus-visible:outline-2" aria-label={w(`目前進度 ${step.current} / ${step.target}，查看已儲存對話`, `Progress ${step.current} / ${step.target}, view saved conversations`)} onClick={() => (document.getElementById("first-task-records") as HTMLDialogElement | null)?.showModal()}>{step.current} / {step.target} {w("次", "conversations")}</button> : <>{step.current} / {step.target}{organizeStep === "01-2" ? w(" 位確認", " confirmed") : organizeStep === "01-3" ? w(" 項確認", " confirmed") : ""}</>}
             </dd></div>
-            <div><dt className="text-white/65">{w("截止日期", "Due date")}</dt><dd className="mt-2 font-semibold">{milestone?.targetDate || "—"}</dd></div>
+            <div><dt className="sr-only">{w("截止日期", "Due date")}</dt><dd className="font-semibold">{milestone?.targetDate || "—"}</dd></div>
           </dl>
         </section>
       </div>
@@ -262,7 +259,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
       {organizeStep && draft.kind === "organize" ? <OrganizeWork key={step.id} step={organizeStep} data={draft} view={view} locale={locale} disabled={disabled} readOnly={readOnly} onChange={change} onSave={data => saveAndComplete(data || draft)} onEmail={emailConfirmations} links={[]} onRefresh={() => void load(view.plan.id, true)} notice={notice}
         beforeResults={positioningProspects && prospects} /> : <>
         <div data-task-section="work" className="space-y-3">
-          <TaskSection number="02" title={words(STEP_WORK[step.id], locale)} />
+          <TaskSection title={words(STEP_WORK[step.id], locale)} />
           <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]" data-task-columns>
             <section id="task-work" className="min-w-0 space-y-4 rounded-2xl border border-dark/10 bg-white p-5 sm:p-6" aria-label={words(STEP_WORK[step.id], locale)}>
               {notice && <p role="status" className="text-sm">{notice}</p>}
@@ -343,7 +340,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
           </div>}
         </TaskResults>}
       </>}
-      {prospects && !positioningProspects && <section data-task-section="companies" className="space-y-3"><TaskSection number="04" title={step.id === "03-1" ? w("本週建議聯絡的公司", "Companies to contact this week") : step.id === "04-1" ? w("建議接觸的 A 級公司", "Suggested A-tier companies") : step.id === "05-2" ? w("建議聯絡的公司", "Suggested companies") : w("建議優先聯絡的 5 家公司", "5 companies to contact first")} />{prospects}</section>}
+      {prospects && !positioningProspects && <section data-task-section="companies" className="space-y-3"><TaskSection title={step.id === "03-1" ? w("本週建議聯絡的公司", "Companies to contact this week") : step.id === "04-1" ? w("建議接觸的 A 級公司", "Suggested A-tier companies") : step.id === "05-2" ? w("建議聯絡的公司", "Suggested companies") : w("建議優先聯絡的 5 家公司", "5 companies to contact first")} />{prospects}</section>}
       <TaskRoadmap view={view} selected={step.id} locale={locale} onSelect={selectStep} />
     </article>}
   </section>;

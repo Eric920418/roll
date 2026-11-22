@@ -18,7 +18,7 @@ export default function Pricing({ prices, tokenPricing }: { prices: typeof impor
     [w("5 里程碑／16 步今日任務", "Five milestones / sixteen priority steps"), [w("試用起步流程", "Trial starting steps"),"✓","✓","✓"]],
     [w("Google／Apple 行事曆匯出", "Google / Apple Calendar export"), ["—","✓","✓","✓"]],
     [w("每月方案贈送 Token", "Monthly plan Token grant"), ["—",String(tokenPricing.monthlyGrant),String(tokenPricing.monthlyGrant),String(tokenPricing.monthlyGrant)]],
-    [w("新公司搜尋與會員媒合", "Company search and member matchmaking"), [w("符合資格一次 POC", "One eligible POC"),"—","✓","✓"]],
+    [w("新公司搜尋與新創生態系", "Company search and Value Network"), [w("符合資格一次 POC", "One eligible POC"),"—","✓","✓"]],
     [w("認證導師圓桌會議", "Roundtables with certified mentors"), ["—","—","✓","✓"]],
     [w("成果報告、列印與主動分享", "Result reports, printing and optional sharing"), ["—","✓","✓","✓"]],
     [w("市場進入顧問與執行", "Market-entry advisory and execution"), ["—","—","—","✓"]],

@@ -718,7 +718,9 @@ async function task16QA() {
           }
         }
         const heading=await page.locator('[data-today-priority] h2').innerText();check('Correct step '+id+locale+width,heading.length>0);
-        const priority=page.locator('[data-today-priority]');check('Compact task type and retained progress '+id+locale+width,await priority.locator('[data-task-type]').innerText()===w(({conversation:'對話',organize:'整理',outreach:'聯絡',document:'文件'})[states[id].kind],({conversation:'Conversation',organize:'Organize',outreach:'Outreach',document:'Document'})[states[id].kind])&&await priority.locator('dt').count()===2&&!/Completion criteria|COMPLETION CRITERIA|完成標準/.test(await priority.innerText()));
+        const priority=page.locator('[data-today-priority]');
+        check('Priority card hides gray labels '+id+locale+width,await priority.locator('[data-task-type], dt:not(.sr-only)').count()===0);
+        if(id==='01-2')check('Positioning card has no duplicate send button '+locale+width,await priority.getByRole('button',{name:w('寄送確認訊息','Send confirmation messages'),exact:true}).count()===0);
         if(id==='04-2')check('Actual renewal wording and five customer sources '+locale+width,(await page.locator('[data-next-step=insights]').innerText()).includes(w('每週節省整理時間 · 5 家客戶佐證','Saves reporting time each week · 5 customer sources')));
         await layout(page,'Task '+id+locale+width,locale);
         check('44px task controls '+id+locale+width,await page.locator('#goal-roadmap button:visible').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=43)));

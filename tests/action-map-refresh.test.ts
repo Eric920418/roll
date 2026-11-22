@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { pdfRuntime } from './helpers/pdf-runtime';
-import { STEPS, MILESTONES, TEMPLATE_NAMES, emptyFlowData } from '../src/lib/action-plan/flow/catalog';
+import { STEPS, MILESTONES, STEP_BUTTONS, emptyFlowData } from '../src/lib/action-plan/flow/catalog';
 import type { FlowView } from '../src/lib/action-plan/flow/service';
 
 function fixture(revision = 1, completed = 0, current = 0): FlowView {
@@ -26,7 +26,7 @@ test('Milestone bars reflect saved progress, retain confirmation gates, and adva
     assert.match(html(), /aria-valuenow="100"/);
     const active = html().match(/<li\b[^>]*aria-current="step"[^>]*>[\s\S]*?<\/li>/)?.[0] || '';
     assert(active.includes(plan.roadmap!.milestones[1].title));
-    assert(active.includes(locale === 'en' ? '02 · Current' : '02 · 目前階段'));
+    assert.doesNotMatch(active, /02 · Current|02 · 目前階段/);
   }
 });
 
@@ -96,8 +96,8 @@ test('First conversation step has only the reference sections and completes from
     });
     await h.settle();
     const nodes = h.render(), strings = JSON.stringify(nodes);
-    const headings = nodes.filter(n => n.type === 'TaskSection').map(n => n.props.number);
-    assert.deepEqual(headings, ['01', '02', '04']);
+    const headings = nodes.filter(n => n.type === 'TaskSection').map(n => n.props.title);
+    assert.deepEqual(headings, locale === 'en' ? ['Today’s priority', 'Customer conversation', '5 companies to contact first'] : ['本日優先行動', '客戶對話紀錄', '建議優先聯絡的 5 家公司']);
     assert(nodes.some(n => n.type === 'Findings' && n.props.reference));
     assert(nodes.some(n => n.type === 'TaskRoadmap'));
     assert.match(strings, /Record a customer conversation|記錄客戶對話/);
@@ -153,19 +153,22 @@ test('The sixteen steps keep one map and show company search only on the specifi
     if (positioning.kind === 'organize') { positioning.values.positioning = 'A confirmed positioning statement'; positioning.confirmed = ['positioning']; }
     view.criteria = [{ id: 'confirmed', label: 'Confirmed buying criterion', weight: 50, sources: ['a', 'b', 'c'], confirmed: true }, { id: 'observed', label: 'Observation only', weight: 50, sources: ['a'], confirmed: true }];
     const before = JSON.stringify(view), h = harness(view, locale); await h.settle();
-    const tree = h.render(), badge = tree.find(n => Object.hasOwn(n.props, 'data-task-type'));
-    assert.equal(badge?.props.children, TEMPLATE_NAMES[spec.kind][locale === 'zh-tw' ? 0 : 1]);
+    const tree = h.render();
+    assert(!tree.some(n => Object.hasOwn(n.props, 'data-task-type')));
     const search = tree.find(n => n.props.stepContext)?.props.stepContext as { step: string; market: string; description: string } | undefined;
     assert.equal(tree.filter(n => n.props.id === 'prospects').length, ['01-1', '01-2', '03-1', '04-1', '05-2'].includes(spec.id) ? 1 : 0);
     if (spec.id === '01-2') assert(React.isValidElement(tree.find(n => n.type === 'OrganizeWork')?.props.beforeResults));
     if (search) { assert.equal(search.step, spec.id); assert.equal(search.market, spec.id === '05-2' ? 'Japan' : 'TW'); assert.match(search.description, /Confirmed buying criterion/); assert(!search.description.includes('Observation only')); }
     const priority = tree.find(n => Object.hasOwn(n.props, 'data-today-priority'));
     assert.match(JSON.stringify(priority), /Completion criteria|完成標準/);
+    assert.doesNotMatch(JSON.stringify(priority), /text-white\/\d+|Send confirmation messages|寄送確認訊息/);
     assert.equal(tree.filter(n => n.type === "TaskRoadmap").length, 1);
     const text = JSON.stringify(tree.filter(n => n.type === "button").map(n => n.props.children));
     assert.doesNotMatch(text, /Previous step|上一步|Rebuild draft|重新整理初稿|thirteen weeks created|每週開發待辦/);
-    const headings = tree.filter(n => n.type === 'TaskSection').map(n => n.props.number);
-    assert.deepEqual(headings, ["01", ...(["01-2", "01-3"].includes(spec.id) ? [] : ["02"]), ...(search && spec.id !== '01-2' ? ["04"] : [])]);
+    const headings = tree.filter(n => n.type === 'TaskSection');
+    assert.equal(headings.length, 1 + (["01-2", "01-3"].includes(spec.id) ? 0 : 1) + (search && spec.id !== '01-2' ? 1 : 0));
+    assert(headings.every(n => typeof n.props.title === 'string' && !Object.hasOwn(n.props, 'number')));
+    if (spec.id !== '01-2') assert(text.includes(STEP_BUTTONS[spec.id][locale === 'zh-tw' ? 0 : 1]));
     assert.equal(tree.filter(n => n.type === "Assist").length, spec.id === "01-1" ? 1 : 0);
     assert.equal(JSON.stringify(view), before);
   }

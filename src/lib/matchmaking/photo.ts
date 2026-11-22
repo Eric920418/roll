@@ -10,7 +10,7 @@ import { googlePhotoUrl } from "./schema";
 export const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 function privateToken() {
   const token = process.env.MATCHMAKING_BLOB_READ_WRITE_TOKEN;
-  if (!token || token === process.env.BLOB_READ_WRITE_TOKEN) throw new MemberError("尚未設定 Matchmaking 私人照片儲存空間，可先不放照片上線 / Matchmaking private photo storage is not configured. You can publish without a photo", 503);
+  if (!token || token === process.env.BLOB_READ_WRITE_TOKEN) throw new MemberError("尚未設定 新創生態系私人照片儲存空間，可先不放照片上線 / Value Network private photo storage is not configured. You can publish without a photo", 503);
   return token;
 }
 export async function photoBuffers(bytes: Buffer, type: string) {

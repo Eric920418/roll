@@ -198,7 +198,7 @@ export async function capture(session, mode) {
     }
     if(wanted('matching')) {
       await login('member');await go('/dashboard/matchmaking');await begin('matching');
-      await step('Open Business matching to browse relevant members.',()=>focus('', 'h1'));
+      await step('Open Value Network to browse relevant members.',()=>focus('', 'h1'));
       await step('For you explains why a member may be relevant.',()=>click('For you'));
       await step('Use All members to explore beyond your recommendations.',()=>click('All members'));
       await step('Filter by founder, mentor, investor, partner or buyer.',async()=>{await click('Mentor');await sleep(500);});
@@ -288,7 +288,7 @@ export async function capture(session, mode) {
       await step('On mobile, open Menu to reveal the navigation.',()=>click('Menu'));
       await step('Choose Today’s priority from the same navigation.',()=>click("Today's priority",'a[href="/dashboard/agenda"]'));
       await step('The current task uses the same evidence and save rules.',()=>focus('', '[data-today-priority]'));
-      await step('Open Menu again to reach Business matching.',async()=>{await click('Menu');await click('Business matching','a[href="/dashboard/matchmaking"]');});
+      await step('Open Menu again to reach Value Network.',async()=>{await click('Menu');await click('Value Network','a[href="/dashboard/matchmaking"]');});
       await step('Swipe or scroll the tabs to reach Roundtables and Messages.',()=>focus('Roundtables'));
       await step('Start with today’s task. Save evidence. Follow up with people.',()=>go('/dashboard'),{card:'Your daily path · task → evidence → follow-up'});
       await step('NOVA AI\nLet evidence guide your next decision.',null,{card:'NOVA AI',hold:1.5});await end();

@@ -246,7 +246,7 @@ export async function mutateRoundtable(userId: string, input: RoundtableMutation
       if (await blocked(tx, row.hostId, userId)) throw new MemberError("此圓桌目前無法申請 / This session is unavailable for applications", 403);
       for(const peer of row.registrations.filter(r=>r.status === "confirmed")) if(await blocked(tx,peer.userId,userId))throw new MemberError("此組已有無法交流的會員，請選其他場次 / A group member cannot connect with you; choose another session",403);
       if(auto&&!await stageFit(tx,row.id,userId))throw new MemberError("小組階段已改變，請重新配組 / Group stages changed; try matching again",409);
-      if (!await eligible(userId, tx)) throw new MemberError("需創辦人身分與有效商機媒合權益 / Founder identity and eligible member-network access are required", 403);
+      if (!await eligible(userId, tx)) throw new MemberError("需創辦人身分與有效新創生態系權益 / Founder identity and eligible Value Network access are required", 403);
       const reg = row.registrations.find(r => r.userId === userId);
       if (reg && activeStatuses.includes(reg.status)) { if (reg.name !== input.name || reg.question !== input.question) throw new MemberError("已有報名；請先取消再修改問題 / Already registered; withdraw before changing your question", 409); await rememberAuto(row.id); return row.id; }
       const plan = await tx.actionPlan.findFirst({ where: { userId, activeKey: userId, archivedAt: null }, include: { actions: { orderBy: { executionOrder: "asc" } } } });

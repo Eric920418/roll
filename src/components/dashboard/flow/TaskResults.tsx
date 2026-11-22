@@ -130,7 +130,7 @@ export default function TaskResults({ step, view, locale, children, updatePropos
   }
 
   return <section data-next-step="insights" data-task-section="results" className="space-y-3">
-    <TaskSection number="03" title={title} detail={step.id === "05-3" && step.done ? view.reportCode : detail} />
+    <TaskSection title={title} detail={step.id === "05-3" && step.done ? view.reportCode : detail} />
     <div className="space-y-3 rounded-2xl border border-dark/10 bg-white p-4 sm:px-5">
       {rows.length > 0 ? <div className="overflow-x-auto"><table className="w-full min-w-72 text-left text-sm">
         <thead className="text-xs text-dark/60"><tr>{headers.map(label => <th key={label} className="px-2 py-3 font-medium" scope="col">{label}</th>)}</tr></thead>

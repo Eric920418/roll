@@ -31,7 +31,6 @@ export const STEPS = [
 export type StepId = typeof STEPS[number]["id"];
 export const STEP_TARGETS: Record<StepId, number> = { "01-1": 10, "01-2": 5, "01-3": 4, "01-4": 10, "02-1": 3, "02-2": 1, "02-3": 3, "03-1": 80, "03-2": 2, "03-3": 4, "04-1": 5, "04-2": 5, "04-3": 3, "05-1": 2, "05-2": 10, "05-3": 4 };
 export type TemplateKind = typeof STEPS[number]["kind"];
-export const TEMPLATE_NAMES: Record<TemplateKind, Words> = { conversation: ["對話", "Conversation"], organize: ["整理", "Organize"], outreach: ["聯絡", "Outreach"], document: ["文件", "Document"] };
 export const stepIdSchema = z.enum(STEPS.map(s => s.id) as [StepId, ...StepId[]]);
 export const flowKey = (id: StepId) => "nova_v2_" + id;
 export function isFlowAction(action: { clientKey?: string }) { return Boolean(action.clientKey?.startsWith("nova_v2_")); }
@@ -88,9 +87,8 @@ export const STEP_WORK: Record<StepId, Words> = {
 "01-1":["客戶對話紀錄","Customer conversation"], "01-2":["定位草稿","Positioning draft"], "01-3":["評分條件與權重","Qualification criteria and weights"], "01-4":["客戶分級","Customer tiers"], "02-1":["付費試點提案","Paid pilot proposal"], "02-2":["付款與簽約證明","Payment and contract evidence"], "02-3":["定價與成交條件","Pricing and terms"], "03-1":["每週聯絡紀錄","Weekly outreach"], "03-2":["管道成效比較","Channel performance"], "03-3":["開發流程手冊","Acquisition playbook"], "04-1":["付費客戶與證明","Paying customers and evidence"], "04-2":["付費客戶使用回顧","Paying customer review"], "04-3":["客戶指標與成本","Customer metrics and costs"], "05-1":["季度目標與每週開發量","Quarterly target and weekly activity"], "05-2":["第二市場開發","Second-market outreach"], "05-3":["市場驗證報告","Market validation report"]
 };
 
-export const STEP_BUTTONS: Record<StepId, Words> = {
+export const STEP_BUTTONS: Record<Exclude<StepId, "01-2">, Words> = {
   "01-1": ["記錄客戶對話", "Record a customer conversation"],
-  "01-2": ["寄送確認訊息", "Send confirmation messages"],
   "01-3": ["新增條件", "Add criterion"],
   "01-4": ["開始分級", "Start tiering"],
   "02-1": ["建立試點提案", "Create pilot proposal"],
