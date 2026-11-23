@@ -161,3 +161,14 @@ test('Legacy findings hide empty results while keeping complete failures and ret
     else { assert(html.includes('role="alert"')); assert(html.includes(error)); assert(html.includes(locale === 'en' ? 'Retry' : '重試')); }
   }
 });
+
+test('Card visibility follows saved consent so an incomplete profile can opt out before automatic publication', async () => {
+  for (const [visible, hiddenByUser, checked] of [[true,false,true],[false,true,false],[false,false,true]] as const) {
+    const owner={visible,hiddenByUser,revision:2,source:null,draft:{},id:'qa-card'},states:unknown[]=[{enabled:true},'',owner,'',false];let slot=0;const writes:Array<{action:string}>=[];
+    const load=pdfRuntime({react:{...React,useEffect(){},useCallback:(fn:unknown)=>fn,useRef:(value:unknown)=>({current:value}),useState:(value:unknown)=>[slot<states.length?states[slot++]:value,()=>{}]},'next-intl':{useLocale:()=> 'zh-tw'},'next/link':{default:'a'},'./ViewerOverview':{default:()=>null,ViewerPrivacySettings:()=>null},'../evidence/Preferences':{default:()=>null},'@/lib/member-fetch':{memberFetch:async(_url:string,init:{body:string})=>{writes.push(JSON.parse(init.body));return owner;}}},{crypto:{randomUUID:()=> "7cd80660-3e48-4a38-a9cb-cfa148ca4375"}});
+    const Panel=load<typeof import('../src/components/dashboard/network/NetworkPanels')>('src/components/dashboard/network/NetworkPanels.tsx').CardPrivacySettings;
+    const nodes=(node:React.ReactNode):React.ReactElement<Record<string,unknown>>[]=>React.Children.toArray(node).flatMap(child=>React.isValidElement(child)?[child as React.ReactElement<Record<string,unknown>>,...nodes((child.props as {children?:React.ReactNode}).children)]:[]);
+    const toggle=nodes(Panel()).find(n=>n.type==='input'&&n.props.type==='checkbox');assert(toggle);assert.equal(toggle.props.checked,checked);
+    if(!visible&&!hiddenByUser){(toggle.props.onChange as (event:{target:{checked:boolean}})=>void)({target:{checked:false}});await new Promise(resolve=>setImmediate(resolve));assert.equal(writes.length,1);assert.equal(writes[0].action,'hide');}
+  }
+});
