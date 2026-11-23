@@ -1,3 +1,4 @@
+import AccountProfileForm from "@/components/dashboard/AccountProfileForm";
 import MissingProfileField from "@/components/dashboard/MissingProfileField";
 import { COMPANY_STAGES } from "@/lib/action-plan/constants";
 import { PRIMARY_NEEDS } from "@/lib/icp/schema";
@@ -11,8 +12,8 @@ import { getCurrentAccount } from "@/lib/auth/account";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
-type Props = { params: Promise<{ locale: string }> };
-export default async function CompanyProfilePage({ params }: Props) {
+type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ edit?: string }> };
+export default async function CompanyProfilePage({ params, searchParams }: Props) {
   await requireUserPage((await params).locale);
   const { locale } = await params;
   setRequestLocale(locale);
@@ -22,15 +23,16 @@ export default async function CompanyProfilePage({ params }: Props) {
   const account = await getCurrentAccount();
   if (!account) return null;
   const p = account.profile;
+  const editing = (await searchParams).edit === "1";
   const na = t("profile.notProvided");
   const opt = (ns: string, value?: string | null) => value ? tOpt.has(`${ns}.${value}`) ? tOpt(`${ns}.${value}`) : value : na;
   return <div className="font-[family-name:var(--font-body)]">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark">{t("profile.title")}</h1></div>
-      <Link href={pathForLocale("/dashboard/account#profile", l)} className="rounded-xl border border-dark/15 px-5 py-3 text-sm font-semibold text-dark hover:bg-dark/[0.03]">{t("profile.edit")}</Link>
+      <Link href={pathForLocale(editing ? "/dashboard/profile" : "/dashboard/profile?edit=1", l)} className="rounded-xl border border-dark/15 px-5 py-3 text-sm font-semibold text-dark hover:bg-dark/[0.03]">{editing ? (locale === "zh-tw" ? "取消" : "Cancel") : t("profile.edit")}</Link>
     </div>
     <div className="mt-7 grid items-start gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
-      <div className="min-w-0 space-y-5"><section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6">
+      <div className="min-w-0 space-y-5">{editing ? <AccountProfileForm companyOnly initial={p ?? {}} /> : <section className="min-w-0 rounded-2xl border border-dark/10 bg-white p-6">
         <h2 className="text-sm font-bold uppercase tracking-wider text-dark">{t("icp.company")}</h2>
         <dl className="mt-4 divide-y divide-dark/10">
           <Row label={t("account.companyName")} value={p?.companyName || <MissingProfileField field="companyName" label={t("account.companyName")} maxLength={300} />} />
@@ -40,7 +42,7 @@ export default async function CompanyProfilePage({ params }: Props) {
           <Row label={t("icp.primaryNeed")} value={p?.primaryNeed ? t.has(`icp.needs.${p.primaryNeed}`) ? t(`icp.needs.${p.primaryNeed}`) : p.primaryNeed : <MissingProfileField field="primaryNeed" label={t("icp.primaryNeed")} options={PRIMARY_NEEDS.map(value => ({ value, label: t(`icp.needs.${value}`) }))} />} />
           <Row label={t("icp.homeMarket")} value={p?.country ? countryLabel(p.country, locale) : <MissingProfileField field="country" label={t("icp.homeMarket")} />} />
         </dl>
-      </section>
+      </section>}
       </div>
       <EvidencePanel userId={account.id} />
     </div>

@@ -25,3 +25,20 @@ test('Missing profile fields add only the chosen value, retain failed drafts and
     fail=false;await (tree.props.onSubmit as (event:{preventDefault():void})=>Promise<void>)({preventDefault(){}});assert.match(renderToStaticMarkup(render()),/role="status"/);assert.equal(refreshes,1);assert.equal(writes.length,2);
   }
 });
+
+test('Company-only editing submits the six necessary fields, preserves hidden data and shows full safe errors', async () => {
+  for (const locale of ['en', 'zh-tw']) {
+    const initial={companyName:'QA Company',industry:'saas',country:'TW',oneLinePitch:'QA product',companyStage:'MVP',primaryNeed:'paying-customers',website:'https://retained.invalid',companySize:'retained size',notes:'retained notes',needs:['retained need']};
+    const original=JSON.stringify(initial),states:unknown[]=[]; let cursor=0, fail=false;
+    const writes:Record<string,unknown>[]=[];
+    const load=pdfRuntime({react:{...React,useState:(value:unknown)=>{const i=cursor++;if(!(i in states))states[i]=value;return[states[i],(v:unknown)=>{states[i]=v;}];},useRef:(value:unknown)=>({current:value}),useEffect(){}},'next-intl':{useLocale:()=>locale,useTranslations:()=>((key:string)=>key)},'next/navigation':{useRouter:()=>({refresh(){}})},'./DashboardUserProvider':{useDashboardUser:()=> 'qa-owner'},'./PlanRefresh':{notifyPlanChanged(){}}},{fetch:async(url:string,init:RequestInit)=>{assert.equal(url,'/api/account/profile');writes.push(JSON.parse(String(init.body)).data);return fail?Response.json({error:'Safe provider failure',code:'retry_later',requestId:'trace-company-qa'},{status:503}):Response.json({data:{saved:true}});}});
+    const Form=load<typeof import('../src/components/dashboard/AccountProfileForm')>('src/components/dashboard/AccountProfileForm.tsx').default;
+    const render=()=>{cursor=0;return Form({initial,companyOnly:true}) as React.ReactElement<{onSubmit:(event:React.FormEvent)=>Promise<void>;children:React.ReactNode}>;};
+    await render().props.onSubmit({preventDefault(){}} as React.FormEvent);
+    assert.deepEqual(Object.keys(writes[0]).sort(),['companyName','industry','country','oneLinePitch','companyStage','primaryNeed'].sort());
+    assert.equal(JSON.stringify(initial),original);assert(!('notes' in writes[0]));assert(!('website' in writes[0]));
+    fail=true;await render().props.onSubmit({preventDefault(){}} as React.FormEvent);
+    const nodes=(node:React.ReactNode):React.ReactElement<Record<string,unknown>>[]=>React.Children.toArray(node).flatMap(child=>React.isValidElement(child)?[child as React.ReactElement<Record<string,unknown>>,...nodes((child.props as {children?:React.ReactNode}).children)]:[]);
+    const error=nodes(render()).find(n=>n.props.role==='alert');assert(error);assert.match(String(error.props.children),/HTTP 503[\s\S]*Safe provider failure[\s\S]*retry_later[\s\S]*trace-company-qa/);
+  }
+});

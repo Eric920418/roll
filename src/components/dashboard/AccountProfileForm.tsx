@@ -78,9 +78,9 @@ function ChipGroup({
 }
 
 export default function AccountProfileForm({
-  initial, guided = false, canGenerate = false,
+  initial, guided = false, canGenerate = false, companyOnly = false,
 }: {
-  initial: ProfileInitial; guided?: boolean; canGenerate?: boolean;
+  initial: ProfileInitial; guided?: boolean; canGenerate?: boolean; companyOnly?: boolean;
 }) {
   const t = useTranslations("Dashboard.account");
   const tGuide = useTranslations("Dashboard.gettingStarted");
@@ -134,7 +134,7 @@ export default function AccountProfileForm({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          data: guided ? { companyName, oneLinePitch, companyStage, primaryNeed } : {
+          data: companyOnly ? { companyName, industry, country, oneLinePitch, companyStage, primaryNeed } : guided ? { companyName, oneLinePitch, companyStage, primaryNeed } : {
             companyName,
             industry,
             companySize,
@@ -152,6 +152,7 @@ export default function AccountProfileForm({
       });
       const json = await res.json();
       if (!res.ok) {
+        if (companyOnly) throw new Error([`HTTP ${res.status}`, json.error, json.code, json.requestId].filter(Boolean).join("\n"));
         throw new Error(
           resolveAuthError(json.code, json.error || tErr("generic"), (k) =>
             tErr(k),
@@ -168,17 +169,18 @@ export default function AccountProfileForm({
     }
   }
 
-  if (guided) return <form ref={formRef} id="profile" onSubmit={handleSubmit} className="mt-7 space-y-5 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7">
-    <div><p className="text-xs font-bold text-sky-800">{tGuide("step", { number: 1 })}</p><h2 className="mt-2 text-2xl font-bold">{tGuide("step1Title")}</h2></div>
+  if (guided || companyOnly) return <form ref={formRef} id="profile" onSubmit={handleSubmit} className={companyOnly ? "min-w-0 space-y-5 rounded-2xl border border-dark/10 bg-white p-5" : "mt-7 space-y-5 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7"}>
+    {companyOnly ? <h2 className="text-base font-semibold">{tIcp("company")}</h2> : <div><p className="text-xs font-bold text-sky-800">{tGuide("step", { number: 1 })}</p><h2 className="mt-2 text-2xl font-bold">{tGuide("step1Title")}</h2></div>}
     <label className="block"><span className={labelClass}>{t("companyName")}</span><input name="companyName" value={companyName} onChange={e => { setCompanyName(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`} /></label>
     <label className="block"><span className={labelClass}>{tIcp("pitch")}</span><input name="oneLinePitch" maxLength={300} value={oneLinePitch} onChange={e => { setOneLinePitch(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`} /></label>
+    {companyOnly && <><label className="block"><span className={labelClass}>{t("industry")}</span><select name="industry" className={`${fieldClass} mt-2`} value={industry} onChange={e => { setIndustry(e.target.value); setSaved(false); }}><option value="">{t("selectPlaceholder")}</option>{INDUSTRIES.map(value => <option key={value} value={value}>{tOpt(`industry.${value}`)}</option>)}</select></label><CountrySelect label={tIcp("homeMarket")} locale={locale} value={country} onChange={value => { setCountry(value); setSaved(false); }} /></>}
     <div className="grid gap-5 sm:grid-cols-2">
       <label><span className={labelClass}>{tIcp("companyStage")}</span><select name="companyStage" value={companyStage} onChange={e => { setCompanyStage(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`}><option value="">{t("selectPlaceholder")}</option>{COMPANY_STAGES.map(stage => <option key={stage} value={stage}>{tIcp(`stages.${stage}`)}</option>)}</select></label>
       <label><span className={labelClass}>{tIcp("primaryNeed")}</span><select name="primaryNeed" value={primaryNeed} onChange={e => { setPrimaryNeed(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`}><option value="">{t("selectPlaceholder")}</option>{PRIMARY_NEEDS.map(need => <option key={need} value={need}>{tIcp(`needs.${need}`)}</option>)}</select></label>
     </div>
     {error && <p role="alert" className="whitespace-pre-wrap rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
     {saved && <p role="status" className="text-sm text-green-800">{tGuide("profileSaved")}</p>}
-    <div className="flex flex-wrap items-center gap-4"><button type="submit" disabled={loading} className="min-h-11 rounded-xl bg-dark px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? t("saving") : t("save")}</button>{saved && <Link className="inline-flex min-h-11 items-center text-sm font-bold underline" href={pathForLocale(canGenerate ? "/dashboard/agenda?guide=build" : "/dashboard/account#plan", locale)}>{tGuide(canGenerate ? "buildPlan" : "viewPlanOptions")} →</Link>}</div>
+    <div className="flex flex-wrap items-center gap-4"><button type="submit" disabled={loading} className="min-h-11 rounded-xl bg-dark px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? t("saving") : t("save")}</button>{saved && !companyOnly && <Link className="inline-flex min-h-11 items-center text-sm font-bold underline" href={pathForLocale(canGenerate ? "/dashboard/agenda?guide=build" : "/dashboard/account#plan", locale)}>{tGuide(canGenerate ? "buildPlan" : "viewPlanOptions")} →</Link>}</div>
     <Link className="inline-flex min-h-11 items-center text-sm underline" href={pathForLocale("/dashboard/account#profile", locale)}>{tGuide("otherDetails")}</Link>
   </form>;
 
