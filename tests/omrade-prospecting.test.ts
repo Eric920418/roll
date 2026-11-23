@@ -195,9 +195,11 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       assert.equal(body.max_charge_cents, 0); assert(key);
       if (mode === "exhausted") return Response.json({ error: { code: "free_allowance_exhausted" } }, { status: 402 });
       let result = vendor.get(key!);
-      if (!result) { const companies = Array.from({ length: body.count }, () => providerCompany(++sequence)); result = { order_id: randomUUID(), icp_id: body.icp_id, icp_version: body.icp_version, requested_count: body.count, delivered_count: body.count, companies, status: "completed", created_at: new Date().toISOString(), delivered_at: new Date().toISOString(), billing: { period: utcPeriod(), currency: "USD", max_charge_cents: 0, amount_cents: 0, free_companies: body.count, paid_companies: 0 } }; vendor.set(key!, result); }
+      if (!result) { const delivered = mode.startsWith("partial") ? 2 : mode === "empty-completed" ? 0 : mode === "over-delivery" ? 6 : body.count; const companies = Array.from({ length: delivered }, () => providerCompany(++sequence)); result = { order_id: randomUUID(), icp_id: body.icp_id, icp_version: body.icp_version, requested_count: body.count, delivered_count: delivered, companies, status: "completed", created_at: new Date().toISOString(), delivered_at: new Date().toISOString(), billing: { period: utcPeriod(), currency: "USD", max_charge_cents: 0, amount_cents: 0, free_companies: delivered, paid_companies: 0 } }; vendor.set(key!, result); }
       if (mode === "uncertain") { mode = "complete"; throw new Error("Connection closed after vendor acceptance"); }
-      if (mode === "queued") return Response.json({ ...result, created_at: String(result.created_at).replace("Z", "+00:00"), status: "queued", delivered_count: 0, companies: [], delivered_at: null, billing: { ...(result.billing as object), free_companies: 0 } }, { status: 202, headers: { "Retry-After": "30" } });
+      if (mode === "partial-billing") return Response.json({ ...result, billing: { ...(result.billing as object), free_companies: body.count } });
+      if (mode === "partial-array") return Response.json({ ...result, companies: (result.companies as unknown[]).slice(0, 1) });
+      if (mode === "queued" || mode === "partial-queued") return Response.json({ ...result, created_at: String(result.created_at).replace("Z", "+00:00"), status: "queued", delivered_count: 0, companies: [], delivered_at: null, billing: { ...(result.billing as object), free_companies: 0 } }, { status: 202, headers: { "Retry-After": "30" } });
       if (mode === "insufficient" || mode === "unknown-failed") return Response.json({ ...result, status: "failed", delivered_count: 0, companies: [], delivered_at: null, failure: { code: mode === "unknown-failed" ? "provider_outcome_unknown" : "insufficient_matches", message: "secret private-test-key" }, billing: { ...(result.billing as object), free_companies: 0 } });
       if (mode === "bad-release") return Response.json({ ...result, status: "failed", delivered_count: 0, companies: [], delivered_at: null });
       if (mode === "offset") { const created_at = `${String(result.created_at).slice(0, 7)}-01T00:30:00+08:00`; return Response.json({ ...result, created_at, billing: { ...(result.billing as object), period: utcPeriod(new Date(created_at)) } }); }
@@ -232,7 +234,7 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       const failed = await service.createProspectOrder(user.id, requested); await worker.runProspecting();
       const result = await service.getProspectOrder(user.id, failed.id);
       assert.equal(result.status, "failed"); assert.deepEqual(await balance(user.id), [150, 0]); assert.equal(result.delivered, 0); assert.equal(result.usable, 0);
-      assert.equal(result.code, "provider_insufficient_matches"); assert.match(result.error!, /足額|enough/); assert(!result.error!.includes("private-test-key"));
+      assert.equal(result.code, "provider_insufficient_matches"); assert.match(result.error!, /符合條件|qualifying/); assert(!result.error!.includes("private-test-key"));
       const history = await service.prospectSnapshot(user.id);
       assert.equal(history.quota.reserved, 0);
       assert.equal(history.orders.length, 0);
@@ -258,6 +260,79 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       const row = await db.prospectingOrder.findUniqueOrThrow({ where: { id: offsetOrder.id } });
       assert.equal(offsetResult.period, utcPeriod(row.acceptedAt!)); assert.notEqual(offsetResult.period, utcPeriod());
       await clean(offsetUser.id); mode = "complete";
+    });
+    await t.test("Qualified-only partial delivery completes with two verified contacts, two quota used and one full hold release", async () => {
+      const user = await member(); mode = "partial";
+      const requested = input(), order = await service.createProspectOrder(user.id, requested);
+      await worker.runProspecting(user.id);
+      const result = await service.getProspectOrder(user.id, order.id);
+      assert.equal(result.qualifiedOnly, true); assert.equal(result.status, "completed");
+      assert.equal(result.requested, 5); assert.equal(result.delivered, 2); assert.equal(result.verified, 2); assert.equal(result.usable, 2);
+      assert.equal(result.tokenFee?.status, "released"); assert.deepEqual(await balance(user.id), [150, 0]);
+      const saved = await db.prospectingOrder.findUniqueOrThrow({ where: { id: order.id } });
+      const posts = calls.filter(c => c.path === "/orders" && c.key === saved.orderKey);
+      assert.equal(posts.length, 1); assert.equal(posts[0].body?.qualified_only, true); assert.equal(posts[0].body?.count, 5); assert.equal(posts[0].body?.max_charge_cents, 0);
+      const snapshot = await service.prospectSnapshot(user.id);
+      assert.equal(snapshot.quota.delivered, 2); assert.equal(snapshot.quota.reserved, 0); assert.equal(snapshot.quota.remaining, 8);
+      assert.equal(snapshot.orders.length, 1); assert.equal(snapshot.orders[0].usable, 2);
+      assert(result.companies.every(c => c.contact.value && c.contact.source));
+      assert.equal((await service.createProspectOrder(user.id, requested)).id, order.id);
+      const before = calls.length; await worker.runProspecting(user.id); await worker.recheckProspectOrder(user.id, order.id);
+      assert.equal(calls.length, before, "No automatic fill-up order or provider call on recheck");
+      assert.deepEqual(await balance(user.id), [150, 0]);
+      assert.equal(await db.tokenLedger.count({ where: { userId: user.id, kind: "capture" } }), 0);
+      await clean(user.id); mode = "complete";
+    });
+    await t.test("A qualified-only partial POC returns the gift hold and preserves eligibility until a full delivery", async () => {
+      const user = await member(false), journey = await db.discoveryJourney.create({ data: { userId: user.id } });
+      for (const company of ["One", "Two", "Three"]) await db.meetingNote.create({ data: { userId: user.id, title: "QA", insight: { ...emptyInsight("discover"), journeyId: journey.id, company, notes: "Valid evidence" } } });
+      mode = "partial";
+      const first = await service.createProspectOrder(user.id, input()); await worker.runProspecting(user.id);
+      assert.equal((await service.getProspectOrder(user.id, first.id)).usable, 2);
+      assert.deepEqual(await balance(user.id), [20, 0]); assert.equal((await service.eligibility(user.id)).poc, true);
+      assert.equal(await db.prospectingTrialGrant.count({ where: { userId: user.id } }), 0);
+      mode = "complete";
+      const second = await service.createProspectOrder(user.id, input(1)); await worker.runProspecting(user.id);
+      assert.equal((await service.getProspectOrder(user.id, second.id)).usable, 5);
+      assert.equal((await service.prospectSnapshot(user.id)).quota.delivered, 7);
+      assert.equal(await db.prospectingTrialGrant.count({ where: { userId: user.id } }), 1);
+      assert.deepEqual(await balance(user.id), [0, 0]); await clean(user.id);
+    });
+    await t.test("Qualified-only queued orders accept partial completion on GET without another POST", async () => {
+      const user = await member(); mode = "partial-queued";
+      const order = await service.createProspectOrder(user.id, input()); await worker.runProspecting(user.id);
+      assert.equal((await service.getProspectOrder(user.id, order.id)).status, "queued");
+      assert.deepEqual(await balance(user.id), [130, 20]);
+      const posts = calls.filter(c => c.path === "/orders").length;
+      mode = "complete"; await due(order.id); await worker.runProspecting(user.id);
+      const result = await service.getProspectOrder(user.id, order.id);
+      assert.equal(result.status, "completed"); assert.equal(result.delivered, 2); assert.equal(result.usable, 2);
+      assert.equal(calls.filter(c => c.path === "/orders").length, posts);
+      assert.deepEqual(await balance(user.id), [150, 0]); await clean(user.id);
+    });
+    await t.test("Partial receipts must reconcile exact company count and free usage; empty completion and overdelivery retain holds", async () => {
+      for (const invalidMode of ["partial-billing", "partial-array", "empty-completed", "over-delivery"]) {
+        const user = await member(); mode = invalidMode;
+        const order = await service.createProspectOrder(user.id, input()); await worker.runProspecting(user.id);
+        const result = await service.getProspectOrder(user.id, order.id);
+        assert.equal(result.code, "provider_contract", invalidMode); assert.notEqual(result.status, "completed");
+        assert.equal(result.usable, 0); assert.deepEqual(await balance(user.id), [130, 20]);
+        assert.equal((await service.prospectSnapshot(user.id)).quota.reserved, 5);
+        await clean(user.id);
+      }
+      mode = "complete";
+    });
+    await t.test("Frozen legacy request replays its original JSON without qualified_only or a new idempotency key", async () => {
+      const user = await member(); mode = "uncertain";
+      const order = await service.createProspectOrder(user.id, input());
+      const body = { icp_id: icpId, icp_version: 1, count: 5, max_charge_cents: 0 };
+      const saved = await db.prospectingOrder.update({ where: { id: order.id }, data: { omradeIcpId: icpId, omradeIcpVersion: 1, providerRequest: body, submittedAt: new Date() } });
+      await worker.runProspecting(user.id); await due(order.id); await worker.runProspecting(user.id);
+      const posts = calls.filter(c => c.path === "/orders" && c.key === saved.orderKey);
+      assert.equal(posts.length, 2); assert.deepEqual(posts.map(p => p.body), [body, body]);
+      const result = await service.getProspectOrder(user.id, order.id);
+      assert.equal(result.qualifiedOnly, false); assert.equal(result.status, "completed"); assert.equal(result.delivered, 5);
+      assert.deepEqual(await balance(user.id), [130, 0]); await clean(user.id); mode = "complete";
     });
     await t.test("Two entrances and retries share a single frozen order; changed payload and cross-owner access fail", async () => {
       const user = await member(), body = input(), beforeCalls = calls.length; uid = user.id;

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, MINUTE_MS, HOUR_MS } from "@/lib/rate-limit";
 import { configured, icpResponse, OmradeError, omradeRequest, orderResponse } from "./client";
-import { activeOrderStatuses, ProspectingError, uniqueProspects, type PublicProspect } from "./schema";
+import { activeOrderStatuses, ProspectingError, uniqueProspects, usesQualifiedOnly, type PublicProspect } from "./schema";
 import { eligibility, exclusions, getProspectOrder, hash, json, lockMember } from "./service";
 import { verifyCompany } from "./contact";
 import { backupEnabled, backupProvider, backupRequest, backupOrders, backupUsage, backupBudgetMicros, backupHoldMicros, backupResultSchema, researchBackup, groundedBackupCandidates } from "./backup";
@@ -65,9 +65,13 @@ async function acceptResponse(order: ProspectingOrder, token: string, payload: u
   const parsed = orderResponse.safeParse(payload);
   if (!parsed.success) throw new OmradeError(503, "provider_invalid_response", 60, requestId);
   const data = parsed.data;
+  const qualifiedOnly = usesQualifiedOnly(order.providerRequest);
   const failure = data.failure?.code && Object.hasOwn(failureMessages, data.failure.code) ? data.failure.code : null;
+  const failureMessage = failure === "insufficient_matches" && qualifiedOnly
+    ? "供應商找不到符合條件的新公司 / Provider found no qualifying new companies"
+    : failure ? failureMessages[failure] : "供應商未交付公司 / Provider delivered no companies";
   if (data.requested_count !== order.count || data.icp_id !== order.omradeIcpId || data.icp_version !== order.omradeIcpVersion || (order.providerOrderId && data.order_id !== order.providerOrderId) || data.billing.period !== new Date(data.created_at).toISOString().slice(0, 7) ||
-    (data.status === "completed" && (data.delivered_count !== order.count || data.companies.length !== order.count || data.billing.free_companies !== order.count || !data.delivered_at)) ||
+    (data.status === "completed" && (data.delivered_count < 1 || data.delivered_count > order.count || (!qualifiedOnly && data.delivered_count !== order.count) || data.companies.length !== data.delivered_count || data.billing.free_companies !== data.delivered_count || !data.delivered_at)) ||
     (data.status !== "completed" && (data.delivered_count !== 0 || data.companies.length !== 0 || data.billing.free_companies !== 0 || data.delivered_at !== null))) throw new OmradeError(503, "provider_contract", 60, requestId);
   await prisma.$transaction(async raw => {
     const tx = raw as unknown as Prisma.TransactionClient;
@@ -79,7 +83,7 @@ async function acceptResponse(order: ProspectingOrder, token: string, payload: u
       reservedCount: data.status === "completed" || data.status === "failed" && !uncertain ? 0 : order.count,
       status: uncertain ? "reconciling" : data.status === "completed" ? "checking" : data.status,
       failureCode: data.status === "failed" ? failure ? `provider_${failure}` : "provider_failed" : null,
-      failureMessage: uncertain ? "供應商結果不明，原單與 Token 預扣保留對帳 / Provider outcome unknown; original order and Token hold retained for reconciliation" : data.status === "failed" ? `${failure ? failureMessages[failure] : "供應商未交付公司 / Provider delivered no companies"}。未扣公司額度或收費，預留量已釋放 / No companies charged; reservation released` : null,
+      failureMessage: uncertain ? "供應商結果不明，原單與 Token 預扣保留對帳 / Provider outcome unknown; original order and Token hold retained for reconciliation" : data.status === "failed" ? `${failureMessage}。未扣公司額度或收費，預留量已釋放 / No companies charged; reservation released` : null,
       nextAttemptAt: new Date(Date.now() + Math.max(15, retryAfter) * 1000),
     } });
     if (!saved.count) throw new ProspectingError("處理權已變更 / Processing lease changed", 409, "lease_changed");
@@ -156,7 +160,7 @@ async function processOrder(order: ProspectingOrder, token: string) {
   if (order.providerOrderId) response = await limitedRequest(`/orders/${order.providerOrderId}`);
   else {
     if (!order.providerRequest) {
-      const body = { icp_id: order.omradeIcpId, icp_version: order.omradeIcpVersion, count: order.count, max_charge_cents: 0 };
+      const body = { icp_id: order.omradeIcpId, icp_version: order.omradeIcpVersion, count: order.count, qualified_only: true, max_charge_cents: 0 };
       await ownedUpdate(order.id, token, { providerRequest: json(body) }); order = { ...order, providerRequest: body as Prisma.JsonValue };
     }
     await submitGate(order, token);

@@ -8,7 +8,7 @@ type SearchProps = React.ComponentProps<typeof import('../src/components/dashboa
 const target = 'Confirmed reporting buyers';
 type FixtureOrder = ReturnType<typeof order>;
 type FixtureFailure = FixtureOrder & { error: string; code: string; requestId: string; tokenFee: { amount: number; status: string } };
-const order = (name: string, country: string, description: string) => ({ id: randomUUID(), submissionId: randomUUID(), country, description, status: 'completed', createdAt: '2026-11-01T00:00:00Z', requested: 5, delivered: 5, verified: 5, usable: 1, needsRecheck: false, companies: [{ id: randomUUID(), name, quality: 'strong', website: 'https://example.com', contact: { kind: 'page', value: 'https://example.com/contact', source: 'https://example.com/contact' }, evidence: [] }] });
+const order = (name: string, country: string, description: string) => ({ id: randomUUID(), submissionId: randomUUID(), country, description, status: 'completed', createdAt: '2026-11-01T00:00:00Z', qualifiedOnly: false, requested: 5, delivered: 5, verified: 5, usable: 1, needsRecheck: false, companies: [{ id: randomUUID(), name, quality: 'strong', website: 'https://example.com', contact: { kind: 'page', value: 'https://example.com/contact', source: 'https://example.com/contact' }, evidence: [] }] });
 function harness(locale: string, stepContext?: SearchProps['stepContext'], storage = new Map<string, string>()) {
   const slots: unknown[] = [], effects: Array<() => void> = [], timers: Array<() => void> = [], posts: Array<Record<string, unknown>> = [];
   let cursor = 0, fail = false, context = stepContext;
@@ -49,6 +49,21 @@ test('Five provider results with only two verified companies are shown as incomp
     const labels = h.render().filter(n => n.type === 'h3').map(n => JSON.stringify(n.props.children));
     assert(labels.some(label => /Only 2 of 5 companies verified|僅核對到 2／5 家/.test(label)));
     assert.equal(labels.filter(label => /Completed|已完成/.test(label)).length, 2, 'Companies already added later do not turn a fully verified order into a shortfall');
+  }
+});
+
+test('Qualified-only partial results show completed with actual counts, while source failures stay incomplete', async () => {
+  for (const locale of ['en', 'zh-tw']) {
+    const h = harness(locale);
+    Object.assign(h.orders[0], { qualifiedOnly: true, delivered: 2, verified: 2 });
+    await h.settle();
+    let labels = h.render().filter(n => n.type === 'h3').map(n => JSON.stringify(n.props.children));
+    assert(labels.some(label => /Completed · 2 of 5 companies qualified|已完成 · 合格 2／5 家/.test(label)));
+    assert.match(JSON.stringify(h.render()), /provider returned 2 companies|供應商本次回傳 2 家/);
+    h.orders[0].verified = 1;
+    h.refresh(); await h.settle();
+    labels = h.render().filter(n => n.type === 'h3').map(n => JSON.stringify(n.props.children));
+    assert(labels.some(label => /Only 1 of 5 companies verified|僅核對到 1／5 家/.test(label)));
   }
 });
 

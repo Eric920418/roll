@@ -11,7 +11,7 @@ import { DISCOVERY_POLICY, discoveryTrialActive, discoveryEvidence } from "@/lib
 import { readIcp } from "@/lib/icp/schema";
 import { configured } from "./client";
 import { backupEnabled, backupUntil, backupProvider, backupModel, backupOrders, backupRequest, backupUsage, backupLimit, backupBudgetMicros, backupHoldMicros } from "./backup";
-import { activeOrderStatuses, audienceDescription, orderInputSchema, ProspectingError, publicProspectSchema, uniqueProspects, utcPeriod } from "./schema";
+import { activeOrderStatuses, audienceDescription, orderInputSchema, ProspectingError, publicProspectSchema, uniqueProspects, usesQualifiedOnly, utcPeriod } from "./schema";
 import type { z } from "zod";
 type DB = Prisma.TransactionClient;
 export const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -51,7 +51,7 @@ export function storedCompanies(order: Pick<ProspectingOrder, "result">) {
 export function orderView(order: ProspectingOrder, excluded: string[], workspace?: { country: string; description: string } | null) {
   const verified = storedCompanies(order);
   const companies = uniqueProspects(verified, excluded);
-  return { provider: backupRequest(order.providerRequest) ? "anthropic_backup" : "omrade", id: order.id, submissionId: order.requestId, country: order.country, description: order.description, requested: order.count, delivered: order.deliveredCount, verified: verified.length, usable: companies.length, status: order.status, poc: order.poc, period: order.period,
+  return { provider: backupRequest(order.providerRequest) ? "anthropic_backup" : "omrade", qualifiedOnly: usesQualifiedOnly(order.providerRequest), id: order.id, submissionId: order.requestId, country: order.country, description: order.description, requested: order.count, delivered: order.deliveredCount, verified: verified.length, usable: companies.length, status: order.status, poc: order.poc, period: order.period,
     createdAt: order.createdAt.toISOString(), checkedAt: order.checkedAt?.toISOString() || null, nextAttemptAt: order.nextAttemptAt.toISOString(),
     needsRecheck: !order.checkedAt || Date.now() - order.checkedAt.getTime() >= 86400000,
     stale: !order.checkedAt || Date.now() - order.checkedAt.getTime() >= 86400000 || Boolean(workspace && (workspace.country !== order.country || workspace.description !== order.description)),

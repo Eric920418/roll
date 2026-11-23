@@ -7,6 +7,9 @@ export class ProspectingError extends Error {
 }
 export const activeOrderStatuses = ["pending", "queued", "running", "checking", "reconciling"];
 export const utcPeriod = (now = new Date()) => now.toISOString().slice(0, 7);
+export function usesQualifiedOnly(request: unknown): boolean {
+  return Boolean(request && typeof request === "object" && !Array.isArray(request) && "qualified_only" in request && request.qualified_only === true);
+}
 export const orderInputSchema = z.object({ requestId: z.string().uuid(), provider: z.enum(["omrade", "anthropic_backup"]).optional(), planId: z.string().min(1).max(200).optional(), pricingVersion: z.number().int().positive().optional(), revision: z.number().int().nonnegative(), country: z.string().refine(v => COUNTRY_CODES.includes(v), "請選擇國家 / Select a country"), description: z.string().trim().min(10).max(4000), count: z.union([z.literal(5), z.literal(10)]) }).strict();
 const httpsUrl = z.string().max(2000).refine(publicWebsite, "Public HTTPS source required");
 export const evidenceSchema = z.object({ criterion: z.string().trim().min(1).max(4000), source_url: httpsUrl, observed_at: z.string().max(80).optional() });
