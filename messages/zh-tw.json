@@ -1694,11 +1694,11 @@
     "monthlyLimit": "本月已達 20 次對話兌換上限。",
     "redeemed": "已增加 5 次 POLARIS 對話，積分與次數已更新。",
     "saved": "提醒設定已儲存。",
-    "reminderTitle": "留一個時間給下一步",
+    "reminderTitle": "回訪提醒",
     "reminderDetail": "選擇每天回來的時間。當天已完成得分行動，或沒有可做事項時，就不寄提醒。",
     "reminderOptIn": "每天以 Email 提醒我",
     "emailUnavailable": "Email 提醒尚未開放。積分與兌換可正常使用，寄送服務準備完成後即可開啟提醒。",
-    "time": "當地時間",
+    "time": "回訪時間",
     "timeZone": "時區",
     "timing": "通常於選定時間後約 15 分鐘內提交寄送，實際收信可能稍晚。可隨時退訂。",
     "working": "處理中…",
@@ -1725,7 +1725,7 @@
       "quiz": "完成本期知識測驗"
     },
     "rule": {
-      "visit": "回訪 Home",
+      "visit": "每日回訪首頁",
       "visitDetail": "每個台北日期一次。",
       "action": "完成行動任務",
       "actionDetail": "每項一次，每日最多兩項。",

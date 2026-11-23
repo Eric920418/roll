@@ -1694,11 +1694,11 @@
     "monthlyLimit": "You’ve reached this month’s 20-conversation limit.",
     "redeemed": "5 POLARIS conversations added. Your points and credits are up to date.",
     "saved": "Reminder settings saved.",
-    "reminderTitle": "Make time for your next step",
+    "reminderTitle": "Return reminder",
     "reminderDetail": "Choose when to come back. We’ll skip the email if you’ve completed a reward action that day or have nothing actionable left.",
     "reminderOptIn": "Email me a daily reminder",
     "emailUnavailable": "Email reminders are not available yet. Your rewards work normally; you can enable reminders once sending is ready.",
-    "time": "Your local time",
+    "time": "Return time",
     "timeZone": "Time zone",
     "timing": "Emails are normally submitted within about 15 minutes after your chosen time. Delivery can take longer. Unsubscribe any time.",
     "working": "Working…",
@@ -1725,7 +1725,7 @@
       "quiz": "Complete this period's quiz"
     },
     "rule": {
-      "visit": "Visit Home",
+      "visit": "Daily return to Home",
       "visitDetail": "Once per Taipei calendar day.",
       "action": "Complete an action",
       "actionDetail": "Once per task, up to two tasks a day.",

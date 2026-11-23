@@ -9,7 +9,7 @@ import { notifyPlanChanged } from "./PlanRefresh";
 import { useDashboardUser } from "./DashboardUserProvider";
 
 export default function MissingProfileField({ field, label, options, maxLength }: {
-  field: "companyName" | "oneLinePitch" | "industry" | "companyStage" | "companySize" | "website" | "country";
+  field: "primaryNeed" | "companyName" | "oneLinePitch" | "industry" | "companyStage" | "companySize" | "website" | "country";
   label: string; options?: { value: string; label: string }[]; maxLength?: number;
 }) {
   const locale = useLocale(), zh = locale === "zh-tw", t = useTranslations("Dashboard.account"), router = useRouter(), userId = useDashboardUser();

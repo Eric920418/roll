@@ -55,8 +55,8 @@ function load<T>(file: string, mocks: Record<string, unknown>, globals: Record<s
 const intl = {
 useLocale: () => "zh-tw", useTranslations: () => (key: string) => key, setRequestLocale() {} };
 
-test("Five canonical tabs and legacy aliases remain deterministic", () => {
-  assert.deepEqual(MATCHMAKING_TABS, ["recommendations", "all", "roundtables", "visitors", "messages"]);
+test("Six canonical tabs and legacy aliases remain deterministic", () => {
+  assert.deepEqual(MATCHMAKING_TABS, ["recommendations", "all", "roundtables", "visitors", "messages", "settings"]);
   for (const value of [undefined, "members", "invalid"]) assert.equal(matchmakingTab(value), "recommendations");
   assert.equal(matchmakingTab("sharing"), "messages");
   assert.equal(matchmakingTab("all"), "all");
@@ -110,7 +110,7 @@ test("Switching tabs retains the mounted inbox, marks it inactive and supports k
     "./ReportDraft": {default:()=>null}, "../evidence/Preferences": {default:()=>null}, "next-intl": intl, "next/link": { default: "a" }, "./MatchmakingPage": { default: () => null }, "./RoundtablesPanel": { default: () => null },
     "../TokenBalance": { default: () => null },
     "../network/ViewerOverview": { default: Viewers, ViewerPrivacySettings: () => null },
-    "../network/NetworkPanels": { MessagesPage: Inbox, useNetwork: () => ({ value: { enabled: true } }) },
+    "../network/NetworkPanels": { MessagesPage: Inbox, CardPrivacySettings: () => null, NotificationSettings: () => null, useNetwork: () => ({ value: { enabled: true } }) },
     "@/lib/member-fetch": {}, "@/lib/dashboard/home": { MATCHMAKING_TABS, matchmakingTab }, "@/lib/routes": { pathForLocale: (path: string) => path },
   }, { window: { location: { get href() { return currentUrl; } }, history: { replaceState: (_: unknown, __: unknown, path: string) => { currentUrl = new URL(path, currentUrl).href; } } }, document: { getElementById: () => ({ focus() {} }) } });
   function render() { cursor = 0; return nodes(workspace.default({ userId: "owner", initialTab: "messages" })); }
@@ -120,6 +120,9 @@ test("Switching tabs retains the mounted inbox, marks it inactive and supports k
   tree.find(n => n.props.id === "matchmaking-tab-roundtables")!.props.onClick!();
   tree = render(); assert.equal(tree.find(n => n.type === Inbox)?.props.active, false); assert.equal(new URL(currentUrl).searchParams.get("connection"), "saved");
   tree.find(n => n.props.id === "matchmaking-tab-roundtables")!.props.onKeyDown!({ key: "End", preventDefault() {} });
+  assert.equal(render().find(n => n.type === Inbox)?.props.active, false);
+  assert.equal(new URL(currentUrl).searchParams.get("tab"), "settings");
+  render().find(n => n.props.id === "matchmaking-tab-settings")!.props.onKeyDown!({ key: "ArrowLeft", preventDefault() {} });
   assert.equal(render().find(n => n.type === Inbox)?.props.active, true);
   tree = render(); assert.equal(tree.some(n => n.type === Viewers), false);
   tree.find(n => n.props.id === "matchmaking-tab-visitors")!.props.onClick!();
@@ -138,7 +141,7 @@ test("Back navigation keeps the current URL tab when cached server props and del
     react: { useCallback: (fn: unknown) => fn, useEffect: (fn: () => unknown) => effects.push(fn), useState: (initial: unknown) => { const i = cursor++; if (!(i in state)) state[i] = typeof initial === "function" ? initial() : initial; return [state[i], (value: unknown) => { state[i] = typeof value === "function" ? value(state[i]) : value; }]; } },
     "next-intl": intl, "next/link": { default: "a" }, "./MatchmakingPage": { default: () => null }, "./RoundtablesPanel": { default: () => null },
     "../network/ViewerOverview": { default: () => null, ViewerPrivacySettings: () => null },
-    "../network/NetworkPanels": { MessagesPage: Inbox, useNetwork: () => ({}) },
+    "../network/NetworkPanels": { MessagesPage: Inbox, CardPrivacySettings: () => null, NotificationSettings: () => null, useNetwork: () => ({}) },
     "@/lib/member-fetch": {}, "@/lib/dashboard/home": { MATCHMAKING_TABS, matchmakingTab }, "@/lib/routes": { pathForLocale: (path: string) => path },
   }, { window: { location: { get href() { return currentUrl; } }, addEventListener: (name: string, fn: () => void) => listeners.set(name, fn), removeEventListener: (name: string) => listeners.delete(name) }, setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout() {} });
   function render() { cursor = 0; return nodes(workspace.default({ userId: "owner", initialTab: "roundtables" })); }

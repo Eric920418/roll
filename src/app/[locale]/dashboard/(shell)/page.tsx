@@ -17,8 +17,6 @@ import ActionMap from "@/components/dashboard/ActionMap";
 import PlanRefresh from "@/components/dashboard/PlanRefresh";
 import FounderRecommendations from "@/components/dashboard/home/FounderRecommendations";
 import RoundtablesPanel from "@/components/dashboard/matchmaking/RoundtablesPanel";
-import ReferralPanel from "@/components/dashboard/rewards/ReferralPanel";
-import ReturnReminder from "@/components/dashboard/home/ReturnReminder";
 import UpcomingEventsRail from "@/components/dashboard/home/UpcomingEventsRail";
 
 export default async function DashboardOverview({ params }: { params: Promise<{ locale: string }> }) {
@@ -45,10 +43,10 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
   };
   const descriptions = zh ? {
     action: "", outcome: "任務已完成。確認實際成果後，繼續下一個里程碑。", next: "上一階段已確認，現在可以安排下一階段的行動。", complete: "目前計畫已完成，回顧你的紀錄與成果。", blocked: "目前任務有前置條件，查看行動地圖就能找到解鎖方式。",
-    setup: "點選五個答案，讓 NOVA 整理你現在最值得做的一件事。", conversation: "從可能的目標客戶開始，記下真實需求與付費訊號。", prospects: "起步對話已達標，接著找出值得優先聯絡的公司。", starter: "起步方向已整理好，從符合你目前狀況的行動開始。", upgrade: "查看目前可用功能與方案；你已儲存的資料會保留。",
+    setup: "點選五個答案，讓 NOVA AI 整理你現在最值得做的一件事。", conversation: "從可能的目標客戶開始，記下真實需求與付費訊號。", prospects: "起步對話已達標，接著找出值得優先聯絡的公司。", starter: "起步方向已整理好，從符合你目前狀況的行動開始。", upgrade: "查看目前可用功能與方案；你已儲存的資料會保留。",
   } : {
     action: "", outcome: "Your tasks are complete. Confirm the actual outcomes to move forward.", next: "The previous stage is confirmed. Plan your next stage now.", complete: "Your current plan is complete. Review your evidence and results.", blocked: "Review the action map to see which prerequisites need attention.",
-    setup: "Choose five answers. NOVA will identify one clear action for you.", conversation: "Start with potential customers. Capture their needs and payment signals.", prospects: "Your starting conversations are complete. Find companies worth contacting next.", starter: "Your starting direction is ready. Begin with an action that fits your current situation.", upgrade: "Review your available features and plan. Your saved records are retained.",
+    setup: "Choose five answers. NOVA AI will identify one clear action for you.", conversation: "Start with potential customers. Capture their needs and payment signals.", prospects: "Your starting conversations are complete. Find companies worth contacting next.", starter: "Your starting direction is ready. Begin with an action that fits your current situation.", upgrade: "Review your available features and plan. Your saved records are retained.",
   };
   const completedFlow = plan?.workflowVersion === 2 && next.kind === "complete";
   if (completedFlow) labels.complete = zh ? "查看與分享驗證報告" : "View and share validation report";
@@ -69,7 +67,7 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
     {plan && <ActionMap userId={account.id} plan={plan} event={null} compact />}
     <EvidencePanel userId={account.id} compact homeTask={task} />
     <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"><RoundtablesPanel userId={account.id} compact /><FounderRecommendations /></div>
-    <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-3"><UpcomingEventsRail locale={l} events={events.slice(0,1).map(({id,date,title,location})=>({id,date,title,location}))} /><ReturnReminder date={milestone?.targetDate} /><ReferralPanel compact /></div>
-    <section className="grid gap-5 rounded-2xl border border-dark/10 bg-white p-5 sm:grid-cols-[1fr_2fr]" aria-label={zh ? "關注 NOVA" : "Follow NOVA"}><div><h2 className="text-sm font-semibold">{zh ? "關注 NOVA" : "Follow NOVA"}</h2></div><div className="grid gap-x-6 sm:grid-cols-2">{[{label:'LinkedIn',name:'ROLL ON',url:'https://www.linkedin.com/company/rollon/'},{label:'YouTube',name:'Golden Ticket',url:'https://www.youtube.com/@GOLDENTICKET-rollon'},{label:'Instagram',name:'ROLL ON TAIWAN',url:'https://www.instagram.com/rollon.tw/'}].map(item=><a key={item.url} href={item.url} target="_blank" rel="noopener noreferrer" className="flex min-h-11 min-w-0 items-center gap-3 border-t border-dark/10 text-xs"><span className="text-dark/50">{item.label}</span><span className="flex-1 break-words font-semibold">{item.name}</span><span aria-hidden>↗</span></a>)}</div></section>
+    <UpcomingEventsRail locale={l} events={events.slice(0,3).map(({id,date,title,location,description,image})=>({id,date,title,location,description,image}))} />
+    <section className="grid gap-5 rounded-2xl border border-dark/10 bg-white p-5 sm:grid-cols-[1fr_2fr]" aria-label={zh ? "關注 NOVA AI" : "Follow NOVA AI"}><div><h2 className="text-sm font-semibold">{zh ? "關注 NOVA AI" : "Follow NOVA AI"}</h2></div><div className="grid gap-x-6 sm:grid-cols-2">{[{label:'LinkedIn',name:'ROLL ON',url:'https://www.linkedin.com/company/rollon/'},{label:'YouTube',name:'Golden Ticket',url:'https://www.youtube.com/@GOLDENTICKET-rollon'},{label:'Instagram',name:'ROLL ON TAIWAN',url:'https://www.instagram.com/rollon.tw/'}].map(item=><a key={item.url} href={item.url} target="_blank" rel="noopener noreferrer" className="flex min-h-11 min-w-0 items-center gap-3 border-t border-dark/10 text-xs"><span className="text-dark/50">{item.label}</span><span className="flex-1 break-words font-semibold">{item.name}</span><span aria-hidden>↗</span></a>)}</div></section>
   </div></PlanLocalizationProvider>;
 }

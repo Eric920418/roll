@@ -1,65 +1,18 @@
-import { getTranslations } from "next-intl/server";
+import Image from "next/image";
 import Link from "next/link";
 import { pick } from "@/lib/quiz/locale";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 
-export type EventView = {
-  id: string;
-  date: unknown; // Prisma Json 雙語顯示字串
-  title: unknown;
-  location: unknown;
-};
+export type EventView = { id: string; date: unknown; title: unknown; location: unknown; description: unknown; image: string | null };
 
-// UPCOMING EVENTS：取自 Event model（首頁活動）。
-export default async function UpcomingEventsRail({
-  locale,
-  events,
-}: {
-  locale: Locale;
-  events: EventView[];
-}) {
-  const t = await getTranslations({ locale, namespace: "Dashboard.home.novaEvents" });
-
-  return (
-    <div className="nova-dashboard-card rounded-2xl border border-dark/10 bg-white p-5">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-bold text-dark font-[family-name:var(--font-heading)]">
-          {t("title")}
-        </p>
-        <Link
-          href={`${pathForLocale("/", locale)}#events`}
-          className="inline-flex min-h-11 shrink-0 items-center text-xs font-semibold text-primary hover:text-primary-dark font-[family-name:var(--font-heading)]"
-        >
-          {t("viewAll")}
-        </Link>
-      </div>
-
-
-      {events.length === 0 ? (
-        <p className="mt-4 text-sm text-dark/55">{t("empty")}</p>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-3">
-          {events.map((e) => (
-            <li key={e.id} className="flex gap-3">
-              <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M7 3v3M17 3v3M4 8h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-dark font-[family-name:var(--font-heading)]">
-                  {pick(e.title, locale)}
-                </p>
-                <p className="truncate text-xs text-dark/50">
-                  {pick(e.date, locale)}
-                  {pick(e.location, locale) ? ` · ${pick(e.location, locale)}` : ""}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+export default function UpcomingEventsRail({ locale, events }: { locale: Locale; events: EventView[] }) {
+  const zh = locale === "zh-tw";
+  return <section className="min-w-0 space-y-4" aria-labelledby="dashboard-events-title">
+    <div className="flex items-center justify-between gap-3"><h2 id="dashboard-events-title" className="text-lg font-semibold">{zh ? "近期活動" : "Recent events"}</h2><Link href={`${pathForLocale("/", locale)}#events`} className="inline-flex min-h-11 items-center text-sm font-semibold underline">{zh ? "查看全部" : "View all"}</Link></div>
+    {events.length ? <ul className="grid min-w-0 gap-4 sm:grid-cols-3">{events.map(event => <li key={event.id} className="min-w-0 overflow-hidden rounded-2xl border border-dark/10 bg-white">
+      {event.image && <div className="relative aspect-[4/3]"><Image src={event.image} alt={pick(event.title, locale)} fill sizes="(min-width: 640px) 33vw, 100vw" className="object-cover" unoptimized /></div>}
+      <div className="space-y-3 p-5"><p className="text-xs text-dark/60">{[pick(event.date, locale), pick(event.location, locale)].filter(Boolean).join(" · ")}</p><h3 className="break-words text-base font-semibold">{pick(event.title, locale)}</h3>{pick(event.description, locale) && <p className="whitespace-pre-wrap break-words text-sm leading-6 text-dark/65">{pick(event.description, locale)}</p>}</div>
+    </li>)}</ul> : <p className="rounded-2xl border border-dark/10 bg-white p-5 text-sm text-dark/60">{zh ? "目前沒有已公布的活動。" : "No published events yet."}</p>}
+  </section>;
 }

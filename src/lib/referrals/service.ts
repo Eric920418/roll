@@ -12,6 +12,9 @@ import { referralGrant, referralRevoke, units } from "@/lib/credits/policy";
 const lock = (tx: Prisma.TransactionClient) => tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('nova-referrals-v1'))::text`;
 
 async function revoke(tx: Prisma.TransactionClient, id: string, reason = "payment_refunded") {
+  await tx.referralFreeMonth.updateMany({ where: { referralId: id }, data: { status: "revoked", leaseUntil: null } });
+  const { syncFreeMonthAccess } = await import("./free-months");
+  for (const benefit of await tx.referralFreeMonth.findMany({ where: { referralId: id }, select: { accountId: true } })) await syncFreeMonthAccess(tx, benefit.accountId);
   const grants = await tx.referralEntry.findMany({ where: { referralId: id, kind: "grant" }, orderBy: { accountId: "asc" } });
   for (const grant of grants) {
     if (await tx.referralEntry.findUnique({ where: { referralId_accountId_kind: { referralId: id, accountId: grant.accountId, kind: "revoke" } } })) continue;
@@ -49,7 +52,7 @@ async function settle(tx: Prisma.TransactionClient, id: string, now: Date) {
   const granted = row.grantedAt !== null;
   const mark = (data: Prisma.ReferralUpdateInput) => tx.referral.update({ where: { id }, data: { errorRequestId: null, ...data, revision: { increment: 1 } } });
   // Keep the original first transaction even after a refund; later purchases cannot requalify it.
-  const first = row.inviteeId ? await tx.referralPayment.findFirst({ where: { userId: row.inviteeId, paidAt: { not: null } }, orderBy: [{ paidAt: "asc" }, { key: "asc" }] }) : row.paymentKey ? await tx.referralPayment.findUnique({ where: { key: row.paymentKey } }) : null;
+  const first = row.inviteeId ? await tx.referralPayment.findFirst({ where: { userId: row.inviteeId, paidAt: { not: null }, ...(row.version >= 2 ? { kind: "subscription" } : {}) }, orderBy: [{ paidAt: "asc" }, { key: "asc" }] }) : row.paymentKey ? await tx.referralPayment.findUnique({ where: { key: row.paymentKey } }) : null;
   if (!granted && (!row.inviteeId || !row.inviter.userId)) { await mark({ status: "rejected", reason: "deleted_member" }); return; }
   if (!first || !first.paidAt) { if (!granted) await mark({ status: "pending_payment", reason: null }); return; }
   if (first.status === "refunded") { if (granted) await revoke(tx, id); else await mark({ status: "revoked", reason: "payment_refunded", paymentKey: first.key, paidAt: first.paidAt }); return; }
@@ -71,6 +74,16 @@ async function settle(tx: Prisma.TransactionClient, id: string, now: Date) {
   row = { ...row, ...await mark({ status: granted ? "granted" : "pending", reason: null, payerHash, paymentKey: first.key, paidAt: first.paidAt, eligibleAt, monthKey, slot }) };
   if (granted || now < eligibleAt) return;
   const inviteeAccount = await tx.referralAccount.upsert({ where: { userId: row.inviteeId! }, create: { userId: row.inviteeId!, code: randomBytes(6).toString("hex").toUpperCase() }, update: {} });
+  if (row.version >= 2) {
+    const paidSubscription = first.subscriptionId ? await tx.subscription.findUnique({ where: { paypalSubscriptionId: first.subscriptionId } }) : null;
+    if (!paidSubscription || !["pro", "business"].includes(paidSubscription.plan) || !["month", "year"].includes(paidSubscription.billingInterval ?? "")) {
+      await mark({ status: "review", reason: "payment_review" }); return;
+    }
+    const plan = paidSubscription.plan;
+    for (const accountId of [row.inviterId, inviteeAccount.id].sort()) await tx.referralFreeMonth.upsert({ where: { referralId_accountId: { referralId: id, accountId } }, create: { referralId: id, accountId, plan }, update: {} });
+    await mark({ status: "granted", grantedAt: now, reason: null });
+    return;
+  }
   for (const accountId of [row.inviterId, inviteeAccount.id].sort()) {
     const account = await tx.referralAccount.findUniqueOrThrow({ where: { id: accountId } });
     if (await creditsEnabledFor(tx, account.userId!)) {
@@ -180,7 +193,7 @@ export async function reviewReferral(input: { id: string; revision: number; deci
     const now = new Date();
     for (const proof of payments) await recordProof(tx, proof, original.inviteeId, now);
     for (const proof of inviterPayments) await recordProof(tx, proof, original.inviter.userId, now);
-    const payment = await tx.referralPayment.findFirst({ where: { userId: original.inviteeId, paidAt: { not: null } }, orderBy: [{ paidAt: "asc" }, { key: "asc" }] });
+    const payment = await tx.referralPayment.findFirst({ where: { userId: original.inviteeId, paidAt: { not: null }, ...(row.version >= 2 ? { kind: "subscription" } : {}) }, orderBy: [{ paidAt: "asc" }, { key: "asc" }] });
     if (!payment || payment.status !== "completed" || !payments.some(proof => proof.key === payment.key && proof.status === "completed") || !input.payerId) throw new ReferralError("需已核對的有效付款及付款身分，不能略過金額核對 / Verified payment and payer ID required; amount checks cannot be bypassed", 409, "payment_review");
     const hash = payerFingerprint(input.payerId);
     if (payment.payerHash && payment.payerHash !== hash) throw new ReferralError("付款身分與來源不符 / Payer identity does not match", 409, "payment_review");
@@ -197,10 +210,11 @@ export async function referralSummary(userId: string, page: number) {
   const account = await prisma.referralAccount.findUnique({ where: { userId }, select: { id: true, code: true, debt: true } });
   const month = referralMonth(new Date());
   const credits = await memberCreditsEnabled(userId) ? await (await import("@/lib/credits/service")).creditSnapshot(userId) : undefined;
-  const [rows, used] = await Promise.all([
+  const [rows, used, freeMonths] = await Promise.all([
     prisma.referral.findMany({ where: { OR: [{ inviteeId: userId }, ...(account ? [{ inviterId: account.id }] : [])] }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 21, select: { id: true, inviterId: true, status: true, reason: true, errorRequestId: true, eligibleAt: true, createdAt: true, entries: { where: { account: { userId } }, select: { accountId: true, kind: true, credits: true, offset: true, debtDelta: true, createdAt: true } } } }),
     account ? prisma.referral.count({ where: { inviterId: account.id, monthKey: month, slot: { not: null } } }) : Promise.resolve(0),
+    prisma.referralFreeMonth.findMany({ where: { account: { userId } }, orderBy: { createdAt: "desc" }, select: { id: true, status: true, plan: true, startsAt: true, endsAt: true, lastError: true } }),
   ]);
-  return { mode: credits?.mode, code: account?.code ?? null, debt: credits?.referralDebt ?? account?.debt ?? 0, rules, month, used, hasMore: rows.length > 20, rows: rows.slice(0, 20).map(row => ({ id: row.id, direction: row.inviterId === account?.id ? "sent" : "received", status: row.status, reason: row.reason, errorRequestId: row.errorRequestId, eligibleAt: row.eligibleAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString(), entries: row.entries.map(entry => { const receipt = credits?.ledger.find(e => e.id === `referral:${row.id}:${entry.accountId}:${entry.kind}${entry.kind === "grant" ? ":lot" : ""}`); return { ...entry, credits: receipt?.availableDelta ?? entry.credits, createdAt: entry.createdAt.toISOString() }; }) })) };
+  return { freeMonths: freeMonths.map(b => ({ ...b, startsAt: b.startsAt?.toISOString() ?? null, endsAt: b.endsAt?.toISOString() ?? null })), mode: credits?.mode, code: account?.code ?? null, debt: credits?.referralDebt ?? account?.debt ?? 0, rules, month, used, hasMore: rows.length > 20, rows: rows.slice(0, 20).map(row => ({ id: row.id, direction: row.inviterId === account?.id ? "sent" : "received", status: row.status, reason: row.reason, errorRequestId: row.errorRequestId, eligibleAt: row.eligibleAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString(), entries: row.entries.map(entry => { const receipt = credits?.ledger.find(e => e.id === `referral:${row.id}:${entry.accountId}:${entry.kind}${entry.kind === "grant" ? ":lot" : ""}`); return { ...entry, credits: receipt?.availableDelta ?? entry.credits, createdAt: entry.createdAt.toISOString() }; }) })) };
 }
 export type ReferralSummary = Awaited<ReturnType<typeof referralSummary>>;

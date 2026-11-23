@@ -42,6 +42,9 @@ export interface Account {
   trialStartsAt: Date | null;
   trialEndsAt: Date | null;
   trialPolicy?: string | null;
+  referralMonthPlan?: string | null;
+  referralMonthStartsAt?: Date | null;
+  referralMonthEndsAt?: Date | null;
   founderStartedAt?: Date | null;
   founderEndsAt?: Date | null;
   /** 註冊日 = 落地起點 anchor，落地待辦據此推算各任務建議完成日（見 dashboard/agenda.ts） */
@@ -115,6 +118,9 @@ export const getCurrentAccount = cache(async (): Promise<Account | null> => {
     trialStartsAt: user.trialStartsAt,
     trialEndsAt: user.trialEndsAt,
     trialPolicy: user.trialPolicy,
+    referralMonthPlan: user.referralMonthPlan,
+    referralMonthStartsAt: user.referralMonthStartsAt,
+    referralMonthEndsAt: user.referralMonthEndsAt,
     founderStartedAt: user.founderStartedAt,
     founderEndsAt: user.founderEndsAt,
     createdAt: user.createdAt,

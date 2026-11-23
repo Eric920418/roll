@@ -30,7 +30,7 @@ export async function registerWithReferral(data: Prisma.UserCreateInput, value: 
     const inviter = await tx.referralAccount.findFirst({ where: { code, userId: { not: null } }, include: { user: { select: { email: true } } } });
     if (!inviter) throw new ReferralError("邀請碼不存在或已停用 / Referral code not found or unavailable", 400, "invalid_referral_code");
     if (inviter.user?.email.toLowerCase() === data.email.toLowerCase()) throw new ReferralError("不能邀請自己 / Self-referrals are not allowed", 400, "self_referral");
-    return tx.user.create({ data: { ...data, receivedReferral: { create: { inviterId: inviter.id } } } });
+    return tx.user.create({ data: { ...data, receivedReferral: { create: { inviterId: inviter.id, version: 2 } } } });
   });
   invalidateReferralSchedule();
   return saved;

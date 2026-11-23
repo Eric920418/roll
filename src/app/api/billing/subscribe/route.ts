@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
         503,
       );
     }
+    if (account.referralMonthEndsAt && account.referralMonthEndsAt > new Date() || await prisma.referralFreeMonth.findFirst({ where: { account: { userId: account.id }, status: "claiming" }, select: { id: true } })) return bad("referralMonthActive", "免費月已安排或兌換處理中；免費月結束後請重新訂閱，避免重複扣款 / A free month is scheduled or being redeemed. Resubscribe after it ends to avoid duplicate billing.", 409);
     const existingRequest = await prisma.subscription.findUnique({
       where: { checkoutRequestId: requestId },
     });

@@ -19,6 +19,9 @@ export type BillingAccount = Pick<
   | "trialStartsAt"
   | "trialEndsAt"
   | "trialPolicy"
+  | "referralMonthPlan"
+  | "referralMonthStartsAt"
+  | "referralMonthEndsAt"
   | "founderStartedAt"
   | "founderEndsAt"
 >;
@@ -128,7 +131,9 @@ export function getEffectivePlan(
 export function getPaidPlan(account: BillingAccount | null, now = new Date()): PlanKey {
   if (!account) return "free";
   if (account.betaAccess === true && !account.rollonMember && account.trialPolicy !== "interviews-3-v1") return "enterprise";
-  const paid = paidPlan(account, now);
+  const original = paidPlan(account, now);
+  const reward = (account.referralMonthPlan === "pro" || account.referralMonthPlan === "business") && account.referralMonthStartsAt && account.referralMonthStartsAt <= now && account.referralMonthEndsAt && account.referralMonthEndsAt > now ? account.referralMonthPlan : "free";
+  const paid = PLAN_RANK[reward] > PLAN_RANK[original] ? reward : original;
   const founder = account.founderStartedAt && account.founderEndsAt && account.founderStartedAt <= now && account.founderEndsAt > now;
   return (founder || account.rollonMember === true) && PLAN_RANK[paid] < PLAN_RANK.pro ? "pro" : paid;
 }

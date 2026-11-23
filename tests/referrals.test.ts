@@ -92,7 +92,7 @@ test("Referral integration uses only its own fixtures in loopback PostgreSQL", {
     const owner = inviterId ? await db.user.findUniqueOrThrow({ where: { id: inviterId } }) : await user();
     const code = (await registration.ensureReferralAccount(owner.id)).code;
     const guest = await registration.registerWithReferral({ email: `${randomUUID()}-${prefix}@referral.invalid` }, code); users.push(guest.id);
-    const row = await db.referral.findUniqueOrThrow({ where: { inviteeId: guest.id } }); refs.push(row.id);
+    const row = await db.referral.update({ where: { inviteeId: guest.id }, data: { version: 1 } }); refs.push(row.id);
     return { owner, guest, row, code };
   }
   assert.equal(paymentService.payerFingerprint("PAYERABCDE1234"), paymentService.payerFingerprint("payerabcde1234"));

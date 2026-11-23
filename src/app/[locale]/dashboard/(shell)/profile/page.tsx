@@ -1,6 +1,7 @@
 import MissingProfileField from "@/components/dashboard/MissingProfileField";
 import { COMPANY_STAGES } from "@/lib/action-plan/constants";
-import { INDUSTRIES, COMPANY_SIZES } from "@/components/auth/onboarding-options";
+import { PRIMARY_NEEDS } from "@/lib/icp/schema";
+import { INDUSTRIES } from "@/components/auth/onboarding-options";
 import { countryLabel } from "@/lib/member-options";
 import { requireUserPage } from "@/lib/auth/guard";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -36,8 +37,7 @@ export default async function CompanyProfilePage({ params }: Props) {
           <Row label={t("icp.pitch")} value={p?.oneLinePitch || <MissingProfileField field="oneLinePitch" label={t("icp.pitch")} maxLength={500} />} />
           <Row label={t("account.industry")} value={p?.industry ? opt("industry", p.industry) : <MissingProfileField field="industry" label={t("account.industry")} options={INDUSTRIES.map(value => ({ value, label: tOpt(`industry.${value}`) }))} />} />
           <Row label={t("icp.companyStage")} value={p?.companyStage ? t.has(`icp.stages.${p.companyStage}`) ? t(`icp.stages.${p.companyStage}`) : p.companyStage : <MissingProfileField field="companyStage" label={t("icp.companyStage")} options={COMPANY_STAGES.map(value => ({ value, label: t(`icp.stages.${value}`) }))} />} />
-          <Row label={t("account.companySize")} value={p?.companySize ? opt("companySize", p.companySize) : <MissingProfileField field="companySize" label={t("account.companySize")} options={COMPANY_SIZES.map(value => ({ value, label: tOpt(`companySize.${value}`) }))} />} />
-          <Row label={t("account.website")} value={p?.website ? <a href={p.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{p.website}</a> : <MissingProfileField field="website" label={t("account.website")} maxLength={2000} />} />
+          <Row label={t("icp.primaryNeed")} value={p?.primaryNeed ? t.has(`icp.needs.${p.primaryNeed}`) ? t(`icp.needs.${p.primaryNeed}`) : p.primaryNeed : <MissingProfileField field="primaryNeed" label={t("icp.primaryNeed")} options={PRIMARY_NEEDS.map(value => ({ value, label: t(`icp.needs.${value}`) }))} />} />
           <Row label={t("icp.homeMarket")} value={p?.country ? countryLabel(p.country, locale) : <MissingProfileField field="country" label={t("icp.homeMarket")} />} />
         </dl>
       </section>

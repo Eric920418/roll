@@ -97,7 +97,7 @@ test('First conversation step has only the reference sections and completes from
     await h.settle();
     const nodes = h.render(), strings = JSON.stringify(nodes);
     const headings = nodes.filter(n => n.type === 'TaskSection').map(n => n.props.title);
-    assert.deepEqual(headings, locale === 'en' ? ['Today’s priority', 'Customer conversation', '5 companies to contact first'] : ['本日優先行動', '客戶對話紀錄', '建議優先聯絡的 5 家公司']);
+    assert.deepEqual(headings, locale === 'en' ? ['Customer conversation', '5 companies to contact first'] : ['客戶對話紀錄', '建議優先聯絡的 5 家公司']);
     assert(nodes.some(n => n.type === 'Findings' && n.props.reference));
     assert(nodes.some(n => n.type === 'TaskRoadmap'));
     assert.match(strings, /Record a customer conversation|記錄客戶對話/);
@@ -166,7 +166,7 @@ test('The sixteen steps keep one map and show company search only on the specifi
     const text = JSON.stringify(tree.filter(n => n.type === "button").map(n => n.props.children));
     assert.doesNotMatch(text, /Previous step|上一步|Rebuild draft|重新整理初稿|thirteen weeks created|每週開發待辦/);
     const headings = tree.filter(n => n.type === 'TaskSection');
-    assert.equal(headings.length, 1 + (["01-2", "01-3"].includes(spec.id) ? 0 : 1) + (search && spec.id !== '01-2' ? 1 : 0));
+    assert.equal(headings.length, 0 + (["01-2", "01-3"].includes(spec.id) ? 0 : 1) + (search && spec.id !== '01-2' ? 1 : 0));
     assert(headings.every(n => typeof n.props.title === 'string' && !Object.hasOwn(n.props, 'number')));
     if (spec.id !== '01-2') assert(text.includes(STEP_BUTTONS[spec.id][locale === 'zh-tw' ? 0 : 1]));
     assert.equal(tree.filter(n => n.type === "Assist").length, spec.id === "01-1" ? 1 : 0);

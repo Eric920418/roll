@@ -93,10 +93,12 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   const currentInterval =
     paidSubscription?.billingInterval === "year" ? "year" : "month";
 
+  const freeMonth = account.referralMonthEndsAt && account.referralMonthEndsAt > new Date();
   return (
     <section id="plan" className="scroll-mt-8 font-[family-name:var(--font-body)]">
       {embedded ? <h2 className="text-2xl font-extrabold text-dark font-[family-name:var(--font-heading)]">{t("title")}</h2> : <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-dark font-[family-name:var(--font-heading)]">{t("title")}</h1>}
 
+      {freeMonth && <p role="status" className="my-5 rounded-xl border border-dark/15 bg-white p-4 text-sm leading-6">{l === "zh-tw" ? `邀請獎勵免費月：${dateFmt.format(account.referralMonthStartsAt!)} 至 ${dateFmt.format(account.referralMonthEndsAt!)}。已停止原月繳的下次扣款，免費月結束後請自行重新訂閱。` : `Referral free month: ${dateFmt.format(account.referralMonthStartsAt!)} to ${dateFmt.format(account.referralMonthEndsAt!)}. Monthly renewal has stopped; resubscribe manually after the free month.`}</p>}
       <BillingPanel
         locale={l}
         prices={prices}

@@ -31,6 +31,9 @@ const ownerBillingSelect = {
   trialStartsAt: true,
   trialEndsAt: true,
   trialPolicy: true,
+  referralMonthPlan: true,
+  referralMonthStartsAt: true,
+  referralMonthEndsAt: true,
 } as const;
 
 export function ownerHasInvestorAccess(owner: {

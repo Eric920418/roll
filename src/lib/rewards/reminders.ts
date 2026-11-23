@@ -48,14 +48,14 @@ export async function unsubscribeReminder(token: string) {
   });
 }
 function escape(value: string) { return value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!); }
-export function emailPayload(to: string, userId: string, version: string, locale: string, kind: "profile" | "quiz" | "action", href: string, points: number) {
+export function emailPayload(to: string, userId: string, version: string, locale: string, kind: "profile" | "quiz" | "action" | "visit", href: string, points: number) {
   const origin = new URL(process.env.NEXT_PUBLIC_APP_URL!);
   if (origin.protocol !== "https:" && process.env.NODE_ENV === "production") throw new RewardError("正式提醒需要 HTTPS 網址 / HTTPS app URL required", 503);
   const token = unsubscribeToken(userId, version), zh = locale === "zh-tw", prefix = zh ? "/zh-tw" : "";
   const cta = new URL(`${prefix}${href}`, origin).href;
   const unsubscribe = new URL(`${prefix}/rewards/unsubscribe?token=${encodeURIComponent(token)}`, origin).href;
   const oneClick = new URL(`/api/rewards/unsubscribe?token=${encodeURIComponent(token)}`, origin).href;
-  const label = zh ? { profile: "完善公司資料", quiz: "完成本期知識測驗", action: "完成下一項行動" }[kind] : { profile: "Complete your company profile", quiz: "Complete this period’s quiz", action: "Complete your next action" }[kind];
+  const label = zh ? { visit: "每日回訪首頁", profile: "完善公司資料", quiz: "完成本期知識測驗", action: "完成下一項行動" }[kind] : { visit: "Return to Home", profile: "Complete your company profile", quiz: "Complete this period’s quiz", action: "Complete your next action" }[kind];
   const subject = zh ? "NOVA AI：今天的一小步，累積下一個獎勵" : "NOVA AI: one useful step towards your next reward";
   const text = `${label} · +${points} ${zh ? "積分" : "points"}\n${cta}\n${zh ? "退訂每日提醒" : "Unsubscribe from daily reminders"}: ${unsubscribe}`;
   return {
@@ -111,23 +111,25 @@ export async function runRewardReminders(now = new Date(), budgetMs = 250000) {
         await finish({ status: "skipped" }); result.skipped++; continue;
       }
       const { opportunities } = await rewardOpportunities(user.id, getEffectivePlan({ ...user, plan: toPlanKey(user.plan), trialPlan: user.trialPlan ? toPlanKey(user.trialPlan) : null, betaAccess }) !== "free", user.createdAt, user.profile, now);
-      const opportunity = opportunities[0];
+      const returnHome = { kind: "visit" as const, href: "/dashboard", points: 5 };
+      const opportunity = delivery.payload ? delivery.opportunityKind === "visit" ? returnHome : delivery.opportunityKind ? opportunities.find(item => item.kind === delivery.opportunityKind) : opportunities[0] : opportunities.length ? opportunities[0] : returnHome;
       if (!opportunity) { await finish({ status: "skipped" }); result.skipped++; continue; }
       const payload = delivery.payload ?? emailPayload(user.email, user.id, reminder.tokenVersion, reminder.locale, opportunity.kind, opportunity.href, opportunity.points);
       // A queued quiz predates removal of quiz recommendations. Do not replace an
       // idempotent provider payload with different bytes or send obsolete guidance.
       if (delivery.payload && JSON.stringify(delivery.payload).includes("/dashboard/quiz")) { await finish({ status: "skipped" }); result.skipped++; continue; }
       // Persist the exact payload before calling Resend so retries use the same idempotent request.
-      const counted = await prisma.rewardDelivery.updateMany({ where: { id: delivery.id, leaseToken, status: "processing" }, data: { payload, attempts: { increment: 1 } } });
+      const counted = await prisma.rewardDelivery.updateMany({ where: { id: delivery.id, leaseToken, status: "processing" }, data: { payload, opportunityKind: delivery.opportunityKind ?? opportunity.kind, attempts: { increment: 1 } } });
       if (!counted.count) continue;
       await new Promise(resolve => setTimeout(resolve, 550));
-      const [stillEnabled, completedBeforeSend, currentOpportunities] = await Promise.all([
+      const [stillEnabled, completedBeforeSend, currentOpportunities, visitedBeforeSend] = await Promise.all([
         prisma.rewardReminder.findFirst({ where: { userId: user.id, enabled: true, tokenVersion: reminder.tokenVersion } }),
         prisma.rewardEntry.count({ where: { userId: user.id, dayKey: delivery.dayKey, kind: { in: ["action", "quiz", "profile"] }, points: { gt: 0 } } }),
         rewardOpportunities(user.id, getEffectivePlan({ ...user, plan: toPlanKey(user.plan), trialPlan: user.trialPlan ? toPlanKey(user.trialPlan) : null, betaAccess }) !== "free", user.createdAt, user.profile, now),
+        opportunity.kind === "visit" ? prisma.rewardEntry.count({ where: { userId: user.id, dayKey: delivery.dayKey, kind: "visit", points: { gt: 0 } } }) : Promise.resolve(0),
       ]);
       if (!stillEnabled) { await finish({ status: "cancelled" }); continue; }
-      if (completedBeforeSend || !currentOpportunities.opportunities.some(item => item.kind === opportunity.kind)) {
+      if (completedBeforeSend || visitedBeforeSend || opportunity.kind !== "visit" && !currentOpportunities.opportunities.some(item => item.kind === opportunity.kind)) {
         await finish({ status: "skipped" }); result.skipped++; continue;
       }
       const res = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": `nova-reward:${delivery.id}` }, body: canonicalEmailPayload(payload), signal: AbortSignal.timeout(20000) });

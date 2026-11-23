@@ -40,8 +40,8 @@ test('Compact chats keep messages and errors, separate composer actions, and hid
     }
     if (status === 'accepted') {
       assert(visible.includes('data-chat-composer')); assert(visible.includes('Unsaved draft')); assert(visible.includes('rows="1"'));
-      assert(visible.includes(zh ? '分享報告' : 'Share report')); assert(html.includes('Confirm sharing consent') || html.includes('確認同意分享'));
-      assert(visible.indexOf(zh ? '分享報告' : 'Share report') < visible.indexOf('<textarea'));
+      assert(visible.includes(zh ? '分享成果報告' : 'Share results report')); assert(html.includes('Confirm sharing consent') || html.includes('確認同意分享'));
+      assert(visible.indexOf(zh ? '分享成果報告' : 'Share results report') < visible.indexOf('<textarea'));
       assert(visible.indexOf('<textarea') < visible.indexOf(zh ? '傳送</button>' : 'Send</button>'));
     } else assert(!visible.includes('<textarea'));
     assert.equal(JSON.stringify(states), before);

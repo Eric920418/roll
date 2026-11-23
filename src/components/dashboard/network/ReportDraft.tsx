@@ -28,7 +28,7 @@ export default function ReportDraft({ disabled, onInsert }: {
         } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
         finally { setBusy(false); }
     }
-    return <div className="space-y-2"><button type="button" className="min-h-11 whitespace-nowrap rounded-full border px-4 py-2 text-base font-semibold disabled:opacity-40" disabled={disabled || busy} onClick={() => void share()}>{busy ? (zh ? '準備分享…' : 'Preparing report…') : (zh ? '分享報告' : 'Share report')}</button>{notice && <p role="status" className="text-sm">{notice}</p>}{unavailable && <Link className="inline-flex min-h-11 items-center text-sm underline" href={pathForLocale('/dashboard/agenda', locale)}>{zh ? '查看今日任務' : 'View today’s tasks'}</Link>}{error && <p role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{error}</p>}</div>;
+    return <div className="space-y-2"><button type="button" className="min-h-11 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold disabled:opacity-40" disabled={disabled || busy} onClick={() => void share()}>{busy ? (zh ? '準備分享…' : 'Preparing report…') : (zh ? '分享成果報告' : 'Share results report')}</button>{notice && <p role="status" className="text-sm">{notice}</p>}{unavailable && <Link className="inline-flex min-h-11 items-center text-sm underline" href={pathForLocale('/dashboard/agenda', locale)}>{zh ? '查看今日任務' : 'View today’s tasks'}</Link>}{error && <p role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{error}</p>}</div>;
 }
 
 export function RevokeReportShare({ planId }: { planId: string }) {
@@ -43,5 +43,5 @@ export function RevokeReportShare({ planId }: { planId: string }) {
         } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
         finally { setBusy(false); }
     }
-    return <div className="space-y-2 print:hidden">{revoked ? <p role="status">{zh ? '分享已撤銷，原連結無法再開啟。' : 'Sharing revoked. The old link can no longer be opened.'}</p> : <button type="button" disabled={busy} className="min-h-11 whitespace-nowrap rounded-full border px-4 py-2 text-base font-semibold disabled:opacity-40" onClick={() => void revoke()}>{busy ? (zh ? '撤銷中…' : 'Revoking…') : (zh ? '撤銷報告分享' : 'Revoke report sharing')}</button>}{error && <p role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{error}</p>}</div>;
+    return <div className="space-y-2 print:hidden">{revoked ? <p role="status">{zh ? '分享已撤銷，原連結無法再開啟。' : 'Sharing revoked. The old link can no longer be opened.'}</p> : <button type="button" disabled={busy} className="min-h-11 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold disabled:opacity-40" onClick={() => void revoke()}>{busy ? (zh ? '撤銷中…' : 'Revoking…') : (zh ? '撤銷報告分享' : 'Revoke report sharing')}</button>}{error && <p role="alert" className="whitespace-pre-wrap break-words text-sm text-red-800">{error}</p>}</div>;
 }

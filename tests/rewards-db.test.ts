@@ -133,10 +133,10 @@ test("Rewards integration in isolated PostgreSQL", { skip: !connectionString }, 
         await reminders.unsubscribeReminder(token);await reminders.unsubscribeReminder(token);assert(!(await db.rewardReminder.findUniqueOrThrow({where:{userId:u.id}})).enabled);
         await reminders.saveReminder(u.id,{enabled:true,time:"09:00",timeZone:"Asia/Taipei",locale:"en"},now);await assert.rejects(reminders.unsubscribeReminder(token),/失效/);
       });
-      await t.test("Effective action suppresses reminder; a visit alone does not; no opportunity means no email",async()=>{
+      await t.test("Task reminders remain available after a visit; no pending task falls back to daily return",async()=>{
         const now=new Date(),completed=await user(),visited=await user();await award(completed.id,"quiz","0");await service.claimVisit(visited.id);await schedule(completed.id,now);await schedule(visited.id,now);
         const before=calls;await reminders.runRewardReminders(now);assert.equal(calls-before,1);assert.equal((await db.rewardDelivery.findFirstOrThrow({where:{userId:completed.id}})).status,"skipped");
-        const empty=await user();await schedule(empty.id,now);opportunities=[];const baseline=calls;await reminders.runRewardReminders(now);assert.equal(calls,baseline);assert.equal((await db.rewardDelivery.findFirstOrThrow({where:{userId:empty.id}})).status,"skipped");opportunities=[{kind:"profile",href:"/dashboard/profile",points:50}];
+        const empty=await user();await schedule(empty.id,now);opportunities=[];const baseline=calls;await reminders.runRewardReminders(now);assert.equal(calls,baseline+1);const home=await db.rewardDelivery.findFirstOrThrow({where:{userId:empty.id}});assert.equal(home.status,"accepted");assert.equal(home.opportunityKind,"visit");assert.match(JSON.stringify(home.payload),/Return to Home/);assert.match(JSON.stringify(home.payload),/dashboard/);opportunities=[{kind:"profile",href:"/dashboard/profile",points:50}];
       });
       await t.test("Completing an action or unsubscribing during the send wait stops the provider request", async () => {
         const now = new Date(), completed = await user();

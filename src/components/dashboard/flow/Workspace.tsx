@@ -190,7 +190,7 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
     <header data-next-step="goal" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-dark/10 pb-3">
       <div className="min-w-0">
         {title}
-        {view.plan.roadmap && <div className="flex flex-wrap items-center gap-x-2 text-xs text-dark/55">
+        {view.plan.roadmap && <div className="flex flex-wrap items-center gap-x-4 text-base font-medium text-dark/75">
           {canEditGoal ? <button type="button" className="min-h-11 text-left hover:underline focus-visible:outline-2" aria-label={w("修改目標", "Edit goal")} onClick={() => {
             setGoal(view.plan.roadmap?.goal || "");
             setDeadline(view.plan.roadmap?.deadline || "");
@@ -199,9 +199,10 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
           <span>{w("完成日期", "Due")} {view.plan.roadmap.deadline}</span>
         </div>}
       </div>
-      <div className="ml-auto flex min-h-11 max-w-full items-center gap-3 text-xs text-dark/55">
+      <div className="ml-auto flex min-h-11 max-w-full flex-wrap items-center gap-3 text-xs text-dark/55">
         <span>{w("整體進度", "Overall progress")} {Math.round(completed / Math.max(1, view.plan.actions.length) * 100)}%</span>
         <progress className="h-1 w-20 sm:w-28 border-0 bg-dark/10 accent-black [&::-webkit-progress-bar]:bg-dark/10 [&::-webkit-progress-value]:bg-black [&::-moz-progress-bar]:bg-black" aria-label={w("整體進度", "Overall progress")} value={completed} max={Math.max(1, view.plan.actions.length)} />
+        <a href={pathForLocale("/dashboard/business-plan", locale)} className={button + " rounded-full!"}>{w("匯出商業計畫 PDF", "Export business plan PDF")}</a>
       </div>
       {editingGoal && canEditGoal && <form className="w-full space-y-3 rounded-xl border p-4" onSubmit={e => { e.preventDefault(); void mutate({ action: "goal", goal, deadline }).then(next => { if (next) setEditingGoal(false); }); }}>
         <TextField label={w("目標", "Goal")} value={goal} onChange={setGoal} />
@@ -212,7 +213,6 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
 
     {step && spec && draft && <article key={view.plan.id + ":" + step.id} id={"action-" + step.actionId} data-next-step="record" className="scroll-mt-6 space-y-6">
       <div data-task-section="priority" className="space-y-3">
-        <TaskSection title={w("本日優先行動", "Today’s priority")} />
         <section data-today-priority className="rounded-2xl bg-[#0b0b0d] p-5 text-white sm:p-6">
           <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
             <div className="min-w-0 flex-1">
@@ -312,7 +312,6 @@ export default function Workspace({ userId, plan, onChanged, title }: { title?: 
             </section>
             <aside className="min-w-0 space-y-4 rounded-2xl border border-dark/10 bg-white p-5 sm:p-6" aria-label={w("方法指引", "Method guide")}>
               <div>
-                <p className="text-[10px] tracking-wider text-dark/55">{w("方法指引", "METHOD GUIDE")}</p>
                 {firstTask && <h3 className="mt-2 text-sm font-bold">{w("如何進行一次有效的客戶對話", "How to run an effective customer conversation")}</h3>}
               </div>
               <LearningResources kind={firstTask ? "interview" : step.id === "02-1" ? "pilot" : null} question={words(spec.title, locale)} visual />
