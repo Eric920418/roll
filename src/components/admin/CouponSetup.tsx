@@ -37,7 +37,7 @@ export default function CouponSetup({ initial }: { initial: Status }) {
   return <section className="max-w-3xl space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
     <h2 className="text-lg font-semibold">優惠代碼管理 · 自訂首期折扣</h2>
     <p className="text-sm">環境：{data.environment} · {data.enabled ? "優惠總開關已開啟" : "優惠總開關未開啟"}。每帳號限一次新購優惠；後續原價自動續訂。</p>
-    <p className="text-sm text-neutral-600">折扣可填 1–99 的整數；80% OFF 表示首期付原價的 20%。設定按台北時間；結束時間不含該時刻。儲存先停用，核對四個付款方案後再啟用。停用不影響已建立訂單或訂閱；保留歷史，不提供永久刪除。</p>
+    <p className="text-sm text-neutral-600">折扣可填 1–99 的整數；80% OFF 表示首期付原價的 20%。設定按台北時間；結束時間不含該時刻。儲存先停用，核對適用週期的付款方案後再啟用。停用不影響已建立訂單或訂閱；保留歷史，不提供永久刪除。</p>
     <form onSubmit={event => { event.preventDefault(); void saveCode(code, false, true); }} className="grid gap-3 sm:grid-cols-2">
       <label className="text-sm">優惠代碼<input aria-label="新增優惠代碼" value={code} maxLength={32} required pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" onChange={event => { const value=event.target.value.toUpperCase();setCode(value);const entry=data.codes[value];setRevision(typeof entry==='object'?entry.revision:0); }} className="mt-1 block min-h-11 w-full rounded-lg border px-3 uppercase" /></label>
       <label className="text-sm">首期折扣（% OFF）<input aria-label="首期折扣百分比" type="number" min="1" max="99" step="1" required value={percent} onChange={e=>setPercent(Number(e.target.value))} className="mt-1 block min-h-11 w-full rounded-lg border px-3" /></label>
