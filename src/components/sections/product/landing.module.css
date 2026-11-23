@@ -116,6 +116,8 @@
 .roleImage { position: relative; aspect-ratio: 1.25; }
 .roleImage .assetPending { height: 100%; }
 .photo { object-fit: cover; }
+.roles > a:first-child .photo { object-position: center 30%; }
+.roles > a:last-child .photo { object-position: center top; }
 .roles h3 { font-size: 18px; font-weight: 700; line-height: 1.4; margin: 16px 0 8px; }
 .roles p { font-size: 13px; line-height: 1.7; margin: 0; }
 .editableSection { overflow-wrap: anywhere; }
