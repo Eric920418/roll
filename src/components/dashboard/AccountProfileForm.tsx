@@ -1,7 +1,7 @@
 "use client";
 
 import CountrySelect from "@/components/ui/CountrySelect";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDashboardUser } from "./DashboardUserProvider";
 import { notifyPlanChanged } from "./PlanRefresh";
 import { missingGuideFields } from "@/lib/getting-started/state";
@@ -77,6 +77,8 @@ function ChipGroup({
   );
 }
 
+const hydrationSubscription = () => () => undefined;
+
 export default function AccountProfileForm({
   initial, guided = false, canGenerate = false, companyOnly = false,
 }: {
@@ -92,6 +94,7 @@ export default function AccountProfileForm({
   const tOpt = useTranslations("Auth.options");
   const tErr = useTranslations("Auth.errors");
   const router = useRouter();
+  const hydrated = useSyncExternalStore(hydrationSubscription, () => true, () => false);
 
   const [companyName, setCompanyName] = useState(initial.companyName ?? "");
   const [industry, setIndustry] = useState(initial.industry ?? "");
@@ -169,7 +172,7 @@ export default function AccountProfileForm({
     }
   }
 
-  if (guided || companyOnly) return <form ref={formRef} id="profile" onSubmit={handleSubmit} className={companyOnly ? "min-w-0 space-y-5 rounded-2xl border border-dark/10 bg-white p-5" : "mt-7 space-y-5 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7"}>
+  if (guided || companyOnly) return <form ref={formRef} id="profile" method={companyOnly ? "post" : undefined} onSubmit={handleSubmit} className={companyOnly ? "min-w-0 space-y-5 rounded-2xl border border-dark/10 bg-white p-5" : "mt-7 space-y-5 rounded-3xl border border-sky-200 bg-sky-50/50 p-5 sm:p-7"}>
     {companyOnly ? <h2 className="text-base font-semibold">{tIcp("company")}</h2> : <div><p className="text-xs font-bold text-sky-800">{tGuide("step", { number: 1 })}</p><h2 className="mt-2 text-2xl font-bold">{tGuide("step1Title")}</h2></div>}
     <label className="block"><span className={labelClass}>{t("companyName")}</span><input name="companyName" value={companyName} onChange={e => { setCompanyName(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`} /></label>
     <label className="block"><span className={labelClass}>{tIcp("pitch")}</span><input name="oneLinePitch" maxLength={companyOnly ? 500 : 300} value={oneLinePitch} onChange={e => { setOneLinePitch(e.target.value); setSaved(false); }} className={`${fieldClass} mt-2`} /></label>
@@ -180,7 +183,7 @@ export default function AccountProfileForm({
     </div>
     {error && <p role="alert" className="whitespace-pre-wrap rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
     {saved && <p role="status" className="text-sm text-green-800">{companyOnly ? t("saved") : tGuide("profileSaved")}</p>}
-    <div className="flex flex-wrap items-center gap-4"><button type="submit" disabled={loading} className="min-h-11 rounded-xl bg-dark px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? t("saving") : t("save")}</button>{saved && !companyOnly && <Link className="inline-flex min-h-11 items-center text-sm font-bold underline" href={pathForLocale(canGenerate ? "/dashboard/agenda?guide=build" : "/dashboard/account#plan", locale)}>{tGuide(canGenerate ? "buildPlan" : "viewPlanOptions")} →</Link>}</div>
+    <div className="flex flex-wrap items-center gap-4"><button type="submit" disabled={loading || companyOnly && !hydrated} className="min-h-11 rounded-xl bg-dark px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading ? t("saving") : t("save")}</button>{saved && !companyOnly && <Link className="inline-flex min-h-11 items-center text-sm font-bold underline" href={pathForLocale(canGenerate ? "/dashboard/agenda?guide=build" : "/dashboard/account#plan", locale)}>{tGuide(canGenerate ? "buildPlan" : "viewPlanOptions")} →</Link>}</div>
     {!companyOnly && <Link className="inline-flex min-h-11 items-center text-sm underline" href={pathForLocale("/dashboard/account#profile", locale)}>{tGuide("otherDetails")}</Link>}
   </form>;
 
