@@ -102,7 +102,9 @@ test("NOVA 區塊預設內容、中英覆寫及共用圖片、日期、連結沿
   assert.equal(network["founders.title.zh-tw"], "創業夥伴");
   assert.equal(network["founders.title.en"], "Founder ecosystem");
   assert.equal(network["founders.image"], blob);
-  assert.equal(network["mentors.image"], "");
+  assert.equal(network["mentors.image"], "/nova/network/mentors.webp");
+  assert.equal(resolveNovaLanding("network", { "founders.image": "" })["founders.image"], "");
+  assert.equal(validateNovaLanding("network", { "founders.image": "/nova/network/mentors.webp" }).length, 1);
 
   const community = resolveNovaLanding("community", { "roundtable.date": "2026-12-05", "roundtable.body.en": "" });
   assert.equal(community["roundtable.body.en"], "");

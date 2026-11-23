@@ -40,7 +40,7 @@ export const novaLandingSections = {
         ...bilingual(`${role.id}.imageLabel`, "圖片待補說明",
           ({ founders: "照片：創辦人交流", mentors: "照片：導師討論", investors: "照片：投資人會面", partners: "照片：同產業前輩交流", buyers: "照片：海外市場交流" })[role.id],
           ({ founders: "Photo: Founders exchanging ideas", mentors: "Photo: Mentor discussion", investors: "Photo: Investor meeting", partners: "Photo: Industry peers", buyers: "Photo: Overseas market exchange" })[role.id]),
-        field(`${role.id}.image`, "卡片圖片（清空顯示設計稿待補位置）", "image"),
+        field(`${role.id}.image`, "卡片圖片（清空顯示設計稿待補位置）", "image", `/nova/network/${role.id === "buyers" ? "overseas-markets" : role.id}.webp`),
       ] })),
     ],
   },
