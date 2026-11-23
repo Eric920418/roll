@@ -100,7 +100,7 @@ test("NOVA 區塊預設內容、中英覆寫及共用圖片、日期、連結沿
     "mentors.image": "https://untrusted.example/image.jpg",
   });
   assert.equal(network["founders.title.zh-tw"], "創業夥伴");
-  assert.equal(network["founders.title.en"], "Founders");
+  assert.equal(network["founders.title.en"], "Founder ecosystem");
   assert.equal(network["founders.image"], blob);
   assert.equal(network["mentors.image"], "");
 

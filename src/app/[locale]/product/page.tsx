@@ -2,7 +2,6 @@ import { activeBillingCatalog, tokenQuote } from "@/lib/billing/commerce";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import s from "@/components/sections/product/landing.module.css";
-import Footer from "@/components/layout/Footer";
 import ProductNav from "@/components/sections/product/ProductNav";
 import NovaLanding from "@/components/sections/product/NovaLanding";
 import Pricing from "@/components/sections/product/Pricing";
@@ -79,7 +78,6 @@ export default async function ProductPage({ params }: Props) {
     <main className={`nova-theme ${s.square}`} data-brand="nova">
       <ProductNav />
       <NovaLanding locale={language} pricing={pricing} />
-      <Footer brand="nova" />
     </main>
   );
 }

@@ -1,17 +1,52 @@
 "use client";
-import { useState } from 'react';
-import { useLocale } from 'next-intl';
-import { memberFetch } from '@/lib/member-fetch';
-export default function Newsletter() {
-    const zh = useLocale() === 'zh-tw', [email, setEmail] = useState(''), [consent, setConsent] = useState(false), [busy, setBusy] = useState(false), [done, setDone] = useState(false), [error, setError] = useState('');
-    return <section className="mx-6 mb-14 rounded-xl bg-black px-6 py-12 text-white md:mx-auto md:max-w-[1312px]"><div className="mx-auto max-w-2xl"><h2 className="text-2xl font-semibold tracking-tight md:text-4xl">{zh ? '每週，為下一個決定多一份證據。' : 'A little more evidence for your next decision.'}</h2><p className="mt-4 text-sm text-white/65">{zh ? '訂閱 NOVA 創辦人指南。每週一封，只分享已公開的內容，隨時可退訂。' : 'Subscribe to NOVA founder guides. One weekly email with published resources. Unsubscribe any time.'}</p><form className="mt-7 space-y-4" onSubmit={e => {
-            e.preventDefault();
-            if (busy)
-                return;
-            setBusy(true);
-            setError('');
-            void memberFetch('/api/newsletter', { method: 'POST', body: JSON.stringify({ email: email.trim(), consent, locale: zh ? 'zh-tw' : 'en', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, company: String(new FormData(e.currentTarget).get('company') || '') }) }).then(() => setDone(true)).catch(e => setError(e instanceof Error ? e.message : String(e))).finally(() => setBusy(false));
-        }}><label className="block text-sm">{zh ? 'Email 地址' : 'Email address'}<input className="mt-2 min-h-12 w-full rounded-md bg-white px-4 text-black" type="email" autoComplete="email" maxLength={254} required disabled={busy} value={email} onChange={e => { setEmail(e.target.value); setDone(false); }}/></label><div className="hidden" aria-hidden="true"><label>Company<input name="company" tabIndex={-1} autoComplete="off"/></label></div><label className="flex min-h-11 items-start gap-3 py-2 text-sm"><input className="mt-1 h-5 w-5 shrink-0" type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} required disabled={busy}/>{zh ? '我同意收到確認信，確認 Email 後訂閱每週電子報。' : 'I agree to receive a confirmation email and, after verifying my address, weekly newsletters.'}</label><button type="submit" className="min-h-11 rounded-md bg-white px-6 py-3 text-sm font-semibold text-black disabled:opacity-50" disabled={!consent || busy}>{busy ? (zh ? '處理中…' : 'Working…') : (zh ? '寄送訂閱確認信' : 'Request confirmation email')} ↗</button></form>{done && <p role="status" className="mt-4 text-sm">{zh ? '若此信箱需要確認，確認信已排入寄送（通常約 15 分鐘）。確認前不寄週報；已訂閱者不會重複加入。' : 'If verification is needed, a confirmation email is queued (normally within about 15 minutes). No weekly emails before confirmation; existing subscriptions are not duplicated.'}</p>}{error && <p role="alert" className="mt-4 whitespace-pre-wrap break-words rounded border border-red-200 p-4 text-sm text-red-200">{error}</p>}</div></section>;
+import { useState } from "react";
+import { useLocale } from "next-intl";
+import { memberFetch } from "@/lib/member-fetch";
+import s from "./landing.module.css";
+
+export default function Newsletter({ embedded = false }: { embedded?: boolean }) {
+  const zh = useLocale() === "zh-tw";
+  const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+  return <section className={embedded ? s.newsletter : s.newsletterStandalone} aria-labelledby="newsletter-heading">
+    <h2 id="newsletter-heading">{zh ? "每週，為下一個決定多一份證據。" : "More evidence for your next decision, every week."}</h2>
+    <p>{zh ? "訂閱 NOVA 創辦人指南，每週一封，隨時可退訂。" : "Subscribe to NOVA founder guides. One email each week. Unsubscribe anytime."}</p>
+    <form onSubmit={async event => {
+      event.preventDefault();
+      if (busy) return;
+      const company = String(new FormData(event.currentTarget).get("company") || "");
+      setBusy(true);
+      setError("");
+      try {
+        await memberFetch("/api/newsletter", { method: "POST", body: JSON.stringify({
+          email: email.trim(), consent, locale: zh ? "zh-tw" : "en",
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, company,
+        }) });
+        setDone(true);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setBusy(false);
+      }
+    }}>
+      <label htmlFor="nova-newsletter-email">{zh ? "Email 地址" : "Email address"}</label>
+      <div className={s.newsletterInput}>
+        <input id="nova-newsletter-email" type="email" autoComplete="email" maxLength={254} required disabled={busy}
+          value={email} onChange={event => { setEmail(event.target.value); setDone(false); }} />
+        <button type="submit" disabled={!consent || busy}>{busy ? (zh ? "處理中…" : "Sending…") : (zh ? "訂閱" : "Subscribe")}</button>
+      </div>
+      <div className="hidden" aria-hidden="true"><label>Company<input name="company" tabIndex={-1} autoComplete="off" /></label></div>
+      <label className={s.newsletterConsent}><input type="checkbox" checked={consent} required disabled={busy}
+        onChange={event => setConsent(event.target.checked)} />
+        <span>{zh ? "我同意收到確認信，確認 Email 後訂閱每週電子報。" : "I agree to a confirmation email and, after verifying my email, weekly newsletters."}</span>
+      </label>
+    </form>
+    {done && <p role="status">{zh ? "若此信箱需要確認，確認信已排入寄送。請開啟信件確認；已訂閱者不會重複加入。" : "If verification is needed, a confirmation email is queued. Open it to confirm. Existing subscriptions are not duplicated."}</p>}
+    {error && <p role="alert" className="whitespace-pre-wrap break-words text-red-200">{error}</p>}
+  </section>;
 }
 export function NewsletterAction({ action, token }: {
     action: 'confirm' | 'unsubscribe';
