@@ -195,8 +195,9 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       assert.equal(body.max_charge_cents, 0); assert(key);
       if (mode === "exhausted") return Response.json({ error: { code: "free_allowance_exhausted" } }, { status: 402 });
       let result = vendor.get(key!);
-      if (!result) { const delivered = mode.startsWith("partial") ? 2 : mode === "empty-completed" ? 0 : mode === "over-delivery" ? 6 : body.count; const companies = Array.from({ length: delivered }, () => providerCompany(++sequence)); result = { order_id: randomUUID(), icp_id: body.icp_id, icp_version: body.icp_version, requested_count: body.count, delivered_count: delivered, companies, status: "completed", created_at: new Date().toISOString(), delivered_at: new Date().toISOString(), billing: { period: utcPeriod(), currency: "USD", max_charge_cents: 0, amount_cents: 0, free_companies: delivered, paid_companies: 0 } }; vendor.set(key!, result); }
+      if (!result) { const delivered = mode.startsWith("partial") ? 2 : mode === "empty-completed" ? 0 : mode === "over-delivery" ? 6 : body.count; const companies = Array.from({ length: delivered }, () => providerCompany(++sequence)); result = { order_id: randomUUID(), icp_id: body.icp_id, icp_version: body.icp_version, requested_count: body.count, qualified_only: body.qualified_only ?? false, delivered_count: delivered, companies, status: "completed", created_at: new Date().toISOString(), delivered_at: new Date().toISOString(), billing: { period: utcPeriod(), currency: "USD", max_charge_cents: 0, amount_cents: 0, free_companies: delivered, paid_companies: 0 } }; vendor.set(key!, result); }
       if (mode === "uncertain") { mode = "complete"; throw new Error("Connection closed after vendor acceptance"); }
+      if (mode === "partial-fallback") return Response.json({ ...result, qualified_only: false });
       if (mode === "partial-billing") return Response.json({ ...result, billing: { ...(result.billing as object), free_companies: body.count } });
       if (mode === "partial-array") return Response.json({ ...result, companies: (result.companies as unknown[]).slice(0, 1) });
       if (mode === "queued" || mode === "partial-queued") return Response.json({ ...result, created_at: String(result.created_at).replace("Z", "+00:00"), status: "queued", delivered_count: 0, companies: [], delivered_at: null, billing: { ...(result.billing as object), free_companies: 0 } }, { status: 202, headers: { "Retry-After": "30" } });
@@ -311,7 +312,7 @@ test("Omrade durable orders in isolated PostgreSQL", { skip: !process.env.ROLL_R
       assert.deepEqual(await balance(user.id), [150, 0]); await clean(user.id);
     });
     await t.test("Partial receipts must reconcile exact company count and free usage; empty completion and overdelivery retain holds", async () => {
-      for (const invalidMode of ["partial-billing", "partial-array", "empty-completed", "over-delivery"]) {
+      for (const invalidMode of ["partial-billing", "partial-array", "partial-fallback", "empty-completed", "over-delivery"]) {
         const user = await member(); mode = invalidMode;
         const order = await service.createProspectOrder(user.id, input()); await worker.runProspecting(user.id);
         const result = await service.getProspectOrder(user.id, order.id);

@@ -70,7 +70,7 @@ async function acceptResponse(order: ProspectingOrder, token: string, payload: u
   const failureMessage = failure === "insufficient_matches" && qualifiedOnly
     ? "供應商找不到符合條件的新公司 / Provider found no qualifying new companies"
     : failure ? failureMessages[failure] : "供應商未交付公司 / Provider delivered no companies";
-  if (data.requested_count !== order.count || data.icp_id !== order.omradeIcpId || data.icp_version !== order.omradeIcpVersion || (order.providerOrderId && data.order_id !== order.providerOrderId) || data.billing.period !== new Date(data.created_at).toISOString().slice(0, 7) ||
+  if (data.requested_count !== order.count || data.icp_id !== order.omradeIcpId || data.icp_version !== order.omradeIcpVersion || (data.qualified_only !== undefined && data.qualified_only !== qualifiedOnly) || (order.providerOrderId && data.order_id !== order.providerOrderId) || data.billing.period !== new Date(data.created_at).toISOString().slice(0, 7) ||
     (data.status === "completed" && (data.delivered_count < 1 || data.delivered_count > order.count || (!qualifiedOnly && data.delivered_count !== order.count) || data.companies.length !== data.delivered_count || data.billing.free_companies !== data.delivered_count || !data.delivered_at)) ||
     (data.status !== "completed" && (data.delivered_count !== 0 || data.companies.length !== 0 || data.billing.free_companies !== 0 || data.delivered_at !== null))) throw new OmradeError(503, "provider_contract", 60, requestId);
   await prisma.$transaction(async raw => {

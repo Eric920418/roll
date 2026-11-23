@@ -21,6 +21,7 @@ export class OmradeError extends ProspectingError {
 export const icpResponse = z.object({ icp_id: z.string().uuid(), version: z.number().int().positive() });
 export const orderResponse = z.object({
   order_id: z.string().uuid(), icp_id: z.string().uuid(), icp_version: z.number().int().positive(), status: z.enum(["queued", "running", "completed", "failed"]),
+  qualified_only: z.boolean().optional(),
   requested_count: z.union([z.literal(5), z.literal(10)]), delivered_count: z.number().int().min(0).max(10), created_at: z.iso.datetime({ offset: true }),
   delivered_at: z.iso.datetime({ offset: true }).nullable(), companies: z.array(z.unknown()).max(10),
   billing: z.object({ period: z.string().regex(/^\d{4}-\d{2}$/), currency: z.literal("USD"), max_charge_cents: z.literal(0), amount_cents: z.number().int().min(0).max(0), free_companies: z.number().int().min(0).max(10), paid_companies: z.literal(0) }),
