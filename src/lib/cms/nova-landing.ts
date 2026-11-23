@@ -76,7 +76,7 @@ export const novaLandingSections = {
           ...bilingual(`${id}.imageLabel`, "圖片待補說明", images[0], images[1]),
           ...bilingual(`${id}.body`, "內文", bodies[0], bodies[1], "textarea"),
           field(`${id}.link`, "卡片連結（選填，點標題開啟）", "url"),
-          field(`${id}.image`, "卡片圖片（選填）", "image"),
+          field(`${id}.image`, "卡片圖片（選填）", "image", `/nova/community/${roundtable ? "roundtable-event" : forum ? "nccu-campus" : "ixdf-founders-night"}.webp`),
         ] };
       }),
     ],
@@ -100,9 +100,9 @@ export function novaLandingHttps(value: string): string | null {
   }
 }
 
-function validField({ type }: Field, value: unknown): value is string {
+function validField({ type, defaultValue }: Field, value: unknown): value is string {
   if (typeof value !== "string") return false;
-  if (type === "image") return validRollonAsset(value, "");
+  if (type === "image") return validRollonAsset(value, defaultValue);
   if (type === "url") return value === "" || (value.length <= 2000 && novaLandingHttps(value) !== null);
   if (type === "date") {
     if (value === "") return true;

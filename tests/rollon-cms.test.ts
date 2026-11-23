@@ -106,6 +106,9 @@ test("NOVA 區塊預設內容、中英覆寫及共用圖片、日期、連結沿
 
   const community = resolveNovaLanding("community", { "roundtable.date": "2026-12-05", "roundtable.body.en": "" });
   assert.equal(community["roundtable.body.en"], "");
+  assert.equal(resolveNovaLanding("community", { "roundtable.image": "" })["roundtable.image"], "");
+  assert.equal(resolveNovaLanding("community", { "roundtable.image": blob })["roundtable.image"], blob);
+  assert.equal(validateNovaLanding("community", { "roundtable.image": "/nova/community/nccu-campus.webp" }).length, 1);
   assert.equal(novaCommunityDate(community["roundtable.date"], "zh-tw"), "2026 年 12 月 5 日");
   assert.equal(novaCommunityDate(community["roundtable.date"], "en"), "DEC 5 · 2026");
   assert.equal(novaLandingHttps("https://example.com/event"), "https://example.com/event");
