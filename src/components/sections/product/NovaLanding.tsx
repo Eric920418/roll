@@ -47,7 +47,7 @@ export default async function NovaLanding({ locale, pricing }: { locale: Locale;
       photo: "customer-conversation", href: signup },
     { n: "04", label: w("今日任務", "Today's priority"), title: w("每天聚焦一件最重要的事", "Focus on one priority every day"),
       body: w("5 個里程碑，進度清楚可追蹤。", "Five milestones with progress you can track."),
-      photo: null, href: path("/dashboard/agenda") },
+      photo: "founder-laptop", href: path("/dashboard/agenda") },
   ];
   const people = [
     { key: "vivian-lee", name: "Vivian Lee",
