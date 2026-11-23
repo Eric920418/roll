@@ -30,7 +30,8 @@ for (const locale of ['en', 'zh-tw'] as const)
         assert.equal((html.match(/<h1/g) || []).length, 1);
         assert(html.includes(routes.pathForLocale('/signup', locale)));
         assert(!html.includes('Inside NOVA AI') && !html.includes('NOVA AI 幕後'));
-        assert(!html.includes('/medix-') && !html.includes('/nova/cases/'));
+        assert(!html.includes('/medix-'));
+        for (const photo of ['quibi-91bcf9c1', 'dropbox-aafb77a9', 'zappos-ae8d7035']) assert(html.includes(`/nova/cases/${photo}.webp`));
         for (const photo of ['founder-talk', 'market-roundtable', 'founder-roundtable', 'customer-conversation']) {
             assert(html.includes(`/nova/community/${photo}.webp`));
         }

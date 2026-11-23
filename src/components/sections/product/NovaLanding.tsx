@@ -63,15 +63,15 @@ export default async function NovaLanding({ locale, pricing }: { locale: Locale;
       description: w("負責 NOVA AI 與 Roll On 的品牌視覺與設計。", "Leads brand identity and design for NOVA AI and Roll On.") },
   ];
   const caseStudies = [
-    { name: "QUIBI", metric: "$1.75B", label: w("先建置", "BUILD FIRST"),
+    { name: "QUIBI", image: "quibi-91bcf9c1", metric: "$1.75B", label: w("先建置", "BUILD FIRST"),
       summary: w("募資金額；上線約六個月後宣布關閉", "Raised, then announced closure about six months after launch"),
       link: w("為什麼資金買不到需求", "Why funding can't buy demand"),
       source: "https://www.spglobal.com/market-intelligence/en/news-insights/research/quibis-2-billion-bet-on-mobile-video-fizzles-out" },
-    { name: "DROPBOX", metric: "15×", label: w("先驗證", "VALIDATE FIRST"),
+    { name: "DROPBOX", image: "dropbox-aafb77a9", metric: "15×", label: w("先驗證", "VALIDATE FIRST"),
       summary: w("一支示範影片帶來的候補名單成長", "Waitlist growth from one demo video"),
       link: w("一支影片如何驗證需求", "How one video proved demand"),
       source: "https://www.inc.com/30under30/2011/profile-drew-houston-and-arash-ferdowsi-founders-dropbox.html" },
-    { name: "ZAPPOS", metric: "0", label: w("先驗證", "VALIDATE FIRST"),
+    { name: "ZAPPOS", image: "zappos-ae8d7035", metric: "0", label: w("先驗證", "VALIDATE FIRST"),
       summary: w("第一筆成交前的庫存", "Inventory before the first sale"),
       link: w("先成交，再建置", "Selling before building"),
       source: "https://openclassrooms.com/en/courses/4544561-learn-about-lean-startup/4544568-the-lean-startup-cycle" },
@@ -109,6 +109,7 @@ export default async function NovaLanding({ locale, pricing }: { locale: Locale;
       <Link className={s.reportBanner} href={path(REPORT_PAGE)}><span>{w("下載 2026 第四季台灣市場進入報告 →", "Download the Q4 2026 Taiwan Market Entry Report →")}</span><small>From visions to big impacts</small></Link>
       <div className={s.sectionHeading}><h2 id="evidence-heading">{w("願景很昂貴。", "Vision is expensive.")}<br /><span>{w("證據，不必昂貴。", "Evidence is not.")}</span></h2></div>
       <div className={`${s.three} ${s.caseStats}`}>{caseStudies.map(c => <article key={c.name}>
+        <div className={s.caseImage}><Image src={`/nova/cases/${c.image}.webp`} alt={w(`${c.name} 案例照片`, `${c.name} case study photo`)} fill sizes="(max-width: 767px) 100vw, 380px" className={s.casePhoto} /></div>
         <p className={s.eyebrow}>{c.label} · {c.name}</p><h3 className={s.caseNumber}>{c.metric}</h3><p className={s.caseSummary}>{c.summary}</p>
         <a className={s.caseSource} href={c.source} target="_blank" rel="noopener noreferrer">{c.link}<span aria-hidden="true">↗</span></a>
       </article>)}</div>
