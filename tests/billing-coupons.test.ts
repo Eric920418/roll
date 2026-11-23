@@ -358,3 +358,12 @@ test("The public first-month offer is 20% once, with full monthly renewals and n
   const changed=structuredClone(plans.PLAN_CONFIG); changed.pro.variants!.month.amountMinor=5000;
   await assert.rejects(offers.publicFirstMonthOffer(changed),/match|不符/);
 });
+
+test("Coupon setup renders deterministic Taipei dates and enables a mapped monthly-only offer", () => {
+  const load=loader({react:{useState:(value:unknown)=>[value,()=>{}]}},env);
+  const Setup=load<typeof import("../src/components/admin/CouponSetup")>("src/components/admin/CouponSetup.tsx").default;
+  const html=native("react-dom/server").renderToStaticMarkup(native("react").createElement(Setup,{initial:{environment:"sandbox",enabled:true,plans:[],codes:{NOVA80:{enabled:false,percentOff:80,startsAt:"2026-11-22T16:00:00.000Z",endsAt:"2099-01-01T00:00:00.000Z",revision:1,plans:{"sandbox:pro:month":"P-PRO","sandbox:business:month":"P-BUSINESS"}}}}}));
+  assert(html.includes("2026-11-23 00:00"));
+  assert(!html.includes("上午")&&!html.includes("四個付款方案"));
+  assert.match(html,/<button(?![^>]*disabled)[^>]*aria-label="啟用 NOVA80"/);
+});

@@ -4,13 +4,14 @@ import { readAdminResponse } from "@/lib/cms/admin-response";
 import type { couponSetupStatus } from "@/lib/billing/coupon-setup";
 import { couponIntervals } from "@/lib/billing/coupons";
 type Status = Awaited<ReturnType<typeof couponSetupStatus>>;
+const taipeiInputTime = (value: string) => new Date(Date.parse(value) + 8 * 3600000).toISOString().slice(0,16);
 export default function CouponSetup({ initial }: { initial: Status }) {
   const [data, setData] = useState(initial), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(""), [code, setCode] = useState("");
   const [percent, setPercent] = useState(60), [starts, setStarts] = useState("2026-11-01T00:00"), [ends, setEnds] = useState("2026-12-01T00:00"), [revision, setRevision] = useState(0);
   function edit(value: string) {
     const entry = data.codes[value]; setCode(value); setRevision(typeof entry === "object" ? entry.revision : 0);
     setPercent(typeof entry === "object" ? entry.percentOff : 60);
-    const local = (value: string) => new Date(Date.parse(value) + 8 * 3600000).toISOString().slice(0,16);
+    const local = taipeiInputTime;
     setStarts(typeof entry === "object" ? local(entry.startsAt) : "2026-11-01T00:00"); setEnds(typeof entry === "object" ? local(entry.endsAt) : "2026-12-01T00:00");
   }
   async function prepare(customCode?: string) {
@@ -47,7 +48,7 @@ export default function CouponSetup({ initial }: { initial: Status }) {
     </form>
     <ul className="space-y-3">{Object.entries(data.codes).map(([value, entry]) => { const custom=typeof entry==='object',enabled=custom?entry.enabled:entry,ready=!custom||(['pro','business'].every(plan=>couponIntervals(value).every(period=>Boolean(entry.plans[`${data.environment}:${plan}:${period}`])))); return <li key={value} className="space-y-2 rounded-lg border p-3">
       <p className="break-all text-sm font-semibold">{value} · {enabled ? '啟用' : '停用'} · {custom?entry.percentOff:60}% OFF{!ready?' · 付款方案待核對':''}</p>
-      {custom&&<p className="text-sm">{new Date(entry.startsAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})} 至 {new Date(entry.endsAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}（台北）</p>}
+      {custom&&<p className="text-sm">{taipeiInputTime(entry.startsAt).replace("T", " ")} 至 {taipeiInputTime(entry.endsAt).replace("T", " ")}（台北）</p>}
       <div className="flex flex-wrap gap-2"><button type="button" disabled={busy} className="min-h-11 rounded-lg border px-4 text-sm" onClick={()=>edit(value)} aria-label={`編輯 ${value}`}>編輯</button>{custom&&<button type="button" disabled={busy} className="min-h-11 rounded-lg border px-4 text-sm" onClick={()=>void prepare(value)} aria-label={`核對 ${value}`}>核對付款方案</button>}<button type="button" disabled={busy||(!enabled&&!ready)} onClick={()=>void saveCode(value,!enabled)} className="min-h-11 rounded-lg border px-4 text-sm disabled:opacity-50" aria-label={`${enabled?'停用':'啟用'} ${value}`}>{enabled?'停用':'啟用'}</button></div>
     </li>;})}</ul>
     <details><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">舊版 11 月 60% 活動付款設定</summary><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">方案</th><th className="p-2">首期</th><th className="p-2">後續每期</th><th className="p-2">設定狀態</th></tr></thead><tbody>{data.plans.map(p => <tr key={p.env} className="border-t"><td className="p-2">{p.plan === "pro" ? "SPARK" : "NOVA"} · {p.interval === "month" ? "月繳" : "年繳"}</td><td className="p-2">US${(p.firstAmountMinor / 100).toFixed(2)}</td><td className="p-2">US${(p.regularAmountMinor / 100).toFixed(2)}</td><td className="break-all p-2">{p.configuredId ? "已設定" : p.preparedId ? "已準備，待啟用設定" : "待建立"}<span className="block text-xs">{p.preparedId || p.configuredId}</span></td></tr>)}</tbody></table></div>
