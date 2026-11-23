@@ -87,6 +87,16 @@ test("Earned free month: actual cancellation, replay, timeout recovery, expiry a
       assert.equal(gate.getEffectivePlan({ ...member, betaAccess: false } as unknown as Account, benefit.endsAt!), "free");
       await months.redeemFreeMonth(f.inviter.id, f.benefit.id, randomUUID(), now); assert.equal(cancels, before + 1);
     });
+    await t.test("existing trial dates remain independent from authoritative paid-through", async () => {
+      const f = await fixture(), sub = await monthly(f.inviter.id), trialEnd = new Date("2027-02-01T12:00:00Z");
+      await db.user.update({ where: { id: f.inviter.id }, data: { trialPlan: "business", trialStartsAt: now, trialEndsAt: trialEnd } });
+      const benefit = await months.redeemFreeMonth(f.inviter.id, f.benefit.id, randomUUID(), now);
+      const member = await db.user.findUniqueOrThrow({ where: { id: f.inviter.id } });
+      assert.equal(member.currentPeriodEnd?.toISOString(), new Date(sub.actualEnd).toISOString());
+      assert.equal(member.trialEndsAt?.toISOString(), trialEnd.toISOString());
+      assert.equal(benefit.startsAt?.toISOString(), new Date(sub.actualEnd).toISOString());
+      assert.equal(gate.getEffectivePlan({ ...member, betaAccess: false, trialPlan: null, trialEndsAt: null } as unknown as Account, new Date("2027-01-15T12:00:00Z")), "free");
+    });
     await t.test("lost cancellation response grants nothing until same cancellation is verified; annual cannot be cancelled", async () => {
       const f = await fixture(), sub = await monthly(f.inviter.id), before = cancels; timeoutAfterCancel = true;
       await assert.rejects(months.redeemFreeMonth(f.inviter.id, f.benefit.id, randomUUID(), now), /not active/);

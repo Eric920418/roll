@@ -47,8 +47,7 @@ export async function redeemFreeMonth(userId: string, benefitId: string, request
     if (sub && (sub.billingInterval !== "month" || !sub.currentPeriodEnd || !["pro", "business"].includes(sub.plan))) throw conflict("目前不是可核對的月繳訂閱；免費月會保留，不取消年繳", "A verified monthly subscription is required; annual access is retained");
     if (benefit.status === "claiming" && benefit.subscriptionId && sub && sub.paypalSubscriptionId !== benefit.subscriptionId) throw conflict("訂閱已變動，請聯絡管理員核對原兌換", "Your subscription changed; ask an administrator to review the original redemption");
     const subscriptionId = benefit.status === "claiming" ? benefit.subscriptionId : sub?.paypalSubscriptionId ?? null;
-    const existingTrialEnd = member.trialPolicy !== "interviews-3-v1" && ["pro", "business", "enterprise"].includes(member.trialPlan ?? "") ? member.trialEndsAt?.getTime() ?? 0 : 0;
-    const startsAt = new Date(Math.max(now.getTime(), existingTrialEnd, sub?.currentPeriodEnd?.getTime() ?? 0, benefit.status === "claiming" ? benefit.startsAt?.getTime() ?? 0 : 0));
+    const startsAt = new Date(Math.max(now.getTime(), sub?.currentPeriodEnd?.getTime() ?? 0, benefit.status === "claiming" ? benefit.startsAt?.getTime() ?? 0 : 0));
     const plan = sub?.plan ?? benefit.plan;
     const reserved = await tx.referralFreeMonth.update({ where: { id: benefit.id }, data: { status: "claiming", plan, subscriptionId, requestId: benefit.requestId ?? requestId, startsAt, endsAt: freeMonthEnd(startsAt), leaseUntil: new Date(now.getTime() + 90000), lastError: null } });
     return { complete: false as const, benefit: reserved };
