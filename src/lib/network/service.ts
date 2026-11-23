@@ -10,7 +10,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { changed, MemberError } from "@/lib/member-http";
 import { checkRateLimit, DAY_MS } from "@/lib/rate-limit";
-import { acceptedConnection, activeShare, features, networkAccount, requireNetwork } from "./access";
+import { acceptedConnection, activeShare, features, networkAccount, requireNetwork, requireInvestorOutreach } from "./access";
 import { CONDITIONS, connectionSchema, inviteSchema, messageSchema, networkEnabled, pairKey, shareSchema, weekKey, visitorPeriods } from "./policy";
 import { progressSnapshot, evaluateWatches } from "./watches";
 import { queueNotification } from "./notifications";
@@ -52,6 +52,7 @@ export async function invite(userId: string, input: z.infer<typeof inviteSchema>
     if (row?.status === "blocked") throw new MemberError("此連結無法接受邀請 / Connection unavailable", 403);
     if (row?.status === "declined" && Date.now() - row.updatedAt.getTime() < 7 * DAY_MS) throw new MemberError("邀請已拒絕，七天後可再試 / Invitation declined; retry after seven days", 409);
     if (!row || ["declined", "expired", "cancelled"].includes(row.status)) {
+      if (memberRoles(target).includes("investor") && !(await networkAccount(userId, tx)).verifiedInvestor) await requireInvestorOutreach(userId, tx);
       await requireReceiving(tx, target.userId);
       const pricing = await memberTokenQuote(tx, userId);
       if (!input.requestId || !input.opening) throw new MemberError("請確認開場訊息與費用 / Confirm your opening message and fee", 400);

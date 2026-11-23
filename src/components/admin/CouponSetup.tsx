@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { readAdminResponse } from "@/lib/cms/admin-response";
 import type { couponSetupStatus } from "@/lib/billing/coupon-setup";
+import { couponIntervals } from "@/lib/billing/coupons";
 type Status = Awaited<ReturnType<typeof couponSetupStatus>>;
 export default function CouponSetup({ initial }: { initial: Status }) {
   const [data, setData] = useState(initial), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(""), [code, setCode] = useState("");
@@ -15,12 +16,13 @@ export default function CouponSetup({ initial }: { initial: Status }) {
   async function prepare(customCode?: string) {
     if (busy) return; setBusy(true); setError(""); setNotice("");
     try {
-      for (const p of data.plans) {
+      const applicable = data.plans.filter(p => !customCode || couponIntervals(customCode).includes(p.interval));
+      for (const p of applicable) {
         setNotice(`核對 ${p.plan === "pro" ? "SPARK" : "NOVA"} ${p.interval === "month" ? "月繳" : "年繳"}…`);
         await readAdminResponse(await fetch("/api/admin/billing/coupon", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: p.plan, interval: p.interval, ...(customCode ? { code: customCode } : {}) }) }));
         setData(await readAdminResponse(await fetch("/api/admin/billing/coupon", { cache: "no-store" })) as Status);
       }
-      setNotice("四個付款方案已核對；自訂代碼可按「啟用」。原 11 月活動仍沿用原環境設定。不會建立會員訂閱或扣款。");
+      setNotice(`${applicable.length} 個適用付款方案已核對；自訂代碼可按「啟用」。原 11 月活動仍沿用原環境設定。不會建立會員訂閱或扣款。`);
     } catch (cause) { setNotice(""); setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setBusy(false); }
   }
@@ -43,7 +45,7 @@ export default function CouponSetup({ initial }: { initial: Status }) {
       <label className="text-sm">結束時間（台北）<input aria-label="結束時間（台北）" type="datetime-local" required value={ends} onChange={e=>setEnds(e.target.value)} className="mt-1 block min-h-11 w-full rounded-lg border px-3" /></label>
       <button disabled={busy || !code.trim()} className="min-h-11 rounded-lg bg-neutral-900 px-4 text-sm text-white disabled:opacity-50">儲存為停用</button>
     </form>
-    <ul className="space-y-3">{Object.entries(data.codes).map(([value, entry]) => { const custom=typeof entry==='object',enabled=custom?entry.enabled:entry,ready=!custom||(['pro','business'].every(plan=>['month','year'].every(period=>Boolean(entry.plans[`${data.environment}:${plan}:${period}`])))); return <li key={value} className="space-y-2 rounded-lg border p-3">
+    <ul className="space-y-3">{Object.entries(data.codes).map(([value, entry]) => { const custom=typeof entry==='object',enabled=custom?entry.enabled:entry,ready=!custom||(['pro','business'].every(plan=>couponIntervals(value).every(period=>Boolean(entry.plans[`${data.environment}:${plan}:${period}`])))); return <li key={value} className="space-y-2 rounded-lg border p-3">
       <p className="break-all text-sm font-semibold">{value} · {enabled ? '啟用' : '停用'} · {custom?entry.percentOff:60}% OFF{!ready?' · 付款方案待核對':''}</p>
       {custom&&<p className="text-sm">{new Date(entry.startsAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})} 至 {new Date(entry.endsAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}（台北）</p>}
       <div className="flex flex-wrap gap-2"><button type="button" disabled={busy} className="min-h-11 rounded-lg border px-4 text-sm" onClick={()=>edit(value)} aria-label={`編輯 ${value}`}>編輯</button>{custom&&<button type="button" disabled={busy} className="min-h-11 rounded-lg border px-4 text-sm" onClick={()=>void prepare(value)} aria-label={`核對 ${value}`}>核對付款方案</button>}<button type="button" disabled={busy||(!enabled&&!ready)} onClick={()=>void saveCode(value,!enabled)} className="min-h-11 rounded-lg border px-4 text-sm disabled:opacity-50" aria-label={`${enabled?'停用':'啟用'} ${value}`}>{enabled?'停用':'啟用'}</button></div>

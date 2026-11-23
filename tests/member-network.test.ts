@@ -78,6 +78,19 @@ test("Member network transactions, privacy, evidence, weekly deduplication and n
     const tokens = load<typeof import("../src/lib/tokens/service")>("src/lib/tokens/service.ts");
     await db.$transaction(tx => tokens.grantTokens(tx, investor.id, 150, `qa-investor:${investor.id}`, "QA fixture grant"));
     const journey = await db.discoveryJourney.create({ data: { userId: owner.id } });
+    await t.test("Investor outreach requires first-stage completion before reserving Tokens, without changing existing conversations", async () => {
+      const target = await user("free", true);
+      const request = { profileId: target.matchmakingProfile!.id, requestId: randomUUID(), pricingVersion: 1, opening: "QA investor introduction", conditions: [] };
+      const reservations = await db.tokenReservation.count({ where: { userId: owner.id } });
+      await assert.rejects(service.invite(owner.id, request), /first stage|第一階段/);
+      assert.equal(await db.tokenReservation.count({ where: { userId: owner.id } }), reservations);
+      await db.discoveryJourney.update({ where: { id: journey.id }, data: { interviewsConfirmedAt: new Date() } });
+      await access.requireInvestorOutreach(owner.id, db);
+      const invitation = await service.invite(owner.id, request);
+      assert.equal(invitation.status, "pending");
+      await service.changeConnection(owner.id, invitation.id, { action: "cancel", revision: 1 });
+      await db.discoveryJourney.update({ where: { id: journey.id }, data: { interviewsConfirmedAt: null } });
+    });
     await t.test("New SPARK is gated; expired legacy sources and self-declared investors cannot elevate access", async () => {
       assert.equal((await access.features(spark.id)).prospects, false);
       const sourceKey = access.sources(spark)[0]!;

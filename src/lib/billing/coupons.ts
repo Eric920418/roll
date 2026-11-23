@@ -3,6 +3,9 @@ import { billingVariantFor, novemberPaypalPlanEnvFor, type BillingInterval, type
 
 export const NOVEMBER_COUPON = { code: "NOVA60", campaign: "november-2026", percentOff: 60, startsAt: "2026-10-31T16:00:00.000Z", endsAt: "2026-11-30T16:00:00.000Z" } as const;
 export const DEFAULT_COUPON_CODES: Record<string, boolean> = { NOVA60: true, MEETTAIPEI60: true };
+// The public offer is a first month, never a discounted first year.
+export const FIRST_MONTH_COUPON = "NOVA80";
+export const couponIntervals = (code: string): BillingInterval[] => code === FIRST_MONTH_COUPON ? ["month"] : ["month", "year"];
 export const couponRuleSchema = z.object({ enabled: z.boolean(), percentOff: z.number().int().min(1).max(99), startsAt: z.iso.datetime(), endsAt: z.iso.datetime(), revision: z.number().int().nonnegative().default(0), plans: z.record(z.string(), z.string()).default({}) }).strict().refine(v => v.startsAt < v.endsAt, "結束時間必須晚於開始時間");
 export type CouponRule = z.infer<typeof couponRuleSchema>;
 export type CouponCodes = Record<string, boolean | CouponRule>;
@@ -16,9 +19,11 @@ export function couponTerms(plan: PlanKey, interval: BillingInterval) {
 }
 export function couponQuote(code: string, plan: PlanKey, interval: BillingInterval, now = new Date(), codes: CouponCodes = DEFAULT_COUPON_CODES) {
   const normalized = code.trim().toUpperCase();
+  if (!couponIntervals(normalized).includes(interval)) throw new CouponError("首月優惠僅適用月繳，年繳維持原價 / The first-month offer applies to monthly subscriptions only", "coupon_interval");
   if (!Object.hasOwn(codes, normalized) || !(codes[normalized] === true || typeof codes[normalized] === "object" && codes[normalized].enabled)) throw new CouponError("折扣碼無效 / Invalid discount code", "coupon_invalid");
   if (process.env.BILLING_NOVA60_ENABLED !== "true") throw new CouponError("折扣活動尚未開放 / Discount promotion is not available", "coupon_disabled", 503);
   const entry = codes[normalized], terms = typeof entry === "object" ? couponRuleSchema.parse(entry) : NOVEMBER_COUPON;
+  if (normalized === FIRST_MONTH_COUPON && (typeof entry !== "object" || terms.percentOff !== 80)) throw new CouponError("首月 2 折設定尚未完成 / The first-month offer is not configured", "coupon_not_configured", 503);
   if (now < new Date(terms.startsAt) || now >= new Date(terms.endsAt)) throw new CouponError(typeof entry === "object" ? "折扣碼不在有效期間 / Discount code is outside its validity period" : "折扣碼僅於 2026 年 11 月有效 / Discount code is valid only in November 2026", "coupon_expired");
   const base = couponTerms(plan, interval);
   return { ...base, revision: typeof entry === "object" ? entry.revision : 0, percentOff: terms.percentOff, startsAt: terms.startsAt, endsAt: terms.endsAt, firstAmountMinor: Math.round(base.regularAmountMinor * (100 - terms.percentOff) / 100), code: normalized };

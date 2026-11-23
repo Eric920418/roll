@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getPaypalEnvironment } from "./config";
 import { novemberPaypalPlanEnvFor, paypalPlanIdFor } from "./plans";
 import type { BillingInterval } from "./plans";
-import { couponTerms, couponPlanBody, assertCouponPlan, CouponError } from "./coupons";
+import { couponTerms, couponPlanBody, assertCouponPlan, CouponError, couponIntervals } from "./coupons";
 import { createBillingPlan, getBillingPlan } from "./paypal";
 import { z } from "zod";
 const savedPlans = z.record(z.string(), z.string());
@@ -38,6 +38,7 @@ export async function prepareCouponPlan(plan: "pro" | "business", interval: Bill
 }
 
 async function prepareCustomCouponPlan(code: string, plan: "pro" | "business", interval: BillingInterval) {
+  if (!couponIntervals(code).includes(interval)) throw new CouponError("首月優惠僅適用月繳 / First-month offers apply to monthly subscriptions only", "coupon_interval");
   const codes = await readCouponCodes(), entry = codes[code];
   if (!entry || typeof entry !== "object") throw new CouponError("請先儲存此代碼的折扣與期限", "coupon_invalid");
   const base = paypalPlanIdFor(plan, interval);

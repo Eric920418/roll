@@ -1,4 +1,5 @@
 import { activeBillingCatalog, tokenQuote } from "@/lib/billing/commerce";
+import { publicFirstMonthOffer } from "@/lib/billing/public-offer";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import s from "@/components/sections/product/landing.module.css";
@@ -55,7 +56,7 @@ export default async function ProductPage({ params }: Props) {
   const language = locale as Locale;
   const zh = language === "zh-tw";
   const pricing = await Promise.all([activeBillingCatalog(), tokenQuote()])
-    .then(([prices, tokens]) => <Pricing prices={prices.catalog} tokenPricing={tokens} />)
+    .then(async ([prices, tokens]) => <Pricing prices={prices.catalog} tokenPricing={tokens} firstMonthOffer={await publicFirstMonthOffer(prices.catalog)} />)
     .catch((error: unknown) => {
       const reference = logSecurityError("nova.public.pricing", error);
       return (

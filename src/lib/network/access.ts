@@ -30,6 +30,11 @@ export async function features(userId: string, db: DB = prisma as unknown as DB)
 export async function requireNetwork(userId: string, kind: "network" | "invite" = "network", db?: DB) {
   if (!(await features(userId, db))[kind]) throw new MemberError("此功能需要 NOVA 或有效既有權益 / NOVA or an existing eligible entitlement is required", 403);
 }
+export async function requireInvestorOutreach(userId: string, db: DB) {
+  const plan = await db.actionPlan.findFirst({ where: { userId, activeKey: userId, archivedAt: null }, select: { milestones: { orderBy: { position: "asc" }, take: 1, select: { achievedAt: true } } } });
+  const complete = plan ? Boolean(plan.milestones[0]?.achievedAt) : Boolean((await db.discoveryJourney.findUnique({ where: { userId }, select: { interviewsConfirmedAt: true } }))?.interviewsConfirmedAt);
+  if (!complete) throw new MemberError("請先完成第一階段，再向投資人提出交流；原有訊息與連結仍可使用 / Complete your first stage before inviting investors. Existing conversations and connections remain available", 403);
+}
 export async function acceptedConnection(a: string, b: string, db: DB = prisma as unknown as DB) {
   return db.networkConnection.findFirst({ where: { status: "accepted", OR: [{ senderId: a, recipientId: b }, { senderId: b, recipientId: a }] } });
 }

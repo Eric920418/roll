@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { CouponError, DEFAULT_COUPON_CODES, couponRuleSchema, type CouponCodes } from "./coupons";
+import { CouponError, DEFAULT_COUPON_CODES, couponRuleSchema, couponIntervals, type CouponCodes } from "./coupons";
 export const couponCodesKey = "billing.nova60.codes";
 export const couponCodeInput = z.object({ code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{2,31}$/), enabled: z.boolean(), terms: z.object({ percentOff: z.number().int().min(1).max(99), startsAt: z.iso.datetime(), endsAt: z.iso.datetime() }).refine(v => v.startsAt < v.endsAt, "結束時間必須晚於開始時間").optional(), revision: z.number().int().nonnegative().optional() }).strict();
 const codesSchema = z.record(z.string().regex(/^[A-Z0-9][A-Z0-9_-]{2,31}$/), z.union([z.boolean(), couponRuleSchema]));
@@ -24,7 +24,7 @@ export async function saveCouponCode(input: z.infer<typeof couponCodeInput>) {
       const unchanged = typeof previous === "object" && previous.percentOff === parsed.data.terms.percentOff;
       entry = couponRuleSchema.parse({ ...parsed.data.terms, enabled: parsed.data.enabled, revision: revision + 1, plans: unchanged ? previous.plans : {} });
     } else if (typeof previous === "object") entry = { ...previous, enabled: parsed.data.enabled };
-    if (typeof entry === "object" && entry.enabled && !["pro","business"].every(plan => ["month","year"].every(period => entry && typeof entry === "object" && Boolean(entry.plans[`${process.env.PAYPAL_ENV}:${plan}:${period}`])))) throw new CouponError("請先核對四個付款方案再啟用", "coupon_not_configured", 409);
+    if (typeof entry === "object" && entry.enabled && !["pro","business"].every(plan => couponIntervals(parsed.data.code).every(period => entry && typeof entry === "object" && Boolean(entry.plans[`${process.env.PAYPAL_ENV}:${plan}:${period}`])))) throw new CouponError("請先核對適用週期的付款方案再啟用", "coupon_not_configured", 409);
     const value = { ...codes, [parsed.data.code]: entry };
     await tx.setting.upsert({ where: { key: couponCodesKey }, create: { key: couponCodesKey, value }, update: { value } });
     return value;

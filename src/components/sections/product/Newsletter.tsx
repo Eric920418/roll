@@ -13,7 +13,7 @@ export default function Newsletter({ embedded = false }: { embedded?: boolean })
   const [error, setError] = useState("");
   return <section className={embedded ? s.newsletter : s.newsletterStandalone} aria-labelledby="newsletter-heading">
     <h2 id="newsletter-heading">{zh ? "每週，為下一個決定多一份證據。" : "More evidence for your next decision, every week."}</h2>
-    <p>{zh ? "訂閱 NOVA 創辦人指南，每週一封，隨時可退訂。" : "Subscribe to NOVA founder guides. One email each week. Unsubscribe anytime."}</p>
+    {!embedded && <p>{zh ? "訂閱 NOVA 創辦人指南，每週一封，隨時可退訂。" : "Subscribe to NOVA founder guides. One email each week. Unsubscribe anytime."}</p>}
     <form onSubmit={async event => {
       event.preventDefault();
       if (busy) return;
@@ -32,9 +32,9 @@ export default function Newsletter({ embedded = false }: { embedded?: boolean })
         setBusy(false);
       }
     }}>
-      <label htmlFor="nova-newsletter-email">{zh ? "Email 地址" : "Email address"}</label>
+      <label htmlFor="nova-newsletter-email" className={embedded ? "sr-only" : undefined}>{zh ? "Email 地址" : "Email address"}</label>
       <div className={s.newsletterInput}>
-        <input id="nova-newsletter-email" type="email" autoComplete="email" maxLength={254} required disabled={busy}
+        <input id="nova-newsletter-email" type="email" placeholder="Email" autoComplete="email" maxLength={254} required disabled={busy}
           value={email} onChange={event => { setEmail(event.target.value); setDone(false); }} />
         <button type="submit" disabled={!consent || busy}>{busy ? (zh ? "處理中…" : "Sending…") : (zh ? "訂閱" : "Subscribe")}</button>
       </div>

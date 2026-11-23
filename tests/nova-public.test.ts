@@ -37,7 +37,8 @@ for (const locale of ['en', 'zh-tw'] as const)
         for (const name of ['QUIBI', 'DROPBOX', 'ZAPPOS']) assert(html.includes(name));
         assert(html.indexOf('QUIBI') < html.indexOf('DROPBOX'));
         assert(html.indexOf('DROPBOX') < html.indexOf('ZAPPOS'));
-        assert(html.includes(locale === 'en' ? 'Photo (permission to be confirmed)' : '照片（需確認授權）'));
+        assert(!html.includes('Photo (permission to be confirmed)') && !html.includes('照片（需確認授權）'));
+        assert(!html.includes('Start with your stage, target customer and next priority.') && !html.includes('從你的階段、目標客戶與下一個優先行動開始。'));
         for (const metric of ['$1.75B', '15×', '0']) assert(html.includes(`<h3 class="caseNumber">${metric}</h3>`));
         assert(html.includes('Evidence is not.') || html.includes('證據，不必昂貴。'));
         assert(html.includes(locale === 'en' ? 'Waitlist growth from one demo video' : '一支示範影片帶來的候補名單成長'));

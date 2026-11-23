@@ -109,7 +109,6 @@ export default async function NovaLanding({ locale, pricing }: { locale: Locale;
       <Link className={s.reportBanner} href={path(REPORT_PAGE)}><span>{w("下載 2026 第四季台灣市場進入報告 →", "Download the Q4 2026 Taiwan Market Entry Report →")}</span><small>From visions to big impacts</small></Link>
       <div className={s.sectionHeading}><h2 id="evidence-heading">{w("願景很昂貴。", "Vision is expensive.")}<br /><span>{w("證據，不必昂貴。", "Evidence is not.")}</span></h2></div>
       <div className={`${s.three} ${s.caseStats}`}>{caseStudies.map(c => <article key={c.name}>
-        <div className={s.assetPending}>{w("照片（需確認授權）", "Photo (permission to be confirmed)")}</div>
         <p className={s.eyebrow}>{c.label} · {c.name}</p><h3 className={s.caseNumber}>{c.metric}</h3><p className={s.caseSummary}>{c.summary}</p>
         <a className={s.caseSource} href={c.source} target="_blank" rel="noopener noreferrer">{c.link}<span aria-hidden="true">↗</span></a>
       </article>)}</div>
@@ -155,7 +154,6 @@ export default async function NovaLanding({ locale, pricing }: { locale: Locale;
       <div className={s.closingGrid}><div>
         <p className={s.eyebrow}>{w("敢於行動，先驗證。", "Be bold. Validate first.")}</p>
         <h2>{w("下一個決定，", "For your next decision,")}<br />{w("讓證據帶路。", "let evidence lead.")}</h2>
-        <p className={s.closingIntro}>{w("從你的階段、目標客戶與下一個優先行動開始。", "Start with your stage, target customer and next priority.")}</p>
         <div className={s.actions}><Link className={s.lightButton} href={signup}>{w("免費開始", "Start free")} ↗</Link><a className={s.outlineLight} href={MEETING_URL} target="_blank" rel="noopener noreferrer">{meetingLabel(locale)} ↗</a></div>
       </div><Newsletter embedded /></div>
       <footer className={s.footer}>

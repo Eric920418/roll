@@ -280,6 +280,15 @@ test("Admin plan preparation preserves parallel plan IDs and does not enable che
     await Promise.all([setup.prepareCouponPlan("pro", "month"), setup.prepareCouponPlan("business", "year")]);
     let status = await setup.couponSetupStatus(); assert.equal(status.plans.filter(p => p.preparedId).length, 2); assert.equal(status.enabled, false);
     await setup.prepareCouponPlan("pro", "month"); assert.equal(creates, 2); status = await setup.couponSetupStatus(); assert.equal(status.enabled, false);
+    await codes.saveCouponCode({code:"NOVA80",enabled:false,terms,revision:0});
+    await assert.rejects(codes.saveCouponCode({code:"NOVA80",enabled:true}),/核對/);
+    await assert.rejects(setup.prepareCouponPlan("pro","year","NOVA80"),/month|月繳/);
+    await setup.prepareCouponPlan("pro","month","NOVA80");
+    await assert.rejects(codes.saveCouponCode({code:"NOVA80",enabled:true}),/核對/);
+    await setup.prepareCouponPlan("business","month","NOVA80");
+    await codes.saveCouponCode({code:"NOVA80",enabled:true});
+    const publicRule = (await codes.readCouponCodes()).NOVA80;
+    assert.equal(typeof publicRule === "object" && Object.keys(publicRule.plans).length, 2);
     assert.equal(await db.subscription.count({ where: { paypalPlanId: { in: [...remote.keys()] } } }), 0);
   } finally { await db.setting.deleteMany({ where: { key: {in:[key,"billing.nova60.codes",...[...remote.keys()].map(id=>"novaCommerce.plan."+id)]} } }); await db.$disconnect(); }
 });
@@ -316,4 +325,36 @@ test("Custom 80% discounts use exact first-period cents and independent dates", 
   assert.throws(()=>coupon.couponQuote("EVENT80","pro","month",new Date(instant),{EVENT80:{...terms,enabled:false}}));
   assert.throws(()=>coupon.couponPaypalPlanId("pro","month",codes,"EVENT80"),/verification|核對/);
   for(const percentOff of [0,100,-1,80.5]) assert.equal(coupon.couponRuleSchema.safeParse({...terms,percentOff}).success,false);
+});
+
+test("The public first-month offer is 20% once, with full monthly renewals and no annual discount", () => {
+  const rule = { enabled: true, percentOff: 80, startsAt: "2026-11-01T00:00:00.000Z", endsAt: "2099-01-01T00:00:00.000Z", revision: 1, plans: {} };
+  for (const [plan, first, regular] of [["pro",980,4900],["business",2980,14900]] as const) {
+    const quote = coupon.couponQuote("NOVA80", plan, "month", new Date(instant), { NOVA80: rule });
+    assert.equal(quote.firstAmountMinor, first); assert.equal(quote.regularAmountMinor, regular);
+    const body = coupon.couponPlanBody("PRODUCT", quote);
+    coupon.assertCouponPlan(body, quote, "PRODUCT");
+    assert.equal(body.billing_cycles[0].frequency.interval_unit,"MONTH");
+    assert.equal(body.billing_cycles[0].total_cycles,1);
+    assert.equal(Number(body.billing_cycles[1].pricing_scheme.fixed_price.value)*100,regular);
+    assert.throws(()=>coupon.couponQuote("NOVA80",plan,"year",new Date(instant),{NOVA80:rule}),/month|月繳/);
+  }
+  assert.throws(()=>coupon.couponQuote("NOVA80","pro","month",new Date(instant),{NOVA80:true}),/configured|完成/);
+  assert.throws(()=>coupon.couponQuote("NOVA80","pro","month",new Date(instant),{NOVA80:{...rule,percentOff:60}}),/configured|完成/);
+});
+
+ test("Public promotion stays hidden until enabled, mapped and matching the live monthly catalog", async () => {
+  let rule: Record<string, unknown> | undefined = undefined;
+  const load = loader({"./coupon-codes": {readCouponCodes: async () => rule ? {NOVA80:rule} : {}}}, {...env,PAYPAL_ENV:"sandbox"});
+  const offers = load<typeof import("../src/lib/billing/public-offer")>("src/lib/billing/public-offer.ts");
+  assert.equal(await offers.publicFirstMonthOffer(plans.PLAN_CONFIG),null);
+  rule={enabled:false,percentOff:80,startsAt:"2026-11-01T00:00:00.000Z",endsAt:"2099-01-01T00:00:00.000Z",revision:1,plans:{}};
+  assert.equal(await offers.publicFirstMonthOffer(plans.PLAN_CONFIG),null);
+  rule.enabled=true;
+  await assert.rejects(offers.publicFirstMonthOffer(plans.PLAN_CONFIG),/verification|核對/);
+  rule.plans={"sandbox:pro:month":"P-PRO","sandbox:business:month":"P-BUSINESS"};
+  const offer=await offers.publicFirstMonthOffer(plans.PLAN_CONFIG);
+  assert.equal(offer?.code,"NOVA80"); assert.equal(JSON.stringify(offer?.quotes.map(q=>q.firstAmountMinor)),"[980,2980]");
+  const changed=structuredClone(plans.PLAN_CONFIG); changed.pro.variants!.month.amountMinor=5000;
+  await assert.rejects(offers.publicFirstMonthOffer(changed),/match|不符/);
 });

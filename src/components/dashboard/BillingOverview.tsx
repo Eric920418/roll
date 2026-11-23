@@ -1,4 +1,5 @@
 import { activeBillingCatalog } from "@/lib/billing/commerce";
+import { publicFirstMonthOffer } from "@/lib/billing/public-offer";
 import { getTranslations } from "next-intl/server";
 import BillingPanel from "@/components/dashboard/BillingPanel";
 import { getCurrentAccount } from "@/lib/auth/account";
@@ -24,6 +25,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
   if (!account) return null; // layout 已 redirect
 
   const prices = await activeBillingCatalog();
+  const firstMonthOffer = await publicFirstMonthOffer(prices.catalog);
   const effectivePlan = getEffectivePlan(account);
   const status = account.subscriptionStatus;
 
@@ -98,6 +100,7 @@ export default async function BillingOverview({ locale, embedded = false }: { lo
       <BillingPanel
         locale={l}
         prices={prices}
+        initialCouponCode={firstMonthOffer?.code}
         currentPlan={effectivePlan}
         statusLabel={statusLabel}
         renewsLabel={renewsLabel}

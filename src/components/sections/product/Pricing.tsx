@@ -9,7 +9,7 @@ import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import s from "./landing.module.css";
 
-export default function Pricing({ prices, tokenPricing }: { prices: typeof import("@/lib/billing/plans").PLAN_CONFIG; tokenPricing: { monthlyGrant: number; inviteFee: number; searchFee: number } }) {
+export default function Pricing({ prices, tokenPricing, firstMonthOffer = null }: { prices: typeof import("@/lib/billing/plans").PLAN_CONFIG; tokenPricing: { monthlyGrant: number; inviteFee: number; searchFee: number }; firstMonthOffer?: Awaited<ReturnType<typeof import("@/lib/billing/public-offer").publicFirstMonthOffer>> }) {
   const locale = useLocale() as Locale, zh = locale === "zh-tw", w = (a: string,b: string) => zh ? a : b;
   const [interval, setInterval] = useState<BillingInterval>("month"), catalog = planContent(zh);
   const plans = ["free", "pro", "business", "enterprise"] as const;
@@ -26,29 +26,33 @@ export default function Pricing({ prices, tokenPricing }: { prices: typeof impor
   ] as const;
   return <section id="pricing" className={s.pricingSection} aria-labelledby="pricing-heading">
     <h2 id="pricing-heading">{w("選擇你現在的階段。", "Choose the stage you're in.")}</h2>
+    {firstMonthOffer && <p className={s.promotion}>{w("SPARK 與 NOVA 月繳訂閱首月 2 折，之後恢復原價。", "80% off your first month of SPARK or NOVA. Regular monthly pricing applies thereafter.")}</p>}
     <div className={s.billingToggle} role="group" aria-label={w("付款週期", "Billing interval")}>
       {(["month", "year"] as const).map(value => <button key={value} type="button" aria-pressed={interval === value}
         onClick={() => setInterval(value)}>{value === "month" ? w("月繳", "Monthly") : w("年繳", "Yearly")}</button>)}
     </div>
     <div className={s.planGrid}>
       <p className={s.planLegend}>{interval === "month" ? w("每月方案", "Monthly plans") : w("年繳方案", "Yearly plans")}</p>
-      {plans.map(key => <article key={key} data-pricing-card={key} className={`${s.planCard} ${key === "business" ? s.featuredPlan : ""}`}>
-        <div className={s.planName}><h3>{catalog[key].name}</h3>{key === "business" && <span>{w("熱門", "POPULAR")}</span>}</div>
+      {plans.map(key => {
+        const offer = interval === "month" ? firstMonthOffer?.quotes.find(quote => quote.plan === key) : null;
+        return <article key={key} data-pricing-card={key} className={`${s.planCard} ${key === "business" ? s.featuredPlan : ""}`}>
+        <div className={s.planName}><h3>{catalog[key].name}</h3>{offer ? <span>{w("2 折", "80% OFF")}</span> : key === "business" && <span>{w("熱門", "POPULAR")}</span>}</div>
         <p className={s.planAudience}>{catalog[key].audience}</p>
         <div data-pricing-part="amount" className={s.planAmount}>
-          <strong>{key === "free" ? "USD 0" : key === "enterprise" ? w("客製報價", "Custom quote")
+          {offer && <del>{priceLabel(key, "month", prices)}</del>}
+          <strong>{offer ? `USD ${(offer.firstAmountMinor / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}` : key === "free" ? "USD 0" : key === "enterprise" ? w("客製報價", "Custom quote")
             : interval === "month" ? priceLabel(key, "month", prices) : monthlyEquivalentLabel(key, prices)}</strong>
         </div>
         <p data-pricing-part="billing" className={s.planBilling}>{key === "free" ? w("14 天・無需信用卡", "14 days · No credit card")
           : key === "enterprise" ? w("依市場與目標洽詢", "Tailored to your market and goals")
           : interval === "year" ? w(`每年實收 ${priceLabel(key, "year", prices)}`, `${priceLabel(key, "year", prices)} charged yearly`)
-          : w("每月收費", "Charged monthly")}</p>
+          : offer ? w(`首月優惠，之後每月 ${priceLabel(key, "month", prices)}`, `First month offer, then ${priceLabel(key, "month", prices)} monthly`) : w("每月收費", "Charged monthly")}</p>
         <a data-pricing-part="action" className={s.planAction}
           href={key === "enterprise" ? MEETING_URL : pathForLocale("/signup", locale)}
           target={key === "enterprise" ? "_blank" : undefined} rel={key === "enterprise" ? "noopener noreferrer" : undefined}
           onClick={() => track("flow_start", { feature: "upgrade" })}>{key === "enterprise" ? meetingLabel(locale)
             : key === "free" ? w("免費開始", "Start free") : w("開始使用", "Get started")}</a>
-      </article>)}
+      </article>; })}
     </div>
     <div className={s.comparison} tabIndex={0} role="region" aria-label={w("方案功能比較，可水平捲動", "Plan comparison; scroll horizontally")}>
       <table><caption className="sr-only">{w("各方案實際功能", "Actual plan features")}</caption>
