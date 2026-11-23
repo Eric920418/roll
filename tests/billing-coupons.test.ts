@@ -365,5 +365,6 @@ test("Coupon setup renders deterministic Taipei dates and enables a mapped month
   const html=native("react-dom/server").renderToStaticMarkup(native("react").createElement(Setup,{initial:{environment:"sandbox",enabled:true,plans:[],codes:{NOVA80:{enabled:false,percentOff:80,startsAt:"2026-11-22T16:00:00.000Z",endsAt:"2099-01-01T00:00:00.000Z",revision:1,plans:{"sandbox:pro:month":"P-PRO","sandbox:business:month":"P-BUSINESS"}}}}}));
   assert(html.includes("2026-11-23 00:00"));
   assert(!html.includes("上午")&&!html.includes("四個付款方案"));
-  assert.match(html,/<button(?![^>]*disabled)[^>]*aria-label="啟用 NOVA80"/);
+  const button = html.match(/<button[^>]*aria-label="啟用 NOVA80"[^>]*>/)?.[0];
+  assert(button); assert(!/\sdisabled(?:=|\s|>)/.test(button));
 });
