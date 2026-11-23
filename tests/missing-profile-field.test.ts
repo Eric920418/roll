@@ -39,6 +39,6 @@ test('Company-only editing submits the six necessary fields, preserves hidden da
     assert.equal(JSON.stringify(initial),original);assert(!('notes' in writes[0]));assert(!('website' in writes[0]));
     fail=true;await render().props.onSubmit({preventDefault(){}} as React.FormEvent);
     const nodes=(node:React.ReactNode):React.ReactElement<Record<string,unknown>>[]=>React.Children.toArray(node).flatMap(child=>React.isValidElement(child)?[child as React.ReactElement<Record<string,unknown>>,...nodes((child.props as {children?:React.ReactNode}).children)]:[]);
-    const error=nodes(render()).find(n=>n.props.role==='alert');assert(error);assert.match(String(error.props.children),/HTTP 503[\s\S]*Safe provider failure[\s\S]*retry_later[\s\S]*trace-company-qa/);
+    assert(!nodes(render()).some(n=>String(n.props.href).includes('/dashboard/account#profile')));const error=nodes(render()).find(n=>n.props.role==='alert');assert(error);assert.match(String(error.props.children),/HTTP 503[\s\S]*Safe provider failure[\s\S]*retry_later[\s\S]*trace-company-qa/);
   }
 });
