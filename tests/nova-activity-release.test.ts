@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
-import { Children, isValidElement, type ReactNode } from "react";
+import { Children, createElement, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { homeNextStep, matchmakingTab, MATCHMAKING_TABS } from "../src/lib/dashboard/home";
 import { messageSchema } from "../src/lib/network/policy";
+import * as novaLanding from "../src/lib/cms/nova-landing";
+import type { EventView } from "../src/components/dashboard/home/UpcomingEventsRail";
 import type { ActionPlanDto } from "../src/lib/action-plan/service";
 import type { getDiscoverySnapshot } from "../src/lib/discovery/service";
 
@@ -224,6 +226,9 @@ test("An inactive inbox starts no requests or polling; activating it resumes rea
 test("Home renders one primary task in both languages with locale-correct destinations", async () => {
   const saved = plan({ actions: [{ ...action, expectedOutcome: { text: "Three customers confirmed the positioning" } } as ActionPlanDto["actions"][number]] });
   saved.nextMoves = saved.actions;
+  const Events = () => null;
+  let eventFailure = false;
+  const community = { "roundtable.title.en": "CMS NOVA roundtable", "roundtable.title.zh-tw": "後台 NOVA 圓桌", "roundtable.date": "2026-12-05", "roundtable.image": "https://qa.public.blob.vercel-storage.com/nova-event.webp" };
   const page = load<{ default(p: object): Promise<ReactNode> }>("src/app/[locale]/dashboard/(shell)/page.tsx", {
     "next/link": { default: "a" }, "next-intl/server": intl,
     "@/lib/auth/guard": { requireUserPage: async () => ({ uid: "owner" }) },
@@ -232,13 +237,24 @@ test("Home renders one primary task in both languages with locale-correct destin
     "@/lib/action-plan/service": { getActiveActionPlan: async () => saved },
     "@/lib/action-plan/personalization": {}, "@/lib/discovery/service": {}, "@/lib/discovery/policy": { isDiscoveryMember: () => false },
     "@/lib/dashboard/home": { homeNextStep }, "@/lib/dashboard/next-steps": { actionProgress: () => 0 },
-    "@/lib/cms/content": { getEvents: async () => [] },
+    "@/lib/cms/content": { getEvents: async () => { throw new Error("Roll On events must not be read"); }, getSetting: async (key: string) => { assert.equal(key, "novaLanding.community"); if (eventFailure) throw new Error("private database credentials"); return community; } },
+    "@/lib/cms/nova-landing": novaLanding,
+    "@/lib/security/log": { logSecurityError: () => "trace-nova-event", publicErrorMessage: (ref: string) => `Please retry · ${ref}` },
     "@/lib/routes": { pathForLocale: (path: string, locale: string) => locale === "zh-tw" ? `/zh-tw${path}` : path },
     ...Object.fromEntries(["PlanRefresh", "ActionMap", "evidence/EvidencePanel", "home/FounderRecommendations", "matchmaking/RoundtablesPanel", "home/UpcomingEventsRail"].map(name => [`@/components/dashboard/${name}`, { default: () => null }])),
+    "@/components/dashboard/home/UpcomingEventsRail": { default: Events },
   });
   for (const locale of ["en", "zh-tw"]) for (const version of [undefined, 2] as const) {
     saved.workflowVersion = version;
     const outer = nodes(await page.default({ params: Promise.resolve({ locale }) }));
+    const activities = outer.find(n => n.type === Events)?.props as unknown as { events: EventView[]; error: string | null };
+    assert.equal(activities.error, null);
+    assert.deepEqual(Array.from(activities.events, e => e.id), ["roundtable", "updateTwo", "updateThree"]);
+    assert.equal(activities.events[0].title, locale === "en" ? community["roundtable.title.en"] : community["roundtable.title.zh-tw"]);
+    assert.equal(activities.events[0].image, community["roundtable.image"]);
+    assert.equal(activities.events[0].date, locale === "en" ? "DEC 5 · 2026" : "2026 年 12 月 5 日");
+    assert.match(String(activities.events[1].date), /Tie-Breaker/);
+    assert.equal(activities.events[2].date, "Coming Soon");
     const tree = [...outer, ...nodes(outer.find(n => n.props.homeTask)?.props.homeTask as ReactNode)];
     assert.equal(tree.filter(n => n.type === "h1").length, 1);
     const map = outer.findIndex(n => "plan" in n.props && "compact" in n.props);
@@ -250,6 +266,29 @@ test("Home renders one primary task in both languages with locale-correct destin
     const links = tree.filter(n => n.type === "a");
     assert.equal(links.filter(n => n.props.href === `${locale === "en" ? "" : "/zh-tw"}/dashboard/agenda#action-ready`).length, 1);
     assert.match(JSON.stringify(tree), locale === "en" ? /Continue today's task/ : /繼續今日任務/);
+  }
+  eventFailure = true;
+  const failed = nodes(await page.default({ params: Promise.resolve({ locale: "en" }) }));
+  const activities = failed.find(n => n.type === Events)?.props as unknown as { events: EventView[]; error: string | null };
+  assert.equal(activities.events.length, 0); assert.match(activities.error!, /trace-nova-event/);
+  assert.doesNotMatch(JSON.stringify(failed), /private database credentials/);
+});
+
+test("Recent events keeps the member layout and links to NOVA community in both languages", () => {
+  const Rail = load<{ default(p: object): ReactNode }>("src/components/dashboard/home/UpcomingEventsRail.tsx", {
+    "next/link": { default: "a" },
+    "next/image": { default: (props: Record<string, unknown>) => createElement("img", Object.fromEntries(Object.entries(props).filter(([key]) => !["fill", "unoptimized"].includes(key)))) },
+    "@/lib/quiz/locale": { pick: (value: unknown) => String(value ?? "") },
+    "@/lib/routes": { pathForLocale: (path: string, locale: string) => locale === "zh-tw" ? `/zh-tw${path}` : path },
+  });
+  for (const locale of ["en", "zh-tw"]) {
+    const html = renderToStaticMarkup(Rail.default({ locale, events: [{ id: "nova", title: "NOVA event", date: "Coming Soon", location: "", description: "Saved NOVA description", image: "/nova/community/roundtable-event.webp" }] }));
+    assert.match(html, new RegExp(`href="${locale === "en" ? "" : "/zh-tw"}/product#community"`));
+    assert.match(html, /NOVA event/); assert.match(html, /Coming Soon/); assert.match(html, /Saved NOVA description/);
+    assert.match(html, /src="\/nova\/community\/roundtable-event.webp"/);
+    assert.doesNotMatch(html, /#events/);
+    const failed = renderToStaticMarkup(Rail.default({ locale, events: [], error: "Please retry · trace-nova-event" }));
+    assert.match(failed, /role="alert"/); assert.match(failed, /trace-nova-event/); assert.doesNotMatch(failed, /No published events|目前沒有已公布/);
   }
 });
 

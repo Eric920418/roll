@@ -9,7 +9,9 @@ import { getDiscoverySnapshot } from "@/lib/discovery/service";
 import { isDiscoveryMember } from "@/lib/discovery/policy";
 import { actionProgress } from "@/lib/dashboard/next-steps";
 import { homeNextStep } from "@/lib/dashboard/home";
-import { getEvents } from "@/lib/cms/content";
+import { getSetting } from "@/lib/cms/content";
+import { novaCommunityCards, novaCommunityDate, novaLandingSettingKey, resolveNovaLanding } from "@/lib/cms/nova-landing";
+import { logSecurityError, publicErrorMessage } from "@/lib/security/log";
 import { pathForLocale } from "@/lib/routes";
 import type { Locale } from "@/i18n/routing";
 import EvidencePanel from "@/components/dashboard/evidence/EvidencePanel";
@@ -27,11 +29,19 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
   const account = await getCurrentAccount();
   if (!account) return null;
   const isPaying = getEffectivePlan(account) !== "free";
-  const [plan, discovery, events] = await Promise.all([
+  const [plan, discovery, communityResult] = await Promise.all([
     isPaying ? getActiveActionPlan(account.id) : null,
     isDiscoveryMember(account) ? getDiscoverySnapshot(account.id) : null,
-    getEvents(),
+    getSetting(novaLandingSettingKey("community"))
+      .then(value => ({ value, error: null }))
+      .catch(error => ({ value: null, error: publicErrorMessage(logSecurityError("dashboard.nova-community", error)) })),
   ]);
+  const community = communityResult.value ? resolveNovaLanding("community", communityResult.value) : null;
+  const events = community ? novaCommunityCards.map(id => ({
+    id,
+    date: [community[`${id}.date`] ? novaCommunityDate(community[`${id}.date`], l) : "", community[`${id}.dateLabel.${l}`]].filter(Boolean).join("｜"),
+    title: community[`${id}.title.${l}`], location: "", description: community[`${id}.body.${l}`], image: community[`${id}.image`] || null,
+  })) : [];
   const next = homeNextStep({ plan, isPaying, discovery });
   const milestone = plan?.roadmap?.milestones.find(m => !m.achievedAt);
   const labels = zh ? {
@@ -67,7 +77,7 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
     {plan && <ActionMap userId={account.id} plan={plan} event={null} compact />}
     <EvidencePanel userId={account.id} compact homeTask={task} />
     <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"><RoundtablesPanel userId={account.id} compact /><FounderRecommendations /></div>
-    <UpcomingEventsRail locale={l} events={events.slice(0,3).map(({id,date,title,location,description,image})=>({id,date,title,location,description,image}))} />
+    <UpcomingEventsRail locale={l} events={events} error={communityResult.error} />
     <section className="grid gap-5 rounded-2xl border border-dark/10 bg-white p-5 sm:grid-cols-[1fr_2fr]" aria-label={zh ? "關注 NOVA AI" : "Follow NOVA AI"}><div><h2 className="text-sm font-semibold">{zh ? "關注 NOVA AI" : "Follow NOVA AI"}</h2></div><div className="grid gap-x-6 sm:grid-cols-2">{[{label:'LinkedIn',name:'ROLL ON',url:'https://www.linkedin.com/company/rollon/'},{label:'YouTube',name:'Golden Ticket',url:'https://www.youtube.com/@GOLDENTICKET-rollon'},{label:'Instagram',name:'ROLL ON TAIWAN',url:'https://www.instagram.com/rollon.tw/'}].map(item=><a key={item.url} href={item.url} target="_blank" rel="noopener noreferrer" className="flex min-h-11 min-w-0 items-center gap-3 border-t border-dark/10 text-xs"><span className="text-dark/50">{item.label}</span><span className="flex-1 break-words font-semibold">{item.name}</span><span aria-hidden>↗</span></a>)}</div></section>
   </div></PlanLocalizationProvider>;
 }
